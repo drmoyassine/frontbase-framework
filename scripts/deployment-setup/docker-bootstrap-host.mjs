@@ -2,7 +2,7 @@
 import {existsSync,lstatSync,readFileSync,openSync,writeFileSync,fsyncSync,closeSync,mkdirSync,readdirSync} from 'node:fs';
 import {join,resolve,dirname,parse} from 'node:path';
 import {randomBytes,createHash} from 'node:crypto';
-import {resolveProviderOAuthCredentials,createSecretCipher,createProviderOAuth,providerOAuthClients,providerOAuthVault} from '../../packages/backend/dist/index.js';
+import {resolveProviderOAuthCredentials,createSecretCipher,createProviderOAuth,createProviderRelayClient,providerOAuthRelay,providerOAuthClients,providerOAuthVault} from '../../packages/backend/dist/index.js';
 import {createHostedBootstrap} from '../../packages/backend/dist/hosted-bootstrap.js';
 import {dockerBootstrapJournal} from './docker-bootstrap-journal.mjs';
 import {profileEnvironment} from './profile-environment.mjs';
@@ -31,7 +31,7 @@ export async function createDockerBootstrapHost({env,boot,assets,probeExternal=v
    if(record.manifest.bindings['state-db'].adapterId==='sqlite-file'){if(existsSync(database))throw Error('existing_state_refused');values.APP_DB_URL='file:'+database.replaceAll('\\','/');}else await probeExternal(prepared);
    if(values.FRONTBASE_STORAGE){const storage=JSON.parse(values.FRONTBASE_STORAGE);if(storage.provider!=='none'){storage.namespace='installation-'+context.installationId;values.FRONTBASE_STORAGE=JSON.stringify(storage);}}
    const environment={...values,FRONTBASE_PUBLIC_ORIGIN:origin,SESSION_SECRET:randomBytes(32).toString('hex'),SETUP_TOKEN:randomBytes(32).toString('hex'),SETUP_EXPIRES_AT:new Date(Date.now()+3600000).toISOString()};
-   for(const [name,value] of Object.entries(env))if(/^FRONTBASE_(CLOUDFLARE|VERCEL)_OAUTH_(CLIENT_ID|CLIENT_SECRET|SCOPES|INTEGRATION_SLUG)$/.test(name))environment[name]=value;
+   for(const [name,value] of Object.entries(env))if(/^FRONTBASE_(CLOUDFLARE|VERCEL)_OAUTH_(CLIENT_ID|CLIENT_SECRET|SCOPES|INTEGRATION_SLUG|TEAM_SLUG)$/.test(name)||['FRONTBASE_OAUTH_RELAY_URL','FRONTBASE_OAUTH_RELAY_TARGET'].includes(name))environment[name]=value;
    const grants=await oauth.grants();if(grants.length){environment.FRONTBASE_OAUTH_CONNECTIONS=await (await createSecretCipher(environment.SESSION_SECRET)).encrypt(JSON.stringify({installationId:context.installationId,grants}));if(environment.FRONTBASE_OAUTH_CONNECTIONS.length>65536)throw Error('oauth_handoff_too_large');}
    const data={version:1,installationId:context.installationId,origin,operationId:record.operationId,fingerprint:record.fingerprint,environment};
    // Exclusive creation is the activation boundary. A partial write fails closed on restart.
@@ -60,10 +60,10 @@ export async function createDockerBootstrapHost({env,boot,assets,probeExternal=v
   }
  };
  const actor={tenant:'_root',subject:context.installationId};
- const oauth=providerOAuthVault(vault,await createSecretCipher(env.FRONTBASE_BOOTSTRAP_TOKEN??''),actor);
- const oauthApp=createProviderOAuth({origin,clients:providerOAuthClients(env,origin),store:oauth.store,fetch:(input,init)=>fetch(input,init),authorize:async request=>{
+ const cipher=await createSecretCipher(env.FRONTBASE_BOOTSTRAP_TOKEN??'');const oauth=providerOAuthVault(vault,cipher,actor);
+ const oauthConfiguration={origin,clients:providerOAuthClients(env,origin),store:oauth.store,fetch:(input,init)=>fetch(input,init),authorize:async request=>{
   if(!api)return null;const probe=await api.fetch(new Request(origin+'/frontbase-bootstrap/api/configuration',{headers:{cookie:request.headers.get('cookie')??''}}));if(!probe.ok)return null;const state=await probe.json();return state.operation&&['applying','uncertain'].includes(state.operation.phase)?null:actor;
- }});
+ }};const relay=providerOAuthRelay(env,origin);const oauthApp=relay?createProviderRelayClient({...oauthConfiguration,...relay,mode:'authenticated',cipher}):createProviderOAuth(oauthConfiguration);
  const headers={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
  return {context,journal,executor,close:()=>runtime?.externalFetch?.close(),fetch:async request=>{
   const url=new URL(request.url);

@@ -68,7 +68,7 @@ export function stageCloudflareArtifacts(context,exampleRoot=defaultExample) {
     for(const name of ['worker.ts','sw.ts'])copyFileSync(join(exampleRoot,'src',name),join(stage,'src',name));
     cpSync(join(exampleRoot,'console-dist'),join(stage,'console-dist'),{recursive:true});
     if(fingerprintCloudflareArtifacts(stage)!==context.artifactHash)throw new Error('deployment_artifacts_changed');
-    writeFileSync(join(stage,'wrangler.toml'),`name = "${context.appName}"\naccount_id = "${context.accountId}"\nmain = "dist/worker.mjs"\ncompatibility_date = "2026-09-07"\ncompatibility_flags = ["nodejs_compat"]\nno_bundle = true\nfind_additional_modules = true\nbase_dir = "./dist"\n[[rules]]\ntype = "ESModule"\nglobs = ["**/*.mjs"]\nfallthrough = true\n[assets]\ndirectory = "./console-dist"\nbinding = "ASSETS"\nrun_worker_first = true\n`,{mode:0o600});
+    writeFileSync(join(stage,'wrangler.toml'),`name = "${context.appName}"\naccount_id = "${context.accountId}"\nmain = "dist/worker.mjs"\ncompatibility_date = "2026-09-07"\ncompatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]\nno_bundle = true\nfind_additional_modules = true\nbase_dir = "./dist"\n[[rules]]\ntype = "ESModule"\nglobs = ["**/*.mjs"]\nfallthrough = true\n[assets]\ndirectory = "./console-dist"\nbinding = "ASSETS"\nrun_worker_first = true\n`,{mode:0o600});
     return stage;
 }
 /** First-install bridge around the existing compiler executor; never modifies committed host config. */

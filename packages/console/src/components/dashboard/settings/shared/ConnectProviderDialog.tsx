@@ -254,7 +254,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                         </div>
                     )}
 
-                    {!hideDisplayName && effectiveProvider !== 'turso' && (
+                    {!oauthAvailable && !hideDisplayName && effectiveProvider !== 'turso' && (
                         <div className="space-y-2">
                             <Label>Display Name</Label>
                             <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. My Prod Account" />
@@ -291,7 +291,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                         </div>
                     )}
 
-                    {currentConfig.helpText && (
+                    {!oauthAvailable && currentConfig.helpText && (
                         <p className="text-xs text-muted-foreground flex items-center mt-1">
                             <Shield className="w-3 h-3 mr-1" />
                             {currentConfig.helpText}
@@ -347,6 +347,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
 
                 <DialogFooter className="gap-2 sm:gap-0">
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    {!oauthAvailable && <>
                     <Button
                         variant="outline"
                         onClick={handleTestAndDiscover}
@@ -366,6 +367,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                             ? 'Save Changes'
                             : effectiveProvider === 'turso' ? 'Add Database' : 'Save Connection'}
                     </Button>
+                    </>}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

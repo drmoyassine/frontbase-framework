@@ -1,5 +1,6 @@
 let bootstrapCompletion:Promise<void>|undefined;
 import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap} from './hosted-cloud.js';
+import {createNativeCloudBootstrap} from './native-cloud.js';
 /**
  * Vercel entry (A-24) — the FULL CMS as one serverless function.
  *
@@ -99,6 +100,7 @@ function engine(): Promise<Hono> {
 }
 
 export async function handler(req: Request): Promise<Response> {
+    if(process.env.FRONTBASE_BOOTSTRAP==='native'){try{bootstrapHost??=createNativeCloudBootstrap(process.env,'vercel',externalFetch);return await bootstrapHost.fetch(req);}catch{return new Response('Setup unavailable',{status:503});}}
     if(process.env.FRONTBASE_BOOTSTRAP==='1'){try{bootstrapHost??=createCloudBootstrap(process.env,'vercel',externalFetch);return await bootstrapHost.fetch(req);}catch{return new Response('Setup unavailable',{status:503});}}
     // Boot AND request-path engine work are bounded: an unreachable state DB
     // must answer as a legible 503, not hold the request until the platform's

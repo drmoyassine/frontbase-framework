@@ -41,6 +41,22 @@ export class BearerTokenStrategy implements ProviderTestStrategy {
     }
 
     async test(credentials: Record<string, unknown>): Promise<ProviderTestResult> {
+        // OAuth management grants are not personal API tokens. Verify their
+        // selected account/team through the same management read used at connect.
+        const oauth=credentials.oauth as {provider?:unknown;expires_at?:unknown}|undefined;
+        if(oauth&&['cloudflare','vercel'].includes(this.provider)){
+            const account=credentials.account_id,token=credentials.access_token??credentials.api_token;
+            if(oauth.provider!==this.provider||typeof token!=='string'||!token||typeof account!=='string'||!(this.provider==='cloudflare'?/^[a-f0-9]{32}$/:/^team_[A-Za-z0-9]+$/).test(account)||typeof oauth.expires_at==='number'&&oauth.expires_at<=Date.now())return {success:false,detail:'Reconnect this provider account'};
+            try{
+                const endpoint=this.provider==='cloudflare'?'https://api.cloudflare.com/client/v4/accounts/'+account:'https://api.vercel.com/v2/teams/'+account;
+                const response=await guardedExternalFetch(this.#externalFetch,endpoint,{headers:{Authorization:'Bearer '+token}});
+                if(!response.ok)return {success:false,detail:'Provider authorization could not be verified'};
+                const reader=response.body?.getReader();if(!reader)throw Error('invalid_response');let size=0,text='';const decoder=new TextDecoder();
+                try{for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>1048576)throw Error('invalid_response');text+=decoder.decode(part.value,{stream:true});}}finally{await reader.cancel().catch(()=>{});}
+                const body=JSON.parse(text+decoder.decode()),result=this.provider==='cloudflare'?(body.success===true?body.result:null):(body.team??body);
+                return result?.id===account?{success:true,detail:'Connection verified'}:{success:false,detail:'Provider authorization could not be verified'};
+            }catch{return {success:false,detail:'Provider authorization could not be verified'};}
+        }
         // Extract token using fallback chain - the SPA sends snake_case keys
         // (api_token, access_token, api_key) but we accept camelCase variants too.
         let token = '';

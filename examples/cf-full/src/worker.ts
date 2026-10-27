@@ -1,6 +1,7 @@
 let bootstrapCompletion:Promise<void>|undefined;
-import {providerOAuthClients,importProviderOAuth} from '@frontbase/backend';
+import {providerOAuthClients,providerOAuthRelay,importProviderOAuth} from '@frontbase/backend';
 import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap} from './hosted-cloud.js';
+import {createNativeCloudBootstrap} from './native-cloud.js';
 import {audienceConditionUser} from '@frontbase/edge-core';
 /**
  * Cloudflare Worker entry — the FULL CMS as ONE worker: the eSSR engine
@@ -398,7 +399,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         ? async (req: Request) => scopePrincipalToHost(await rawResolvePrincipal(req), hostTenantFor(req))
         : rawResolvePrincipal;
     const compatApp = await createCompatApp({
-        ...(opts.publicOrigin?{providerOAuth:{origin:opts.publicOrigin,clients:providerOAuthClients(opts.providerOAuthEnv??{},opts.publicOrigin)}}:{}),
+        ...(opts.publicOrigin?{providerOAuth:{origin:opts.publicOrigin,clients:providerOAuthClients(opts.providerOAuthEnv??{},opts.publicOrigin),relay:providerOAuthRelay(opts.providerOAuthEnv??{},opts.publicOrigin)}}:{}),
         makeRunner: () => opts.runner,
         translationExecutionEnabled: opts.translationExecutionEnabled===true,
         resolvePrincipal: scopedResolvePrincipal as (req: Request) => Promise<any>,
@@ -893,6 +894,7 @@ let bootstrapHost:any;
 export default {
     async fetch(req: Request, env: CmsEnv, ctx: ExecutionContext): Promise<Response> {
         try {
+            if((env as any).FRONTBASE_BOOTSTRAP==='native'){bootstrapHost??=createNativeCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             if((env as any).FRONTBASE_BOOTSTRAP==='1'){bootstrapHost??=createCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             // Self-host uses the shared persisted resolver after migrations.
             // Managed cloud retains its explicit operator-secret requirement.

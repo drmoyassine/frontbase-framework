@@ -335,8 +335,12 @@ export {deploymentStorageFromEnv,deploymentStorageOptions} from './compat/deploy
 
 export { createHostedBootstrap, type HostedBootstrapDeps } from './hosted-bootstrap.js';
 export {createProviderOAuth,type ProviderOAuthDeps,type ProviderOAuthClient,type OAuthProvider} from './provider-oauth.js';
-export {providerOAuthClients} from './provider-oauth-config.js';
+export {providerOAuthClients,providerOAuthRelay} from './provider-oauth-config.js';
 export {providerOAuthStore} from './provider-oauth-store.js';
 export {providerOAuthVault,type OAuthVault} from './provider-oauth-vault.js';
 export {importProviderOAuth} from './provider-oauth-import.js';
 export {resolveProviderOAuthCredentials} from './provider-oauth-bindings.js';
+export {createProviderOAuthRelay,type OAuthRelayDeps,type OAuthRelayTarget} from './provider-oauth-relay.js';
+export {sqlOAuthRelayVault,sqlOAuthNativeClaims} from './provider-oauth-relay-store.js';
+export {relayTargetPolicy} from './provider-oauth-relay-target.js';
+export {createProviderRelayClient,type ProviderRelayClientDeps} from './provider-oauth-relay-client.js';

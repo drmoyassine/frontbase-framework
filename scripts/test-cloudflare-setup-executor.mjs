@@ -35,7 +35,7 @@ try {
  assert.deepEqual(result,{ok:true,url:'https://profile-fixture.test.workers.dev'});
  assert.ok(setup.url.includes('#/setup?claim='));assert.ok(!JSON.stringify(result).includes('claim='));
  const stage=stages.at(-1);const config=readFileSync(join(stage,'wrangler.toml'),'utf8');
- assert.ok(config.includes(context.accountId));assert.ok(config.includes(databaseId));assert.ok(!config.includes('hyperdrive'));assert.ok(!config.includes('9deebce3'));
+ assert.ok(config.includes('global_fetch_strictly_public'),'public Worker-to-Worker routing for configured OAuth relays');assert.ok(config.includes(context.accountId));assert.ok(config.includes(databaseId));assert.ok(!config.includes('hyperdrive'));assert.ok(!config.includes('9deebce3'));
  assert.equal(readFileSync(join(stage,'deployment-receipt.json'),'utf8').includes('succeeded'),true);
  const secretCalls=fake.calls.filter(call=>call.args[0]==='secret');assert.ok(secretCalls.length>=3);
  for(const call of secretCalls){assert.ok(call.options.stdin);assert.ok(!JSON.stringify(call.args).includes(call.options.stdin));for(const path of walk(stage))assert.ok(!readFileSync(path,'utf8').includes(call.options.stdin),'secret persisted to stage');}

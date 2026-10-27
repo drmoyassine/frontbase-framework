@@ -1,5 +1,5 @@
 import {createHostedBootstrap} from '@frontbase/backend';
-import {resolveProviderOAuthCredentials,createSecretCipher,createProviderOAuth,providerOAuthClients,providerOAuthVault,type OAuthVault} from '@frontbase/backend';
+import {resolveProviderOAuthCredentials,createSecretCipher,createProviderOAuth,createProviderRelayClient,providerOAuthRelay,providerOAuthClients,providerOAuthVault,type OAuthVault} from '@frontbase/backend';
 import {guardedExternalFetch} from '../../../packages/backend/src/compat/external-http';
 import {reconcileBootstrap} from '@frontbase/edge-core/deployment-bootstrap';
 import {d1RunnerFromRest,d1RunnerFromBinding,sqliteRunner,timingSafeEqual} from '@frontbase/edge-infra';
@@ -25,8 +25,8 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
  if(target==='cloudflare'?!/^[a-f0-9]{32}$/.test(account??''):!/^team_[a-zA-Z0-9]+$/.test(account??''))refuse();
  const context={installationId,target,destination:account+'/'+project+'/'+environment};
  const external:typeof fetch=(input,init)=>guardedExternalFetch(transport,input,init);
- const oauthKey=(name:string)=>/^FRONTBASE_(CLOUDFLARE|VERCEL)_OAUTH_(CLIENT_ID|CLIENT_SECRET|SCOPES|INTEGRATION_SLUG)$/.test(name);
- const initialBinding=(b:any)=>b.type==='assets'&&b.name==='ASSETS'||['plain_text','secret_text'].includes(b.type)&&(['FRONTBASE_BOOTSTRAP','FRONTBASE_INSTALLATION_ID','FRONTBASE_PUBLIC_ORIGIN','FRONTBASE_BOOTSTRAP_TOKEN','FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN','FRONTBASE_BOOTSTRAP_EXPIRES_AT','FRONTBASE_BOOTSTRAP_ACCOUNT','FRONTBASE_BOOTSTRAP_PROJECT','FRONTBASE_BOOTSTRAP_ENVIRONMENT'].includes(b.name)||oauthKey(b.name));
+ const oauthKey=(name:string)=>/^FRONTBASE_(CLOUDFLARE|VERCEL)_OAUTH_(CLIENT_ID|CLIENT_SECRET|SCOPES|INTEGRATION_SLUG|TEAM_SLUG)$/.test(name);
+ const initialBinding=(b:any)=>b.type==='assets'&&b.name==='ASSETS'||['plain_text','secret_text'].includes(b.type)&&(['FRONTBASE_BOOTSTRAP','FRONTBASE_INSTALLATION_ID','FRONTBASE_PUBLIC_ORIGIN','FRONTBASE_BOOTSTRAP_TOKEN','FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN','FRONTBASE_BOOTSTRAP_EXPIRES_AT','FRONTBASE_BOOTSTRAP_ACCOUNT','FRONTBASE_BOOTSTRAP_PROJECT','FRONTBASE_BOOTSTRAP_ENVIRONMENT','FRONTBASE_BOOTSTRAP_OAUTH_GRANTS'].includes(b.name)||oauthKey(b.name)||['FRONTBASE_OAUTH_RELAY_URL','FRONTBASE_OAUTH_RELAY_TARGET'].includes(b.name));
  const apiOrigin=target==='cloudflare'?'https://api.cloudflare.com':'https://api.vercel.com';
  async function api(path:string,method='GET',body?:any){
   const response=await transport(apiOrigin+path,{method,headers:{authorization:'Bearer '+token,...(body instanceof FormData?{}:{'content-type':'application/json'})},body:body===undefined?undefined:body instanceof FormData?body:JSON.stringify(body),redirect:'manual',signal:AbortSignal.timeout(20000)});
@@ -53,7 +53,7 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
   else{const deployment=await api('/v13/deployments/'+env.VERCEL_DEPLOYMENT_ID+'?'+team);if(deployment.projectId!==project||deployment.readyState!=='READY'||(deployment.target??'preview')!==environment)refuse();}
   for(const b of Object.values(manifest.bindings) as any[])if(b.mode!=='disabled'&&!['cloudflare-d1','cloudflare-kv','libsql-http','d1-http','upstash-http','libsql-vector-http','cloudflare-vectorize-http','s3-http','qstash-http'].includes(b.adapterId))refuse();
  }
- async function runtimeValues(record:any,credentials:any){const values=profileEnvironment({manifest:record.manifest,credentials});values.SESSION_SECRET=await secret(owner,'session:'+record.operationId);values.SETUP_TOKEN=await secret(owner,'administrator:'+installationId);values.SETUP_EXPIRES_AT=env.FRONTBASE_BOOTSTRAP_EXPIRES_AT;values.FRONTBASE_PUBLIC_ORIGIN=origin;values.FRONTBASE_BOOTSTRAP='0';values.FRONTBASE_INSTALLATION_ID=installationId;values.FRONTBASE_BOOTSTRAP_ACCOUNT=account;values.FRONTBASE_BOOTSTRAP_PROJECT=project;values.FRONTBASE_BOOTSTRAP_ENVIRONMENT=environment;values.FRONTBASE_BOOTSTRAP_OPERATION=record.operationId;values.FRONTBASE_BOOTSTRAP_FINGERPRINT=record.fingerprint;values.FRONTBASE_BOOTSTRAP_PROOF_KEY=await secret(owner,'proof:'+record.operationId);if(values.FRONTBASE_STORAGE){const s=JSON.parse(values.FRONTBASE_STORAGE);if(s.provider!=='none'){s.namespace='installation-'+installationId;values.FRONTBASE_STORAGE=JSON.stringify(s);}}for(const [name,value] of Object.entries(env))if((oauthKey(name)||name==='FRONTBASE_OAUTH_CONNECTIONS')&&typeof value==='string')values[name]=value;return values;}
+ async function runtimeValues(record:any,credentials:any){const values=profileEnvironment({manifest:record.manifest,credentials});values.SESSION_SECRET=await secret(owner,'session:'+record.operationId);values.SETUP_TOKEN=await secret(owner,'administrator:'+installationId);values.SETUP_EXPIRES_AT=env.FRONTBASE_BOOTSTRAP_EXPIRES_AT;values.FRONTBASE_PUBLIC_ORIGIN=origin;values.FRONTBASE_BOOTSTRAP='0';values.FRONTBASE_INSTALLATION_ID=installationId;values.FRONTBASE_BOOTSTRAP_ACCOUNT=account;values.FRONTBASE_BOOTSTRAP_PROJECT=project;values.FRONTBASE_BOOTSTRAP_ENVIRONMENT=environment;values.FRONTBASE_BOOTSTRAP_OPERATION=record.operationId;values.FRONTBASE_BOOTSTRAP_FINGERPRINT=record.fingerprint;values.FRONTBASE_BOOTSTRAP_PROOF_KEY=await secret(owner,'proof:'+record.operationId);if(values.FRONTBASE_STORAGE){const s=JSON.parse(values.FRONTBASE_STORAGE);if(s.provider!=='none'){s.namespace='installation-'+installationId;values.FRONTBASE_STORAGE=JSON.stringify(s);}}for(const [name,value] of Object.entries(env))if((oauthKey(name)||['FRONTBASE_OAUTH_CONNECTIONS','FRONTBASE_OAUTH_RELAY_URL','FRONTBASE_OAUTH_RELAY_TARGET'].includes(name))&&typeof value==='string')values[name]=value;return values;}
  const executor:any={preflight,apply:async(record:any,credentials:any)=>{
   const values=await runtimeValues(record,credentials),manifest=structuredClone(record.manifest),state=manifest.bindings['state-db'];
   if(state.mode==='connect'){const db=state.adapterId==='libsql-http'?sqliteRunner(values.APP_DB_URL,values.APP_DB_AUTH_TOKEN,external):d1RunnerFromRest({accountId:values.APP_DB_D1_ACCOUNT_ID,databaseId:values.APP_DB_D1_DATABASE_ID,apiToken:values.CLOUDFLARE_API_TOKEN,fetchImpl:external});await empty(db);}
@@ -88,12 +88,19 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
  const actor={tenant:'_root',subject:installationId};
  let oauthPromise:Promise<any>|undefined;
  async function oauth(){
-  return oauthPromise??=createSecretCipher(owner).then(cipher=>{
+  return oauthPromise??=createSecretCipher(owner).then(async cipher=>{
    const connection=providerOAuthVault(vault,cipher,actor);
-   return {...connection,app:createProviderOAuth({origin,clients:providerOAuthClients(env,origin),store:connection.store,fetch:transport,authorize:async request=>{
+   if(env.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS){
+    if(typeof env.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS!=='string'||!cipher.isEncrypted(env.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS))refuse();
+    const imported=JSON.parse(await cipher.decrypt(env.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS));if(!Array.isArray(imported)||imported.length!==1||imported[0]?.provider!==target)refuse();
+    const grant=imported[0];if(!(await connection.grants()).some(g=>g.provider===grant.provider&&g.accessToken===grant.accessToken)){
+     try{await connection.store.save(actor,grant);}catch(error){if(!(await connection.grants()).some(g=>g.provider===grant.provider&&g.accessToken===grant.accessToken))throw error;}
+    }
+   }
+   const configuration={origin,clients:providerOAuthClients(env,origin),store:connection.store,fetch:transport,authorize:async (request:Request)=>{
     if(new URL(request.url).origin!==origin||!appPromise)return null;
     const probe=await (await appPromise).fetch(new Request(origin+'/frontbase-bootstrap/api/configuration',{headers:{cookie:request.headers.get('cookie')??''}}));if(!probe.ok)return null;const state=await probe.json();return state.operation&&['applying','uncertain'].includes(state.operation.phase)?null:actor;
-   }})};
+   }};const relay=providerOAuthRelay(env,origin);return {...connection,app:relay?createProviderRelayClient({...configuration,...relay,mode:'authenticated',cipher}):createProviderOAuth(configuration)};
   });
  }
  const originalApply=executor.apply;

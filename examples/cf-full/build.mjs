@@ -279,6 +279,11 @@ const NODE_BUILTINS = [...new Set([...builtinModules, ...builtinModules.map((nam
 
 const formAssets=buildBindingsAssets();
 const bootstrapAssets={
+ '/frontbase-bootstrap/setup-manifest.mjs':{body:readFileSync(join(here,'../../scripts/deployment-setup/setup-manifest.mjs'),'utf8'),type:'text/javascript'},
+ '/frontbase-bootstrap/native':{body:readFileSync(join(here,'../../scripts/deployment-setup/native-index.html'),'utf8'),type:'text/html; charset=utf-8'},
+ '/frontbase-bootstrap/native.js':{body:readFileSync(join(here,'../../scripts/deployment-setup/native-app.js'),'utf8'),type:'text/javascript'},
+ '/frontbase-bootstrap/activation':{body:readFileSync(join(here,'../../scripts/deployment-setup/native-activation.html'),'utf8'),type:'text/html; charset=utf-8'},
+ '/frontbase-bootstrap/native-activation.js':{body:readFileSync(join(here,'../../scripts/deployment-setup/native-activation.js'),'utf8'),type:'text/javascript'},
  '/frontbase-bootstrap/':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-index.html'),'utf8'),type:'text/html; charset=utf-8'},
  '/frontbase-bootstrap/app.js':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-app.js'),'utf8'),type:'text/javascript'},
  '/frontbase-bootstrap/bindings-form.js':{body:formAssets.js,type:'text/javascript'},

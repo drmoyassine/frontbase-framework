@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { timingSafeEqual } from '@frontbase/edge-infra';
 export type OAuthProvider = 'cloudflare' | 'vercel';
 export interface ProviderOAuthClient {
-    provider: OAuthProvider; clientId: string; clientSecret?: string; integrationSlug?:string;
+    provider: OAuthProvider; clientId: string; clientSecret?: string; integrationSlug?:string; integrationTeamSlug?:string;
     /** Exact registered callback; derived from the trusted host origin, never request headers. */
     redirectUri: string; scopes: string[];
 }
@@ -45,6 +45,7 @@ function validClient(client:ProviderOAuthClient,origin:string){
     if(!providers.includes(client.provider)||!client.clientId||client.clientId.length>256||client.redirectUri!==origin+base+'/'+client.provider+'/callback'||!Array.isArray(client.scopes)||client.scopes.some(s=>!s||/\s/.test(s)))throw Error('invalid_oauth_configuration');
     // Vercel deployment permissions use an Integration, not an OIDC identity token.
     if(client.provider==='vercel'&&(!client.clientSecret||!client.integrationSlug||!/^[a-z0-9-]{1,100}$/.test(client.integrationSlug)))throw Error('invalid_oauth_configuration');
+    if(client.integrationTeamSlug!==undefined&&(client.provider!=='vercel'||!/^[a-z0-9-]{1,100}$/.test(client.integrationTeamSlug)))throw Error('invalid_oauth_configuration');
 }
 export function createProviderOAuth(deps:ProviderOAuthDeps){
     const origin=new URL(deps.origin),now=deps.now??Date.now;
@@ -73,7 +74,7 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
         await deps.store.put(await digest(state),{...actor,provider,verifier,expires,returnPath:input.returnPath,accountId:input.accountId});
         const cookie=(origin.protocol==='https:'?'__Host-':'')+'fb_oauth_'+provider;
         c.header('Set-Cookie',cookie+'='+state+'; Path=/; HttpOnly; '+(origin.protocol==='https:'?'Secure; ':'')+'SameSite=Lax; Max-Age=600');
-        const url=new URL(provider==='cloudflare'?endpoints.cloudflare.authorize:endpoints.vercel.authorize+client.integrationSlug+'/new');
+        const url=new URL(provider==='cloudflare'?endpoints.cloudflare.authorize:client.integrationTeamSlug?'https://vercel.com/'+client.integrationTeamSlug+'/~/integrations/'+client.integrationSlug:endpoints.vercel.authorize+client.integrationSlug+'/new');
         url.searchParams.set('state',state);url.searchParams.set('redirect_uri',client.redirectUri);
         if(provider==='cloudflare'){url.searchParams.set('client_id',client.clientId);url.searchParams.set('response_type','code');url.searchParams.set('scope',client.scopes.join(' '));url.searchParams.set('code_challenge',await digest(verifier));url.searchParams.set('code_challenge_method','S256');}
         return c.json({url:url.href});
