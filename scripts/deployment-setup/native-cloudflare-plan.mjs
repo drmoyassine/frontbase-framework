@@ -10,7 +10,9 @@ export function nativeCloudflarePlan(template, {account,project,subdomain,settin
   const config = structuredClone(template);
   config.name = project; config.account_id = account; config.keep_vars = true;
   config.compatibility_flags = [...new Set([...(config.compatibility_flags??[]),'nodejs_compat','global_fetch_strictly_public'])];
-  if (settings) {
+  // The native button creates an empty Worker shell before its first build.
+  // Only the exact empty binding list is equivalent to an absent Worker.
+  if (settings && !(Array.isArray(settings.bindings) && settings.bindings.length === 0)) {
     const plain = Object.fromEntries((settings.bindings??[]).filter(b=>b.type==='plain_text').map(b=>[b.name,b.text]));
     if (plain.FRONTBASE_BOOTSTRAP === '0') return preserveNativeCloudflareSettings(config,settings);
     if (plain.FRONTBASE_BOOTSTRAP !== 'native' || plain.FRONTBASE_INSTALLATION_ID !== metadata.FRONTBASE_INSTALLATION_ID || !Array.isArray(settings.bindings) || new Set(settings.bindings.map(b=>b.name)).size !== settings.bindings.length || settings.bindings.some(b=>!(b.type==='assets'&&b.name==='ASSETS'||b.type==='plain_text'&&metadata[b.name]===b.text))) throw Error('Existing Worker is not an unchanged native installer');
