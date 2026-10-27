@@ -20,7 +20,7 @@ export function Setup({ status }: { status: SetupStatus }) {
         let active = true;
         const authorize = () => { void authorizeInitialSetupClaim(setupEnabled)
             .then((authorized) => {
-                if (active && authorized) setClaimAuthorized(true);
+                if (active) { setClaimAuthorized(authorized); if (authorized) setError(null); }
             })
             .catch((err) => {
                 if (!active) return;
@@ -105,6 +105,8 @@ export function Setup({ status }: { status: SetupStatus }) {
                 </p>
             )}
 
+                {error && <p role="alert" className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+
             {!checkingClaim && setupEnabled && claimAuthorized && <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                 <div>
                     <label htmlFor="setup-email" className="block text-sm font-medium text-muted-foreground">Email</label>
@@ -159,7 +161,7 @@ export function Setup({ status }: { status: SetupStatus }) {
                     Check your email before continuing. Save these credentials in your password manager.
                     Password-reset email requires mail delivery to be configured for this installation.
                 </p>
-                {error && <p role="alert" className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+
                 <button
                     type="submit"
                     disabled={loading}

@@ -20,7 +20,7 @@ const result = await build({
   plugins: [{ name: 'setup-test-api', setup(builder) {
     builder.onResolve({ filter: /^@\/lib\/(api|setup-claim)$/ }, args => ({ path: args.path, namespace: 'mock' }));
     builder.onLoad({ filter: /.*/, namespace: 'mock' }, args => ({ contents: args.path.endsWith('setup-claim')
-      ? 'export async function authorizeInitialSetupClaim(){return globalThis.setupClaimAllowed}'
+      ? 'export async function authorizeInitialSetupClaim(){if(globalThis.setupClaimError)throw Error(globalThis.setupClaimError);return globalThis.setupClaimAllowed}'
       : 'export async function getSetupStatus(){return globalThis.setupCurrentStatus}; export async function postSetup(...args){if(globalThis.setupRefused)throw Error("http_403");globalThis.setupFormCalls.push(args)}; export async function postSetupClaim(){throw Error("unexpected claim")}; export async function loginProductAdmin(){}' }));
   } }],
 });
@@ -68,6 +68,7 @@ await React.act(async () => root.unmount());
 const second=createRoot(document.getElementById('root'));globalThis.setupClaimAllowed=false;
 await React.act(async()=>second.render(React.createElement(Setup,{status:{needsSetup:true,setupEnabled:true,setupTokenRequired:true}})));
 assert.equal(document.querySelector('form'),null);assert.ok(document.body.textContent.includes('Open the secure setup link'));
+globalThis.setupClaimError='The secure setup link has expired. Request a new link.';await React.act(async()=>window.dispatchEvent(new window.HashChangeEvent('hashchange')));assert.match(document.querySelector('[role="alert"]').textContent,/has expired/);assert.equal(document.querySelector('form'),null);delete globalThis.setupClaimError;
 globalThis.setupClaimAllowed=true;await React.act(async()=>window.dispatchEvent(new window.HashChangeEvent('hashchange')));assert.ok(document.getElementById('setup-email'));assert.equal(document.getElementById('setup-token'),null);
 await React.act(async()=>second.unmount());delete globalThis.setupClaimAllowed;
 dom.window.close();
