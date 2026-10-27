@@ -39,10 +39,11 @@ export interface SetupStatus {
     setupEnabled: boolean;
     setupTokenRequired: boolean;
     setupExpired: boolean;
+    setupAuthorized?: boolean;
 }
 
 export async function getSetupStatus(): Promise<SetupStatus> {
-    return setupApi('/status');
+    return setupApi('/status', { cache: 'no-store' });
 }
 
 export async function postSetupClaim(setupToken: string): Promise<{ ok: true }> {

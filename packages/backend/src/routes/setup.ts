@@ -115,8 +115,10 @@ export function setupRoutes(deps: SetupRouteDeps): Hono {
     // GET /setup/status — is first-run setup needed and is setup enabled?
     app.get('/setup/status', async (c) => {
         const initialized = await isInitialized();
+        c.header('Cache-Control', 'no-store');
         return c.json({
             needsSetup: !initialized,
+            setupAuthorized: !initialized && await hasValidClaimCookie(c.req.raw),
             setupEnabled: !initialized && Boolean(deps.setupToken) && !setupExpired(),
             setupTokenRequired: Boolean(deps.setupToken),
             setupExpired: !initialized && Boolean(deps.setupToken) && setupExpired(),

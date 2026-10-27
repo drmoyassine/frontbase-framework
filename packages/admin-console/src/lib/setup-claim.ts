@@ -1,4 +1,4 @@
-import { postSetupClaim } from './api';
+import { getSetupStatus, postSetupClaim } from './api';
 
 /**
  * Capture the setup capability before HashRouter initializes. The setup SPA's
@@ -26,7 +26,7 @@ export function authorizeInitialSetupClaim(setupEnabled: boolean): Promise<boole
     captureClaim();
     if (!setupEnabled) return Promise.resolve(false);
     if (exchangePromise) return exchangePromise;
-    if (!initialClaim) return Promise.resolve(false);
+    if (!initialClaim) return getSetupStatus().then(status => status.setupEnabled && status.setupAuthorized === true);
     exchangePromise ??= postSetupClaim(initialClaim).then(() => {
         initialClaim = undefined;
         return true;
