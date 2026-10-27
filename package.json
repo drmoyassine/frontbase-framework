@@ -32,7 +32,7 @@
     "test:deployment-bindings": "node packages/backend/test/deployment-bindings.mjs && node scripts/test-deployment-bindings-mutation.mjs && pnpm --filter @frontbase/console test:deployment-bindings",
     "test:deployment-buttons": "node scripts/test-deployment-buttons.mjs",
     "test:provider-oauth": "node packages/backend/test/provider-oauth.mjs && node packages/backend/test/provider-oauth-mutation.mjs",
-    "test:native-cloud-setup": "node examples/cf-full/test/native-claim.mjs && node examples/cf-full/test/native-cloud.mjs && node scripts/test-setup-manifest.mjs",
+    "test:native-cloud-setup": "node examples/cf-full/test/native-claim.mjs && node examples/cf-full/test/native-cloud.mjs && node scripts/test-setup-manifest.mjs && node scripts/test-hosted-setup-handoff.mjs",
     "test:hosted-bootstrap": "node packages/edge-core/test/deployment-bootstrap.mjs && node packages/edge-core/test/deployment-bootstrap-mutation.mjs && node packages/backend/test/hosted-bootstrap.mjs && node packages/backend/test/hosted-bootstrap-mutation.mjs && node scripts/test-docker-bootstrap-journal.mjs && node scripts/test-docker-bootstrap-host.mjs && node scripts/test-docker-bootstrap-host-mutation.mjs && node packages/edge-infra/test/bootstrap-journal.mjs && node packages/edge-infra/test/bootstrap-journal-mutation.mjs",
     "test:provider-oauth-relay": "node node_modules/typescript/bin/tsc -p examples/oauth-relay/tsconfig.json && node packages/backend/test/provider-oauth-relay.mjs && node packages/backend/test/provider-oauth-relay-target.mjs && node packages/backend/test/provider-oauth-strategy.mjs && node packages/backend/test/provider-oauth-relay-mutation.mjs && node scripts/build-oauth-relay.mjs && node examples/oauth-relay/test/production-mode.mjs"
   },
