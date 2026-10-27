@@ -82,7 +82,8 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             wrapper.append(title,select);card.append(wrapper);
             if(binding.mode!=='disabled'&&selected) {
                 const oauth=options.providerConnections?.cloudflare;
-                const useOAuth=oauth?.connected&&['d1-http','cloudflare-vectorize-http'].includes(selected.id);
+                const useOAuth=oauth?.connected&&selected.id==='d1-http';
+                if(selected.id==='cloudflare-vectorize-http'){if(binding.secretRefs.token==='oauth/cloudflare/token')delete binding.secretRefs.token;card.append(node('p','Connect an existing Vectorize index with a token that has Vectorize access. The standard Cloudflare setup connection covers D1, Workers and KV.','fb-binding-note'));}
                 if(useOAuth){if(!binding.config.accountId&&oauth.accountId)binding.config.accountId=oauth.accountId;binding.secretRefs.token='oauth/cloudflare/token';}
                 if(!compatible.includes(selected))card.append(node('p','This adapter is unavailable in this deployment flow.','fb-binding-note'));
                 else {

@@ -19,7 +19,14 @@ export async function claimNativeInstallation(context:NativeClaimContext,grant:O
  const apiOrigin=host==='cloudflare'?'https://api.cloudflare.com':'https://api.vercel.com',team='teamId='+encodeURIComponent(account),cf='/client/v4/accounts/'+account;
  async function api(path:string,method='GET',body?:unknown){
   const response=await transport(apiOrigin+path,{method,headers:{authorization:'Bearer '+grant.accessToken,...(body instanceof FormData?{}:{'content-type':'application/json'})},body:body===undefined?undefined:body instanceof FormData?body:JSON.stringify(body),redirect:'manual',signal:AbortSignal.timeout(20000)});
-  const reader=response.body?.getReader();if(!reader)fail();let size=0,text='';const decoder=new TextDecoder();try{for(;;){const part=await reader!.read();if(part.done)break;size+=part.value.length;if(size>1048576)fail();text+=decoder.decode(part.value,{stream:true});}}finally{await reader!.cancel().catch(()=>{});}let parsed:any;try{parsed=JSON.parse(text+decoder.decode());}catch{fail();}if(!response.ok||parsed.success===false)fail();return host==='cloudflare'?parsed.result:parsed;
+  const reader=response.body?.getReader();if(!reader)fail();let size=0,text='';const decoder=new TextDecoder();try{for(;;){const part=await reader!.read();if(part.done)break;size+=part.value.length;if(size>1048576)fail();text+=decoder.decode(part.value,{stream:true});}}finally{await reader!.cancel().catch(()=>{});}let parsed:any;try{parsed=JSON.parse(text+decoder.decode());}catch{fail();}
+  if(!response.ok||parsed.success===false){
+   // Fixed diagnostic only: never reflect provider bodies or credentials. The
+   // durable claim stays fenced; a refusal does not authorize automatic retry.
+   if(host==='cloudflare'&&method==='POST'&&path===cf+'/d1/database')throw Error('native_setup_database_rejected');
+   fail();
+  }
+  return host==='cloudflare'?parsed.result:parsed;
  }
  const owner=random(),expires=new Date(Date.now()+3600000).toISOString(),environment:any={FRONTBASE_BOOTSTRAP:'1',FRONTBASE_INSTALLATION_ID:installationId,FRONTBASE_PUBLIC_ORIGIN:origin,FRONTBASE_BOOTSTRAP_TOKEN:owner,FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN:grant.accessToken,FRONTBASE_BOOTSTRAP_EXPIRES_AT:expires,FRONTBASE_BOOTSTRAP_ACCOUNT:account,FRONTBASE_BOOTSTRAP_PROJECT:project,FRONTBASE_BOOTSTRAP_ENVIRONMENT:'production',FRONTBASE_OAUTH_RELAY_URL:context.relayOrigin,FRONTBASE_OAUTH_RELAY_TARGET:JSON.stringify({origin,host,purpose:'connect'})};
  if(context.registrationKey!==undefined){if(!/^[\w-]{43}$/.test(context.registrationKey))fail();environment.FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY=context.registrationKey;}

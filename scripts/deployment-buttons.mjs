@@ -36,8 +36,15 @@ export function verifyNativeButtons({ read = path => readFileSync(new URL('../' 
   if (snapshot) expect(/deploy-native-cloudflare\.mjs --config wrangler\.toml/.test(pkg.scripts.deploy), 'CF hosted snapshot must use the native bootstrap deployer');
   const toml = read(snapshot ? 'wrangler.toml' : 'wrangler.native.toml');
   expect(/main\s*=\s*"examples\/cf-full\/dist\/worker.mjs"/.test(toml), 'CF native entry must select the built full application');
-  expect(/FRONTBASE_BOOTSTRAP\s*=\s*"native"/.test(toml), 'CF must use native bootstrap');
-  expect(snapshot ? /FRONTBASE_NATIVE_RELAY_URL\s*=\s*"https:\/\/oauth\.frontbase\.dev"/.test(toml) : /FRONTBASE_NATIVE_RELAY_URL\s*=\s*""/.test(toml), 'CF relay must match the selected setup source');
+  if(snapshot && !/FRONTBASE_BOOTSTRAP\s*=/.test(toml)) {
+    expect(pkg.frontbaseNativeSnapshot===true,'CF hidden settings require a fail-closed snapshot marker');
+    const settings=JSON.parse(read('frontbase-native-settings.json'));
+    expect(settings.FRONTBASE_BOOTSTRAP==='native' && settings.FRONTBASE_NATIVE_RELAY_URL==='https://oauth.frontbase.dev' && Object.keys(settings).length===2, 'CF hidden setup settings must match the selected setup source');
+    expect(!/FRONTBASE_NATIVE_RELAY_URL\s*=/.test(toml),'CF internal settings must stay off the form');
+  } else {
+    expect(/FRONTBASE_BOOTSTRAP\s*=\s*"native"/.test(toml), 'CF must use native bootstrap');
+    expect(snapshot ? /FRONTBASE_NATIVE_RELAY_URL\s*=\s*"https:\/\/oauth\.frontbase\.dev"/.test(toml) : /FRONTBASE_NATIVE_RELAY_URL\s*=\s*""/.test(toml), 'CF relay must match the selected setup source');
+  }
   expect(!/\[\[(?:d1_databases|kv_namespaces)\]\]/.test(toml), 'Hosted bootstrap must not require initial D1 or KV bindings');
   expect(!/^\s*account_id\s*=/m.test(toml), 'CF native template cannot pin an operator account');
   const env = read('.env.example').split(/\r?\n/).filter(line => /^[A-Z][A-Z0-9_]*=/.test(line)).map(line => line.split('=')[0]).sort();
@@ -70,6 +77,14 @@ export async function verifyNativeSource({ ref = nativeSourceRef, fetchImpl = fe
     } catch {
       failures.push(`${path}: source could not be verified`);
     }
+  }
+  if (!failures.length && !/FRONTBASE_BOOTSTRAP\s*=/.test(files.get('wrangler.toml'))) {
+    try {
+      const response=await fetchImpl(new URL('https://api.github.com/repos/drmoyassine/frontbase-framework/contents/frontbase-native-settings.json'+(ref?'?ref='+encodeURIComponent(ref):'')),{headers:{accept:'application/vnd.github+json'},signal:AbortSignal.timeout(15000),redirect:'error'});
+      if(!response.ok)throw Error(); const file=await response.json();
+      if(file.type!=='file'||file.encoding!=='base64'||typeof file.content!=='string'||file.size>10000)throw Error();
+      files.set('frontbase-native-settings.json',Buffer.from(file.content,'base64').toString('utf8'));
+    } catch { failures.push('frontbase-native-settings.json: source unavailable'); }
   }
   if (!failures.length) {
     try { failures.push(...verifyNativeButtons({ read: path => files.get(path), snapshot: true }).failures); }

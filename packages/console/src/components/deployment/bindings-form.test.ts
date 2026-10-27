@@ -103,3 +103,11 @@ it('keeps the selected native name with its ID and restores the create default',
  expect(form!.snapshot().manifest.bindings['state-db'].resourceRef).toBeUndefined();
  expect(form!.snapshot().manifest.bindings['state-db'].config.resourceName).toBe(original);
 });
+
+test('Vectorize does not inherit the baseline D1 and KV OAuth token',()=>{
+ const root=mount('cloudflare',{providerConnections:{cloudflare:{available:true,connected:true,accountId:'a'.repeat(32)}}});
+ select(root,'binding-provider-vector','cloudflare-vectorize-http');
+ expect(form!.snapshot().manifest.bindings.vector.secretRefs.token).not.toBe('oauth/cloudflare/token');
+ expect(root.textContent).toContain('token that has Vectorize access');
+ expect(root.querySelector('input[type=password]')).not.toBeNull();
+});

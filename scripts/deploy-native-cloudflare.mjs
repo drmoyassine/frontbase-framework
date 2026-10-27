@@ -4,12 +4,13 @@ import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {nativeWrangler} from './deployment-setup/cloudflare.mjs';
 import {nativeCloudflarePlan} from './deployment-setup/native-cloudflare-plan.mjs';
+import {nativeSnapshotSettings} from './deployment-setup/native-snapshot-settings.mjs';
 
 // Build credential remains only in this local process and Wrangler. It is never
 // serialized into the Worker. Runtime access comes from the owner's OAuth grant.
 const input = process.argv.indexOf('--config');
 const source = resolve(input < 0 ? 'wrangler.toml' : process.argv[input+1]);
-const config = unstable_readConfig({config:source});
+const config = await nativeSnapshotSettings(unstable_readConfig({config:source}),source);
 const run = nativeWrangler(process.env.CLOUDFLARE_ACCOUNT_ID || config.account_id);
 if (config.vars?.FRONTBASE_BOOTSTRAP !== 'native') {
   if(process.argv.includes('--plan-only'))throw Error('Plan-only requires an explicit native template');
