@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-18",
+  "sourceBase": "6328570",
+  "workspaceBuild": "pass",
+  "workspaceCheck": "pass",
+  "ui": {
+    "files": 3,
+    "tests": 30,
+    "passed": 30
+  },
+  "mutations": {
+    "faults": 15,
+    "restored": true
+  },
+  "functional": [
+    {
+      "file": "packages/edge-infra/test/ai-http.mjs",
+      "exitCode": 0,
+      "seconds": 0.142
+    },
+    {
+      "file": "packages/backend/test/providers-openrouter.mjs",
+      "exitCode": 0,
+      "seconds": 0.401
+    },
+    {
+      "file": "packages/backend/test/translation-generation.mjs",
+      "exitCode": 0,
+      "seconds": 0.854
+    },
+    {
+      "file": "packages/backend/test/translation-allowance.mjs",
+      "exitCode": 0,
+      "seconds": 0.983
+    },
+    {
+      "file": "packages/backend/test/translation-allowance-lifecycle.mjs",
+      "exitCode": 0,
+      "seconds": 1.005
+    },
+    {
+      "file": "packages/backend/test/translation-batches.mjs",
+      "exitCode": 0,
+      "seconds": 2.803
+    },
+    {
+      "file": "packages/backend/test/translation-view-inputs.mjs",
+      "exitCode": 0,
+      "seconds": 8.776
+    },
+    {
+      "file": "packages/backend/test/sdk-http.mjs",
+      "exitCode": 0,
+      "seconds": 0.905
+    },
+    {
+      "file": "packages/backend/test/external-request.mjs",
+      "exitCode": 0,
+      "seconds": 0.127
+    },
+    {
+      "file": "packages/backend/test/compat-security.mjs",
+      "exitCode": 0,
+      "seconds": 0.829
+    },
+    {
+      "file": "packages/backend/test/compat-tenant-matrix.mjs",
+      "exitCode": 0,
+      "seconds": 7.241
+    },
+    {
+      "file": "packages/backend/test/compat-conformance.mjs",
+      "exitCode": 0,
+      "seconds": 7.233
+    },
+    {
+      "file": "packages/edge-infra/test/isolation.mjs",
+      "exitCode": 0,
+      "seconds": 0.197
+    },
+    {
+      "file": "packages/edge-infra/test/no-leak.mjs",
+      "exitCode": 0,
+      "seconds": 0.124
+    }
+  ],
+  "conformance": {
+    "operations": 334,
+    "conforms": 257,
+    "verifiedRefusals": 77,
+    "violations": 0,
+    "unreachable": 0,
+    "strictGate": true
+  },
+  "limitations": [
+    "No actual provider request or real credentials",
+    "Local gate evidence only; deployment is recorded separately in deployment.json; no saved configuration changes",
+    "Remote isolation variants remain credential-gated",
+    "Shared worktree, not clean-install or full legacy UI type proof"
+  ]
+}

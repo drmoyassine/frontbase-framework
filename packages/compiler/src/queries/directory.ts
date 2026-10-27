@@ -1,0 +1,99 @@
+import { z } from 'zod';
+import { directoryConfigurationSchema, directoryConfigurationReadiness, parseEditorialBody, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { defineQueries, type QueryRegistry } from './defineQueries.js';
+import { sitePublicationArtifactSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
+
+const roles = ['institution', 'program', 'city', 'article', 'page'] as const;
+const localPath = z.string().max(400).refine(v => {
+    try { const d = decodeURIComponent(v); return v.startsWith('/') && !d.startsWith('//') && !/[\\?#\s\x00-\x20]/.test(d) && !d.split('/').some(p => p === '.' || p === '..'); }
+    catch { return false; }
+});
+export const directoryPreviewSchema = z.object({
+    source: z.enum(['published','connected']).optional(), expectedCapture: z.string().regex(/^[a-f0-9]{64}$/).optional(), expectedRevision: z.number().int().positive(), role: z.enum(roles), mode: z.enum(['list', 'detail']),
+    params: z.object({ q: z.string().trim().max(100).optional(), offset: z.number().int().min(0).max(19999).optional(),
+        limit: z.number().int().min(1).max(48).optional(), institutionId: z.union([z.string().max(128).min(1), z.number().int().positive()]).optional(),
+        sort: z.enum(['title-asc','title-desc']).optional(), match: z.enum(['contains','startsWith','equals']).optional(), path: localPath.optional() }).strict().default({}),
+}).strict();
+
+/** Original identity only: no slug generation, foreign origins or traversal. */
+export function directoryOriginalPath(value: unknown, origin: string): string | null {
+    if (typeof value !== 'string' || !value) return null;
+    try {
+        const path = value.startsWith('/') ? value : (() => { const u = new URL(value); return u.origin === origin && !u.search && !u.hash && !u.username && !u.password ? u.pathname : ''; })();
+        return localPath.safeParse(path).success ? path : null;
+    } catch { return null; }
+}
+
+/** Registered, server-only authoring queries. Not a public approval/activation. */
+export function createDirectoryQueries(input: DirectoryConfiguration, owner: string, dialect: 'postgres' | 'sqlite',
+    query: (sql: string, params: unknown[]) => Promise<Record<string, unknown>[]>) : QueryRegistry {
+    const c = directoryConfigurationSchema.parse(input);
+    if (!owner || directoryConfigurationReadiness(c).length) throw new Error('directory_configuration_incomplete');
+    const quote = (name: string) => { if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new Error('invalid_mapping'); return `"${name}"`; };
+    const registry: QueryRegistry = {};
+    for (const role of roles) for (const mode of ['list', 'detail'] as const) {
+        if (role === 'city' && mode === 'detail') continue; // cities have no preserved-path mapping yet
+        const mapping = c.collections[role === 'page' ? 'article' : role];
+        if ((role === 'article' || role === 'page') && !mapping.table) continue;
+        const paramsSchema = directoryPreviewSchema.shape.params.refine(p => mode === 'detail'
+            ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined && p.sort === undefined && p.match === undefined
+            : p.path === undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);
+        registry[`directory.${role}.${mode}`] = { scope: 'tenant', ttlSeconds: 0, params: paramsSchema,
+            execute: async (raw, ctx) => {
+                if (ctx.tenant !== owner || !ctx.user) throw new Error('principal_context_required');
+                const p = paramsSchema.parse(raw);
+                const values: unknown[] = []; const bind = (v: unknown) => { values.push(v); return dialect === 'postgres' ? `$${values.length}` : '?'; };
+                const field = (alias: string, name: string) => `${alias}.${quote(name)}`;
+                const scoped = (alias: string, m: typeof mapping) => `${field(alias, m.scope.field)} = ${bind(m.scope.value)}`;
+                const city = c.collections.city, institution = c.collections.institution;
+                const cityExists = (alias: string) => `EXISTS (SELECT 1 FROM ${quote(city.table)} dc WHERE ${field('dc', city.fields.id)} = ${field(alias, institution.fields.cityId)} AND ${scoped('dc', city)})`;
+                const where = [scoped('d', mapping)];
+                if (role === 'article' || role === 'page') where.push(`${field('d', mapping.fields.contentRole)} = ${bind(role)}`, `${field('d', mapping.fields.sourceOrigin)} = ${bind(c.site.origin)}`);
+                if (role === 'institution') where.push(cityExists('d'));
+                if (role === 'program') where.push(`EXISTS (SELECT 1 FROM ${quote(institution.table)} di WHERE ${field('di', institution.fields.id)} = ${field('d', mapping.fields.institutionId)} AND ${scoped('di', institution)} AND ${cityExists('di')})`);
+                if (p.institutionId !== undefined) where.push(`${field('d', mapping.fields.institutionId)} = ${bind(p.institutionId)}`);
+                if (p.q) where.push(`LOWER(CAST(${field('d', mapping.fields.title)} AS TEXT)) LIKE ${bind((p.match === 'contains' || !p.match ? '%' : '') + p.q.toLowerCase().replace(/[!%_]/g, v => '!' + v) + (p.match === 'equals' ? '' : '%'))} ESCAPE '!'`);
+                if (p.path) where.push(`(${field('d', mapping.fields.originalPath)} = ${bind(p.path)} OR ${field('d', mapping.fields.originalPath)} = ${bind(c.site.origin + p.path)})`);
+                const selected = Object.entries(mapping.fields).filter(([key, value]) => value && !['contentRole','sourceOrigin'].includes(key) && (mode === 'detail' || !['body', 'gallery'].includes(key)));
+                const projection = selected.map(([key, value]) => `${field('d', value)} AS ${quote(key)}`).join(', ');
+                const rows = await query(`SELECT ${projection} FROM ${quote(mapping.table)} d WHERE ${where.join(' AND ')} ORDER BY ${field('d', mapping.fields.title)} ${p.sort === 'title-desc' ? 'DESC' : 'ASC'}, ${field('d', mapping.fields.id)} LIMIT ${bind(mode === 'detail' ? 2 : (p.limit ?? c.browsing.pageSize) + 1)} OFFSET ${bind(p.offset ?? 0)}`, values);
+                if (mode === 'detail' && rows.length > 1) throw new Error('directory_path_ambiguous');
+                // Enforce a narrow bounded projection even if a driver returns extra columns.
+                return rows.slice(0, mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1).map(row => Object.fromEntries(selected.map(([key]) => {
+                    const v = row[key];
+                    if ((role === 'article' || role === 'page') && key === 'body') return [key, parseEditorialBody(v)];
+                    return [key, key === 'originalPath' ? directoryOriginalPath(v, c.site.origin) : typeof v === 'string' ? v.slice(0, key === 'body' ? 60000 : key === 'gallery' ? 12000 : key === 'summary' ? 1000 : 2048) : typeof v === 'number' && Number.isFinite(v) ? v : null];
+                })));
+            } };
+    }
+    return defineQueries(registry);
+}
+
+/** Same registered-query boundary over an immutable, already-reviewed capture. */
+export function createSnapshotDirectoryQueries(input: SitePublicationArtifact, owner: string): QueryRegistry {
+    const artifact = sitePublicationArtifactSchema.parse(input), c = artifact.configuration;
+    if (!owner) throw new Error('publication_owner_required');
+    const collections = { institution: artifact.records.institutions, program: artifact.records.programs,
+        city: artifact.records.cities, article: artifact.records.articles };
+    const registry: QueryRegistry = {};
+    for (const role of roles) for (const mode of ['list', 'detail'] as const) {
+        if (role === 'page' || role === 'city' && mode === 'detail') continue;
+        const params = directoryPreviewSchema.shape.params.refine(p => mode === 'detail'
+            ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined && p.sort === undefined && p.match === undefined
+            : p.path === undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);
+        registry[`directory.${role}.${mode}`] = { scope: 'tenant', ttlSeconds: 0, params,
+            execute: async (raw, ctx) => {
+                if (ctx.tenant !== owner) throw new Error('principal_context_required');
+                const p = params.parse(raw);
+                let rows: Record<string, unknown>[] = collections[role].map(row => ({ ...row }));
+                if (p.path) rows = rows.filter(row => row.originalPath === p.path);
+                if (p.q) rows = rows.filter(row => p.match === 'equals' ? String(row.title).toLowerCase() === p.q!.toLowerCase() : p.match === 'startsWith' ? String(row.title).toLowerCase().startsWith(p.q!.toLowerCase()) : String(row.title).toLowerCase().includes(p.q!.toLowerCase()));
+                if (p.institutionId !== undefined) rows = rows.filter(row => String(row.institutionId) === String(p.institutionId));
+                rows.sort((a,b)=>(String(a.title)<String(b.title)?-1:String(a.title)>String(b.title)?1:0)*(p.sort==='title-desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0));
+                rows = rows.slice(p.offset ?? 0, (p.offset ?? 0) + (mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1));
+                // Detail-only semantic body never rides list/search responses.
+                return rows.map(row => mode === 'list' ? Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'body')) : structuredClone(row));
+            } };
+    }
+    return defineQueries(registry);
+}

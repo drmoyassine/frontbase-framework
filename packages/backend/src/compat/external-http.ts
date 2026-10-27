@@ -1,0 +1,174 @@
+/** Guarded outbound HTTP seam for compatibility routes.
+ *
+ * Provider URLs are tenant-controlled, so every call is HTTPS-only, rejects
+ * obvious loopback/private/link-local destinations, has a bounded timeout, and
+ * re-validates every redirect target. By default redirects are NOT followed
+ * (throw on 3xx); callers that legitimately need to follow redirects on a
+ * tenant-controlled URL (WordPress sites, Apps Script Web Apps) opt in via the
+ * 4th argument. When opted in, each hop is re-validated through checkedExternalUrl
+ * — a public URL cannot redirect to a private/internal IP. Hosts may inject a
+ * fetch implementation for deterministic conformance tests or platform-specific
+ * egress controls.
+ */
+export type CompatFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+export interface GuardedFetchOptions {
+    /** Opt into following 3xx redirects. Every hop is re-validated against the SSRF guard. */
+    followRedirects?: boolean;
+    /** Max redirect hops when followRedirects is on (default 5). */
+    maxRedirects?: number;
+}
+
+function isForbiddenHostname(hostname: string): boolean {
+    const host = hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+    if (
+        host === 'localhost'
+        || host.endsWith('.localhost')
+        || host.endsWith('.local')
+        || host.endsWith('.internal')
+        || host === '0.0.0.0'
+        || host === '::'
+        || host === '::1'
+        || host.startsWith('::ffff:')
+        || (host.includes(':') && (
+            host.startsWith('fc')
+            || host.startsWith('fd')
+            || host.startsWith('fe8')
+            || host.startsWith('fe9')
+            || host.startsWith('fea')
+            || host.startsWith('feb')
+        ))
+    ) return true;
+
+    const octets = host.split('.').map(Number);
+    if (octets.length !== 4 || octets.some((value) => !Number.isInteger(value) || value < 0 || value > 255)) {
+        return false;
+    }
+    const first = octets[0]!;
+    const second = octets[1]!;
+    return first === 0
+        || first === 10
+        || first === 127
+        || (first === 100 && second >= 64 && second <= 127)
+        || (first === 169 && second === 254)
+        || (first === 172 && second >= 16 && second <= 31)
+        || (first === 192 && second === 0)
+        || (first === 192 && second === 168)
+        || (first === 198 && (second === 18 || second === 19))
+        || first >= 224;
+}
+
+export function checkedExternalUrl(raw: string): URL {
+    let url: URL;
+    try {
+        url = new URL(raw);
+    } catch {
+        throw new Error('invalid_provider_url');
+    }
+    if (url.protocol !== 'https:' || url.username || url.password || isForbiddenHostname(url.hostname)) {
+        throw new Error('unsafe_provider_url');
+    }
+    return url;
+}
+
+/** Keep caller cancellation and the deadline active for the returned response
+ * body as well as its headers. Listener lifetime is bounded by the deadline;
+ * remove both listeners on the first abort. No AbortSignal.any runtime dependency. */
+function requestDeadlineSignal(caller: AbortSignal): { signal: AbortSignal; dispose: () => void } {
+    const deadline = AbortSignal.timeout(10_000);
+    const controller = new AbortController();
+    const cleanup = () => {
+        caller.removeEventListener('abort', callerAborted);
+        deadline.removeEventListener('abort', deadlineAborted);
+    };
+    const callerAborted = () => {
+        cleanup();
+        controller.abort(caller.reason);
+    };
+    const deadlineAborted = () => {
+        cleanup();
+        controller.abort(deadline.reason);
+    };
+    if (caller.aborted) {
+        controller.abort(caller.reason);
+    } else {
+        caller.addEventListener('abort', callerAborted, { once: true });
+        deadline.addEventListener('abort', deadlineAborted, { once: true });
+    }
+    return { signal: controller.signal, dispose: cleanup };
+}
+
+export async function guardedExternalFetch(
+    fetchImpl: CompatFetch,
+    input: RequestInfo | URL,
+    init: RequestInit = {},
+    opts: GuardedFetchOptions = {},
+): Promise<Response> {
+    if (input instanceof Request) {
+        // Check before transferring/consuming a stream from the original input.
+        checkedExternalUrl(input.url);
+        if (opts.followRedirects) throw new Error('provider_request_redirect_replay_unsupported');
+        const request = new Request(input, init);
+        checkedExternalUrl(request.url);
+        request.signal.throwIfAborted();
+        const cancellation = requestDeadlineSignal(request.signal);
+        let response: Response;
+        try {
+            const guardedRequest = new Request(request, {
+                redirect: 'manual',
+                signal: cancellation.signal,
+            });
+            guardedRequest.signal.throwIfAborted();
+            response = await fetchImpl(guardedRequest);
+        } catch (error) {
+            cancellation.dispose();
+            throw error;
+        }
+        // Keep the bounded abort link for an unread redirect response body too.
+        if (response.status >= 300 && response.status < 400) throw new Error('provider_redirect_rejected');
+        return response;
+    }
+    let url = checkedExternalUrl(String(input));
+    const requestedHops=opts.maxRedirects??5;
+    const maxHops = opts.followRedirects ? Math.max(0,Math.min(5,Number.isFinite(requestedHops)?Math.trunc(requestedHops):5)) : 0;
+    if(opts.followRedirects&&init.body instanceof ReadableStream)throw Error('provider_request_redirect_replay_unsupported');
+
+    for (let hop = 0; ; hop++) {
+        const cancellation=requestDeadlineSignal(init.signal??new AbortController().signal);
+        cancellation.signal.throwIfAborted();
+        let response:Response;
+        try{response = await fetchImpl(url, {
+            ...init,
+            redirect: 'manual',
+            signal: cancellation.signal,
+        });}catch(error){cancellation.dispose();throw error;}
+
+        // Not a redirect (or redirects not opted in) — return as-is.
+        if (!(response.status >= 300 && response.status < 400))return response;
+        await response.body?.cancel();cancellation.dispose();
+        if(!opts.followRedirects)throw Error('provider_redirect_rejected');
+        if(hop>=maxHops)throw Error('provider_redirect_limit');
+
+        // Redirect + opted in: resolve the Location (may be relative) and
+        // RE-VALIDATE the target through the same SSRF guard before following.
+        const location = response.headers.get('location');
+        if (!location) {
+            throw new Error('provider_redirect_missing_location');
+        }
+        let nextUrl: URL;
+        try {
+            nextUrl = checkedExternalUrl(new URL(location, url).toString());
+        } catch {
+            throw new Error('provider_redirect_unsafe');
+        }
+        if(nextUrl.origin!==url.origin){
+            // Never forward arbitrary credential headers or a possibly credential-bearing
+            // body to another authority. Anonymous safe-header GET redirects remain usable.
+            const safe=new Set(['accept','accept-language','content-type','user-agent']);
+            if([...new Headers(init.headers).keys()].some(key=>!safe.has(key.toLowerCase()))||init.body!=null)throw Error('provider_redirect_cross_origin_credentials');
+        }
+        url = nextUrl;
+        // The next loop iteration re-fetches with redirect:'manual' so every hop
+        // is individually validated (no opaque auto-follow).
+    }
+}

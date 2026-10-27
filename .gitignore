@@ -1,0 +1,36 @@
+node_modules/
+dist/
+*.log
+.wrangler/
+.DS_Store
+
+# Secrets — NEVER commit. Local dev values for `wrangler dev` (.dev.vars) and
+# ad-hoc secret files. These must stay machine-local.
+.dev.vars
+.dev.vars.*
+.secret.txt
+*.secret
+
+# Parity-run scratch (differential runtime state, per-pass reports)
+.tmp/
+packages/backend/test/.diff-*.json
+packages/backend/test/.classify.mjs
+packages/backend/test/.product-evidence.json
+packages/backend/test/.gate-out*.txt
+
+# Local compose env (docker-compose.yml at repo root) — never commit
+.env
+
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
+
+# Local deployment identities and journals
+.frontbase/
+
+# Local deployment links and provider files
+.vercel/
+.env.local
+.env.*.local
+
+.vercel
+.env*

@@ -1,0 +1,1 @@
+{"extends":"./tsconfig.app.json","include":["src/vite-env.d.ts","src/lib/sessionRecovery.ts","src/components/auth/SessionRecoveryDialog.tsx"]}

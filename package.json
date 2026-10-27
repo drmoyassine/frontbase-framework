@@ -1,0 +1,62 @@
+{
+  "name": "frontbase-framework",
+  "private": true,
+  "description": "The Frontbase framework monorepo — universal SSR engine, compiler, components, and edge infrastructure",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=22.19.0",
+    "pnpm": ">=8"
+  },
+  "scripts": {
+    "//": "`deploy` exists for Cloudflare native-button command detection and uses the portable root wrangler.toml. Run the reviewed managed flow via deploy:setup or deploy:cf-full.",
+    "build": "pnpm -r build",
+    "test": "pnpm -r --filter=!@frontbase/console test",
+    "check": "pnpm -r check",
+    "test:deployment-gates": "node scripts/test-deployment-buttons.mjs && node packages/edge-infra/test/storage-deployment.mjs && node packages/backend/test/deployment-storage.mjs && node scripts/test-deployment-storage-mutation.mjs && node packages/edge-infra/test/storage-r2.mjs && node packages/backend/test/native-r2.mjs && node scripts/test-native-r2-mutation.mjs && node packages/backend/test/native-kv.mjs && node scripts/test-native-kv-mutation.mjs && node scripts/test-deployment-gates.mjs && node examples/cf-full/test/native-worker-boot.mjs && node examples/cf-full/test/vercel-boot-retry.mjs && node scripts/test-native-worker-boot-mutation.mjs && node scripts/test-vercel-upload.mjs && node scripts/test-vercel-lifecycle.mjs && node scripts/test-deployment-plan.mjs && node scripts/test-vercel-deployment-policy.mjs && node scripts/test-vercel-policy-mutation.mjs && node scripts/test-vercel-failure-matrix.mjs && node scripts/test-vercel-failure-mutation.mjs",
+    "test:mutation": "pnpm -r test:mutation",
+    "deploy:cf-full": "node scripts/deploy.mjs",
+    "deploy:community-edge": "node scripts/deploy-community.mjs",
+    "deploy": "node scripts/deploy-native-cloudflare.mjs --config wrangler.toml",
+    "deploy:recover": "node scripts/deployment-recover.mjs",
+    "deploy:setup": "node scripts/deployment-setup.mjs",
+    "test:deployment-setup": "node scripts/test-deployment-setup.mjs && node scripts/test-deployment-setup-options.mjs && node scripts/test-deployment-setup-mutation.mjs && node scripts/test-deployment-setup-execution.mjs && node scripts/test-cloudflare-resources.mjs && node scripts/test-cloudflare-state.mjs && node scripts/test-cloudflare-profile.mjs && node scripts/test-cloudflare-setup-executor.mjs && node scripts/test-deployment-execution-mutation.mjs && node scripts/test-cloudflare-lifecycle.mjs && node scripts/test-cloudflare-lifecycle-mutation.mjs && node scripts/test-deployment-proposal.mjs && node scripts/test-profile-environment.mjs && node scripts/test-vercel-profile.mjs && node scripts/test-vercel-receipt.mjs && node scripts/test-vercel-binding-changes.mjs && node scripts/test-vercel-binding-changes-mutation.mjs && node scripts/test-deployment-storage-profile.mjs && node scripts/test-vercel-reconciliation.mjs && node scripts/test-vercel-reconciliation-mutation.mjs && node scripts/test-deployment-recovery.mjs",
+    "deploy:plan": "node scripts/deployment-plan.mjs",
+    "deploy:vercel": "node scripts/deploy-vercel.mjs",
+    "deploy:deno": "node scripts/deploy-deno.mjs",
+    "cloud:ops": "node scripts/cloud-ops.mjs",
+    "contracts:embed": "node scripts/embed-community-spec.mjs",
+    "console:build": "node scripts/build-console.mjs",
+    "console:stage": "node scripts/build-console.mjs --skip-build",
+    "console:check": "node scripts/validate-console-pin.mjs",
+    "test:deployment-bindings": "node packages/backend/test/deployment-bindings.mjs && node scripts/test-deployment-bindings-mutation.mjs && pnpm --filter @frontbase/console test:deployment-bindings",
+    "test:deployment-buttons": "node scripts/test-deployment-buttons.mjs",
+    "test:provider-oauth": "node packages/backend/test/provider-oauth.mjs && node packages/backend/test/provider-oauth-mutation.mjs",
+    "test:native-cloud-setup": "node examples/cf-full/test/native-claim.mjs && node examples/cf-full/test/native-cloud.mjs && node scripts/test-setup-manifest.mjs",
+    "test:hosted-bootstrap": "node packages/edge-core/test/deployment-bootstrap.mjs && node packages/edge-core/test/deployment-bootstrap-mutation.mjs && node packages/backend/test/hosted-bootstrap.mjs && node packages/backend/test/hosted-bootstrap-mutation.mjs && node scripts/test-docker-bootstrap-journal.mjs && node scripts/test-docker-bootstrap-host.mjs && node scripts/test-docker-bootstrap-host-mutation.mjs && node packages/edge-infra/test/bootstrap-journal.mjs && node packages/edge-infra/test/bootstrap-journal-mutation.mjs",
+    "test:provider-oauth-relay": "node node_modules/typescript/bin/tsc -p examples/oauth-relay/tsconfig.json && node packages/backend/test/provider-oauth-relay.mjs && node packages/backend/test/provider-oauth-relay-target.mjs && node packages/backend/test/provider-oauth-strategy.mjs && node packages/backend/test/provider-oauth-relay-mutation.mjs"
+  },
+  "devDependencies": {
+    "c8": "^11.0.0",
+    "esbuild": "^0.28.1",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "wrangler": "4.129.1"
+  },
+  "pnpm": {
+    "//": "Fidelity pins: the console SPA must build byte-comparably to the product build it replaces. The console's own devDependencies are exact-pinned; these overrides hold the only remaining resolution drift that reaches its output — the 7 runtime libs bundled into the SPA (floating-ui stack via radix popper, scroll-lock pair, monaco loader) and rollup, vite's chunk codegen, whose patch releases change emitted bytes.",
+    "overrides": {
+      "@floating-ui/core": "1.7.2",
+      "@floating-ui/dom": "1.7.2",
+      "@floating-ui/react-dom": "2.1.4",
+      "@floating-ui/utils": "0.2.10",
+      "@monaco-editor/loader": "1.5.0",
+      "aria-hidden": "1.2.4",
+      "react-remove-scroll": "2.7.1",
+      "rollup": "4.59.0"
+    },
+    "patchedDependencies": {
+      "drizzle-orm@0.36.4": "patches/drizzle-orm@0.36.4.patch"
+    }
+  }
+}

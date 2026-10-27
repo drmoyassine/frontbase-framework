@@ -1,0 +1,12 @@
+{
+  "package": "@frontbase/edge-infra",
+  "subpath": "./ai",
+  "outsideWorkspace": true,
+  "packedArtifact": true,
+  "functional": true,
+  "declarations": true,
+  "registryPublish": false,
+  "limitations": [
+    "Tarball extracted into isolated node_modules; full dependency installation and whole edge-infra consumability are not certified"
+  ]
+}

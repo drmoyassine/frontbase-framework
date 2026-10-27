@@ -1,0 +1,1756 @@
+{
+  "productBase": "http://127.0.0.1:8001",
+  "frameworkBase": "http://127.0.0.1:8788",
+  "corpus": "test/fixtures/cf22-differential-corpus.json",
+  "compared": 577,
+  "differing": 76,
+  "seedFailures": [
+    {
+      "base": "http://127.0.0.1:8001",
+      "name": "form_id"
+    },
+    {
+      "base": "http://127.0.0.1:8001",
+      "name": "form_id"
+    },
+    {
+      "base": "http://127.0.0.1:8001",
+      "name": "form_id"
+    },
+    {
+      "base": "http://127.0.0.1:8001",
+      "name": "form_id"
+    }
+  ],
+  "differences": [
+    {
+      "operationId": "meta_root",
+      "kind": "success",
+      "method": "GET",
+      "path": "/",
+      "classes": [
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "text/html"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "{\"message\":\"Frontbase-DBSync API is running\",\"test_mode\":true}",
+        "framework": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"generator\" co..."
+      }
+    },
+    {
+      "operationId": "actions_create_draft",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/settings",
+        "product": "{}",
+        "framework": "null"
+      }
+    },
+    {
+      "operationId": "actions_get_draft",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/actions/drafts/{{draft_id}}",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/settings",
+        "product": "{}",
+        "framework": "null"
+      }
+    },
+    {
+      "operationId": "actions_update_draft",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/actions/drafts/{{draft_id}}",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/settings",
+        "product": "{}",
+        "framework": "null"
+      }
+    },
+    {
+      "operationId": "actions_create_manual_automation_version",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/actions/drafts/{{draft_id}}/versions/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/data/automationId",
+        "product": "95005e1d-4bd6-46f9-87b1-42a6aa684142",
+        "framework": "770a73c0-32c1-4b6a-9855-7c9de6bfc528"
+      }
+    },
+    {
+      "operationId": "auth_forms_list_auth_forms",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth-forms/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/data",
+        "product": "null",
+        "framework": "[]"
+      }
+    },
+    {
+      "operationId": "auth_forms_create_auth_form",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth-forms/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/data",
+        "product": "null",
+        "framework": "{\"name\":\"parity\",\"type\":\"parity\",\"config\":{\"target_contact_type\":null,\"allowed_contact_types\":[],\"redirect_url\":null,\"is_active\":true},\"target_contact_type\":..."
+      }
+    },
+    {
+      "operationId": "auth_forms_get_primary_auth_form",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth-forms/primary/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/data",
+        "product": "null",
+        "framework": "{\"name\":\"parity\",\"type\":\"parity\",\"config\":{\"target_contact_type\":null,\"allowed_contact_types\":[],\"redirect_url\":null,\"is_active\":true},\"target_contact_type\":..."
+      }
+    },
+    {
+      "operationId": "auth_forms_get_auth_form",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/auth-forms/{{form_id}}/",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "unresolved-variable",
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "/api/auth-forms/{{form_id}}/",
+        "framework": "{\"success\":true,\"data\":{\"name\":\"parity-15\",\"type\":\"parity\",\"config\":{\"target_contact_type\":null,\"allowed_contact_types\":[],\"redirect_url\":null,\"is_active\":tr..."
+      }
+    },
+    {
+      "operationId": "auth_forms_get_auth_form",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/error",
+        "product": "(sqlite3.OperationalError) no such table: auth_forms\n[SQL: SELECT * FROM auth_forms WHERE id = ? AND tenant_id IS NULL]\n[parameters: ('00000000-0000-4000-800...",
+        "framework": "Auth form not found"
+      }
+    },
+    {
+      "operationId": "auth_forms_update_auth_form",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/auth-forms/{{form_id}}/",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "unresolved-variable",
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "/api/auth-forms/{{form_id}}/",
+        "framework": "{\"success\":true,\"data\":{\"name\":\"parity-16\",\"type\":\"parity\",\"config\":{\"target_contact_type\":null,\"allowed_contact_types\":[],\"redirect_url\":null,\"is_active\":tr..."
+      }
+    },
+    {
+      "operationId": "auth_forms_update_auth_form",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/error",
+        "product": "(sqlite3.OperationalError) no such table: auth_forms\n[SQL: SELECT * FROM auth_forms WHERE id = ? AND tenant_id IS NULL]\n[parameters: ('00000000-0000-4000-800...",
+        "framework": "Auth form not found"
+      }
+    },
+    {
+      "operationId": "auth_forms_delete_auth_form",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/auth-forms/{{form_id}}/",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "unresolved-variable",
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "/api/auth-forms/{{form_id}}/",
+        "framework": "{\"success\":true,\"data\":null,\"message\":null,\"error\":null}"
+      }
+    },
+    {
+      "operationId": "auth_forms_delete_auth_form",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/error",
+        "product": "(sqlite3.OperationalError) no such table: auth_forms\n[SQL: SELECT id, config FROM auth_forms WHERE id = ? AND tenant_id IS NULL]\n[parameters: ('00000000-0000...",
+        "framework": "Auth form not found"
+      }
+    },
+    {
+      "operationId": "auth_forms_set_primary_auth_form",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/auth-forms/{{form_id}}/set-primary/",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "unresolved-variable",
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "/api/auth-forms/{{form_id}}/set-primary/",
+        "framework": "{\"success\":true,\"data\":{\"name\":\"parity-18\",\"type\":\"parity\",\"config\":{\"target_contact_type\":null,\"allowed_contact_types\":[],\"redirect_url\":null,\"is_active\":tr..."
+      }
+    },
+    {
+      "operationId": "auth_forms_set_primary_auth_form",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/auth-forms/00000000-0000-4000-8000-000000000000/set-primary/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/error",
+        "product": "(sqlite3.OperationalError) no such table: auth_forms\n[SQL: SELECT id FROM auth_forms WHERE id = ? AND tenant_id IS NULL]\n[parameters: ('00000000-0000-4000-80...",
+        "framework": "Auth form not found"
+      }
+    },
+    {
+      "operationId": "authentication_update_bot_protection_settings",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/auth/security/bot-protection",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/message",
+        "product": "null",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "edge_api_keys_create_api_key",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-api-keys",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/key",
+        "product": "fb_sk_5980905d6eb434aed59565c79793c8451c0be6c0123e83a7",
+        "framework": "fbk_add9ed3dda924d38b2f3b57b15f63f1be9579a888786400ea7ada9a12c2be5f6"
+      }
+    },
+    {
+      "operationId": "edge_engines_list_engines",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/0/edge_cache_id",
+        "product": "1f3a71c4-ffcf-4549-8781-bf6d2fe63a28",
+        "framework": "local-cache"
+      }
+    },
+    {
+      "operationId": "edge_engines_create_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/engine_config/system_key",
+        "product": "gAAAAABqaa6MvgigJYMCa3qhvVIAVpUjPP8ViRqibACNoxRMkyVjcs26oQn8NXjPSAGETM3cPRJcovNW4PQ0RSxJDxA9OXW6vDqBYVEIAIw1cu_jRjDIW2ZRgyaiVRv_l9Tmaqxd-yKUMAkQcisbenbiOm47P...",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "edge_engines_get_engine",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/engine_config/system_key",
+        "product": "gAAAAABqaa6MEcLT9RXLCNNUG2X6OcdcNXNMpMGGySZZJ-WSUePQQIbxraseF-gczWpX5cDYC5cSr8ntKvGVSZWLcId5Y6Jn3BvAT3QifNpN7sD2esDAyQi_wkDlWEBcmjBAv07Hq7tcT32xEAhZdF7tx0VXp...",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "edge_engines_update_engine",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/edge-engines/{{engine_id}}",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/engine_config/system_key",
+        "product": "gAAAAABqaa6MYUR_0-K-gjEx74U-wNLsypUe81YC6wDpcn9WR0mvq_u7bNGFHsCq_Z0HyvqM9jH3eDw3AIZqx-muPRCk6kqkyskPxtvxHQZHw2YYIrWDTvzckqYGbajFsqCiObqbUew_7GrWhN6nIMHckJUAz...",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "edge_agent_profiles_create_profile",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/agent-profiles",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Internal error: Expecting value: line 1 column 1 (char 0)",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "edge_engines_tenant_secrets_audit_logs",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/audit/tenant-secrets",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/engine_id",
+        "product": "5d186da7-8884-44b9-aee5-1ff50a197d31",
+        "framework": "44c1882f-b0da-47b1-ab0d-f332fe6a321e"
+      }
+    },
+    {
+      "operationId": "edge_engines_export_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/export",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/bundle",
+        "product": "FBENG1.eyJoIjp7InYiOjEsIm1vZGUiOiJzZWFsZWQiLCJzYWx0IjoiUE01MTd3SDFfQVY1WWJvSW0zVElqUT09Iiwid3JhcHBlZF9rZXkiOiJnQUFBQUFCcWFhNk5hUEk4N21VY2dKcS12RDVfeWFXU3ZjQT...",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "edge_engines_reconfigure_engine",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/edge-engines/{{engine_id}}/reconfigure",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Internal error: 'charmap' codec can't encode character '\\u2192' in position 130: character maps to <undefined>",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "edge_engines_rotation_status",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/edge-engines/{{engine_id}}/rotation-status",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/active",
+        "product": "false",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "pages_create_manual_version",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/pages/{{page_id}}/versions/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/data/pageId",
+        "product": "15b16c7a-1ebf-48c2-ac81-79b0f7478da0",
+        "framework": "fda4dd6f-5e97-4fba-a88c-428757bd1047"
+      }
+    },
+    {
+      "operationId": "meta_queue_health",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/queue/health",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/active",
+        "product": "null",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "settings_update_general_settings",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/settings/general",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/defaultLanguage",
+        "product": "en",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "settings_update_privacy_settings",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/settings/privacy/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/advancedVariables",
+        "product": "{\"ip\":{\"collect\":false,\"expose\":false},\"browser\":{\"collect\":true,\"expose\":true},\"os\":{\"collect\":true,\"expose\":true},\"language\":{\"collect\":true,\"expose\":true}...",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "settings_update_redis_settings",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/settings/redis/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/cache_ttl_count",
+        "product": "300",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "settings_update_security_settings",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/settings/security/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/full_ip_retention_days",
+        "product": "30",
+        "framework": "<absent>"
+      }
+    },
+    {
+      "operationId": "storage_get_bucket",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": "timeout-or-network-error"
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": ""
+      },
+      "body": {
+        "pointer": "/",
+        "product": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"query\",\"provider_id\"],\"msg\":\"Field required\",\"input\":null}]}",
+        "framework": "TimeoutError"
+      }
+    },
+    {
+      "operationId": "storage_update_bucket",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/storage/buckets/00000000-0000-4000-8000-000000000000",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": 503
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "text/plain"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"query\",\"provider_id\"],\"msg\":\"Field required\",\"input\":null}]}",
+        "framework": "Your worker restarted mid-request. Please try sending the request again. Only GET or HEAD requests are retried automatically."
+      }
+    },
+    {
+      "operationId": "create_datasource_datasources__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "[{\"type\":\"string_type\",\"loc\":[\"body\",\"name\"],\"msg\":\"Input should be a valid string\",\"input\":[]}]"
+      }
+    },
+    {
+      "operationId": "search_all_datasources_datasources_search_all__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/search-all/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 404,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Datasource not found",
+        "framework": "[{\"type\":\"missing\",\"loc\":[\"query\",\"q\"],\"msg\":\"Field required\",\"input\":null}]"
+      }
+    },
+    {
+      "operationId": "sheets_connect_callback_datasources_sheets_connect_callback__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/sheets/connect/callback/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": 401
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "Connect token is invalid, expired, or already used"
+      }
+    },
+    {
+      "operationId": "sheets_connect_callback_datasources_sheets_connect_callback__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/sheets/connect/callback/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "[{\"type\":\"string_type\",\"loc\":[\"body\",\"token\"],\"msg\":\"Input should be a valid string\",\"input\":[]}]"
+      }
+    },
+    {
+      "operationId": "sheets_connect_status_datasources_sheets_connect_status__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/sheets/connect/status/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "[{\"type\":\"missing\",\"loc\":[\"query\",\"token\"],\"msg\":\"Field required\",\"input\":null}]"
+      }
+    },
+    {
+      "operationId": "test_new_datasource_datasources_test_raw__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/test-raw/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/error",
+        "product": "Supabase requires API URL and API Key.",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "test_new_datasource_datasources_test_raw__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/test-raw/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "[{\"type\":\"literal_error\",\"loc\":[\"body\",\"type\"],\"msg\":\"Input should be 'supabase', 'postgres', 'wordpress', 'wordpress_rest', 'wordpress_graphql', 'wordpress_..."
+      }
+    },
+    {
+      "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/apply-migration",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 503
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"detail\":\"Supabase URL, service key, and migration SQL are required\"}"
+      }
+    },
+    {
+      "operationId": "apply_datasource_migration_datasources__datasource_id__apply_migration_post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/apply-migration",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"detail\":\"Datasource not found\"}"
+      }
+    },
+    {
+      "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/check-migration",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"applicable\":true,\"applied\":false,\"error\":\"Supabase URL and service key are required\"}"
+      }
+    },
+    {
+      "operationId": "check_datasource_migration_datasources__datasource_id__check_migration_get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/check-migration",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"detail\":\"Datasource not found\"}"
+      }
+    },
+    {
+      "operationId": "get_datasource_relationships_datasources__datasource_id__relationships__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 502
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch relationships: Supabase requires API URL and API Key",
+        "framework": "Failed to fetch relationships: Invalid URL string."
+      }
+    },
+    {
+      "operationId": "update_relationship_datasources__datasource_id__relationships__index___put",
+      "kind": "success",
+      "method": "PUT",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/00000000-0000-4000-8000-000000000000/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "[{\"type\":\"float_type\",\"loc\":[\"path\",\"index\"],\"msg\":\"Input should be a valid number\",\"input\":\"00000000-0000-4000-8000-000000000000\"}]"
+      }
+    },
+    {
+      "operationId": "update_relationship_datasources__datasource_id__relationships__index___put",
+      "kind": "failure",
+      "method": "PUT",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/00000000-0000-4000-8000-000000000000/",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": 404,
+        "framework": 503
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "text/plain"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "{\"detail\":\"Datasource not found\"}",
+        "framework": "Your worker restarted mid-request. Please try sending the request again. Only GET or HEAD requests are retried automatically."
+      }
+    },
+    {
+      "operationId": "remove_relationship_datasources__datasource_id__relationships__index___delete",
+      "kind": "success",
+      "method": "DELETE",
+      "path": "/api/sync/datasources/{{datasource_id}}/relationships/00000000-0000-4000-8000-000000000000/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "[{\"type\":\"float_type\",\"loc\":[\"path\",\"index\"],\"msg\":\"Input should be a valid number\",\"input\":\"00000000-0000-4000-8000-000000000000\"}]"
+      }
+    },
+    {
+      "operationId": "remove_relationship_datasources__datasource_id__relationships__index___delete",
+      "kind": "failure",
+      "method": "DELETE",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/relationships/00000000-0000-4000-8000-000000000000/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 404,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Datasource not found",
+        "framework": "[{\"type\":\"float_type\",\"loc\":[\"path\",\"index\"],\"msg\":\"Input should be a valid number\",\"input\":\"00000000-0000-4000-8000-000000000000\"}]"
+      }
+    },
+    {
+      "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/search",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"query\",\"q\"],\"msg\":\"Field required\",\"input\":null}]}"
+      }
+    },
+    {
+      "operationId": "search_datasource_tables_datasources__datasource_id__search_get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/search",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"query\",\"q\"],\"msg\":\"Field required\",\"input\":null}]}"
+      }
+    },
+    {
+      "operationId": "get_datasource_tables_datasources__datasource_id__tables__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 502
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch tables: Supabase requires API URL and API Key",
+        "framework": "Failed to list tables: Invalid URL string."
+      }
+    },
+    {
+      "operationId": "save_table_session_datasources__datasource_id__tables__table_name__session__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/session/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/message",
+        "product": "Redis unavailable - changes not saved",
+        "framework": "Session saved"
+      }
+    },
+    {
+      "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/aggregate/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "[{\"type\":\"missing\",\"loc\":[\"query\",\"category\"],\"msg\":\"Field required\",\"input\":null}]"
+      }
+    },
+    {
+      "operationId": "get_datasource_table_aggregate_datasources__datasource_id__tables__table__aggregate__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/aggregate/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 404,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Datasource not found",
+        "framework": "[{\"type\":\"missing\",\"loc\":[\"query\",\"category\"],\"msg\":\"Field required\",\"input\":null}]"
+      }
+    },
+    {
+      "operationId": "get_datasource_table_data_datasources__datasource_id__tables__table__data__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/data/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch sample data: Supabase requires API URL and API Key",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "get_distinct_values_datasources__datasource_id__tables__table__distinct__column___get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/distinct/parity_table/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch distinct values: Supabase requires API URL and API Key",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/records/00000000-0000-4000-8000-000000000000",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"detail\":\"Invalid URL string.\"}"
+      }
+    },
+    {
+      "operationId": "update_record_datasources__datasource_id__tables__table__records__record_id__patch",
+      "kind": "failure",
+      "method": "PATCH",
+      "path": "/api/sync/datasources/00000000-0000-4000-8000-000000000000/tables/00000000-0000-4000-8000-000000000000/records/00000000-0000-4000-8000-000000000000",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"detail\":\"Datasource not found\"}"
+      }
+    },
+    {
+      "operationId": "get_table_schema_datasources__datasource_id__tables__table__schema__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/datasources/{{datasource_id}}/tables/parity_table/schema/",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 500,
+        "framework": 400
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Failed to fetch schema: Supabase requires API URL and API Key",
+        "framework": "Failed to fetch schema: Invalid URL string."
+      }
+    },
+    {
+      "operationId": "test_datasource_update_datasources__datasource_id__test_update__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/test-update/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/error",
+        "product": "Supabase requires API URL and API Key",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "test_datasource_datasources__datasource_id__test__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/test/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/error",
+        "product": "Supabase requires API URL and API Key",
+        "framework": "Invalid URL string."
+      }
+    },
+    {
+      "operationId": "create_datasource_view_datasources__datasource_id__views__post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/datasources/{{datasource_id}}/views/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 201,
+        "framework": 201
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/datasource_id",
+        "product": "1efc0862-b397-41c9-b216-dbbc281d83af",
+        "framework": "0530efea-24a9-4e82-886a-d1c9bde60597"
+      }
+    },
+    {
+      "operationId": "get_view_count_views__view_id__count_get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/count",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"detail\":\"View not found\"}"
+      }
+    },
+    {
+      "operationId": "get_view_count_views__view_id__count_get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/count",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": "timeout-or-network-error",
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "TypeError",
+        "framework": "{\"detail\":\"View not found\"}"
+      }
+    },
+    {
+      "operationId": "create_view_record_views__view_id__records_post",
+      "kind": "success",
+      "method": "POST",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 405,
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Method Not Allowed",
+        "framework": "View not found"
+      }
+    },
+    {
+      "operationId": "create_view_record_views__view_id__records_post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 405,
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Method Not Allowed",
+        "framework": "View not found"
+      }
+    },
+    {
+      "operationId": "patch_view_record_views__view_id__records_patch",
+      "kind": "success",
+      "method": "PATCH",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 405,
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Method Not Allowed",
+        "framework": "View not found"
+      }
+    },
+    {
+      "operationId": "patch_view_record_views__view_id__records_patch",
+      "kind": "failure",
+      "method": "PATCH",
+      "path": "/api/sync/views/00000000-0000-4000-8000-000000000000/records",
+      "classes": [
+        "status",
+        "body"
+      ],
+      "status": {
+        "product": 405,
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "Method Not Allowed",
+        "framework": "View not found"
+      }
+    },
+    {
+      "operationId": "start_import_wordpress_import__post",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/sync/wordpress/import/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 422,
+        "framework": 422
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/detail",
+        "product": "<absent>",
+        "framework": "[{\"type\":\"string_type\",\"loc\":[\"body\",\"datasource_id\"],\"msg\":\"Input should be a valid string\",\"input\":[]}]"
+      }
+    },
+    {
+      "operationId": "import_progress_stream_wordpress_import__import_id__progress__get",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000/progress/",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "text/event-stream",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": ": ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: pin...",
+        "framework": "{\"detail\":\"Import not found\"}"
+      }
+    },
+    {
+      "operationId": "import_progress_stream_wordpress_import__import_id__progress__get",
+      "kind": "failure",
+      "method": "GET",
+      "path": "/api/sync/wordpress/import/00000000-0000-4000-8000-000000000000/progress/",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 404
+      },
+      "mediaType": {
+        "product": "text/event-stream",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": ": ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: ping\n\n: pin...",
+        "framework": "{\"detail\":\"Import not found\"}"
+      }
+    },
+    {
+      "operationId": "themes_get_themes",
+      "kind": "success",
+      "method": "GET",
+      "path": "/api/themes/",
+      "classes": [
+        "body"
+      ],
+      "status": {
+        "product": 200,
+        "framework": 200
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "application/json"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "array(2)",
+        "framework": "array(0)"
+      }
+    },
+    {
+      "operationId": "workflows_send_workflow_email",
+      "kind": "failure",
+      "method": "POST",
+      "path": "/api/workflows/send-email",
+      "classes": [
+        "status",
+        "media-type",
+        "body"
+      ],
+      "status": {
+        "product": 401,
+        "framework": 503
+      },
+      "mediaType": {
+        "product": "application/json",
+        "framework": "text/plain"
+      },
+      "body": {
+        "pointer": "/",
+        "product": "{\"detail\":\"Authentication required\"}",
+        "framework": "Your worker restarted mid-request. Please try sending the request again. Only GET or HEAD requests are retried automatically."
+      }
+    }
+  ]
+}

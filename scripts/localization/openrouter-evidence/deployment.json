@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-18",
+  "target": {
+    "panel": "https://newpanel.studygram.me",
+    "project": "studygram",
+    "service": "usa-frontbase-staging"
+  },
+  "source": "8f812721fcc3e63d982bc2e2895d6b7b283cabf0",
+  "sourceCommit": "37eadda",
+  "generatedCommit": "f666361",
+  "archive": {
+    "bytes": 6643654,
+    "entries": 2288,
+    "excluded": 12,
+    "sha256": "6fcb7c295d2d70e162435eebb78ea4db3aa951daace2fb1a83505251d782ab57"
+  },
+  "deployment": {
+    "id": "cmvdvuxy3003707qq0l1f84ns",
+    "status": "done",
+    "createdAt": "2026-10-18 13:50:34",
+    "updatedAt": "2026-10-18 13:51:50",
+    "containerId": "9fbb2b8c9e3da21693f5a0e9ca2c8ae66bddc49f41597869f5f6d697ab1e6a2e",
+    "image": "sha256:c4f97a18816a3fbb2a8aac47cf6853a1e1cb82d2eaeca8bf0efc21b3749fb867",
+    "healthy": true
+  },
+  "unchangedConfiguration": {
+    "env": true,
+    "mounts": true,
+    "deploy": true,
+    "build": true,
+    "ports": true
+  },
+  "acceptance": {
+    "publicRouteHashesUnchanged": 8,
+    "anonymousTranslationStatus": 401,
+    "publicationGeneration": 21,
+    "homepagePending": true,
+    "testDraft": true,
+    "openrouterConnectionForm": true,
+    "modelBlank": true,
+    "aiSelectionAbsent": true,
+    "executionAvailable": false,
+    "credentialsEntered": false,
+    "providerRequest": false,
+    "contentPublished": false
+  },
+  "limits": [
+    "No actual provider/account credentials or real model acceptance",
+    "Full image security suite and rollback not rerun",
+    "No owner SQL upgrade or storage selection"
+  ]
+}

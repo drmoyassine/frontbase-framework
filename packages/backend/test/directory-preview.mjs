@@ -1,0 +1,76 @@
+import assert from 'node:assert/strict';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { sqliteRunner } from '@frontbase/edge-infra';
+import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { createDirectoryQueries, directoryOriginalPath } from '@frontbase/compiler/queries/directory';
+import { toBrowserQueries } from '@frontbase/compiler';
+import { migrateUp } from '../dist/db/migrations.js';
+import { createCompatApp } from '../dist/compat/app.js';
+import { SiteConfigurationStore } from '../dist/compat/site-configuration-store.js';
+import { createSecretCipher } from '../dist/db/secret-cipher.js';
+
+const url = 'file:' + join(tmpdir(), `frontbase-directory-${crypto.randomUUID()}.db`).replaceAll('\\', '/');
+const db = sqliteRunner(url); await migrateUp(db);
+await db.exec('CREATE TABLE catalog_cities (id INTEGER, title TEXT, country INTEGER)');
+await db.exec('CREATE TABLE catalog_institutions (id INTEGER, title TEXT, country INTEGER, city INTEGER, path TEXT, body TEXT, provider_id TEXT)');
+await db.exec('CREATE TABLE catalog_programs (id INTEGER, title TEXT, country INTEGER, institution INTEGER, path TEXT, body TEXT, provider_id TEXT)');
+await db.exec("INSERT INTO catalog_cities VALUES (1,'USA city',22),(2,'Foreign city',99)");
+for (const [id, country, city, path] of [[512,22,1,'https://study-in-usa.com/muhlenberg-college/'],[2,99,1,'/foreign/'],[3,22,2,'/wrong-city/']])
+    await db.exec('INSERT INTO catalog_institutions VALUES (?,?,?,?,?,?,?)', [id, 'Institution '+id, country, city, path, '<script>raw body</script>', 'PRIVATE_PROVIDER_CANARY']);
+for (const [id,country,parent,path] of [[46188,22,512,'https://study-in-usa.com/old-parent/original-program/'],[2,99,512,'/foreign-program/'],[3,22,2,'/foreign-parent/'],[4,22,3,'/foreign-city-program/']])
+    await db.exec('INSERT INTO catalog_programs VALUES (?,?,?,?,?,?,?)', [id, 'Program '+id, country, parent, path, 'text'.repeat(20000), 'PRIVATE_PROVIDER_CANARY']);
+const config = emptyDirectoryConfiguration();
+config.site = { name:'USA', destination:'USA', origin:'https://study-in-usa.com', locale:'en' }; config.datasourceId='owned';
+for (const [role,table] of [['institution','catalog_institutions'],['program','catalog_programs'],['city','catalog_cities']]) {
+    const m=config.collections[role]; m.table=table; m.scope={field:'country',value:22}; m.fields.id='id';m.fields.title='title';
+    if(role!=='city'){m.fields.originalPath='path';m.fields.body='body';}
+} config.collections.institution.fields.cityId='city';config.collections.program.fields.institutionId='institution';
+const ctx={tenant:'alpha',user:{id:'owner'}};
+const registry=createDirectoryQueries(config,'alpha','sqlite',(sql,p)=>db.query(sql,p));
+const list=await registry['directory.institution.list'].execute({},ctx);
+assert.deepEqual(list.map(r=>r.id),[512]);assert.equal(list[0].originalPath,'/muhlenberg-college/');assert.ok(!JSON.stringify(list).includes('PRIVATE_PROVIDER_CANARY'));assert.equal(list[0].body,undefined);
+assert.deepEqual((await registry['directory.program.list'].execute({},ctx)).map(r=>r.id),[46188]);
+assert.deepEqual(await registry['directory.program.list'].execute({institutionId:2},ctx),[]);
+assert.equal((await registry['directory.program.list'].execute({institutionId:512},ctx))[0].id,46188);
+const detail=await registry['directory.program.detail'].execute({path:'/old-parent/original-program/'},ctx);
+assert.equal(detail[0].id,46188);assert.equal(detail[0].body.length,60000);
+assert.deepEqual(await registry['directory.institution.list'].execute({q:"' OR 1=1 --"},ctx),[]);
+assert.deepEqual(await registry['directory.institution.list'].execute({q:'%'},ctx),[]);
+await assert.rejects(()=>registry['directory.institution.list'].execute({}, {tenant:'beta',user:{id:'owner'}}));
+await assert.rejects(()=>registry['directory.institution.list'].execute({country:99},ctx));
+await assert.rejects(()=>registry['directory.institution.list'].execute({limit:49},ctx));
+assert.equal(directoryOriginalPath('https://evil.example/path/',config.site.origin),null);
+assert.equal(directoryOriginalPath('/%2e%2e/private/',config.site.origin),null);
+assert.equal(directoryOriginalPath('//evil.example/',config.site.origin),null);
+const browser=JSON.stringify(toBrowserQueries(registry)); assert.ok(!browser.includes('execute'));assert.ok(!browser.includes('catalog_'));assert.ok(!browser.includes('SELECT'));
+await db.exec("INSERT INTO catalog_institutions VALUES (513,'Duplicate',22,1,'/muhlenberg-college/','body','private')");
+await assert.rejects(()=>registry['directory.institution.detail'].execute({path:'/muhlenberg-college/'},ctx), /ambiguous/);
+await db.exec('DELETE FROM catalog_institutions WHERE id=513');
+
+let tenant='alpha', role='owner', authenticated=true; const now='2026-10-06T12:00:00Z';
+const cipher=await createSecretCipher('preview-test-secret');
+await db.exec('INSERT INTO datasources (id,tenant_slug,name,kind,config,created_at,updated_at) VALUES (?,?,?,?,?,?,?)',['owned','alpha','Fixture','sqlite',await cipher.encrypt(JSON.stringify({url})),now,now]);
+const store=new SiteConfigurationStore(db,'alpha'); await store.save(config,0,now);
+const app=await createCompatApp({makeRunner:async()=>db,resolvePrincipal:async()=>({user:authenticated?{id:'owner',role}:null,tenant}),sessionSecret:'preview-test-secret',now:()=>now});
+const call=(body={expectedRevision:1,role:'institution',mode:'list',params:{}})=>app.request('/api/project/site-configuration/preview/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+const success=await call();assert.equal(success.status,200);assert.equal(success.headers.get('cache-control'),'no-store');const result=await success.json();assert.equal(result.rows[0].id,512);assert.equal(result.publicationAvailable,false);assert.ok(!JSON.stringify(result).includes('PRIVATE_PROVIDER_CANARY'));
+assert.equal((await call({expectedRevision:0,role:'institution',mode:'list'})).status,422);
+assert.equal((await call({expectedRevision:2,role:'institution',mode:'list'})).status,409);
+assert.equal((await call({expectedRevision:1,role:'institution',mode:'list',params:{tenant:'beta'}})).status,422);
+assert.equal((await call({expectedRevision:1,role:'program',mode:'detail',params:{path:'//evil/'}})).status,422);
+role='viewer';assert.equal((await call()).status,403);role='owner';authenticated=false;assert.equal((await call()).status,401);authenticated=true;
+tenant='beta';await new SiteConfigurationStore(db,'beta').save(config,0,now);assert.equal((await call()).status,403);tenant='alpha';
+const big=await app.request('/api/project/site-configuration/preview/',{method:'POST',body:' '.repeat(8193)});assert.equal(big.status,413);
+await db.exec('CREATE TABLE catalog_articles (id INTEGER,title TEXT,country INTEGER,path TEXT,body TEXT,kind TEXT,origin TEXT,evidence TEXT)');
+const blocks=JSON.stringify([{kind:'paragraph',runs:[{text:'Article {{ literal }}'}]}]);
+for (const [id,country,kind,origin] of [[1,22,'article',config.site.origin],[2,99,'article',config.site.origin],[3,22,'page',config.site.origin],[4,22,'article','https://other.test']]) await db.exec('INSERT INTO catalog_articles VALUES (?,?,?,?,?,?,?,?)',[id,'Article '+id,country,'/blog/article-'+id+'/',blocks,kind,origin,'PRIVATE_ARTICLE_EVIDENCE']);
+const articleConfig=structuredClone(config);const am=articleConfig.collections.article;am.table='catalog_articles';am.scope={field:'country',value:22};Object.assign(am.fields,{id:'id',title:'title',originalPath:'path',body:'body',contentRole:'kind',sourceOrigin:'origin'});
+const articles=createDirectoryQueries(articleConfig,'alpha','sqlite',(sql,p)=>db.query(sql,p));
+const articleList=await articles['directory.article.list'].execute({},ctx);assert.deepEqual(articleList.map(r=>r.id),[1]);assert.equal(articleList[0].body,undefined);assert.ok(!JSON.stringify(articleList).includes('PRIVATE_ARTICLE_EVIDENCE'));
+assert.deepEqual((await articles['directory.article.detail'].execute({path:'/blog/article-1/'},ctx))[0].body,JSON.parse(blocks));
+await store.save(articleConfig,1,now);const articleResponse=await call({expectedRevision:2,role:'article',mode:'detail',params:{path:'/blog/article-1/'}});assert.equal(articleResponse.status,200);assert.ok(!JSON.stringify(await articleResponse.json()).includes('PRIVATE_ARTICLE_EVIDENCE'));
+await db.exec("UPDATE catalog_articles SET body='[{\"kind\":\"html\",\"runs\":[]}]' WHERE id=1");assert.equal((await call({expectedRevision:2,role:'article',mode:'detail',params:{path:'/blog/article-1/'}})).status,502);
+const broken=structuredClone(config);broken.collections.institution.fields.title='missing_column';await store.save(broken,2,now);
+const failure=await call({expectedRevision:3,role:'institution',mode:'list'});assert.equal(failure.status,502);const text=await failure.text();assert.ok(!text.includes('missing_column'));assert.ok(!text.includes('PRIVATE_PROVIDER_CANARY'));
+console.log('directory-preview: actual SQLite fixed scopes/parents/cities, path fidelity/ambiguity, injection/bounds/projection, browser exclusion, authenticated route/owner/revision/role and opaque errors passed');

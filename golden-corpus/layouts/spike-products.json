@@ -1,0 +1,58 @@
+{
+  "title": "Chimera Spike — Products",
+  "records": [
+    {
+      "name": "Edge Widget",
+      "price": 19,
+      "status": "active"
+    },
+    {
+      "name": "Chimera Engine",
+      "price": 42,
+      "status": "active"
+    },
+    {
+      "name": "Liquid Filter Pack",
+      "price": 7,
+      "status": "draft"
+    }
+  ],
+  "layout": {
+    "root": {},
+    "content": [
+      {
+        "id": "p-heading",
+        "type": "Heading",
+        "props": {
+          "content": "Products ({{ records | size }})",
+          "level": "h2"
+        }
+      },
+      {
+        "id": "p-list",
+        "type": "Text",
+        "props": {
+          "content": "{% for r in records %}{{ r.name }} — ${{ r.price }} ({{ r.status }}){% unless forloop.last %} · {% endunless %}{% endfor %}"
+        }
+      },
+      {
+        "id": "p-badge",
+        "type": "Badge",
+        "props": {
+          "content": "rendered on {{ app.environment }}",
+          "variant": "default"
+        }
+      },
+      {
+        "id": "back-link",
+        "type": "Link",
+        "props": {
+          "text": "← Home",
+          "href": "/",
+          "color": "#4338ca",
+          "underline": true
+        }
+      }
+    ]
+  }
+}

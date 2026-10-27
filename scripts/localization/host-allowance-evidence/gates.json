@@ -1,0 +1,150 @@
+{
+  "verifiedDate": "2026-10-18",
+  "sourceBase": "fcc7891",
+  "gates": [
+    {
+      "gate": "build",
+      "exitCode": 0
+    },
+    {
+      "gate": "check",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-allowance",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-generation",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-storage",
+      "exitCode": 0
+    },
+    {
+      "gate": "sdk-http",
+      "exitCode": 0
+    },
+    {
+      "gate": "external-request",
+      "exitCode": 0
+    },
+    {
+      "gate": "compat-security",
+      "exitCode": 0
+    },
+    {
+      "gate": "compat-tenant-matrix",
+      "exitCode": 0
+    },
+    {
+      "gate": "conformance",
+      "exitCode": 0
+    },
+    {
+      "gate": "shared-ai",
+      "exitCode": 0
+    },
+    {
+      "gate": "shared-http",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-localization",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-revisions",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-jobs",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-postgrest",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-accounting",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-accounting-http",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-localization-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-revisions-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-jobs-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-postgrest-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-accounting-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "engine-accounting-http-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "external-package",
+      "exitCode": 0
+    },
+    {
+      "gate": "host-import-graph",
+      "exitCode": 0
+    }
+  ],
+  "hostMutationGates": [
+    {
+      "gate": "translation-allowance",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-allowance-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-storage-mutation",
+      "exitCode": 0
+    },
+    {
+      "gate": "translation-generation-mutation",
+      "exitCode": 0
+    }
+  ],
+  "faults": {
+    "newHostPolicy": 6,
+    "retainedStorage": 7,
+    "retainedAI": 8,
+    "retainedEngine": 36
+  },
+  "order": "Host source/artifact mutation suites restored exact hashes before final full build/check and subsequent functional/package/graph gates. Engine faults are in-memory only.",
+  "sourceSha256": {
+    "packages/backend/src/compat/translation-allowance.ts": "421b69ab15a0f65a62f4c17d5d45d475bcf590a8804fc7cbb3687fc40a03cdbc",
+    "packages/backend/src/compat/translation-generation.ts": "e807294b273e19fd6bcd42bcf97ee9c5c23531f251efe36b99b1d84384d6cd0b",
+    "packages/backend/src/compat/translation-storage.ts": "d984718a4b89703bf05cd1fec0e8c51a8f259b913a3351db9e41553baaf709dc"
+  },
+  "paidCalls": 0,
+  "ownerDatabaseChanged": false,
+  "deployed": false,
+  "limits": [
+    "Internal host request-unit composition only; no exposed start endpoint/UI.",
+    "No dollar ceiling or total-token guarantee; limits are requests, concurrency, serialized message bytes and provider output-token request cap.",
+    "Host acceptance uses injected HTTP/RPC backed by SQLite, not a new real PostgreSQL or deployed TLS/edge proof.",
+    "No allowance close/reset/reallocation or batch pause/resume lifecycle yet.",
+    "External package acceptance covers translation only; broader candidate/backend external-type release gates remain open."
+  ]
+}

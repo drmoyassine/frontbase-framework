@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import {mkdtempSync,existsSync,readFileSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {randomUUID,randomBytes} from 'node:crypto';
+const {createDockerBootstrapHost}=await import(process.env.FRONTBASE_DOCKER_HOST_TEST_MODULE||new URL('./deployment-setup/docker-bootstrap-host.mjs',import.meta.url).href);
+import {defaultDeploymentManifest} from '../packages/edge-core/dist/deployment.js';
+const directory=mkdtempSync(join(tmpdir(),'fb-host-')),origin='https://bootstrap.example';
+const env={FRONTBASE_BOOTSTRAP:'1',FRONTBASE_PUBLIC_ORIGIN:origin,FRONTBASE_BOOTSTRAP_DIRECTORY:resolve(directory),FRONTBASE_INSTALLATION_ID:randomUUID(),FRONTBASE_BOOTSTRAP_TOKEN:randomBytes(32).toString('hex'),FRONTBASE_BOOTSTRAP_EXPIRES_AT:new Date(Date.now()+3600000).toISOString()};
+if(process.env.HOSTED_DOCKER_RELAY==='1'){env.FRONTBASE_OAUTH_RELAY_URL='https://relay.example';env.FRONTBASE_OAUTH_RELAY_TARGET=JSON.stringify({origin,host:'docker',purpose:'connect'});}
+let boots=0,values;const boot=async e=>{boots++;values=e;return {engine:{fetch:async()=>new Response('private',{status:401})}};};
+const options={env,boot,assets:{'/frontbase-bootstrap/':{body:'Setup',type:'text/html'}}};
+await assert.rejects(createDockerBootstrapHost({...options,env:{...env,FRONTBASE_BOOTSTRAP:'0'}}),/explicit_bootstrap/);
+await assert.rejects(createDockerBootstrapHost({...options,env:{...env,APP_DB_URL:'libsql://existing.example'}}),/configured_environment/);
+const host=await createDockerBootstrapHost(options);assert.equal(boots,0);assert.equal(existsSync(join(directory,'runtime.json')),false);
+let cookie;const request=async(path,body,authenticated=true)=>host.fetch(new Request(origin+'/frontbase-bootstrap/'+path,{method:body===undefined?'GET':'POST',headers:{origin,'content-type':'application/json',...(authenticated&&cookie?{cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)}));
+assert.equal((await request('api/configuration')).status,403);assert.equal((await request('')).status,200);
+assert.equal((await host.fetch(new Request('https://wrong.example/frontbase-bootstrap/'))).status,403);
+const claim=await request('api/claim',{token:env.FRONTBASE_BOOTSTRAP_TOKEN});assert.equal(claim.status,200);cookie=claim.headers.get('set-cookie').split(';')[0];
+if(process.env.HOSTED_DOCKER_RELAY==='1'){const previous=globalThis.fetch;try{globalThis.fetch=async input=>{assert.equal(String(input),'https://relay.example/health');return Response.json({providers:['cloudflare']});};const status=await host.fetch(new Request(origin+'/api/provider-oauth/status',{headers:{cookie}}));assert.equal(status.status,200);assert.equal((await status.json()).providers[0].available,true);const started=await host.fetch(new Request(origin+'/api/provider-oauth/cloudflare/start',{method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify({returnPath:'/frontbase-bootstrap/'})}));assert.equal(started.status,200);assert.equal(new URL((await started.json()).url).origin,'https://relay.example');}finally{globalThis.fetch=previous;}}
+const manifest=defaultDeploymentManifest('docker');assert.equal(manifest.bindings['state-db'].adapterId,'sqlite-file');
+const review=await request('api/review',{manifest});assert.equal(review.status,200);const {reviewId}=await review.json();
+const applied=await request('api/apply',{reviewId,credentials:{}});assert.equal(applied.status,200);const result=await applied.json();assert.equal(result.phase,'active');assert.ok(result.nextSetup.startsWith('/setup#/setup?claim='));assert.equal(boots,1);assert.ok(values.APP_DB_URL.endsWith('/application.db'));assert.ok(values.SESSION_SECRET);assert.equal(values.ADMIN_PASSWORD,undefined);if(process.env.HOSTED_DOCKER_RELAY==='1')assert.equal(values.FRONTBASE_OAUTH_RELAY_URL,'https://relay.example');
+assert.equal((await request('api/claim',{token:env.FRONTBASE_BOOTSTRAP_TOKEN})).status,410);
+const receipt=await host.journal.read(host.context);assert.ok(!JSON.stringify(receipt).includes(values.SETUP_TOKEN));
+const restarted=await createDockerBootstrapHost({...options,env:{...env,FRONTBASE_BOOTSTRAP_EXPIRES_AT:'expired',FRONTBASE_BOOTSTRAP_TOKEN:''}});assert.equal(boots,2);assert.equal((await restarted.fetch(new Request(origin+'/frontbase-bootstrap/'))).status,410);assert.equal((await restarted.fetch(new Request(origin+'/api/auth/me'))).status,401);
+await assert.rejects(createDockerBootstrapHost({...options,boot:async()=>{throw Error('db unavailable');}}),/db unavailable/);
+await assert.rejects(createDockerBootstrapHost({...options,env:{...env,FRONTBASE_INSTALLATION_ID:randomUUID()}}),/identity/);
+const separate=mkdtempSync(join(tmpdir(),'fb-existing-'));writeFileSync(join(separate,'application.db'),'existing');const guarded=await createDockerBootstrapHost({...options,env:{...env,FRONTBASE_BOOTSTRAP_DIRECTORY:resolve(separate)}});await assert.rejects(guarded.executor.preflight(guarded.context,manifest),/existing_state/);
+const failureDir=mkdtempSync(join(tmpdir(),'fb-failed-'));const failed=await createDockerBootstrapHost({...options,env:{...env,FRONTBASE_BOOTSTRAP_DIRECTORY:resolve(failureDir)},boot:async()=>{throw Error('database_unavailable');}});
+const {reviewBootstrap,applyBootstrap,reconcileBootstrap}=await import('../packages/edge-core/dist/deployment-bootstrap.js');const pending=await reviewBootstrap(failed.context,manifest,failed.journal,failed.executor);const uncertain=await applyBootstrap(failed.context,pending.operationId,{},failed.journal,failed.executor);assert.equal(uncertain.phase,'uncertain');assert.equal((await reconcileBootstrap(failed.context,failed.journal,failed.executor)).phase,'uncertain');await assert.rejects(reviewBootstrap(failed.context,manifest,failed.journal,failed.executor));assert.ok(existsSync(join(failureDir,'runtime.json')));
+await assert.rejects(createDockerBootstrapHost({...options,env:{...env,FRONTBASE_BOOTSTRAP_DIRECTORY:resolve(failureDir)},boot:async()=>{throw Error('database_unavailable');}}),/database_unavailable/);
+const persisted=JSON.parse(readFileSync(join(directory,'runtime.json'),'utf8'));assert.equal(persisted.environment.SESSION_SECRET,values.SESSION_SECRET);
+console.log('Docker hosted bootstrap: zero-state, ownership, origin, apply, setup handoff, restart, secret isolation and installed-state refusal PASS');

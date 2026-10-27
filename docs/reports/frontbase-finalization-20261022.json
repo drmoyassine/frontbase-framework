@@ -1,0 +1,580 @@
+{
+  "version": 1,
+  "date": "2026-10-22",
+  "source": "8bf6248de71eb769a0b9d5a20798fb883189b9cc",
+  "branch": "codex/integrated-finalization-20261022",
+  "integration": "76929191fcb8fee7f5c75160e91ab85f4cb89bd4",
+  "deploymentIncluded": true,
+  "node": "v24.19.0",
+  "pnpm": "10.15.1",
+  "platform": "win32",
+  "lockfileSHA256": "a552e79728c3a4f5625c66de8b5c4c1b85d71e9602ed97b51b7d65d12f53c146",
+  "packages": [
+    {
+      "path": "packages/admin-console/package.json",
+      "name": "@frontbase/admin-console",
+      "version": "0.0.0",
+      "private": true,
+      "engines": {},
+      "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "check": "tsc -p tsconfig.json --noEmit",
+        "test": "node test/no-leak.mjs",
+        "test:mutation": "node test/mutation.mjs"
+      },
+      "workspaceDependencies": []
+    },
+    {
+      "path": "packages/backend/package.json",
+      "name": "@frontbase/backend",
+      "version": "0.0.0",
+      "private": false,
+      "engines": {},
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "check": "tsc -p tsconfig.json --noEmit",
+        "test:publication-chunks": "node test/site-publication-chunks.mjs",
+        "test:publication-manifest": "node test/site-publication-manifest.mjs",
+        "test:publication-manifest-mutation": "node test/site-publication-manifest-mutation.mjs",
+        "test:publication-chunks-mutation": "node test/site-publication-chunks-mutation.mjs",
+        "test:page-route-audit": "node test/route-namespace-audit.mjs && node test/page-route-audit.mjs && node test/route-namespace-audit-controls.mjs && node test/page-route-audit-controls.mjs && node test/capture-route-inventory-controls.mjs",
+        "test:catalog-route-inventory": "node test/catalog-route-inventory-controls.mjs",
+        "contracts:emit": "tsc -p tsconfig.json && node scripts/emit-openapi.mjs",
+        "contracts:check": "tsc -p tsconfig.json && node scripts/emit-openapi.mjs --check",
+        "test": "tsc -p tsconfig.json && node test/console.mjs && node test/authz.mjs && node test/publish.mjs && node test/errors.mjs && node test/seed.mjs && node test/login-e2e.mjs && node test/provision.mjs && node test/setup.mjs && node test/deployability.mjs && node test/migrations.mjs && node test/migrations-concurrency.mjs && node test/secret-cipher.mjs && node test/enrichment.mjs && node test/automations.mjs && node test/storage.mjs && node test/storage-delete.mjs && node test/storage-upload.mjs && node test/provisioning.mjs && node test/storage-live.mjs && node test/provisioning-live.mjs && node test/supabase-provisioning.mjs && node test/supabase-bootstrap.mjs && node test/data-studio.mjs && node test/postgres-datasource.mjs && node test/plans.mjs && node test/plan-limits.mjs && node test/feature-gates.mjs && node test/async-execution.mjs && node test/durable-execution.mjs && node test/durable-execution-live.mjs && node test/compat-variables.mjs && node test/compat-auth-guard.mjs && node test/compat-wave1.mjs && node test/compat-wave1b.mjs && node test/auth-form-primary.mjs && node test/external-request.mjs && node test/sdk-http.mjs && node test/directory-configuration.mjs && node test/site-configuration.mjs && node test/site-page-reference.mjs && node test/directory-preview.mjs && node test/editorial.mjs && node test/editorial-approval.mjs && node test/site-publication.mjs && node test/site-publication-seo.mjs && node test/site-publication-controls.mjs && node test/site-publication-chunks.mjs && node test/site-publication-manifest.mjs && node test/site-publication-chunk-integration.mjs && node test/page-changes.mjs && node test/template-preflight.mjs && node test/template-artifact.mjs && node test/compat-work-e.mjs && node test/compat-parity-foundation.mjs && node test/compat-security.mjs && node test/compat-database-security.mjs && node test/compat-sync-functional.mjs && node test/providers-supabase.mjs && node test/providers-neon.mjs && node test/providers-turso.mjs && node test/providers-cloudflare.mjs && node test/providers-google_sheets.mjs && node test/providers-wordpress.mjs && node test/providers-s3.mjs &&node test/console-retirement.mjs && node test/routed-ops.mjs && node test/compat-conformance.mjs && node test/compat-negative.mjs && node test/compat-tenant-matrix.mjs && node test/edge-defaults.mjs && node test/system-services.mjs && node test/native-kv.mjs && node test/native-r2.mjs && node test/system-queue.mjs && node test/email-inbound.mjs && node test/translation-storage.mjs && node test/translation-generation.mjs && node test/translation-generation-live.mjs && node test/rag.mjs && node test/system-display.mjs && node test/compat-behavior-auth.mjs --gate && node test/tenant-host.mjs && node test/cloud-serving.mjs && node test/cloud-signup.mjs && node test/admin-tenants.mjs && node test/cloud-plan-gates.mjs && node test/cloud-rate-limit.mjs && node test/landing-publication.mjs && node test/deployment-bindings.mjs",
+        "test:mutation": "node test/mutation.mjs && node test/auth-form-primary-mutation.mjs && node test/external-request-mutation.mjs && node test/sdk-http-mutation.mjs && node test/site-configuration-mutation.mjs && node test/site-page-reference-mutation.mjs && node test/directory-preview-mutation.mjs && node test/directory-layout-mutation.mjs && node test/editorial-mutation.mjs && node test/editorial-approval-mutation.mjs && node test/site-publication-mutation.mjs && node test/site-publication-seo-mutation.mjs && node test/site-publication-controls-mutation.mjs && node test/site-publication-chunks-mutation.mjs && node test/site-publication-manifest-mutation.mjs && node test/site-publication-chunk-integration-mutation.mjs && node test/page-changes-mutation.mjs && node test/template-preflight-mutation.mjs && node test/template-artifact-mutation.mjs && node test/landing-publication-mutation.mjs && node test/translation-storage-mutation.mjs && node test/translation-generation-mutation.mjs",
+        "gate:cf22": "tsc -p tsconfig.json && node test/cf22-gates.mjs",
+        "conformance": "node test/compat-conformance.mjs",
+        "test:conformance-fixtures": "node test/conformance-fixture-mutation.mjs",
+        "behavior": "node test/compat-conformance.mjs --gate --behavior --behavior-gate",
+        "behavior:auth": "node test/compat-behavior-auth.mjs --gate",
+        "test:publication-integration": "node test/site-publication-chunk-integration.mjs",
+        "test:publication-integration-mutation": "node test/site-publication-chunk-integration-mutation.mjs",
+        "test:translation-storage": "node test/translation-storage.mjs",
+        "test:translation-storage-mutation": "node test/translation-storage-mutation.mjs",
+        "test:menus": "node test/menus.mjs && node test/menu-audience.mjs && node test/menu-audience-host.mjs && node test/menus-snapshot.mjs && node test/menus-publication.mjs && node test/app-user-session.mjs && node test/menus-capture.mjs && node test/menus-preview-links.mjs",
+        "test:menus-mutation": "node test/menus-mutation.mjs && node test/app-user-session-mutation.mjs && node test/menus-workflow-mutation.mjs",
+        "test:translation-generation": "node test/translation-generation.mjs && node test/providers-openrouter.mjs && node test/translation-models.mjs",
+        "test:translation-generation-live": "node test/translation-generation-live.mjs",
+        "test:translation-live-list": "node test/translation-live-list.mjs",
+        "test:translation-generation-mutation": "node test/translation-generation-mutation.mjs",
+        "test:translation-allowance": "node test/translation-allowance.mjs",
+        "test:translation-allowance-mutation": "node test/translation-allowance-mutation.mjs",
+        "test:translation-allowance-lifecycle": "node test/translation-allowance-lifecycle.mjs",
+        "test:translation-allowance-lifecycle-mutation": "node test/translation-allowance-lifecycle-mutation.mjs",
+        "test:translation-batches": "node test/translation-batches.mjs",
+        "test:translation-batches-mutation": "node test/translation-batches-mutation.mjs",
+        "test:translation-homepage": "node test/translation-homepage.mjs",
+        "test:translation-homepage-mutation": "node test/translation-homepage-mutation.mjs",
+        "test:translation-page-preview": "node test/translation-page-preview.mjs",
+        "test:translation-page-preview-mutation": "node test/translation-page-preview-mutation.mjs",
+        "test:translation-homepage-records": "node test/translation-homepage-records.mjs",
+        "test:translation-homepage-directory": "node test/translation-homepage-directory.mjs",
+        "test:translation-homepage-explore": "node test/translation-homepage-explore.mjs",
+        "test:translation-homepage-versions": "node test/translation-homepage-versions.mjs",
+        "test:translation-page-publication": "node test/translation-page-publication.mjs",
+        "test:translation-publication-scale": "node test/translation-publication-scale.mjs",
+        "test:translation-publication-scale-mutation": "node test/translation-publication-scale-mutation.mjs",
+        "test:translation-coverage": "node test/translation-coverage.mjs",
+        "test:translation-record-keys": "node test/translation-record-keys.mjs",
+        "test:translation-record-preview": "node test/translation-record-preview.mjs",
+        "test:translation-record-preview-mutation": "node test/translation-record-preview-mutation.mjs",
+        "test:translation-history": "node test/translation-history.mjs",
+        "test:translation-history-mutation": "node test/translation-history-mutation.mjs",
+        "test:translation-glossary": "node test/translation-glossary.mjs",
+        "test:translation-glossary-mutation": "node test/translation-glossary-mutation.mjs",
+        "test:translation-memory": "node test/translation-memory.mjs",
+        "test:translation-memory-mutation": "node test/translation-memory-mutation.mjs",
+        "test:backup-restore": "node test/backup-restore.mjs",
+        "test:backup-restore-mutation": "node test/backup-restore-mutation.mjs",
+        "ops:selfhost": "node scripts/selfhost-ops.mjs"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/compiler",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/edge-core",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/edge-infra",
+          "range": "workspace:*"
+        }
+      ]
+    },
+    {
+      "path": "packages/builder/package.json",
+      "name": "@frontbase/builder",
+      "version": "0.1.0",
+      "private": false,
+      "engines": {},
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "check": "tsc -p tsconfig.json --noEmit",
+        "test": "node test/registry.mjs"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/edge-core",
+          "range": "workspace:*"
+        }
+      ]
+    },
+    {
+      "path": "packages/compiler/package.json",
+      "name": "@frontbase/compiler",
+      "version": "0.0.0",
+      "private": false,
+      "engines": {},
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "check": "tsc -p tsconfig.json --noEmit",
+        "test": "tsc -p tsconfig.json && node test/extractor.mjs && node test/queries.mjs && node test/manifest.mjs && node test/vite.mjs && node test/cli.mjs && node test/quickfix.mjs && node test/parity-check.mjs && node test/m3.1.5.mjs && node test/simulate.mjs && node test/sw-emit.mjs && node test/provision-d1.mjs && node test/deploy.mjs && node test/deploy-cloud.mjs && node test/cloud-domains.mjs && node test/deploy-seed.mjs && node test/interactive.mjs && node test/app-identity.mjs && node test/e2e-parity.mjs && node test/agent-success-rate.mjs && node test/perf.mjs",
+        "test:mutation": "node test/mutation.mjs"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/edge-core",
+          "range": "workspace:*"
+        }
+      ]
+    },
+    {
+      "path": "packages/console/package.json",
+      "name": "@frontbase/console",
+      "version": "0.0.0",
+      "private": true,
+      "engines": {},
+      "scripts": {
+        "test:session-recovery": "vitest run src/lib/sessionRecovery.test.ts src/lib/sessionRecoveryFetch.test.ts src/lib/auth/__tests__/CookieAuthClient.test.ts src/components/auth/SessionRecoveryDialog.test.tsx",
+        "test:session-recovery-mutation": "node scripts/test-session-recovery-mutation.mjs",
+        "dev": "vite",
+        "build": "vite build --mode community",
+        "build:cloud": "vite build --mode cloud",
+        "build:dev": "vite build --mode development",
+        "check": "tsc -p tsconfig.check.json --noEmit && tsc -p tsconfig.translation-batches.json --noEmit && tsc -p tsconfig.session-recovery.json --noEmit && tsc -p tsconfig.deployment-bindings.json --noEmit",
+        "lint": "eslint .",
+        "preview": "vite preview",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:unit": "vitest run src/lib/auth/__tests__",
+        "client:generate": "openapi-ts",
+        "test:deployment-bindings": "vitest run src/components/deployment/bindings-form.test.ts src/components/dashboard/settings/shared/DeploymentBindingsDialog.test.tsx src/components/dashboard/FileBrowser/native-storage-ui.test.tsx --pool=threads --maxWorkers=1 --no-file-parallelism"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/edge-core",
+          "range": "workspace:*"
+        }
+      ]
+    },
+    {
+      "path": "packages/edge-core/package.json",
+      "name": "@frontbase/edge-core",
+      "version": "0.0.0",
+      "private": false,
+      "engines": {},
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "check": "tsc -p tsconfig.json --noEmit",
+        "test:deployment": "node test/deployment.mjs && node test/deployment-mutation.mjs",
+        "test:menus": "node test/menus.mjs && node test/menus-native.mjs",
+        "test:localization": "node test/localization.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs",
+        "test": "node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs && node test/public-form-draft.mjs && node test/template-landing.mjs && node test/direction.mjs && node test/localization.mjs && node test/localization-surfaces.mjs && node test/list-chrome-surfaces.mjs && node test/patterns.mjs && node test/deployment.mjs",
+        "test:mutation": "node test/mutation.mjs && node test/directory-bindings-mutation.mjs && node test/public-form-draft-mutation.mjs && node test/template-landing-mutation.mjs && node test/direction-mutation.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs && node test/deployment-mutation.mjs"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/translation",
+          "range": "workspace:*"
+        }
+      ]
+    },
+    {
+      "path": "packages/edge-infra/package.json",
+      "name": "@frontbase/edge-infra",
+      "version": "0.0.0",
+      "private": false,
+      "engines": {},
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "check": "tsc -p tsconfig.json --noEmit",
+        "test": "tsc -p tsconfig.json && node test/password.mjs && node test/session.mjs && node test/runners.mjs && node test/d1-rest-count.mjs && node test/postgres-state.mjs && node test/supabase-rpc-parse.mjs && node test/providers.mjs && node test/storage-sigv4.mjs && node test/storage-r2.mjs && node test/isolation.mjs && node test/proxy-auth.mjs && node test/vault.mjs && node test/cache.mjs && node test/cache-remote.mjs && node test/qstash.mjs && node test/vector.mjs && node test/workflow-durable.mjs && node test/ratelimit.mjs && node test/no-leak.mjs && node test/translation.mjs && node test/ai-http.mjs",
+        "test:d1-rest-count": "node test/d1-rest-count.mjs",
+        "test:mutation": "node test/mutation.mjs && node test/d1-rest-count-mutation.mjs",
+        "test:translation": "node test/translation.mjs"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/translation",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/edge-core",
+          "range": "workspace:*"
+        }
+      ]
+    },
+    {
+      "path": "packages/hydrate/package.json",
+      "name": "@frontbase/hydrate",
+      "version": "0.0.0",
+      "private": true,
+      "engines": {},
+      "scripts": {
+        "build": "vite build"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/edge-core",
+          "range": "workspace:*"
+        }
+      ]
+    },
+    {
+      "path": "packages/translation/package.json",
+      "name": "@frontbase/translation",
+      "version": "0.0.0",
+      "private": false,
+      "engines": {},
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "check": "tsc -p tsconfig.json --noEmit",
+        "test": "node test/localization.mjs && node test/revisions.mjs && node test/jobs.mjs && node test/postgrest.mjs && node test/accounting.mjs && node test/accounting-http.mjs",
+        "test:mutation": "node test/localization-mutation.mjs && node test/revisions-mutation.mjs && node test/jobs-mutation.mjs && node test/postgrest-mutation.mjs && node test/accounting-mutation.mjs && node test/accounting-http-mutation.mjs",
+        "test:revisions": "node test/revisions.mjs",
+        "test:jobs": "node test/jobs.mjs",
+        "test:postgrest": "node test/postgrest.mjs",
+        "test:accounting": "node test/accounting.mjs",
+        "test:accounting-mutation": "node test/accounting-mutation.mjs",
+        "test:accounting-http": "node test/accounting-http.mjs",
+        "test:accounting-http-mutation": "node test/accounting-http-mutation.mjs"
+      },
+      "workspaceDependencies": []
+    },
+    {
+      "path": "packages/ui-components/package.json",
+      "name": "@frontbase/ui-components",
+      "version": "0.0.0",
+      "private": false,
+      "engines": {},
+      "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "check": "tsc -p tsconfig.json --noEmit"
+      },
+      "workspaceDependencies": []
+    },
+    {
+      "path": "examples/cf-full/package.json",
+      "name": "@frontbase/example-cf-full",
+      "version": "0.0.0",
+      "private": true,
+      "engines": {},
+      "scripts": {
+        "build": "node build.mjs",
+        "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
+        "e2e:cloud": "node build.mjs && playwright test -c e2e/cloud.config.ts",
+        "e2e:quality": "node build.mjs && playwright test -c e2e/pilot-quality/quality.config.ts",
+        "e2e:report": "playwright show-report e2e/report",
+        "smoke": "node build.mjs && node dist/smoke.mjs",
+        "smoke:cloud": "node build.mjs && node dist/smoke-cloud.mjs",
+        "test:publication-browser-mutation": "node build.mjs && node test/publication-browser-mutation.mjs",
+        "test:publication-browser": "node build.mjs && node .publication-e2e/browser.mjs",
+        "smoke:host": "node build.mjs && node dist/smoke-host.mjs",
+        "start:node": "node dist/node.mjs",
+        "test": "node test/console-pin.mjs",
+        "test:state-db": "node build.mjs && node test/state-db.mjs",
+        "test:session-secret": "node build.mjs && node test/session-secret.mjs",
+        "test:vercel-config": "node build.mjs && node test/vercel-config.mjs"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/admin-console",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/backend",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/builder",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/console",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/edge-core",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/edge-infra",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/hydrate",
+          "range": "workspace:*"
+        }
+      ]
+    },
+    {
+      "path": "examples/cf-worker/package.json",
+      "name": "@frontbase/example-cf-worker",
+      "version": "0.0.0",
+      "private": true,
+      "engines": {},
+      "scripts": {
+        "build": "node build.mjs",
+        "smoke": "node build.mjs && node dist/smoke.mjs"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/edge-core",
+          "range": "workspace:*"
+        }
+      ]
+    },
+    {
+      "path": "examples/education-template-proof/package.json",
+      "name": "@frontbase/example-education-template-proof",
+      "version": "0.0.0",
+      "private": true,
+      "engines": {},
+      "scripts": {
+        "build": "node src/selfcheck.mjs",
+        "check": "node src/selfcheck.mjs",
+        "test": "node test/artifact-contract.test.mjs && node test/destination-proof.test.mjs && node test/recovery-contract.test.mjs",
+        "proof": "node src/proof.mjs"
+      },
+      "workspaceDependencies": [
+        {
+          "name": "@frontbase/backend",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/compiler",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/edge-core",
+          "range": "workspace:*"
+        },
+        {
+          "name": "@frontbase/edge-infra",
+          "range": "workspace:*"
+        }
+      ]
+    }
+  ],
+  "libraryCandidateCount": 7,
+  "trackedCmsSHA256": "ae73f8eb1b3e9aa8eb5288cdf921aa028cba46718a5208686e18989ab6b0bc2d",
+  "phase": {
+    "F0": "PASS: isolated integrated candidate pinned",
+    "F1": "PASS: reproducible committed artifact; Linux build and staging deploy verified",
+    "F2": "PASS changed-surface gates; complete release mutation/behavior acceptance remains open",
+    "F3": "Homepage ACCEPT; whole multilingual NO-GO: interactive lists and route coverage",
+    "F4": "NOT RUN on combined source",
+    "F5": "retained evidence only",
+    "F6": "retained evidence only",
+    "F7": "NO-GO: runtime/scaffold pass; strict public dependency declarations fail",
+    "F8": "BOUNDED engineering sign-off recorded; public release NO-GO",
+    "F9": "NOT AUTHORIZED"
+  },
+  "staging": {
+    "reportedSource": "8bf6248de71eb769a0b9d5a20798fb883189b9cc",
+    "reportedImage": "sha256:56e25595bf8b6ea3e47c34d2d266f9481b7dd00452e7fa817f84d2f8c310b311",
+    "combinedDeployment": true,
+    "authenticatedBrowserAvailable": true,
+    "homepage": {
+      "status": "PRESERVED AND VERIFIED ON COMBINED DEPLOYMENT",
+      "before": "58/88 translated; obsolete generation1 preview refused",
+      "after": "88/88 translated; original58 unchanged; missing30 native drafts supplied without AI calls",
+      "release": "64d819235554ebee745d924f35776dd2bb94d6099229f050ed68f3c303a00493",
+      "generation": 2,
+      "publicStatus": 200,
+      "contentLanguage": "ar",
+      "direction": "rtl",
+      "canonical": "https://study-in-usa.com/ar/",
+      "policies": {
+        "missing": "source-fallback",
+        "outdated": "source-fallback"
+      },
+      "internalLinks": "all rendered relative links retain /ar/ prefix"
+    },
+    "coverage": {
+      "site": {
+        "hash": "1f92306ec971e36b2adf47d83cbc4b5fd41fb5484d49f5923a6fead72fc7c5f4",
+        "generation": 21,
+        "name": "Study in USA",
+        "origin": "https://study-in-usa.com",
+        "locale": "en",
+        "sourceLocale": "en",
+        "targetLocales": [
+          "ar"
+        ],
+        "storageDatasource": "15fb402b-7680-4411-9665-b8789386ea44"
+      },
+      "scope": "active reviewed publication index; not a count of all live datasource rows or translated records",
+      "pages": 54,
+      "surfaces": 11,
+      "recordCount": 1292,
+      "index": {
+        "institutions": 16,
+        "programs": 185,
+        "cities": 15,
+        "articles": 957,
+        "pages": 119
+      },
+      "complete": true,
+      "activeLanguagePublications": 1
+    },
+    "blockers": [
+      "Explore native language review rejects interactive live lists; do not remove controls to pass",
+      "Explore and Blog Arabic routes currently return English fallback",
+      "One Arabic Institutions503 observed before repeat200; cause remains unproven"
+    ],
+    "operatorClaim": "RELEASED: deployment, backup integrity, public/session/homepage preservation verified",
+    "predecessorSource": "585ec7601d0a3a760941fcdb19b7df94b6e61b38",
+    "predecessorImage": "sha256:0a6564cd798b7d1612809aeb6eb75806abcd144ada28fb10189ceaa022d2f3e5",
+    "deployedAt": "2026-10-22T10:28:43Z",
+    "archiveSHA256": "8d89d8e5a549911c01fa158c4e32e17a5c0c22b1933c493c3f15ba799778f810",
+    "liveCmsSHA256": "0e73882ceaad03d636acacb04008b69f1b8d0e789a859eaea6447ccd10aea4d6",
+    "backup": {
+      "path": "/data/finalization-092ba8a-20261022.db",
+      "integrity": "ok",
+      "sha256": "c878edb852fe62b4293526928eaf501f51218bff271b614e990965a604f54b8a",
+      "scope": "app SQLite; external translation-store restore not certified"
+    },
+    "smoke": {
+      "status": "PASS",
+      "rounds": [
+        {
+          "at": "2026-10-22T10:34:26.096Z",
+          "requests": 9,
+          "unexpected": 0
+        },
+        {
+          "at": "2026-10-22T10:37:40.339Z",
+          "requests": 9,
+          "unexpected": 0
+        },
+        {
+          "at": "2026-10-22T10:38:05.504Z",
+          "requests": 9,
+          "unexpected": 0
+        },
+        {
+          "at": "2026-10-22T10:38:26.842Z",
+          "requests": 9,
+          "unexpected": 0
+        }
+      ],
+      "requests": 36,
+      "scope": "bounded route smoke; not a30-minute soak or SLA/load certification"
+    }
+  },
+  "rootScripts": {
+    "//": "`deploy` exists for Cloudflare native-button command detection and uses the portable root wrangler.toml. Run the reviewed managed flow via deploy:setup or deploy:cf-full.",
+    "build": "pnpm -r build",
+    "test": "pnpm -r --filter=!@frontbase/console test",
+    "check": "pnpm -r check",
+    "test:deployment-gates": "node scripts/test-deployment-buttons.mjs && node packages/edge-infra/test/storage-deployment.mjs && node packages/backend/test/deployment-storage.mjs && node scripts/test-deployment-storage-mutation.mjs && node packages/edge-infra/test/storage-r2.mjs && node packages/backend/test/native-r2.mjs && node scripts/test-native-r2-mutation.mjs && node packages/backend/test/native-kv.mjs && node scripts/test-native-kv-mutation.mjs && node scripts/test-deployment-gates.mjs && node examples/cf-full/test/native-worker-boot.mjs && node examples/cf-full/test/vercel-boot-retry.mjs && node scripts/test-native-worker-boot-mutation.mjs && node scripts/test-vercel-upload.mjs && node scripts/test-vercel-lifecycle.mjs && node scripts/test-deployment-plan.mjs && node scripts/test-vercel-deployment-policy.mjs && node scripts/test-vercel-policy-mutation.mjs && node scripts/test-vercel-failure-matrix.mjs && node scripts/test-vercel-failure-mutation.mjs",
+    "test:mutation": "pnpm -r test:mutation",
+    "deploy:cf-full": "node scripts/deploy.mjs",
+    "deploy:community-edge": "node scripts/deploy-community.mjs",
+    "deploy": "wrangler deploy --config wrangler.toml --experimental-auto-create=false",
+    "deploy:setup": "node scripts/deployment-setup.mjs",
+    "test:deployment-setup": "node scripts/test-deployment-setup.mjs && node scripts/test-deployment-setup-options.mjs && node scripts/test-deployment-setup-mutation.mjs && node scripts/test-deployment-setup-execution.mjs && node scripts/test-cloudflare-setup-executor.mjs && node scripts/test-deployment-execution-mutation.mjs && node scripts/test-cloudflare-lifecycle.mjs && node scripts/test-cloudflare-lifecycle-mutation.mjs && node scripts/test-deployment-proposal.mjs && node scripts/test-profile-environment.mjs && node scripts/test-vercel-profile.mjs && node scripts/test-vercel-receipt.mjs && node scripts/test-vercel-binding-changes.mjs && node scripts/test-vercel-binding-changes-mutation.mjs && node scripts/test-deployment-storage-profile.mjs && node scripts/test-vercel-reconciliation.mjs && node scripts/test-vercel-reconciliation-mutation.mjs",
+    "deploy:plan": "node scripts/deployment-plan.mjs",
+    "deploy:vercel": "node scripts/deploy-vercel.mjs",
+    "deploy:deno": "node scripts/deploy-deno.mjs",
+    "cloud:ops": "node scripts/cloud-ops.mjs",
+    "contracts:embed": "node scripts/embed-community-spec.mjs",
+    "console:build": "node scripts/build-console.mjs",
+    "console:stage": "node scripts/build-console.mjs --skip-build",
+    "console:check": "node scripts/validate-console-pin.mjs",
+    "test:deployment-bindings": "node packages/backend/test/deployment-bindings.mjs && node scripts/test-deployment-bindings-mutation.mjs && pnpm --filter @frontbase/console test:deployment-bindings",
+    "test:deployment-buttons": "node scripts/test-deployment-buttons.mjs"
+  },
+  "verification": {
+    "install": {
+      "status": "PASS",
+      "command": "pnpm install --frozen-lockfile"
+    },
+    "build": {
+      "status": "PASS",
+      "command": "pnpm -r build"
+    },
+    "check": {
+      "status": "PASS",
+      "command": "pnpm -r check"
+    },
+    "functional": {
+      "status": "PASS final workspace functional rerun; initial124 backend inventory plus focused repairs",
+      "initialPasses": 122,
+      "initialFailures": [
+        "historical tenant rollback tested newest migrations instead of21/22",
+        "localized full-index latency >5000ms"
+      ],
+      "repairs": [
+        "historical boundary pinned; latest full migration suite remains intact",
+        "request-local detached manifest reader reuses validation; per-chunk verification retained"
+      ],
+      "capacityMs": {
+        "latePage": 57,
+        "firstFetch": 455,
+        "lateFetch": 506
+      },
+      "unchangedLimitMs": 5000,
+      "command": "pnpm -r --workspace-concurrency=1 --filter=!@frontbase/console test"
+    },
+    "console": {
+      "status": "PASS final source",
+      "files": 91,
+      "tests": 678,
+      "additionalRegression": {
+        "suite": "HomepageTranslationWorkspace",
+        "tests": 9,
+        "status": "PASS"
+      }
+    },
+    "externalConsumers": {
+      "status": "runtime/import/scaffold PASS; strict declaration FAIL",
+      "tarballs": 7,
+      "retainedProof": "frontbase-r1-consumer-KWXdSO",
+      "strictProof": "frontbase-r1-backend-compat-ZsWGiY",
+      "baselineDiagnosticsPerProfile": 19,
+      "mysqlDiagnosticsPerProfile": 18,
+      "newerCandidateDiagnosticsPerProfile": 65,
+      "registryPublication": false,
+      "sourceNote": "archives precede the request-local performance repair; final repack pending"
+    },
+    "criticalMutations": {
+      "status": "PASS",
+      "suites": 5,
+      "faults": 47,
+      "counts": {
+        "manifest": 8,
+        "chunkIntegration": 12,
+        "homepage": 19,
+        "scale": 5,
+        "backupRestore": 3
+      },
+      "scope": "changed critical surface, not all repo mutation suites"
+    },
+    "reproducibility": {
+      "status": "PASS",
+      "localCmsBytes": 2631779,
+      "secondBuildIdentical": true
+    },
+    "deployedLinuxScale": {
+      "status": "PASS",
+      "syntheticPublications": 18,
+      "actualLiveLanguagePublications": 1
+    }
+  }
+}

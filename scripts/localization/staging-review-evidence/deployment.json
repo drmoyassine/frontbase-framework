@@ -1,0 +1,126 @@
+{
+  "date": "2026-10-18",
+  "target": "newpanel.studygram.me \u00e2\u2020\u2019 studygram/usa-frontbase-staging",
+  "action": {
+    "id": "cmvdtwhhf002y07qqcwwh1u5b",
+    "status": "done",
+    "createdAtUTC": "2026-10-18 12:55:47",
+    "completedAtUTC": "2026-10-18 12:57:22",
+    "completedAtKuwait": "2026-10-18 15:57:22"
+  },
+  "container": {
+    "id": "39ef7cf264a719ac65061111c65e3cbfdd1ed2425cf0cdc02daf54d021652679",
+    "imageID": "sha256:bd414cbbbb02a5ebe07a4465b918070ad1f7462376283b04393839e967476af2",
+    "previousImageID": "sha256:1b080ef0c4e4c7457fe8d4173afc335e0f1b0ece4c182fdf4e284e8d9224d98a",
+    "state": "running",
+    "status": "Up 23 seconds (healthy)"
+  },
+  "preservation": {
+    "environment": true,
+    "mounts": true,
+    "deploy": true,
+    "build": true
+  },
+  "ui": {
+    "generation": 21,
+    "homepagePending": true,
+    "testDraft": true,
+    "sourceKinds": [
+      "page-default-plain-text",
+      "menu-plain-text",
+      "record-plain-text",
+      "view-record-plain-text"
+    ],
+    "executionAvailable": false,
+    "maxItems": 4,
+    "maxJobsPerContinuation": 1,
+    "threeViewsDiscovered": true,
+    "inspectorReadOnly": true,
+    "inspectorInstitutionCount": 16,
+    "noSavedAISelection": true,
+    "noSavedStorageSelection": true,
+    "paidProviderAcceptance": false,
+    "newHttpMembershipAcceptance": false
+  },
+  "build": {
+    "frozenInstall": true,
+    "fullWorkspaceBuild": true,
+    "dockerGate": true,
+    "clientProhibitedSymbolGate": true,
+    "insideImageFullSecuritySuite": false
+  },
+  "limits": [
+    "No paid provider call, owner SQL installation, source/filter/settings save or content publication",
+    "Actual new HTTP-predicate membership comparison deferred: translation AI/storage configuration is not selected",
+    "Existing Data Inspector read-only preview succeeds at16 institutions; filters unchanged",
+    "First hidden-input chooser timed out; visible drop zone upload succeeded, one deployment action only",
+    "Python certificate chain check failed; Windows Schannel verified HTTPS successfully, no TLS bypass",
+    "A broad service inventory was mistakenly rendered with existing secret configuration; subsequent output allowlisted, no values persisted to source/archive/evidence; credential rotation recommended"
+  ],
+  "source": "f49559102c126f175d0922e9502bcbc010cdda42",
+  "archive": {
+    "bytes": 6628318,
+    "sha256": "134173c575610ba4c6c5c3feb7eacd1d11f66033e08bd61ed51d5ab1bfd9b1b8",
+    "entries": 2279,
+    "excludedSyncCacheOrPrivatePaths": 12,
+    "committedSourceOnly": true
+  },
+  "publicChecks": [
+    {
+      "path": "/health",
+      "status": 200,
+      "bytes": 68,
+      "sha256": "d80a78dd836343a40f7b2cf2aea4cefa1cc664ecd9021040c6b51d74dc491f66",
+      "unchanged": true
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 103590,
+      "sha256": "323560cd6de828ea76af37a8cc925a24ece8d8c234d6925f61c0ca4d9fd5a6a2",
+      "unchanged": true
+    },
+    {
+      "path": "/explore/?type=institution",
+      "status": 200,
+      "bytes": 110605,
+      "sha256": "e89bbd864df6377cd84249d01ccbeea7ba1d3cf05643af0503536f2a0f790b57",
+      "unchanged": true
+    },
+    {
+      "path": "/explore/?type=program",
+      "status": 200,
+      "bytes": 148931,
+      "sha256": "f71791e39387a689984893ba8e5f1fce87fb7a10da08250cc6db7e153850f33a",
+      "unchanged": true
+    },
+    {
+      "path": "/blog/",
+      "status": 200,
+      "bytes": 72420,
+      "sha256": "2b1db21592abe3be5bbbbf58f2a770aa1b26b965225086edb97d1a709988a30a",
+      "unchanged": true
+    },
+    {
+      "path": "/api/project/translation-generation/",
+      "status": 401,
+      "bytes": 36,
+      "sha256": "9a15b0a3fe33ddcd5af28fef761c068e8d2c5a3d736275728f3fbeef79f0cbc9",
+      "unchanged": true
+    },
+    {
+      "path": "/api/project/translation-storage/",
+      "status": 401,
+      "bytes": 36,
+      "sha256": "9a15b0a3fe33ddcd5af28fef761c068e8d2c5a3d736275728f3fbeef79f0cbc9",
+      "unchanged": true
+    },
+    {
+      "path": "/api/project/translation-batches/",
+      "status": 401,
+      "bytes": 36,
+      "sha256": "9a15b0a3fe33ddcd5af28fef761c068e8d2c5a3d736275728f3fbeef79f0cbc9",
+      "unchanged": true
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "name": "@frontbase/edge-core",
+  "version": "0.0.0",
+  "description": "The Chimera Engine — unified priority router, eSSR renderer, DataProvider DI, workflow engine, client behaviors runtime, service-worker primitives",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./deployment-bootstrap": {"types":"./dist/deployment-bootstrap.d.ts","import":"./dist/deployment-bootstrap.js"},
+    "./template-policy": {"types":"./dist/template-policy.d.ts","import":"./dist/template-policy.js"},
+    "./browser/images": {"types":"./dist/image-fallback.d.ts","import":"./dist/image-fallback.js"},
+    "./deployment": {"types":"./dist/deployment.d.ts","import":"./dist/deployment.js"},
+    "./localization": {"types":"./dist/localization/index.d.ts","import":"./dist/localization/index.js"},
+    "./localization/batches": {"types":"./dist/localization/batches.d.ts","import":"./dist/localization/batches.js"},
+    "./browser/render-block": {"types":"./dist/ssr/PageRenderer.d.ts","import":"./dist/ssr/PageRenderer.js"},
+    "./browser/block-versions": {"types":"./dist/block-versions-browser.d.ts","import":"./dist/block-versions-browser.js"},
+    "./block-versions": {"types":"./dist/block-versions.d.ts","import":"./dist/block-versions.js"},
+    "./saved-view-filters": {"types":"./dist/saved-view-filters.d.ts","import":"./dist/saved-view-filters.js"},
+    "./conditions": {"types":"./dist/conditions.d.ts","import":"./dist/conditions.js"},
+    "./browser/theme": {"types":"./dist/public-theme.d.ts","import":"./dist/public-theme.js"},
+    "./menu-components": {"types":"./dist/menu-components.d.ts","import":"./dist/menu-components.js"},
+    "./menus": {"types":"./dist/menus.d.ts","import":"./dist/menus.js"},
+    "./browser/template": {"types": "./dist/hero-behavior.d.ts", "import": "./dist/hero-behavior.js"},
+    "./directory/publication": {"types": "./dist/directory/publication.d.ts", "import": "./dist/directory/publication.js"},
+    "./directory/configuration": {
+      "types": "./dist/directory/configuration.d.ts",
+      "import": "./dist/directory/configuration.js"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./workflow": {
+      "types": "./dist/workflow/index.d.ts",
+      "import": "./dist/workflow/index.js"
+    },
+    "./ssr/components/interactive": {
+      "types": "./dist/ssr/components/interactive.d.ts",
+      "import": "./dist/ssr/components/interactive.js"
+    },
+    "./ssr/components/static": {
+      "types": "./dist/ssr/components/static.d.ts",
+      "import": "./dist/ssr/components/static.js"
+    },
+    "./ssr/components/data": {
+      "types": "./dist/ssr/components/data.d.ts",
+      "import": "./dist/ssr/components/data.js"
+    },
+    "./ssr/components/landing": {
+      "types": "./dist/ssr/components/landing/index.d.ts",
+      "import": "./dist/ssr/components/landing/index.js"
+    },
+    "./ssr/baseStyles": {
+      "types": "./dist/ssr/baseStyles.d.ts",
+      "import": "./dist/ssr/baseStyles.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test:bootstrap": "node test/deployment-bootstrap.mjs && node test/deployment-bootstrap-mutation.mjs",
+    "test:deployment": "node test/deployment.mjs && node test/deployment-mutation.mjs",
+    "test:menus": "node test/menus.mjs && node test/menus-native.mjs",
+    "test:localization": "node test/localization.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs",
+    "test:action-navigation-mutation": "node test/action-navigation-mutation.mjs",
+    "test": "node test/template-policy.mjs && node test/gallery.mjs && node test/action-navigation.mjs && node test/parity.mjs && node test/wysiwyg-parity.mjs && node test/visual-layout.mjs && node test/engine.mjs && node test/scope.mjs && node test/fallback.mjs && node test/behaviors.mjs && node test/workflow.mjs && node test/directory-bindings.mjs && node test/public-form-draft.mjs && node test/template-landing.mjs && node test/direction.mjs && node test/localization.mjs && node test/localization-surfaces.mjs && node test/list-chrome-surfaces.mjs && node test/patterns.mjs && node test/deployment.mjs",
+    "test:mutation": "node test/mutation.mjs && node test/directory-bindings-mutation.mjs && node test/public-form-draft-mutation.mjs && node test/template-landing-mutation.mjs && node test/direction-mutation.mjs && node test/localization-mutation.mjs && node test/patterns-mutation.mjs && node test/deployment-mutation.mjs"
+  },
+  "dependencies": {
+    "@frontbase/translation": "workspace:*",
+    "hono": "^4.6.0",
+    "liquidjs": "^10.24.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.1",
+    "lucide-react": "0.462.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

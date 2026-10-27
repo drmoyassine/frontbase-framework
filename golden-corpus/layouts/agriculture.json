@@ -1,0 +1,460 @@
+{
+  "title": "Frontbase for Agriculture | Precision Farming at the Edge",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "ag-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "ag-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "ag-menu-problem",
+                  "label": "The Dead Zone",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "ag-menu-solution",
+                  "label": "Edge Farming",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "ag-menu-enterprise",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "ag-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(120 30% 12%) 0%, hsl(110 25% 16%) 50%, hsl(120 30% 10%) 100%)"
+            },
+            "children": [
+              {
+                "id": "ag-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Smart Agriculture",
+                  "variant": "secondary",
+                  "icon": "Tractor",
+                  "iconPosition": "left",
+                  "backgroundColor": "#4ade80",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "ag-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "When the cell tower drops, the harvest continues.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "850px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 32
+                    }
+                  }
+                }
+              },
+              {
+                "id": "ag-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Modern farms span thousands of acres of cellular dead zones. If your automated irrigation or connected tractors rely on the cloud, a dropped connection stops the machinery. Frontbase lets you run complete, autonomous edge nodes directly at the barn."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "ag-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "ag-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Secure Your Yield",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "ag-hero-cta-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "ag-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The Cloud Doesn't Reaches The Field",
+              "subtitle": "Precision farming generates terabytes of data. Sending it all to AWS over 3G is impossible.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "ag-prob-1",
+                  "icon": "WifiOff",
+                  "title": "Cellular Dead Zones",
+                  "description": "Only 25% of U.S. farmland has reliable cellular coverage. Cloud-native AgTech applications frequently timeout, leaving expensive automated machinery stalled mid-field while waiting for a server in Virginia."
+                },
+                {
+                  "id": "ag-prob-2",
+                  "icon": "Droplet",
+                  "title": "Irrigation Failures",
+                  "description": "When a centralized weather API or cloud orchestrator goes down, smart irrigation systems default to off. Crop yields drop instantly. Water management requires local decision-making."
+                },
+                {
+                  "id": "ag-prob-3",
+                  "icon": "HardDrive",
+                  "title": "Bandwidth Choke Points",
+                  "description": "A single drone mapping flight generates gigabytes of multispectral imagery. Uploading this over rural internet takes days. Real-time weed detection and NDVI analysis is impossible with cloud latency."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "ag-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Autonomous Edge Hubs",
+              "subtitle": "Deploy Frontbase to an industrial PC in the barn. Process everything locally.",
+              "headerAlignment": "center",
+              "columns": 3,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "ag-sol-1",
+                  "icon": "Tractor",
+                  "title": "Fleet Telemetry at the Barn",
+                  "description": "Tractors sync their telemetry to the local edge node via LoRaWAN or farm WiFi. Dashboards load instantly for farm managers — no internet required."
+                },
+                {
+                  "id": "ag-sol-2",
+                  "icon": "Cpu",
+                  "title": "Local AI & Computer Vision",
+                  "description": "Process drone imagery directly on the edge node. Detect weeds, blight, and pest damage locally, sending only a 10KB alert payload to the central cloud."
+                },
+                {
+                  "id": "ag-sol-3",
+                  "icon": "Database",
+                  "title": "Offline-First Dashboards",
+                  "description": "Staff in the field use tablets connected to the local edge network. They can log maintenance, update crop status, and check soil moisture with zero lag."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "ag-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(120 30% 12%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "ag-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Bring precision farming offline.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "ag-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to build AgTech portals that survive the dead zone."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "ag-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "ag-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for resilient agriculture.",
+              "columns": [
+                {
+                  "id": "ag-col-solutions",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "ag-link-tractors",
+                      "text": "Fleet Telemetry",
+                      "href": "#"
+                    },
+                    {
+                      "id": "ag-link-irrigation",
+                      "text": "Smart Irrigation",
+                      "href": "#"
+                    },
+                    {
+                      "id": "ag-link-drones",
+                      "text": "Computer Vision",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "ag-col-industries",
+                  "title": "Industries",
+                  "links": [
+                    {
+                      "id": "ag-link-environment",
+                      "text": "Environment",
+                      "href": "/environment"
+                    },
+                    {
+                      "id": "ag-link-logistics",
+                      "text": "Logistics",
+                      "href": "/logistics"
+                    },
+                    {
+                      "id": "ag-link-manufacturing",
+                      "text": "Manufacturing",
+                      "href": "/manufacturing"
+                    }
+                  ]
+                },
+                {
+                  "id": "ag-col-company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "ag-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "ag-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "ag-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "ag-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Technology that grows.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

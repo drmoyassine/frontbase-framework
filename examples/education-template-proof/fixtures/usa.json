@@ -1,0 +1,62 @@
+{
+  "destinationId": "usa",
+  "comment": "Synthetic USA destination. Every row, name, path, URL and contact here is invented for the prototype; nothing is copied from any real deployment. PRIVATE_* values are canaries that must never appear in exports or preview projections.",
+  "tenant": "tenant-usa-fixture",
+  "content": {
+    "tables": {
+      "city": "usa_cities",
+      "institution": "usa_institutions",
+      "program": "usa_programs",
+      "article": "usa_articles"
+    },
+    "columns": {
+      "city": { "id": "id", "title": "title", "country": "country" },
+      "institution": { "id": "id", "title": "title", "country": "country", "city": "city", "original_path": "original_path", "summary": "summary", "body": "body", "cover": "cover", "provider_ref": "provider_ref" },
+      "program": { "id": "id", "title": "title", "country": "country", "institution": "institution", "original_path": "original_path", "summary": "summary", "body": "body", "cover": "cover", "provider_ref": "provider_ref" },
+      "article": { "id": "id", "title": "title", "country": "country", "original_path": "original_path", "body": "body", "kind": "kind", "origin": "origin", "byline": "byline", "published_at": "published_at", "cover": "cover", "cover_alt": "cover_alt", "evidence": "evidence" }
+    },
+    "ddl": [
+      "CREATE TABLE usa_cities (id INTEGER PRIMARY KEY, title TEXT, country INTEGER)",
+      "CREATE TABLE usa_institutions (id INTEGER PRIMARY KEY, title TEXT, country INTEGER, city INTEGER, original_path TEXT, summary TEXT, body TEXT, cover TEXT, provider_ref TEXT)",
+      "CREATE TABLE usa_programs (id INTEGER PRIMARY KEY, title TEXT, country INTEGER, institution INTEGER, original_path TEXT, summary TEXT, body TEXT, cover TEXT, provider_ref TEXT)",
+      "CREATE TABLE usa_articles (id INTEGER PRIMARY KEY, title TEXT, country INTEGER, original_path TEXT, body TEXT, kind TEXT, origin TEXT, byline TEXT, published_at TEXT, cover TEXT, cover_alt TEXT, evidence TEXT)"
+    ],
+    "seed": [
+      "INSERT INTO usa_cities VALUES (1, 'Springfield (fixture)', 840), (2, 'Lakeside (fixture)', 840)",
+      "INSERT INTO usa_institutions VALUES (101, 'Springfield Metropolitan University (fixture)', 840, 1, '/springfield-metropolitan-university/', 'Fixture public university summary.', '<p>Fixture institution body.</p>', 'https://img.example/usa/springfield-cover.jpg', 'PRIVATE_PROVIDER_CANARY_USA')",
+      "INSERT INTO usa_institutions VALUES (102, 'Rivertown Institute of Technology (fixture)', 840, 1, '/rivertown-institute-of-technology/', 'Fixture institute summary.', '<p>Fixture institute body.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_USA')",
+      "INSERT INTO usa_institutions VALUES (103, 'Lakeside College (fixture)', 840, 2, '/lakeside-college/', 'Fixture college summary.', '<p>Fixture college body.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_USA')",
+      "INSERT INTO usa_programs VALUES (201, 'Fixture Bachelor of Computer Science', 840, 101, '/springfield-metropolitan-university/computer-science/', 'Fixture program summary.', '<p>Fixture program body.</p>', 'https://img.example/usa/cs-cover.jpg', 'PRIVATE_PROVIDER_CANARY_USA')",
+      "INSERT INTO usa_programs VALUES (202, 'Fixture Master of Business Administration', 840, 101, '/springfield-metropolitan-university/mba/', 'Fixture MBA summary.', '<p>Fixture MBA body.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_USA')",
+      "INSERT INTO usa_programs VALUES (203, 'Fixture Associate of Applied Science', 840, 102, '/rivertown-institute-of-technology/aas/', 'Fixture AAS summary.', '<p>Fixture AAS body.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_USA')",
+      "INSERT INTO usa_programs VALUES (204, 'Wrong-country program (fixture)', 999, 101, '/springfield-metropolitan-university/excluded/', 'Must never resolve.', '<p>Excluded.</p>', NULL, 'PRIVATE_PROVIDER_CANARY_USA')",
+      "INSERT INTO usa_articles VALUES (301, 'Fixture admissions calendar', 840, '/blog/admissions-calendar/', '[{\"kind\":\"paragraph\",\"runs\":[{\"text\":\"Fixture article body.\"}]}]', 'article', 'https://usa.example', 'Fixture Byline', '2026-01-15', NULL, 'Fixture cover alt', 'PRIVATE_ARTICLE_EVIDENCE_USA')"
+    ]
+  },
+  "bindings": {
+    "datasourceName": "usa-fixture-content",
+    "site": { "name": "Study in the USA (fixture)", "destination": "the USA", "origin": "https://usa.example", "locale": "en" },
+    "contacts": { "email": "counselor@usa.example", "whatsapp": "" },
+    "routes": { "directory": "/explore/", "blog": "/blog/" },
+    "collections": {
+      "institution": { "table": "usa_institutions", "scopeField": "country", "scopeValue": 840, "fields": { "id": "id", "title": "title", "originalPath": "original_path", "summary": "summary", "body": "body", "cover": "cover", "cityId": "city" } },
+      "program": { "table": "usa_programs", "scopeField": "country", "scopeValue": 840, "fields": { "id": "id", "title": "title", "originalPath": "original_path", "summary": "summary", "body": "body", "cover": "cover", "institutionId": "institution" } },
+      "city": { "table": "usa_cities", "scopeField": "country", "scopeValue": 840, "fields": { "id": "id", "title": "title" } },
+      "article": { "table": "usa_articles", "scopeField": "country", "scopeValue": 840, "fields": { "id": "id", "title": "title", "originalPath": "original_path", "body": "body", "contentRole": "kind", "sourceOrigin": "origin", "byline": "byline", "publishedAt": "published_at", "cover": "cover", "coverAlt": "cover_alt" } }
+    },
+    "detailSamplePaths": {
+      "institution": "/springfield-metropolitan-university/",
+      "program": "/springfield-metropolitan-university/computer-science/",
+      "article": "/blog/admissions-calendar/"
+    }
+  },
+  "expect": {
+    "institutionListIds": [103, 102, 101],
+    "programListIds": [203, 201, 202],
+    "programIdsForInstitution101": [201, 202],
+    "institutionDetailId": 101,
+    "programDetailId": 201,
+    "articleListIds": [301],
+    "excludedRowIds": [204]
+  }
+}

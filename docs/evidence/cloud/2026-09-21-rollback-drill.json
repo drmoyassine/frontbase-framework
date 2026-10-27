@@ -1,0 +1,55 @@
+{
+  "format": 1,
+  "kind": "frontbase-cloud-rollback-drill",
+  "environment": "isolated CL-6 exact routes",
+  "worker": "app",
+  "acceptedVersionId": "817a7279-713b-4e1b-927a-e4ad9bdbacad",
+  "rollbackVersionId": "b1febf24-7391-4132-a49f-aad082dd28a9",
+  "status": "pass",
+  "steps": [
+    {
+      "name": "pre-rollback health",
+      "evidence": "2026-09-21-health.json",
+      "checkedAt": "2026-09-21T22:03:26.484Z",
+      "status": "pass"
+    },
+    {
+      "name": "rollback to previous known-good version",
+      "cloudflareDeploymentCreatedAt": "2026-09-21T22:09:54.340Z",
+      "message": "Frontbase CL-7 isolated rollback rehearsal",
+      "activeVersionId": "b1febf24-7391-4132-a49f-aad082dd28a9",
+      "status": "pass"
+    },
+    {
+      "name": "post-rollback health",
+      "evidence": "2026-09-21-rollback-b1febf24-health.json",
+      "checkedAt": "2026-09-21T22:05:36.543Z",
+      "status": "pass"
+    },
+    {
+      "name": "roll forward to accepted version",
+      "cloudflareDeploymentCreatedAt": "2026-09-21T22:10:41.196Z",
+      "message": "Frontbase CL-7 rollback rehearsal: restore accepted version",
+      "activeVersionId": "817a7279-713b-4e1b-927a-e4ad9bdbacad",
+      "status": "pass"
+    },
+    {
+      "name": "post-roll-forward health",
+      "evidence": "2026-09-21-rollforward-817a7279-health.json",
+      "checkedAt": "2026-09-21T22:06:13.414Z",
+      "status": "pass"
+    },
+    {
+      "name": "final Cloudflare deployment audit",
+      "activeVersionId": "817a7279-713b-4e1b-927a-e4ad9bdbacad",
+      "rollbackDeploymentCreatedAt": "2026-09-21T22:09:54.340Z",
+      "rollForwardDeploymentCreatedAt": "2026-09-21T22:10:41.196Z",
+      "status": "pass"
+    }
+  ],
+  "notes": [
+    "Only the isolated app Worker named app was changed; its three exact CL-6 routes remained attached and the production wildcard route was not changed.",
+    "The health probe timestamps precede the Cloudflare audit query because clock progress during the provider listing explains the apparent ordering; the health responses were taken immediately after each deployment command.",
+    "The managed local execution sandbox denied nested Wrangler process spawning, so the two Wrangler rollback commands were invoked directly from the shell. The cloud-ops rollback command remains the repeatable operator path outside that sandbox and is covered by CLI parsing/tooling tests."
+  ]
+}

@@ -1,0 +1,36 @@
+# Shared Supabase/native PostgREST datasource — 2026-10-19
+
+## Implementation
+
+The existing Supabase datasource kind now carries explicit `endpoint_format` (`supabase` or `postgrest`) and `schema` settings. Missing settings retain standard `/rest/v1` and `public` defaults. Native format uses the supplied REST endpoint directly; there is no endpoint guessing, HTTP fallback or separate driver. The shared credential resolver forwards its native endpoint override into the existing datasource runner. Schema/header handling reuses the canonical Supabase/PostgREST client. Native configurations skip Supabase Management API enrichment and bootstrap SQL.
+
+The datasource form exposes both settings, restores their non-secret values through `extra_config`, allows manual HTTP connection tests and labels configured native cards PostgREST. The update route now accepts its existing flat form payload and merges supplied fields with the encrypted stored configuration. Empty flat credential fields preserve saved values. No credentials or full connection configuration are returned to the browser.
+
+All three Supabase-family connection-test routes now perform a bounded authenticated GET of the selected REST root's OpenAPI metadata, with the selected schema's profile headers. They do not execute SQL, call RPCs, enumerate rows, install migrations or silently try alternate endpoints. The shared header builder preserves JWT versus opaque Supabase key behavior. Existing HTTPS/SSRF/redirect guards, tenant authentication/ownership and encrypted storage remain in place. Metadata is bounded to 8MiB with a 10-second deadline, strict UTF-8 and structural validation; remote bodies/errors are not echoed. Canned errors distinguish credentials, permissions, missing endpoints, unavailable schemas, malformed metadata and transport failure. The form displays those diagnostics; card notifications retain the existing safe summary.
+
+This is HTTP connectivity/schema acceptance, not proof that every Inspector operation works. Existing SQL-based table introspection still needs its configured SQL RPC capabilities and contains public-schema assumptions. Broader Inspector portability, selected translation-source schemas and application-specific RPC acceptance remain separate. Translation destination persistence continues to use its dedicated `translations` protocol/schema check. Existing standard Supabase creation/bootstrap behavior is retained; no generic SQL functions are installed for native connections or by the new test.
+
+## Verification
+
+[Sanitized gates](../../scripts/localization/native-postgrest-evidence/gates.json) and [deployment evidence](../../scripts/localization/native-postgrest-evidence/deployment.json) retain exact bounded results and limitations.
+
+- Full `pnpm -r check` and `pnpm -r build` pass, with retained scoped console type coverage and existing bundle/dynamic-import warnings. The initial backend-only compile preceded the edge-infra export build and failed on its stale declaration; dependency-first rebuilding resolves it.
+- Twelve focused UI cases pass, including native endpoint/schema restoration and saving with blank credential inputs, existing manual-entry behavior and both success/failure notification paths.
+- New actual-route/SQLite fixtures prove native root versus Supabase `/rest/v1`, selected schema, key handling, edit/test persistence boundaries, blank-key retention, validation, tenant/role/auth denials, private URL/redirect rejection, malformed/oversized metadata redaction and shared runner endpoint propagation. Native create sends no setup SQL or provider request.
+- Four faults (native endpoint propagation, schema profile, streamed-body bound and blank-key preservation) fail behavioral assertions; exact compiled artifacts are restored.
+- Ten suites pass: new probe, Supabase provider, SDK HTTP, compat security, database security, sync functional, tenant matrix, response conformance, translation storage and saved-view translation inputs. Response conformance: 257 conforming operations, 77 verified refusals, zero violations/unreachable operations.
+- An additional `--require-functional` whole-app coverage run fails on broader unverified/shape-only interfaces (including unrelated storage/workflow/health surfaces). Its failed report is retained privately. That release-wide gate is not claimed green or silently substituted by the passing response-contract gate. No full public-release readiness, optional SDK fault suite rerun, real AI or translation-protocol upgrade is claimed.
+
+Official contracts reviewed: [PostgREST schema profiles](https://docs.postgrest.org/en/stable/references/api/schemas.html) and [root OpenAPI metadata](https://docs.postgrest.org/en/stable/references/api/openapi.html). The Supabase changelog Markdown fetch was attempted but the browsing service rejected its content type; no Supabase API version change is introduced.
+
+Source checkpoint `21a3166` and generated CMS checkpoint `97c5958` are separate. The shared unrelated index is preserved (1,852 excluded-owned entries; SHA256 `b9576ed2c4564fdb07b81d0f731d6af495129575f0c73310b46a8f6288383452`).
+
+## Staging delivery
+
+Immutable `97c59587f3331c21375e70f1c200c6e42a99ec7e` was uploaded once to existing newpanel.studygram.me → studygram/usa-frontbase-staging. Archive 6,622,368 bytes / 2,013 files, SHA256 `e52e0e035f9076d2dadc274c40e5d05c2d0b772c22c7cf56e3dbf6cc419b9653`; prior verified source allowlist plus the two new backend files. Thirteen synchronization/cache/private/evidence paths excluded; no worktree overlay.
+
+Action `cmveuvcbh004k07qqgvhwbgkz` completed at 2026-10-19 06:11:47 UTC / **09:11:47 Kuwait**, with server build, prohibited-client-symbol and Docker gates passing. Replacement container `6ecca2e73c700b4c06ce915d1916e27f935932445dfeb254367cb81afddebab0` is healthy on image `sha256:b35f3745d82b9e5b28da2071e0a4c9af13a511bb2f6a0cc8f5e2b8e585c9740b`. Existing environment, mounts, ports, build/deploy settings, redirects and enabled state match before/after. All eight public/auth-denial response status and hashes match (health/Homepage/Explore institutions/programs/Blog 200; anonymous generation/storage/batches 401).
+
+Actual authenticated browser verification passes: Transo's native endpoint and `translations` schema pass the form HTTP check using blank credential fields/saved keys. Only endpoint format/schema were saved; a reload shows PostgREST/`translations`, and the saved card test passes. The existing Studygram DB Supabase/public connection also passes the form's HTTP/schema check; its temporary edit was cancelled without saving. One transient toast wait did not capture the Supabase result; the completed inline successful result is the retained authoritative acceptance, not a claim based on that timeout. Screenshots are retained privately. No key was entered/replaced, no SQL or database schema/grants changed, and no AI or page publication was invoked. Existing user tabs remain untouched.
+
+HTTP endpoint/schema configuration and connection testing are complete. Next executable task is separate translation storage protocol acceptance if the owner chooses this destination; broader schema-aware SQL Inspector support and release-wide functional coverage remain open. No new package, general-availability or CF-22 claim.

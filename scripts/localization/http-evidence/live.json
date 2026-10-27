@@ -1,0 +1,33 @@
+{
+  "protocol": "HTTPS/PostgREST",
+  "requests": 75,
+  "operations": [
+    "cancel",
+    "capabilities",
+    "cas",
+    "claim",
+    "dispatch",
+    "enqueue",
+    "fail",
+    "read",
+    "read-job",
+    "read-revision",
+    "read-source",
+    "ready-jobs",
+    "renew"
+  ],
+  "generatedFixtureCalls": 1,
+  "eightConcurrentClaims": true,
+  "sourceRace": true,
+  "immutableReplay": true,
+  "manualProtection": true,
+  "scopedReads": true,
+  "databaseLeaseEpoch": true,
+  "cancelFence": true,
+  "retryLimit": true,
+  "sourceContextInvalidation": true,
+  "forcedCompletionRollback": true,
+  "missingInvalidAuthDenied": true,
+  "arbitrarySqlRefused": true,
+  "realAI": false
+}

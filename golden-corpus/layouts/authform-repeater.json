@@ -1,0 +1,14 @@
+{
+  "title": "AuthForm + Repeater parity",
+  "records": [],
+  "layout": {
+    "root": {},
+    "content": [
+      { "id": "af-heading", "type": "Heading", "props": { "content": "Account", "level": "h2" } },
+      { "id": "auth-form", "type": "AuthForm", "props": { "type": "both", "title": "Welcome back", "description": "Sign in to continue", "providers": ["google", "github"], "primaryColor": "#4338ca" } },
+      { "id": "af-divider", "type": "Divider", "props": {} },
+      { "id": "rp-heading", "type": "Heading", "props": { "content": "Items", "level": "h2" } },
+      { "id": "rep-grid", "type": "Repeater", "props": { "columns": 3, "layout": "grid" } }
+    ]
+  }
+}

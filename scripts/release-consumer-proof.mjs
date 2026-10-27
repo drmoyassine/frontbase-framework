@@ -1,0 +1,110 @@
+/** R1 local tarball proof. Explicit overrides are not registry publication evidence. */
+import assert from 'node:assert/strict';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, readdirSync, realpathSync, lstatSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, relative, isAbsolute } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+
+const root=fileURLToPath(new URL('../',import.meta.url));
+const online=process.argv.includes('--online');
+const output=mkdtempSync(join(tmpdir(),'frontbase-r1-consumer-'));
+const archives=join(output,'archives'),consumer=join(output,'consumer');mkdirSync(archives);mkdirSync(consumer);
+const cli=process.env.npm_execpath || (process.env.APPDATA ? join(process.env.APPDATA,'npm/node_modules/pnpm/bin/pnpm.cjs') : '');
+const evidence={schemaVersion:1,purpose:'external-tarball-proof',output,online,registryProof:false,lifecycleScripts:false,commands:[],archives:[]};
+console.log('R1 proof output: '+output);
+function run(args,cwd) {
+    const command=cli&&existsSync(cli)?process.execPath:'pnpm';
+    const actual=command===process.execPath?[cli,...args]:args;
+    const r=spawnSync(command,actual,{cwd,encoding:'utf8',timeout:180000,windowsHide:true,maxBuffer:8*1024*1024});
+    evidence.commands.push({args,cwd,exit:r.status,error:r.error?.message,stdout:r.stdout,stderr:r.stderr});
+    writeFileSync(join(output,'evidence.json'),JSON.stringify(evidence,null,2));
+    if(r.error||r.status!==0)throw new Error('Proof command failed: '+args.join(' ')+'\n'+(r.error?.message||r.stderr||r.stdout));
+    return r.stdout;
+}
+const names=['translation','edge-core','compiler','ui-components','edge-infra','backend','builder'];
+const dependencies={},overrides={},entries=[];
+try {
+    for(const name of names) {
+        if(name==='backend')run(['exec','node','scripts/pack-backend.mjs','--pack-destination',archives],root);
+        else run(['--dir',join(root,'packages',name),'pack','--pack-destination',archives],root);
+        const manifest=JSON.parse(readFileSync(join(root,'packages',name,'package.json'),'utf8'));
+        const archive=join(archives,`frontbase-${name}-${manifest.version}.tgz`);assert.ok(existsSync(archive));
+        const spec='file:'+archive.replaceAll('\\','/');dependencies[manifest.name]=spec;overrides[manifest.name]=spec;
+        for(const entry of Object.keys(manifest.exports ?? {'.':manifest.main})) {
+            assert.ok(entry==='.'||entry.startsWith('./'),'unexpected export key');
+            entries.push(entry==='.'?manifest.name:manifest.name+entry.slice(1));
+        }
+        evidence.archives.push({name:manifest.name,version:manifest.version,sha256:createHash('sha256').update(readFileSync(archive)).digest('hex')});
+    }
+    writeFileSync(join(consumer,'package.json'),JSON.stringify({name:'frontbase-external-consumer-proof',private:true,type:'module',dependencies,devDependencies:{typescript:'6.0.3','@types/node':'24.10.0'},pnpm:{overrides}},null,2));
+    run(['install',...(online?[]:['--offline']),'--ignore-scripts'],consumer);
+    // pnpm symlinks inside this isolated consumer are expected; links into source are not.
+    function inspect(dir,boundary=consumer) {
+        for(const entry of readdirSync(dir,{withFileTypes:true})) {
+            const path=join(dir,entry.name);
+            if(lstatSync(path).isSymbolicLink()) {
+                const target=realpathSync(path),rel=relative(boundary,target);
+                assert.ok(rel!== '..'&&!rel.startsWith('..'+(process.platform==='win32'?'\\':'/'))&&!isAbsolute(rel),'external consumer link escaped: '+path);
+            } else if(entry.isDirectory()) inspect(path,boundary);
+        }
+    }
+    inspect(join(consumer,'node_modules'));
+    evidence.importEntries=entries;
+    const strictModel=entries.map((entry,i)=>`export type Entry${i}=typeof import(${JSON.stringify(entry)});`).join('\n')+`
+import {publishedPages} from '@frontbase/backend';
+type Row=typeof publishedPages.$inferSelect;
+const numeric:Row['version']=1;
+// @ts-expect-error Version must not become string/any.
+const wrong:Row['version']='invalid';
+type Insert=typeof publishedPages.$inferInsert;
+const row:Insert={slug:'/',tenantSlug:'synthetic',title:'Synthetic',layoutData:'{}',updatedAt:'2026-10-22'};
+// @ts-expect-error Tenant identity remains required.
+const missingTenant:Insert={slug:'/',title:'Synthetic',layoutData:'{}',updatedAt:'2026-10-22'};
+`;
+    writeFileSync(join(consumer,'strict-consumer.ts'),strictModel);
+    evidence.strictProfiles={};
+    for(const mode of ['NodeNext','Bundler']){
+        writeFileSync(join(consumer,`tsconfig.${mode}.json`),JSON.stringify({compilerOptions:{target:'ES2022',module:mode==='Bundler'?'ESNext':mode,moduleResolution:mode,strict:true,noEmit:true,skipLibCheck:false,lib:['ES2022','DOM','DOM.Iterable'],types:['node']},files:['strict-consumer.ts']},null,2));
+        run(['exec','tsc','-p',`tsconfig.${mode}.json`,'--pretty','false'],consumer);
+        evidence.strictProfiles[mode]={status:'PASS',skipLibCheck:false};
+    }
+    writeFileSync(join(consumer,'imports.mjs'),`for(const name of ${JSON.stringify(entries)}) { const module=await import(name); if(!Object.keys(module).length)throw new Error('Empty export '+name); console.log('imported '+name); }`);
+    run(['exec','node','imports.mjs'],consumer);
+    writeFileSync(join(consumer,'neon-http.mjs'),`import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';import {createHash} from 'node:crypto';
+import {postgresRunner} from '@frontbase/edge-infra';
+const base=new URL('./node_modules/@frontbase/edge-infra/dist/providers/vendor/',import.meta.url);
+assert.equal(createHash('sha256').update(readFileSync(new URL('neon-client.mjs',base))).digest('hex'),'69fb2f7053d74e939e99e158b1e3893eea1ab3ddb1e207834a1f9b8ca8cc9605');
+assert.match(readFileSync(new URL('NEON-LICENSE',base),'utf8'),/MIT/);assert.match(readFileSync(new URL('NEON-NOTICE.txt',base),'utf8'),/client-scoped/);
+let calls=0;globalThis.fetch=async()=>{throw Error('RAW_FETCH_FORBIDDEN')};
+const runner=postgresRunner({connectionString:'postgresql://fixture:invented@ep-fixture.us-east-2.aws.neon.tech/db',fetchImpl:async(input,init)=>{const request=new Request(input,init);assert.equal(request.method,'POST');calls++;return Response.json({command:'UPDATE',rowCount:7,rows:[],fields:[]});}});
+assert.equal(await runner.exec('UPDATE fixture SET n=$1',[1]),7);assert.equal(calls,1);console.log('installed archive Neon protocol, affected rows, transport and license/provenance pass');`);
+    run(['exec','node','neon-http.mjs'],consumer);
+    const starter=join(output,'starter');
+    run(['exec','frontbase','init',starter,'--pure','--json'],consumer);
+    const pkg=JSON.parse(readFileSync(join(starter,'package.json'),'utf8'));
+    evidence.scaffoldWorkspaceReferences=JSON.stringify(pkg).includes('workspace:');
+    assert.equal(evidence.scaffoldWorkspaceReferences,false,'starter must pin installed versions without workspace coupling');
+    // Exact tarballs substitute unpublished package versions only; all starter deps remain its own.
+    pkg.pnpm={overrides};writeFileSync(join(starter,'package.json'),JSON.stringify(pkg,null,2));
+    run(['install',...(online?[]:['--offline']),'--ignore-scripts'],starter);
+    run(['build'],starter);run(['test'],starter);run(['check'],starter);
+    inspect(join(starter,'node_modules'),starter);
+    writeFileSync(join(starter,'verify-runtime.mjs'),`import assert from 'node:assert/strict';
+import {manifest as browser} from './dist/manifest.browser.js';
+import {manifest as sourceBrowser} from './src/manifest.browser.js';
+import worker from './dist/worker.js';
+assert.deepEqual(browser,sourceBrowser);assert.ok(browser.pages['/sample']);assert.ok(browser.queries['sample.list']);
+assert.equal(browser.queries['sample.list'].execute,undefined);
+for(const path of ['/','/sample']) {const r=await worker.fetch(new Request('https://synthetic.invalid'+path));assert.equal(r.status,200);const html=await r.text();assert.ok(html.includes(path==='/'?'Hello, Edge':'Sample row'));}
+console.log('compiled worker routes and generated browser projection pass');`);
+    run(['exec','node','verify-runtime.mjs'],starter);
+    evidence.success=true;console.log('External tarball imports and pure scaffold install/build/test/check passed');
+} catch(error) {
+    evidence.success=false;evidence.failure=error.message;console.error(error.message);process.exitCode=1;
+} finally {
+    writeFileSync(join(output,'evidence.json'),JSON.stringify(evidence,null,2));
+    console.log('Evidence retained: '+join(output,'evidence.json'));
+}

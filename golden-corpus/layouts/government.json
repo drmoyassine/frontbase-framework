@@ -1,0 +1,472 @@
+{
+  "title": "Frontbase for Government | Ransomware-Resilient Municipal Infrastructure",
+  "records": [],
+  "layout": {
+    "content": [
+      {
+        "id": "gv-root-container",
+        "type": "Container",
+        "props": {},
+        "styles": {
+          "display": "flex",
+          "flexDirection": "column",
+          "gap": "0",
+          "padding": "0",
+          "minHeight": "100vh"
+        },
+        "children": [
+          {
+            "id": "gv-navbar",
+            "type": "Navbar",
+            "props": {
+              "logo": {
+                "type": "text",
+                "text": "Frontbase",
+                "link": "/",
+                "showIcon": true
+              },
+              "menuItems": [
+                {
+                  "id": "gv-menu-problem",
+                  "label": "The Crisis",
+                  "navType": "scroll",
+                  "target": "#the-problem"
+                },
+                {
+                  "id": "gv-menu-solution",
+                  "label": "Edge Resilience",
+                  "navType": "scroll",
+                  "target": "#the-solution"
+                },
+                {
+                  "id": "gv-menu-enterprise",
+                  "label": "Enterprise",
+                  "navType": "link",
+                  "target": "/enterprise"
+                }
+              ],
+              "primaryButton": {
+                "enabled": true,
+                "text": "Talk to Engineering",
+                "navType": "scroll",
+                "target": "#contact"
+              },
+              "sticky": true,
+              "scale": 1.1,
+              "showDarkModeToggle": false
+            },
+            "styles": {
+              "padding": "16px 24px",
+              "borderBottom": "1px solid var(--border)",
+              "backgroundColor": "var(--background)"
+            },
+            "children": [],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "gv-hero",
+            "type": "Container",
+            "props": {},
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "textAlign": "center",
+              "padding": "80px 24px",
+              "minHeight": "520px",
+              "gap": "24px",
+              "background": "linear-gradient(135deg, hsl(220 30% 8%) 0%, hsl(210 25% 14%) 50%, hsl(200 30% 8%) 100%)"
+            },
+            "children": [
+              {
+                "id": "gv-hero-badge",
+                "type": "Badge",
+                "props": {
+                  "text": "Government & Public Sector",
+                  "variant": "secondary",
+                  "icon": "Landmark",
+                  "iconPosition": "left",
+                  "backgroundColor": "#a78bfa",
+                  "textColor": "#000000"
+                },
+                "styles": {},
+                "children": []
+              },
+              {
+                "id": "gv-hero-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Resilient civic infrastructure for when it matters most.",
+                  "level": "h1"
+                },
+                "styles": {
+                  "fontSize": "56px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF",
+                  "maxWidth": "800px"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 32
+                    }
+                  }
+                }
+              },
+              {
+                "id": "gv-hero-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Atlanta: $17M. Baltimore: $18M. Dallas: $8.5M. Three cities. Three ransomware attacks. Three times, centralized IT took down 911 dispatch, utility billing, and citizen services for weeks. Decentralize to the municipal edge — so a breach in City Hall doesn't paralyze fire stations."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "maxWidth": "760px",
+                  "fontSize": "20px",
+                  "lineHeight": "1.6"
+                },
+                "children": []
+              },
+              {
+                "id": "gv-hero-cta-row",
+                "type": "Row",
+                "props": {},
+                "styles": {
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "gap": "16px",
+                  "padding": "0",
+                  "borderWidth": "0",
+                  "minHeight": "auto",
+                  "marginTop": "24px"
+                },
+                "children": [
+                  {
+                    "id": "gv-hero-cta-primary",
+                    "type": "Button",
+                    "props": {
+                      "text": "Protect Your City",
+                      "variant": "default",
+                      "size": "lg",
+                      "actionBindings": [
+                        {
+                          "id": "gv-hero-cta-action",
+                          "trigger": "onClick",
+                          "actionType": "scrollToSection",
+                          "config": {
+                            "sectionId": "#contact"
+                          },
+                          "workflowId": null,
+                          "parameterMappings": {}
+                        }
+                      ]
+                    },
+                    "styles": {},
+                    "children": []
+                  }
+                ]
+              }
+            ],
+            "stylesData": {
+              "activeProperties": [],
+              "values": {},
+              "stylingMode": "visual"
+            }
+          },
+          {
+            "id": "gv-problem-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "The Municipal Ransomware Epidemic",
+              "subtitle": "Centralized city IT is the #1 target. When it falls, everything — from 911 to water billing — goes with it.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "left",
+              "textAlignment": "left",
+              "iconColor": "hsl(0 84% 60%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--background)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-problem",
+              "features": [
+                {
+                  "id": "gv-prob-1",
+                  "icon": "AlertOctagon",
+                  "title": "City of Atlanta (March 2018)",
+                  "description": "SamSam ransomware crippled centralized city IT. Utility payments, parking, and court services knocked offline. Employees reverted to pen and paper for weeks. Police dashcam footage permanently destroyed. Total cost: $17 million — for a $51,000 ransom they refused to pay."
+                },
+                {
+                  "id": "gv-prob-2",
+                  "icon": "Lock",
+                  "title": "City of Baltimore (May 2019)",
+                  "description": "RobbinHood ransomware exploited outdated, centralized systems. City email, phone lines, and online billing offline for months. Real estate transactions halted citywide. Employees used personal Gmail for official business. Total cost: $18.2 million."
+                },
+                {
+                  "id": "gv-prob-3",
+                  "icon": "ShieldAlert",
+                  "title": "City of Dallas (May 2023)",
+                  "description": "Royal ransomware group infiltrated systems a full month before encrypting. Police and Fire dispatch (CAD) systems disrupted. 1.169 TB of data exfiltrated. 30,000+ individuals' PII compromised including SSNs and health records. $8.5M budget for recovery plus $4M for new detection systems."
+                },
+                {
+                  "id": "gv-prob-4",
+                  "icon": "Phone",
+                  "title": "The 911 Fragility Crisis",
+                  "description": "90% of US emergency communication centers experienced at least one outage in the past year. Many still run on decades-old analog systems. The CrowdStrike July 2024 incident forced 911 dispatch centers across multiple states to revert to paper-based manual dispatch. NG911 modernization requires $15+ billion."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "gv-solution-section",
+            "type": "FeatureSection",
+            "props": {
+              "title": "Decentralized Municipal Operations",
+              "subtitle": "Every fire station, utility plant, and satellite office runs its own autonomous edge node. If City Hall falls, your city keeps running.",
+              "headerAlignment": "center",
+              "columns": 2,
+              "iconSize": "lg",
+              "iconAlignment": "center",
+              "textAlignment": "center",
+              "iconColor": "hsl(142 71% 45%)",
+              "textColor": "hsl(var(--muted-foreground))",
+              "cardBackground": "hsl(var(--card))",
+              "sectionBackground": "var(--muted)",
+              "enableSwipeOnMobile": false,
+              "anchor": "the-solution",
+              "features": [
+                {
+                  "id": "gv-sol-1",
+                  "icon": "Building",
+                  "title": "Departmental Autonomy",
+                  "description": "Fire stations, utility plants, and satellite offices run their own edge node with independent SQLite databases. If City Hall's datacenter is compromised, local services continue 100% independently — no shared infrastructure to cascade through."
+                },
+                {
+                  "id": "gv-sol-2",
+                  "icon": "Shield",
+                  "title": "Ransomware Blast Containment",
+                  "description": "Isolated databases per department. A breach in the billing system can't cascade to police dispatch or water treatment. Each edge node is a self-contained blast radius — just like physical departments should be."
+                },
+                {
+                  "id": "gv-sol-3",
+                  "icon": "Phone",
+                  "title": "Zero-Dependency Emergency Backups",
+                  "description": "Dispatch dashboards deployed to edge run without central CAD servers. If the central system goes down — whether from ransomware or a CrowdStrike-style update — local dispatchers maintain full operational capability."
+                },
+                {
+                  "id": "gv-sol-4",
+                  "icon": "FileCode",
+                  "title": "Immutable Citizen Portals",
+                  "description": "Published portals are static, pre-compiled bundles with zero server-side code execution surface for attackers. No dynamic runtime to exploit. No database injection points. Rollback to a clean version is instant."
+                }
+              ]
+            },
+            "styles": {},
+            "children": []
+          },
+          {
+            "id": "gv-bottom-cta",
+            "type": "Container",
+            "props": {
+              "anchor": "contact"
+            },
+            "styles": {
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "padding": "80px 48px",
+              "gap": "24px",
+              "backgroundColor": "hsl(220 30% 8%)",
+              "textAlign": "center"
+            },
+            "children": [
+              {
+                "id": "gv-bottom-cta-title",
+                "type": "Heading",
+                "props": {
+                  "text": "Don't let ransomware shut down your city.",
+                  "level": "h2"
+                },
+                "styles": {
+                  "fontSize": "40px",
+                  "fontWeight": "700",
+                  "color": "#FFFFFF"
+                },
+                "children": [],
+                "stylesData": {
+                  "activeProperties": [],
+                  "values": {},
+                  "stylingMode": "visual",
+                  "viewportOverrides": {
+                    "mobile": {
+                      "fontSize": 28
+                    }
+                  }
+                }
+              },
+              {
+                "id": "gv-bottom-cta-subtitle",
+                "type": "Text",
+                "props": {
+                  "text": "Contact our solutions engineering team to build municipal infrastructure that survives the next attack."
+                },
+                "styles": {
+                  "color": "rgba(255,255,255,0.75)",
+                  "opacity": "1",
+                  "fontSize": "18px"
+                },
+                "children": []
+              },
+              {
+                "id": "gv-bottom-cta-embed",
+                "type": "Embed",
+                "props": {
+                  "embedType": "script",
+                  "width": "100%",
+                  "height": "auto",
+                  "title": "Contact form",
+                  "sandbox": "allow-scripts allow-same-origin allow-forms",
+                  "loading": "lazy",
+                  "html": "<!-- Elfsight Contact Form | Untitled Contact Form -->\n<script src=\"https://elfsightcdn.com/platform.js\" async></script>\n<div class=\"elfsight-app-d385fc63-ec26-43c9-b978-39b569094852\" data-elfsight-app-lazy></div>"
+                },
+                "styles": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "gv-footer",
+            "type": "Footer",
+            "props": {
+              "logoText": "Frontbase",
+              "description": "Edge-native infrastructure for resilient civic operations.",
+              "columns": [
+                {
+                  "id": "gv-col-solutions",
+                  "title": "Solutions",
+                  "links": [
+                    {
+                      "id": "gv-link-dispatch",
+                      "text": "Emergency Dispatch",
+                      "href": "#"
+                    },
+                    {
+                      "id": "gv-link-citizen",
+                      "text": "Citizen Services",
+                      "href": "#"
+                    },
+                    {
+                      "id": "gv-link-utility",
+                      "text": "Utility Management",
+                      "href": "#"
+                    }
+                  ]
+                },
+                {
+                  "id": "gv-col-industries",
+                  "title": "Industries",
+                  "links": [
+                    {
+                      "id": "gv-link-aviation",
+                      "text": "Aviation",
+                      "href": "/aviation"
+                    },
+                    {
+                      "id": "gv-link-telecom",
+                      "text": "Telecom",
+                      "href": "/telecom"
+                    },
+                    {
+                      "id": "gv-link-defense",
+                      "text": "Defense",
+                      "href": "/defense"
+                    }
+                  ]
+                },
+                {
+                  "id": "gv-col-company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "gv-link-enterprise",
+                      "text": "Enterprise Platform",
+                      "href": "/enterprise"
+                    },
+                    {
+                      "id": "gv-link-privacy",
+                      "text": "Privacy & Security",
+                      "href": "/"
+                    }
+                  ]
+                }
+              ],
+              "socials": [
+                {
+                  "id": "gv-social-twitter",
+                  "icon": "twitter",
+                  "href": "/"
+                },
+                {
+                  "id": "gv-social-linkedin",
+                  "icon": "linkedin",
+                  "href": "/"
+                }
+              ],
+              "copyright": "© 2026 Frontbase. Civic infrastructure that survives.",
+              "mobileColumns": 2
+            },
+            "styles": {},
+            "children": []
+          }
+        ]
+      }
+    ],
+    "root": {
+      "containerStyles": {
+        "activeProperties": [
+          "flexDirection",
+          "gap",
+          "flexWrap",
+          "alignItems",
+          "justifyContent",
+          "backgroundColor",
+          "padding",
+          "size"
+        ],
+        "values": {
+          "flexDirection": "column",
+          "gap": 0,
+          "flexWrap": "nowrap",
+          "alignItems": "stretch",
+          "justifyContent": "center",
+          "backgroundColor": "#FFFFFF",
+          "padding": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "size": {
+            "width": "auto",
+            "height": "auto",
+            "widthUnit": "px",
+            "heightUnit": "px"
+          }
+        },
+        "stylingMode": "visual"
+      }
+    }
+  }
+}

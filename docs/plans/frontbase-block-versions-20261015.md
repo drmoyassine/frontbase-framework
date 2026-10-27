@@ -1,0 +1,104 @@
+# Block Versions and fully configurable Repeaters
+
+Status: scoped Block Versions / standard Repeater implementation deployed and verified on isolated staging, 2026-10-15. Owner excludes generic frozen snapshots. The live List Component follow-up is committed, pushed and verified on isolated staging; see the [deployment review](frontbase-live-list-deployment-review-20261015.md). Existing pilot publication captures remain compatible. This document supersedes the proposed Repeater-only multiple-binding selector. Previous delivery receipts remain historical evidence, not proof that this scope ships.
+
+## Updated work plan — 2026-10-16
+
+Current ordered follow-up is the [2026-10-16 work plan](frontbase-current-work-plan-20261016.md). Source `b369784` is committed and pushed; live migration and Saved Views are delivered at generation21. The final r2 JSON-filter compatibility correction is deployed and verified; refreshed EasyPanel logs resolved the stale Uploading state. See the [saved-view receipt](frontbase-editable-saved-views-20261016.md) for exact deployed/pending identities. Earlier generation20/checkpoint receipts below are historical.
+
+### Completed baseline
+
+| Area | Delivered status | Evidence |
+| --- | --- | --- |
+| Pages | Unified folders/pages/reusable templates in cards and lists, icons/badges, breadcrumbs, move/delete and bulk organization; redundant sidebar removed | [Pages/Menus receipt](frontbase-pages-menus-simplification-20261014.md), checkpoint source |
+| Menus | Shared Header/Footer/Sidebar authoring and placement/audience rules; Save Draft → Preview → Publish/Discard | [Pages/Menus receipt](frontbase-pages-menus-simplification-20261014.md), [sticky/publication repair](frontbase-sticky-menu-publication-repair-20261014.md) |
+| Public appearance | Repaired width/sticky behavior and Light/Dark/System preference, System by default | [Appearance receipt](frontbase-public-appearance-20261014.md), sticky/publication receipt |
+| Conditions | Shared typed condition/value evaluation and @ operands for visibility and hidden filters | [Unified conditions](frontbase-unified-conditions-20261014.md), [single-binding filters](frontbase-single-binding-filters-20261014.md) |
+| Block Versions | Same-type alternatives, direct Default inheritance, explicit overrides/reset and first-match priority | Implementation and acceptance evidence below |
+| Repeaters / Explore | Standard single-source binding per version, editable Card/field mapping and browsing/filter controls; Institutions Default and Programs alternative on the actual Explore page | Implementation and actual staging acceptance below |
+| Data / Saved Views | Searchable saved-view assets, source/table/usage, exact builder links and editable server-side selection filters; pilot restrictions removed from SQL without expansion | [Saved-view delivery](frontbase-editable-saved-views-20261016.md) |
+| Settings | Migrated saved element-specific values; retired duplicate Template Settings editors while retaining global appearance/capture settings | Guarded conversion and staging evidence below |
+
+### Ordered remaining work
+
+The [current plan](frontbase-current-work-plan-20261016.md#ordered-next-work) supersedes this document's older queue: r2 deployment complete; decide catalog coverage before expansion; prove Booking for X reuse; verify real App Users once configured; inspect/prove lead submission; reconcile pilot launch readiness. Catalog-to-live migration and Saved Views are completed baseline, not open migration tasks. Frozen snapshots remain excluded.
+
+### Verification and handoff
+
+For this plan update, review links/status against Git and delivery receipts and run `git diff --check`; no code tests need repeating. For subsequent implementation, claim the bounded task in the audit, run `pnpm -r check`, `pnpm -r build`, proportional component/integration tests and relevant mutation/isolation gates, then record exact deployment evidence and skipped provider checks. Existing unrelated workflow/email edits and generated/conflict files remain outside this work's ownership. The 2026-10-16 plan reconciliation is documentation-only and remains uncommitted.
+
+## Accepted behavior
+
+- All UI element types support Default plus named alternative versions. Every alternative inherits directly from Default. No alternative-to-alternative inheritance or inheritance chains.
+- Versions retain the same element type. Container versions may have different child arrangements.
+- Conditional alternatives are evaluated in explicit priority order; the first matching alternative wins, otherwise Default. Reuse the shared conditions engine and @ operand editor, including supported URL/local/user scopes.
+- Inherited fields follow Default until explicitly overridden. Reset to Default removes an override. Missing override and explicit empty/null/false/zero are distinct.
+- Element visibility controls the whole element; version conditions choose its active presentation. Selection conditions are independent of property inheritance.
+- Only the active version renders, executes actions and fetches its data. Version selection is not access authorization.
+
+## Inheritance authoring and contract
+
+Use sparse, validated overrides rather than copying a complete effective component into every alternative. Resolve an effective component through one pure core function shared by builder, compiler, SSR and browser runtime. Keep the stable outer element identity; define collision-safe child identities and reference resolution before enabling structure overrides. Do not introduce a third binding representation: reconcile existing top-level binding and props.binding compatibility deliberately.
+
+The properties panel shows the effective value and an inheritance indicator. Override enables editing; Reset restores inheritance. Provide an override count and Show overridden fields only. Controls remain readable rather than heavily greyed. Component title/identity metadata and version selection rules need an explicit schema boundary; do not inadvertently inherit identifiers or recursively nest version definitions.
+
+Recommended initial editing granularity: individual ordinary properties/style fields; one coherent data-binding group (source/table/view/mappings); complete workflow/rule groups; explicit Override structure for a container's children or a Repeater's item Card subtree. Structure inheritance remains linked until overridden; overridden structure is independently editable. Field-level merging inside alternative child trees is deferred. Document these boundaries in the UI so grouped overrides are not advertised as independent fields.
+
+## Fully configurable Repeater: completion requirements
+
+1. Dropping a Repeater always starts with an editable Card. General exposes a real datasource selector and table or saved-view selector, schema/field inspection and mapping. Live data is the default for new components. Existing captured components retain an explicitly selected snapshot source until intentionally changed.
+2. Card children are ordinary builder elements: add/remove/reorder text, images, buttons, containers and other supported elements; edit styles, responsive layout and actions visually. Map record fields through @record references or the properties panel using the same binding model. Mapping is not a fixed institution/program card schema.
+3. General configures binding and item layout; Options exposes pagination, record count, search, ordering, visible filters and hidden filters, with configurable labels, placement, page size and supported fields/operators. Controls are real elements/settings with the same appearance and behavior in canvas, preview and public delivery. Remove placeholder-only visitor controls and specialized branches that suppress normal binding/filter editors.
+4. Hidden filters use the shared condition/value editors and typed @ operands, including verified user attributes where available. Query capability controls valid filter/sort operations; unsupported operators must be explained and cannot silently no-op. Backend row authorization remains authoritative. Visible search/filter values, URL state and default sorting resolve consistently, with deterministic ordering and accurate filtered counts.
+5. Define configurable loading, empty and error presentations, image fallbacks, link/action mapping, grid/list layout, spacing and responsive columns. Preview uses the same effective version, query contract and item renderer as public delivery; no separate hard-coded public controls.
+6. Publish binding definitions with the layout, never provider credentials. Bound sources/views must be owner-scoped and explicitly eligible for public use through existing policies. Do not expose a raw private table solely because it is selectable by an administrator.
+7. Saved filtered live views are datasource assets configured through the data inspector and selected by List Components. Views use current source records and server-owned filters, with schema and ownership validation. Share the same source/query contract across Repeater, DataTable and Grid. Generic frozen snapshot creation/management is excluded by the owner's updated scope; retain existing published pilot captures only for compatibility.
+
+## Explore conversion is mandatory
+
+Explore becomes one standard configurable Repeater with Default Institutions and a Programs alternative conditioned on url.type == program. Each effective version has one ordinary binding. Institutions/Programs buttons use existing Set Variable actions to change url.type. Unknown/missing type falls back to Institutions; selection priority remains visible in the builder.
+
+Expose the existing reviewed catalog through the standard datasource/view adapter, preserving capture hash/revision, editorial approval, exact owner, route/media and result-size checks. Convert the specialized directoryQuery components and injected browsing controls through an inspectable migration. Preserve current captured data rather than silently switching to unreviewed canonical live records. Retain the previous published version for recovery and refuse stale draft/capture migrations. Preserve user edits; show a reviewable conversion diff and do not overwrite an already Modified browser draft.
+
+The old specialized selector must not remain as a hidden exception. Completion requires selecting the converted Explore Repeater and seeing its actual source/table-or-view selector, editable Card, filters and all browsing controls in the ordinary properties panel. No fake selector backed by a different runtime binding.
+
+## Implementation sequence
+
+1. Inventory schema, binding representations, source/view/snapshot support, query/render paths and component-tree consumers. Specify the version wire contract, bounds and migration plan; add fixtures before changing saved data.
+2. Implement pure core resolution, schema validation and legacy Default-only compatibility. Cover compiler query discovery, all version subtrees, ID/reference handling, clone, move, delete, import/export and undo/redo. Keep six-package ownership; no additional engine.
+3. Implement Versions authoring, priority reorder, conditions, inheritance/override/reset controls and structure editing. Editing a version forces its canvas presentation only; Preview conditions evaluates runtime rules. Forced editing state must not be serialized as public behavior.
+4. Complete standard Repeater/Card live data binding and saved-view integration. Add query and browsing configuration with source capability validation and public-safe server execution. Generic snapshots are excluded.
+5. Integrate shared SSR/browser selection, reactive URL/local state and verified server user context. Resolve the same version on SSR/first paint; avoid duplicate requests and stale results. Unmount inactive actions/queries and cancel or ignore obsolete replies. Reset dataset-specific page/search on binding switches; define preservation for same-dataset changes and protect dirty form input from silent loss.
+6. Migrate Explore into the ordinary implementation using the reviewed snapshot adapter and two versions. Replace specialized controls with configurable builder components/settings; preserve URL behavior, original public records, menus and styles.
+7. Run required local/security/browser gates, deploy the verified artifact to isolated staging, verify the actual converted Explore editor and public page, and record source/image hashes and rollback evidence. Production cutover is separate.
+
+## Acceptance evidence required
+
+- Inheritance: Default edits propagate only to inherited fields; empty/null/false/zero overrides persist; reset works; invalid cross-alternative inheritance is rejected; priority/fallback and unknown variables behave consistently.
+- Tree operations: versions survive save/reload, undo/redo, duplication and import/export without shared mutable objects, duplicate IDs or broken internal references. Older layouts remain valid.
+- Universal support: representative static, interactive, container and data elements use the same version machinery; no element-specific implementation silently bypasses resolution.
+- Repeater: drop a new component, choose a source/table/view, edit its Card and map fields through both UI routes; verify paging/count/sort/search/visible and hidden filters plus loading/empty/error states in actual builder and published output.
+- Explore: standard selectors visible on the actual migrated element; Institutions/Programs buttons and browser Back/Forward select the right version and exact corresponding records; no duplicate controls or inactive-source queries. Test changing an override and resetting it through the real properties panel.
+- SSR/browser/canvas parity at desktop and narrow widths, including user/URL/local conditions, capture pinning, first paint and stale-request refusal. Synthetic user tests are distinct from configured-provider acceptance.
+- Existing ownership/auth, capture integrity, publication, SEO/media, query bounds, no-leak and relevant mutation gates remain green. Server-denied content is never made accessible by a client version condition.
+- Run pnpm -r check, pnpm -r build and appropriate tests after implementation. Record exact commands/results, skipped provider checks and actual deployed artifact evidence. Existing pending Repeater dispatch repair is not equivalent to this completion gate.
+
+## Current handoff
+
+Owner additionally authorizes retiring Template Settings fields whose behavior has moved to elements. Preserve legacy stored values/approval fingerprints; remove duplicate editors only after values are materialized into elements. Keep global palette, typography, width/spacing/radius defaults and catalog-capture/relationship configuration where they still serve a global purpose. Inventory: Browsing default collection/search/page size; homepage list counts; hero settings; homepage section visibility/headings/counselor copy. These fields currently feed projection and cannot simply be hidden without migration.
+
+Delivered source: pure Default-only sparse override resolver/validation, field enable/reset/priority/condition authoring, transient canvas selection, alternative tree traversal/clone/reference handling, undo/redo, bounded SSR/inert-template switching and React teardown, public server-impossible branch pruning and minimal context reuse. Standard Repeater has source/table/saved-view selection, Card/@ mappings, responsive columns/gap, paging/count/search/order/visible and hidden filters and state messages. The limited React item renderer is replaced by the same native block renderer as SSR/canvas. Reviewed-snapshot reads and guarded Explore/settings conversion preserve owner and capture boundaries. Enrichment binding aliases follow the alternative's authored binding.
+
+Local verification completed: final `pnpm -r check` and `pnpm -r build` exit 0. Core Block Versions, shared conditions and native Menus gates pass. Backend single-binding/saved-view filtering, audience, Menus capture/workflow and full chunk integration (including 10,049 records) pass. Focused console run passes 22/22; the synthetic BlockVersionsPanel override/reset test passes 1/1 and Repeater SSR-filter/sort-cache regressions pass 2/2 (25 tests across the recorded runs). Four version/source mutations and two exact-candidate/stale-base conversion mutations fail as intended, with originals restored and green baselines rebuilt; the four-fault run was repeated after record-aware pruning. Sandbox Vitest initially failed before tests on temporary-file rename EPERM; outside-sandbox reruns passed. One mutation initially failed compilation rather than its assertion; its fault was corrected and rerun successfully.
+
+Actual synthetic public and builder-mode browser checks pass: table selection by URL version, pagination, counts, sorting, visible filter, search, unknown-value Default fallback and switching away from seeded SSR rows. Browser verification caught ignored visitor predicates when static filters were pre-resolved; page-level pruning of record-conditioned images; inherited initial records poisoning another version's cache; and the legacy grid host constraining its hydrated child. All corrected with regressions and retained integration gates. Initial data is scoped to the selected version/query, and the hydrated list spans its host. Hydrate grows to 1,163.26 KB raw / 324.93 KB gzip; build emits a size warning. CF-full is 581.0 KB gzip and host/no-prohibited-symbol gates pass.
+
+The guarded conversion preview derives layouts only from the reviewed active publication, retaining chunks/index/menus; unrelated authoring drafts cannot piggyback. Publishing re-derives the exact candidate and checks the current base pointer. Draft migration separately uses page-state CAS and configuration/base checks. No live database source is admitted into immutable captured publications. Existing authenticated/RLS live-data paths are preserved; no anonymous provider grant is introduced.
+
+Final staging source: `frontbase-block-versions-20261015-r4.zip`, SHA-256 `cea9e606c9f572b202efafc25688eaaebfa2aa0d7ee4be6f7c6f13437b832d66`, 5,951,470 bytes, 61 explicitly owned source files over reviewed options-fix baseline. Image `sha256:d41dd8c7994606786e0d34bb1359867134866b1ba08cd248ab380b0268aef01b`, EasyPanel success 2026-10-15 07:14:18 UTC. Earlier same-day archives/images are superseded. Reviewed worker retained; unrelated email/workflow/runtime databases/credentials/drafts excluded. Clean-image core, filter, Menus/auth/host, serving, SEO, editorial and full chunk/capacity gates pass.
+
+Actual staging: Homepage, Explore and Blog authoring drafts migrated through CAS; global appearance/capture configuration remains, duplicate browsing/hero/copy/section/count editors retired from Settings. Exact converted capture `d8bed247c3742911828dc9195dccd12bbc76bc8332961ebc93347dbb944e5b28` activated at generation20 from reviewed base `ef4f5c59f29dfad7a93979fe4f6ff88eeea17e18751ca7cdc6249d4389eaeeed`. Actual builder exposes one Repeater with source/table/Card mappings and Default/Programs version controls. Public and canvas have the same twelve institution titles and images; Programs switches to Accounting/Advertising/etc.; Back/Forward restores the matching source; page two and Accounting search (two records, page1 of1) pass. Narrow viewport is one column without horizontal overflow; final desktop host/content widths both1265.74px, three411.26px columns, scrollWidth1266 < viewport1281. Final screenshot: private artifact `block-versions-explore-public-20261015.jpg`.
+
+Owner Homepage remains Changes pending and `/test` remains Draft; no unrelated authoring changes were published. Automatic review refused an override experiment on a real owner draft and a reload with potentially pending state. Those actions were not retried indirectly: override/reset used disposable React/store state; final checks used fresh tabs. Existing potentially edited tabs were preserved. Disposable Node proof servers stopped. Rollback/CAS recovery passes local and clean-image integration; a further live staging rollback was not exercised in this delivery. Source/docs remain uncommitted; no production cutover. Historical next-step suggestion superseded by the owner’s live-only scope and the generation21 live-view receipt above.
+
+Capability boundary: saved live views resolve their current server-owned filters and table, and the pilot uses reviewed publication snapshots. Arbitrary-provider snapshot creation/management in Datasources is not delivered by this change and must not be claimed. Actual configured Auth Provider/contact acceptance remains unavailable until existing App Users is configured. No general-availability, public-release gate or CF-22 claim is added.

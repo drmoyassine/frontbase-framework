@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-24",
+  "scope": "Editable card starters, institution design, saved-template publication repair, English/Arabic acceptance",
+  "status": "accepted",
+  "source": [
+    "8f03ebb",
+    "42686d3",
+    "a2b0fe4"
+  ],
+  "deployedArtifact": "58a19aa",
+  "archiveSha256": "E7AA3303EBB9B33B4BCBD987CEA5054A557862C7A818609E17C267043E88D92E",
+  "site": {
+    "orderedPathsPreserved": true,
+    "generation": 22,
+    "counts": {
+      "articles": 957,
+      "programs": 185,
+      "institutions": 16,
+      "pages": 122
+    },
+    "pathCount": 1282,
+    "hash": "30e3d1cbb6441148e0be590f2b070fe80aa8f77feb9bca67242c2ade22598ce3"
+  },
+  "arabicRelease": {
+    "providerCalls": 0,
+    "translatedUnits": 62,
+    "hash": "23cc7cb6365845c715f423c2121f3ebd042c8e7c1bd34888c43cf75235802f6c",
+    "path": "/explore/",
+    "manualUiDrafts": 50,
+    "generation": 1,
+    "sourceFallbackUnits": 13
+  },
+  "browser": {
+    "mobileCanvasWidth": 375,
+    "english": {
+      "flagsLoaded": true,
+      "lang": "en",
+      "dir": "ltr",
+      "noHorizontalOverflow": true
+    },
+    "programContentPreserved": true,
+    "arabic": {
+      "noHorizontalOverflow": true,
+      "flagsLoaded": true,
+      "paginationRoundTrip": true,
+      "lang": "ar",
+      "dir": "rtl",
+      "logoMirrored": true,
+      "titleAlignment": "start",
+      "localizedLinks": true
+    }
+  },
+  "http": [
+    {
+      "rtl": false,
+      "language": "en",
+      "status": 200,
+      "path": "/"
+    },
+    {
+      "rtl": true,
+      "language": "ar",
+      "status": 200,
+      "path": "/ar/"
+    },
+    {
+      "rtl": false,
+      "language": "en",
+      "status": 200,
+      "path": "/explore/?type=institution"
+    },
+    {
+      "rtl": true,
+      "language": "ar",
+      "status": 200,
+      "path": "/ar/explore/?type=institution"
+    },
+    {
+      "rtl": false,
+      "language": "en",
+      "status": 200,
+      "path": "/explore/?type=program"
+    },
+    {
+      "rtl": true,
+      "language": "ar",
+      "status": 200,
+      "path": "/ar/explore/?type=program"
+    },
+    {
+      "path": "/api/pages/",
+      "anonymousStatus": 401
+    }
+  ],
+  "tests": {
+    "templateMutation": "3/3 red",
+    "compatSecurity": "pass",
+    "focusedUi": 26,
+    "publicationIntegration": "pass",
+    "publicationControls": "pass",
+    "rpc": "pass",
+    "retainedLandingMutation": "4/4 red",
+    "pageTranslationPublication": "pass",
+    "workspaceBuild": "pass",
+    "workspaceCheck": "pass"
+  },
+  "asset": {
+    "sourceDatabaseChanged": false,
+    "sourceCountryFlagUrlFailed": true,
+    "usaCardFlagUrl": "https://flagcdn.com/w40/us.png"
+  },
+  "boundaries": [
+    "Datasource translation completeness remains out of scope",
+    "Historical standalone-console type debt remains",
+    "No new public-release readiness or GA claim"
+  ]
+}

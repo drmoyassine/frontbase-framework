@@ -1,0 +1,6 @@
+{
+  "version": "0.36.4",
+  "files": 1232,
+  "algorithm": "sorted [relativePath,sha256] pairs; localeCompare ordering; JSON UTF8",
+  "sha256": "7619021a967a128d5b1034e8b4a87e41899f9d5afec447f06235481d58fd7215"
+}

@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { transform } from 'esbuild';
+const {code}=await transform(readFileSync(new URL('../examples/cf-full/src/vercel-lifecycle.ts',import.meta.url),'utf8'),{loader:'ts',format:'esm'});
+const {vercelDispatcher}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const registered=[];let executed=0;let failed=0;
+const dispatch=vercelDispatcher(p=>registered.push(p),()=>failed++);
+dispatch(async()=>{executed++;});
+assert.equal(registered.length,1);assert.equal(executed,0);
+await registered[0];assert.equal(executed,1);
+dispatch(()=>{throw new Error('fixture-private');});await registered[1];assert.equal(failed,1);
+dispatch(async()=>{throw new Error('fixture-private');});await registered[2];assert.equal(failed,2);
+console.log('PASS Vercel lifecycle: registered before work; synchronous/asynchronous failure contained');

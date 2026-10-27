@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {renderDirectoryBrowsing} from '../../edge-core/dist/ssr/components/directoryBrowsing.js';
+import {projectDirectoryRecords,projectDirectoryBrowsing,directoryLayoutQueries} from '@frontbase/edge-core/directory/configuration';
+const controls={version:1,tabs:true,search:true,pagination:true,recordCount:true,sorting:true,filters:true,paginationMode:'numbered',paginationPosition:'both'};
+const layout={root:{siteConfiguration:{version:1,role:'directory'}},content:[{id:'legacy',type:'Container',props:{directoryBrowsing:{version:1,tabs:true,search:true,pagination:true}}},{id:'cards',type:'Repeater',props:{directoryControls:controls,directoryQuery:{version:1,queryId:'directory.institution.list',params:{limit:6}}},children:[{id:'title',type:'Text',props:{recordBindings:{text:'title'}}}]}]};
+const projected=projectDirectoryBrowsing(projectDirectoryRecords(layout,new Map([['cards',[{title:'Campus'}]]])),[{path:'/explore/',collection:'institution',q:'<script>bad</script>',searchEnabled:true,page:2,pageSize:6,total:16,hasNext:true,sort:'title-desc',match:'startsWith'}]);
+assert.equal(projected.content[0].styles.display,'none');assert.equal(projected.content[1].children.length,3);
+const html=renderDirectoryBrowsing(projected.content[1].children[0].props);
+for(const expected of ['7-12 of 16 records','name="sort"','name="match"','&lt;script&gt;bad&lt;/script&gt;','sort=title-desc','match=startsWith'])assert.ok(html.includes(expected),expected);
+assert.ok(!html.includes('<script>bad'));assert.match(html,/aria-current="page"[^>]*>2<\/a>/);
+const bad=structuredClone(layout);bad.content[1].type='Text';assert.throws(()=>directoryLayoutQueries(bad));
+assert.throws(()=>renderDirectoryBrowsing({...projected.content[1].children[0].props,directoryBrowsingState:[{...projected.content[1].children[0].props.directoryBrowsingState[0],sort:'untrusted'}]}));
+console.log('repeater-controls: shared projection, legacy suppression, counts, numbered pagination, URL preservation, escaping and invalid component/state refusals PASS');

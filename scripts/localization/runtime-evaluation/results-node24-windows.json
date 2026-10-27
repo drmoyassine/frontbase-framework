@@ -1,0 +1,83 @@
+{
+  "node": "v24.19.0",
+  "execArgv": [
+    "--disallow-code-generation-from-strings"
+  ],
+  "platform": "win32",
+  "architecture": "x64",
+  "packages": {
+    "i18next": "26.4.7",
+    "i18next-icu": "2.5.0",
+    "intl-messageformat": "12.1.3",
+    "messageformat": "4.1.0"
+  },
+  "results": [
+    {
+      "candidate": "i18next-json",
+      "passesArabicPluralFixtures": true,
+      "passesInstanceIsolation": true,
+      "passesDynamicReplacement": true,
+      "fallbackProvidedBy": "library",
+      "rejectsMalformedMessageSyntax": "not-applicable-plain-json",
+      "rejectsMissingValue": false,
+      "bidiIsolation": false,
+      "browserBundleBytes": 43745,
+      "gzipBytes": 14081,
+      "dynamicCodePatterns": false,
+      "readyMs": 19.56,
+      "format10000Ms": 272.53
+    },
+    {
+      "candidate": "i18next-icu",
+      "passesArabicPluralFixtures": true,
+      "passesInstanceIsolation": true,
+      "passesDynamicReplacement": true,
+      "fallbackProvidedBy": "library",
+      "rejectsMalformedMessageSyntax": true,
+      "rejectsMissingValue": true,
+      "bidiIsolation": false,
+      "browserBundleBytes": 82530,
+      "gzipBytes": 25773,
+      "dynamicCodePatterns": false,
+      "readyMs": 74.13,
+      "format10000Ms": 319.81
+    },
+    {
+      "candidate": "formatjs-icu",
+      "passesArabicPluralFixtures": true,
+      "passesInstanceIsolation": true,
+      "passesDynamicReplacement": true,
+      "fallbackProvidedBy": "host wrapper fixture",
+      "rejectsMalformedMessageSyntax": true,
+      "rejectsMissingValue": true,
+      "bidiIsolation": false,
+      "browserBundleBytes": 33511,
+      "gzipBytes": 9897,
+      "dynamicCodePatterns": false,
+      "readyMs": 3.69,
+      "format10000Ms": 69.87
+    },
+    {
+      "candidate": "unicode-mf2",
+      "passesArabicPluralFixtures": true,
+      "passesInstanceIsolation": true,
+      "passesDynamicReplacement": true,
+      "fallbackProvidedBy": "host wrapper fixture",
+      "rejectsMalformedMessageSyntax": true,
+      "rejectsMissingValue": true,
+      "bidiIsolation": true,
+      "browserBundleBytes": 22914,
+      "gzipBytes": 7590,
+      "dynamicCodePatterns": false,
+      "readyMs": 12.77,
+      "format10000Ms": 1811.21
+    }
+  ],
+  "limitations": [
+    "Node and browser-target bundle probes only; not actual Cloudflare/browser rendering acceptance",
+    "Rich-text roundtrip, provider storage, publication and full cold-start/performance matrix remain open",
+    "Single-run timings are indicative, not production benchmarks",
+    "Message-only libraries use host-owned catalog/fallback wrappers in these fixtures",
+    "Static dynamic-code scan is heuristic; not a security proof"
+  ]
+}

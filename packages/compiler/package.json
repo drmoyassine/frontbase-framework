@@ -1,0 +1,61 @@
+{
+  "name": "@frontbase/compiler",
+  "version": "0.0.0",
+  "description": "Frontbase build tooling \u2014 Zod schema extraction, manifest/type generation, query registrar, Vite plugin, CLI",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./queries/directory": {
+      "types": "./dist/queries/directory.d.ts",
+      "import": "./dist/queries/directory.js"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./manifest": {
+      "types": "./dist/manifest/index.d.ts",
+      "import": "./dist/manifest/index.js"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.ts",
+      "import": "./dist/vite/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    },
+    "./queries": {
+      "types": "./dist/queries/index.d.ts",
+      "import": "./dist/queries/index.js"
+    }
+  },
+  "bin": {
+    "frontbase": "./bin/frontbase.mjs"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node test/extractor.mjs && node test/queries.mjs && node test/manifest.mjs && node test/vite.mjs && node test/cli.mjs && node test/quickfix.mjs && node test/parity-check.mjs && node test/m3.1.5.mjs && node test/simulate.mjs && node test/sw-emit.mjs && node test/provision-d1.mjs && node test/deploy.mjs && node test/deploy-cloud.mjs && node test/cloud-domains.mjs && node test/deploy-seed.mjs && node test/interactive.mjs && node test/app-identity.mjs && node test/e2e-parity.mjs && node test/agent-success-rate.mjs && node test/perf.mjs",
+    "test:mutation": "node test/mutation.mjs"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "typescript": "^5.6.0",
+    "zod": "^3.25.76",
+    "esbuild": "^0.28.0"
+  },
+  "peerDependencies": {
+    "@frontbase/edge-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1"
+  },
+  "optionalDependencies": {
+    "@hono/node-server": "^1.13.0"
+  }
+}

@@ -1,0 +1,22 @@
+import { withSourceMutation, buildPackage, runGate, expectRed, summarize, repoRoot } from '../../../scripts/mutation-lib.mjs';
+import {readFileSync} from 'node:fs';
+const dir = repoRoot + 'packages/backend/', file = 'packages/backend/src/compat/site-publication-manifest.ts';
+if (!buildPackage('@frontbase/backend') || runGate(dir, 'test/site-publication-manifest.mjs') !== 0) process.exit(2);
+for (const [label, find, replacement] of [
+    ['redirect target admission', "if(!paths.includes(redirect.to))fail('redirect_target_unavailable');", 'if(false)fail(\'redirect_target_unavailable\');'],
+    ['redirect source collision', 'normalized.includes(identity) || aliasIdentities.has(identity)', 'false'],
+    ['manifest route collision', 'new Set(normalized).size !== paths.length', 'false'],
+    ['manifest program parent', '!institutions.has(String(row.parentId))', 'false'],
+    ['manifest index fidelity', 'stableStringify(indexChunk(chunk, reference)) !== stableStringify(expected)', 'false'],
+    ['manifest content hash', 'await publicationHash(manifest) !== hash', 'false'],
+    ['manifest owner isolation', 'WHERE tenant_slug = ? AND key = ?', 'WHERE ? IS NOT NULL AND key = ?'],
+    ['manifest immutable retry', "ON CONFLICT(tenant_slug, key) DO NOTHING',\n            [this.tenant,", "ON CONFLICT(tenant_slug, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',\n            [this.tenant,"],
+]) {
+    const target=readFileSync(repoRoot+file,'utf8').includes('\r\n')?find.replaceAll('\n','\r\n'):find;
+    await withSourceMutation(label, file, target, replacement, async () => {
+        if (!buildPackage('@frontbase/backend')) throw new Error('Mutation did not compile');
+        expectRed(label, runGate(dir, 'test/site-publication-manifest.mjs'));
+    });
+    if (!buildPackage('@frontbase/backend') || runGate(dir, 'test/site-publication-manifest.mjs') !== 0) throw new Error('Restored baseline failed');
+}
+summarize('publication manifest mutation');

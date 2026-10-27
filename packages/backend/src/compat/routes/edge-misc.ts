@@ -1,0 +1,389 @@
+import type { Hono } from 'hono';
+import type { ConsoleAuthVars } from '../../mw/auth.js';
+type App = Hono<{ Variables: ConsoleAuthVars }>;
+
+import type { DbRunner } from '@frontbase/edge-infra';
+import type { Phase2Store } from '../../db/phase2-store.js';
+import type { SecretCipher } from '../../db/secret-cipher.js';
+import { zApiKeyCreate, zApiKeyUpdate } from '../zod.gen.js';
+import { apiAccessBlocked, planLimitsForCaller, principalRole } from '../plans/gates.js';
+
+async function sha256Hex(value: string): Promise<string> {
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+    return [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Convert ISO timestamp to product timestamp format.
+ * Product uses format like "2026-08-05T12:22:14.178278+00:00" (with microseconds and +00:00 offset).
+ * Framework ISO format uses "Z" suffix for UTC.
+ * This converts "2026-08-05T12:22:14.178Z" -> "2026-08-05T12:22:14.178+00:00"
+ * Handles both null/undefined and string values (including the string "null" from D1).
+ */
+function toProductTimestamp(ts: string | null | undefined): string | null {
+    if (ts === null || ts === undefined || ts === 'null' || ts === '') return null;
+    // Replace trailing 'Z' with '+00:00' to match product format
+    return ts.endsWith('Z') ? ts.slice(0, -1) + '+00:00' : ts;
+}
+
+/**
+ * Convert Zod validation errors to Pydantic-style error format.
+ * Pydantic returns { detail: [{ type, loc: ['body', ...path], msg, input }] }
+ */
+function zodToPydanticError(error: { issues: Array<{ code: string; path: Array<string | number>; message: string; expected?: unknown; received?: unknown; input?: unknown }> }): { detail: Array<{ type: string; loc: string[]; msg: string; input: unknown }> } {
+    const typeMap: Record<string, string> = {
+        invalid_type: 'string_type',
+        too_small: 'string_too_short',
+        too_big: 'string_too_long',
+        invalid_enum: 'literal_error',
+    };
+
+    return {
+        detail: error.issues.map((issue) => ({
+            type: typeMap[issue.code] || `${issue.code}_error`,
+            loc: ['body', ...issue.path.map(String)],
+            msg: issue.message,
+            input: 'input' in issue ? issue.input : undefined,
+        })),
+    };
+}
+
+async function auditSecret(
+    runner: DbRunner,
+    tenant: string,
+    action: string,
+    resourceId: string,
+    now: string,
+): Promise<void> {
+    await runner.exec(
+        `INSERT INTO security_audit_events
+         (id, tenant_slug, action, resource_type, resource_id, details, created_at)
+         VALUES (?,?,?,?,?,?,?)`,
+        [crypto.randomUUID(), tenant, action, 'edge_api_key', resourceId, '{}', now],
+    );
+}
+
+export function registerEdgeMiscRoutes(
+    app: App,
+    runner: DbRunner,
+    p2: (t: string) => Phase2Store,
+    cipher: SecretCipher,
+    now: () => string,
+): void {
+    // edge-api-keys (5)
+    const listApiKeys = async (c: any) => {
+        const keys = await runner.query(
+            `SELECT k.id, k.name, k.scope, k.is_active, k.expires_at,
+                    k.created_at, k.updated_at, s.prefix, s.ciphertext, s.revealed_at
+             FROM edge_api_keys k
+             LEFT JOIN edge_api_key_secrets s
+               ON s.key_id = k.id AND s.tenant_slug = k.tenant_slug
+             WHERE k.tenant_slug = ?`,
+            [c.get('tenant')],
+        );
+        // Match product shape: add edge_engine_id, last_used_at, engine_name (all null)
+        // Compute can_reveal in JavaScript for D1 compatibility (CASE expression may cause issues)
+        // ciphertext and revealed_at are internal-only, not exposed in the list response
+        // Convert timestamps to product format (+00:00 offset instead of Z)
+        return c.json({
+            keys: keys.map((k: Record<string, unknown>) => {
+                return {
+                    id: k.id,
+                    name: k.name,
+                    prefix: k.prefix,
+                    edge_engine_id: null,
+                    engine_name: null,
+                    is_active: Boolean(k.is_active),
+                    scope: k.scope,
+                    expires_at: toProductTimestamp(k.expires_at as string | null),
+                    last_used_at: null,
+                    created_at: toProductTimestamp(k.created_at as string | null),
+                    updated_at: toProductTimestamp(k.updated_at as string | null),
+                    can_reveal: k.ciphertext !== null && k.revealed_at === null,
+                };
+            }),
+            total: keys.length,
+        });
+    };
+    // Register both with and without trailing slash to match product
+    app.get('/api/edge-api-keys', listApiKeys);
+    app.get('/api/edge-api-keys/', listApiKeys);
+
+    app.post('/api/edge-api-keys', async (c) => {
+        const parsed = zApiKeyCreate.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) return c.json(zodToPydanticError(parsed.error), 422);
+        if (!cipher.isEncrypted(await cipher.encrypt('probe'))) {
+            return c.json({ detail: 'Secret encryption is not configured' }, 503);
+        }
+        if (!['user', 'management', 'all'].includes(parsed.data.scope)) {
+            return c.json({ detail: 'invalid_scope' }, 400);
+        }
+        // A-25 WA5 plan gate: `api_access`. The edge keys minted here are
+        // programmatic engine credentials — a paid-tier feature (product parity:
+        // the free plan ships api_access False). Inert without effective
+        // limits; the master_admin bypass applies.
+        if (apiAccessBlocked(await planLimitsForCaller(
+            (t) => p2(t).getEffectiveLimits(), c.get('tenant'), principalRole(c),
+        ))) {
+            return c.json({ detail: 'API access is not available on your current plan' }, 403);
+        }
+        const id = crypto.randomUUID();
+        // Match product: secrets.token_hex(24) = 48 hex chars
+        const raw = Array.from(new Uint8Array(crypto.getRandomValues(new Uint8Array(24))))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        const key = `fb_sk_${raw}`;
+        const prefix = `${key.slice(0, 14)}...`;  // fb_sk_ + first 8 hex chars
+        const timestamp = now();
+        const encrypted = await cipher.encrypt(key);
+        await runner.exec(
+            `INSERT INTO edge_api_keys
+             (id, tenant_slug, name, scope, key_hash, is_active, expires_at, created_at, updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?)`,
+            [id, c.get('tenant'), parsed.data.name, parsed.data.scope, await sha256Hex(key), 1, parsed.data.expires_at ?? null, timestamp, timestamp],
+        );
+        await runner.exec(
+            `INSERT INTO edge_api_key_secrets
+             (key_id, tenant_slug, prefix, ciphertext, revealed_at, created_at)
+             VALUES (?,?,?,?,NULL,?)`,
+            [id, c.get('tenant'), prefix, encrypted, timestamp],
+        );
+        await auditSecret(runner, c.get('tenant'), 'edge_api_key_created', id, timestamp);
+        const productTimestamp = toProductTimestamp(timestamp);
+        return c.json({
+            id,
+            name: parsed.data.name,
+            prefix,
+            edge_engine_id: null,
+            engine_name: null,
+            is_active: true,
+            scope: parsed.data.scope,
+            expires_at: toProductTimestamp(parsed.data.expires_at ?? null),
+            last_used_at: null,
+            created_at: productTimestamp,
+            updated_at: productTimestamp,
+            can_reveal: true,
+            key,
+        }, 201);
+    });
+
+    app.put('/api/edge-api-keys/:key_id', async (c) => {
+        const parsed = zApiKeyUpdate.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) return c.json(zodToPydanticError(parsed.error), 422);
+        if (parsed.data.scope && !['user', 'management', 'all'].includes(parsed.data.scope)) {
+            return c.json({ detail: 'invalid_scope' }, 400);
+        }
+        const current = await runner.query(
+            'SELECT id, name, scope, is_active, expires_at FROM edge_api_keys WHERE tenant_slug = ? AND id = ?',
+            [c.get('tenant'), c.req.param('key_id')],
+        );
+        if (!current[0]) return c.json({ detail: 'API key not found' }, 404);
+        const row = current[0];
+        const timestamp = now();
+        await runner.exec(
+            `UPDATE edge_api_keys
+             SET name = ?, scope = ?, is_active = ?, expires_at = ?, updated_at = ?
+             WHERE tenant_slug = ? AND id = ?`,
+            [
+                parsed.data.name ?? String(row.name),
+                parsed.data.scope ?? String(row.scope),
+                parsed.data.is_active === null || parsed.data.is_active === undefined
+                    ? Number(row.is_active)
+                    : parsed.data.is_active ? 1 : 0,
+                parsed.data.expires_at === undefined ? row.expires_at ?? null : parsed.data.expires_at,
+                timestamp,
+                c.get('tenant'),
+                c.req.param('key_id'),
+            ],
+        );
+        await auditSecret(runner, c.get('tenant'), 'edge_api_key_updated', c.req.param('key_id'), timestamp);
+        return c.json({ success: true });
+    });
+
+    app.delete('/api/edge-api-keys/:key_id', async (c) => {
+        const id = c.req.param('key_id');
+        const existing = await runner.query(
+            'SELECT id FROM edge_api_keys WHERE tenant_slug = ? AND id = ?',
+            [c.get('tenant'), id],
+        );
+        if (!existing[0]) return c.json({ detail: 'API key not found' }, 404);
+        await runner.exec('DELETE FROM edge_api_key_secrets WHERE tenant_slug = ? AND key_id = ?', [c.get('tenant'), id]);
+        await runner.exec('DELETE FROM edge_api_keys WHERE tenant_slug = ? AND id = ?', [c.get('tenant'), id]);
+        await auditSecret(runner, c.get('tenant'), 'edge_api_key_deleted', id, now());
+        return c.body(null, 204);
+    });
+
+    app.get('/api/edge-api-keys/:key_id/reveal', async (c) => {
+        const id = c.req.param('key_id');
+        const rows = await runner.query(
+            `SELECT ciphertext, revealed_at FROM edge_api_key_secrets
+             WHERE tenant_slug = ? AND key_id = ?`,
+            [c.get('tenant'), id],
+        );
+        if (!rows[0]) return c.json({ detail: 'API key not found' }, 404);
+        const ciphertext = rows[0].ciphertext;
+        if (!ciphertext || rows[0].revealed_at) {
+            return c.json({ detail: 'API key has already been revealed' }, 410);
+        }
+        const key = await cipher.decrypt(String(ciphertext));
+        const timestamp = now();
+        const claimed = await runner.exec(
+            `UPDATE edge_api_key_secrets SET ciphertext = NULL, revealed_at = ?
+             WHERE tenant_slug = ? AND key_id = ? AND ciphertext = ? AND revealed_at IS NULL`,
+            [timestamp, c.get('tenant'), id, ciphertext],
+        );
+        if (claimed !== 1) return c.json({ detail: 'API key has already been revealed' }, 410);
+        await auditSecret(runner, c.get('tenant'), 'edge_api_key_revealed', id, timestamp);
+        return c.json({ key });
+    });
+
+    // edge-gpu (7)
+    app.get('/api/edge-gpu/', async (c) => c.json(await p2(c.get('tenant')).listEdgeResources('gpu')));
+
+    app.get('/api/edge-gpu/schemas', async (c) => {
+        await p2(c.get('tenant')).listEdgeResources('gpu');
+        return c.json({
+            providers: ['workers_ai', 'openai', 'anthropic', 'google', 'ollama', 'openai_compatible'],
+            schemas: {
+                'text-generation': {
+                    model_type: 'llm',
+                    input: { prompt: 'string', max_tokens: 'number?', temperature: 'number?' },
+                    output: { response: 'string' },
+                },
+                'text-embeddings': {
+                    model_type: 'embedder',
+                    input: { text: 'string[]' },
+                    output: { vectors: 'number[][]' },
+                },
+                'speech-recognition': {
+                    model_type: 'stt',
+                    input: { audio: 'base64' },
+                    output: { text: 'string' },
+                },
+                'text-to-image': {
+                    model_type: 'image_gen',
+                    input: { prompt: 'string', width: 'number?', height: 'number?' },
+                    output: { image: 'base64' },
+                },
+                'image-classification': {
+                    model_type: 'classifier',
+                    input: { image: 'base64' },
+                    output: { label: 'string', score: 'number' },
+                },
+                translation: {
+                    model_type: 'translator',
+                    input: { text: 'string', source_lang: 'string', target_lang: 'string' },
+                    output: { translated_text: 'string' },
+                },
+                summarization: {
+                    model_type: 'summarizer',
+                    input: { text: 'string', max_length: 'number?' },
+                    output: { summary: 'string' },
+                },
+                'object-detection': {
+                    model_type: 'vision',
+                    input: { image: 'base64' },
+                    output: { objects: 'array' },
+                },
+                'text-classification': {
+                    model_type: 'classifier',
+                    input: { text: 'string' },
+                    output: { label: 'string', score: 'number' },
+                },
+            },
+        });
+    });
+
+    app.get('/api/edge-gpu/catalog', async (c) => {
+        const models = await p2(c.get('tenant')).listEdgeResources('gpu');
+        return c.json({ provider: 'community', total: models.length, models_by_type: { configured: models } });
+    });
+
+    app.post('/api/edge-gpu/', async (c) => {
+        const b = await c.req.json().catch(() => ({})) as { name?: string; provider?: string; edge_engine_id?: string };
+        const engine = await p2(c.get('tenant')).getEdgeResource(b.edge_engine_id ?? '');
+        if (!engine || engine.kind !== 'engine') {
+            return c.json({ detail: 'Edge engine not found' }, 404);
+        }
+        const id = crypto.randomUUID();
+        await p2(c.get('tenant')).upsertEdgeResource({ id, kind: 'gpu', name: b.name ?? 'GPU Model', provider: b.provider ?? 'cloudflare' }, now());
+        return c.json({ id, name: b.name ?? 'GPU Model' });
+    });
+
+    app.put('/api/edge-gpu/:model_id', async (c) => {
+        const store = p2(c.get('tenant'));
+        const existing = await store.getEdgeResource(c.req.param('model_id'));
+        if (!existing) return c.json({ detail: 'GPU model not found' }, 404);
+        const body = await c.req.json().catch(() => ({})) as { name?: string; provider?: string };
+        await store.upsertEdgeResource({
+            id: c.req.param('model_id'),
+            kind: 'gpu',
+            name: body.name ?? String(existing.name),
+            provider: body.provider ?? (existing.provider as string | undefined),
+        }, now());
+        return c.json({ success: true });
+    });
+
+    app.delete('/api/edge-gpu/:model_id', async (c) => {
+        const store = p2(c.get('tenant'));
+        const model = await store.getEdgeResource(c.req.param('model_id'));
+        if (!model || model.kind !== 'gpu') {
+            return c.json({ detail: 'GPU model not found' }, 404);
+        }
+        await store.deleteEdgeResource(c.req.param('model_id'));
+        return c.json({ success: true });
+    });
+
+    app.post('/api/edge-gpu/:model_id/test', async (c) => {
+        const model = await p2(c.get('tenant')).getEdgeResource(c.req.param('model_id'));
+        if (!model || model.kind !== 'gpu') {
+            return c.json({ detail: 'GPU model not found' }, 404);
+        }
+        return c.json({ success: true, message: 'GPU model reachable' });
+    });
+
+    // Cloudflare & Deno integration endpoints.
+    //
+    // These report honestly that nothing is configured, because nothing here talks to
+    // Cloudflare or Deno Deploy yet. They previously read a local provider row, threw
+    // the result away, and answered `{success: true, 'Provider action completed'}` —
+    // so `POST /api/cloudflare/deploy` reported success while deploying nothing, and
+    // `/status` invented `https://app.workers.dev` from a local row. The discarded read
+    // had one effect: it made the behaviour classifier score these `functional`.
+    //
+    // A false success is worse than an honest refusal: the console shows the user a
+    // completed deployment that does not exist. Until these call the real provider
+    // (closure plan §1a Tier 2, via `cloudflareProvisioner`), they tell the truth.
+    const NOT_CONNECTED = 'Cloudflare provider is not configured for this deployment';
+
+    const providerAccount = async (tenant: string, providerId: string) => {
+        const provider = await p2(tenant).getEdgeResource(providerId);
+        return provider?.kind === 'provider' ? provider : null;
+    };
+    const providerGuard = async (c: any) => {
+        const body = await c.req.json().catch(() => ({})) as { provider_id?: string };
+        if (!await providerAccount(c.get('tenant'), body.provider_id ?? '')) {
+            return c.json({ detail: 'Provider account not found' }, 404);
+        }
+        return null;
+    };
+
+    app.post('/api/cloudflare/status', async (c) => {
+        const denied = await providerGuard(c);
+        if (denied) return denied;
+        return c.json({
+            deployed: false,
+            account_id: null,
+            url: null,
+            worker_name: null,
+        });
+    });
+
+    for (const p of ['/api/cloudflare/connect', '/api/cloudflare/deploy', '/api/cloudflare/teardown', '/api/cloudflare/inspect/content', '/api/cloudflare/inspect/secrets', '/api/cloudflare/inspect/settings', '/api/deno/connect']) {
+        app.post(p, async (c) => {
+            const denied = await providerGuard(c);
+            if (denied) return denied;
+            return c.json({ success: false, detail: NOT_CONNECTED });
+        });
+    }
+}

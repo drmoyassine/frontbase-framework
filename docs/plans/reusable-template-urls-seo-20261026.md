@@ -1,0 +1,39 @@
+# Reusable template URLs, exceptions and dynamic SEO — 2026-10-26
+
+## Authorized scope and implementation
+
+One reusable template per content type, including retained notice routes; optional root policy with shared defaults, first matching existing Condition, stable record override, and language-specific values. The existing @ picker and related-field fallback syntax author metadata. Ordinary components bind effective page.settings notice/action values; existing Actions execute links. A responsive URLs drawer separates the record list, focused record details, defaults and rules. Saves stage only; immutable review/prepare/publish activates them. No existing settings or source records are purged.
+
+## Migration evidence
+
+Read-only comparison through the existing HTTP RPC layer reconciled108 retained programs and2 institutions against canonical IDs, parent IDs, country22 and exact originalPath. Private mapping/backup evidence is retained outside Git. Existing selected directory views remain unchanged. Detail-only saved views must be restricted to the existing published IDs plus the110 matched retained IDs; no broader anonymous table access is authorized by this implementation.
+
+## Local qualification — passed
+
+Required workspace check/build pass on the frozen runtime.43 UI tests pass across template URLs, page organization, Conditions, detail starters and canvas projection. Shared-policy/backend tests prove locale/record precedence, related-field fallback and declared metadata paths, exact retained-route identity, actual-renderer SEO previews, no preview/publication side effects, administrator/tenant boundaries and draft CAS through existing PageChangeStore receipts. Engine and Block Versions regressions pass.
+
+Mutation results: new settings/route3/3; existing related-field capability3/3; route-context5/5; directory preview6/6; shared configuration3/3; SEO8/8 and immutable manifest8/8. Two stale harness targets were repaired (updated SEO condition and Windows line endings); final runs have no hollow cases. Existing captured SEO, homepage, record-localization, directory-localization, live-view and conformance regressions pass. Full console diagnostics retain existing debt; scoped workspace check is not a claim of a clean full-console type check.
+
+The offline migration tool produces ordinary editable notice elements, an optional normal Block Version for warning style, and a normal Actions alternative preserving the original default CTA. It is idempotent, accepts explicit localized notice/CTA/SEO copy, and performs no API or database operations. Private prepared layouts are42KB(program),37KB(institution),2KB(article), within existing layout limits. Live template URLs:293 programs,18 institutions and957 articles. The current catalog has1,282 paths and14 aliases; preserve both exactly. General/translation settings and existing directory views remain untouched.
+
+## Staging acceptance — 2026-10-26
+
+Runtime `6b8b96e` is committed/pushed and deployed through the owner-selected newpanel upload flow. Exact Git archive SHA256 `A0037A237C34EF06FB159F7A8795CBE918A96772EC2326E4133F004B2C15DB1C`. Active immutable site generation35/hash `170c24333bb30ca08bb84c6a1a2224bf81568b3927aa2e4dccd3f432d9f2b073` contains all three revised templates. Three candidates were reviewed without activating intermediate layouts, then activated together. The saved Homepage draft and unrelated original builder state were not published.
+
+All108 retained program routes and2 institution routes now select their corresponding record template and reconciled source ID/parent. The original notice catalog/chunks/URLs remain recoverable; no source records were deleted or edited. Their110 old workspace placements and now-empty Availability notices folder were removed with current-revision CAS; all18 other placements were preserved. Programs/institutions use two new detail-only saved views restricted to country22 and the exact published identity sets. All3 original directory views remain byte-for-byte unchanged.
+
+Arabic releases were reviewed, prepared and published for all110 retained routes and representative normal institution, program and blog routes:113 successful releases,0 failures,0 AI calls. Existing translation drafts are preserved. Source-fallback policy keeps untranslated dataset values in their source language, while template UI, notice/CTA and metadata use available Arabic values. This is multilingual framework acceptance, not a claim of dataset translation completeness.
+
+Final anonymous HTTP acceptance:12/12 source/Arabic homepage, normal institution/program, retained institution/program and blog requests return200 with correct language/direction, canonical and generation35; retained notices appear and normal records do not inherit them. Native checks cover all3 record templates in English/Arabic at1280×900 and390×844. Measured page scroll width equals viewport width in all12 combinations. Arabic internal navigation retains its prefix; source-language switcher links intentionally return to English. Screenshot/DOM measurements and private migration receipts are retained outside Git.
+
+Native URL manager checks cover clean template grouping, search, pagination, focused tabs, language selection, actual Arabic renderer preview, existing @ picker including related fields, and reset back to inherited settings without saving test values. Settings saves were separately exercised through the real guarded API when configuring notice SEO. General configuration revision4, translation generation/storage configuration and their revisions, source catalog,1,282 paths and14 aliases compare equal to the pre-migration backups. Full console type-check debt remains as recorded above.
+
+## Failures found and repaired during acceptance
+
+- The first combined candidate produced503 because its listing-policy membership contained185 IDs but the old single-table leaf compiler allowed100. The previous reviewed publication was temporarily reactivated with the existing CAS API (generation34); the fixed runtime then restored the combined candidate as generation35. Unnecessary full-membership filters are omitted. Bounded larger selections reuse the existing saved-view compiler in100-value leaves; real SQLite counts/pagination and PostgreSQL parameter offsets/scope intersection are covered. Per-request membership is bounded at1,000; this is not a claim of unbounded query selection.
+- Engine `publicBlockTree` ran before the renderer added route settings, removing a conditional notice. Engine admission and direct SSR now share the same whitelisted presentation-context helper. Full-engine EN/AR notice and conditional Action tests prove the fix; unrelated private root fields stay excluded.
+- Blog locale metadata reused the formatted SEO title as `record.title`, duplicating the site suffix. Resolvers now retain semantic record values server-side; locale reprojection uses matching localized visible record fields, never previously formatted metadata. Native/anonymous EN/AR blog titles now have one suffix.
+
+Final workspace check/build pass. Worker gzip725.2KB fits the1,024KB free-tier artifact budget; Vercel artifact974.0KB fits the existing internal budget. Additional engine/Block Versions, saved-view query, semantic article SEO and homepage regressions pass. Re-run safe Conditions2/2, Actions3/3 and captured SEO8/8 mutation gates pass with restored green baselines. These measurements qualify this scoped change, not a new Cloudflare/Vercel deployment-profile certification.
+
+Generated `examples/cf-full/api/cms.mjs` remains the sole uncommitted generated residue, preserved per standing instructions. No production cutover, package publication or broader release-gate closure occurred. Next release task remains candidate integration/type triage and cumulative qualification in the public-release finalization plan.

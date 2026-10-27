@@ -1,0 +1,29 @@
+dist/
+.wrangler/
+node_modules/
+
+# Vercel: api/cms.mjs IS tracked (see below — Vercel's function glob snapshots
+# the source upload, not the post-build tree). vercel's local output lands in
+# .vercel/.
+.vercel/
+
+# Deno Deploy: the self-contained deploy root assembled by build.mjs (bundled
+# deno.mjs + deno.json + a fresh console-dist copy).
+deno-dist/
+
+# The console artifact is built from the in-repo @frontbase/console package
+# (`pnpm console:build`) and verified by `pnpm console:check`. Nothing under
+# console-dist/ is tracked except .assetsignore (wrangler's upload exclusion).
+console-dist/*
+!console-dist/.assetsignore
+e2e/report/
+e2e/test-results/
+.cloud-e2e/
+test-results/
+
+# Docker compose reads live secrets from .env (SESSION_SECRET, ADMIN_PASSWORD).
+# .env.example is the committed template; .env itself never enters git.
+.env
+
+.vercel
+.publication-e2e/

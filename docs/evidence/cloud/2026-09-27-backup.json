@@ -1,0 +1,18 @@
+{
+  "format": 1,
+  "kind": "frontbase-cloud-backup",
+  "createdAt": "2026-09-27T18:58:30.729Z",
+  "source": {
+    "valid": true,
+    "host": "aws-1-eu-west-2.pooler.supabase.com",
+    "port": "5432",
+    "database": "postgres",
+    "redactedUrl": "postgresql://***:***@aws-1-eu-west-2.pooler.supabase.com:5432/postgres"
+  },
+  "schema": "frontbase_cloud",
+  "bytes": 47975,
+  "sha256": "ea1e0d1959ffc43e105de2f5f1020eadea497bbca4d3a2f4ccd39006203ebfc5",
+  "backupFile": "frontbase-frontbase_cloud-2026-09-27T18-58-13-114Z.dump",
+  "pgDumpVersion": "pg_dump (PostgreSQL) 17.11",
+  "gitCommit": "d3466c1a57dcec401b81c295d2a385a5ce506b93"
+}

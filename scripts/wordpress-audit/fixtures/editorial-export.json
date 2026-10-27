@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-10-02T09:30:00Z",
+  "collection": {
+    "table": "public.editorial_documents",
+    "evidence": "synthetic configuration fixture; the real value must come from the deployment's saved directory configuration"
+  },
+  "documents": [
+    {"id": 9001, "source_origin": "https://usa.example", "source_post_id": 20,
+     "original_path": "/blog/first-article/", "title": "First Article",
+     "status": "draft", "revision": 1, "cover_url": null, "cover_alt": null}
+  ]
+}

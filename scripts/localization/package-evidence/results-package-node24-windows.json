@@ -1,0 +1,42 @@
+{
+  "package": "@frontbase/translation",
+  "version": "0.0.0",
+  "node": "v24.19.0",
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "packedBytes": 16576,
+  "unpackedBytes": 68256,
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist/contracts.d.ts",
+    "dist/contracts.js",
+    "dist/contracts.js.map",
+    "dist/identity.d.ts",
+    "dist/identity.js",
+    "dist/identity.js.map",
+    "dist/index.d.ts",
+    "dist/index.js",
+    "dist/index.js.map",
+    "dist/rich-text.d.ts",
+    "dist/rich-text.js",
+    "dist/rich-text.js.map",
+    "dist/sitemap-comparison.d.ts",
+    "dist/sitemap-comparison.js",
+    "dist/sitemap-comparison.js.map",
+    "package.json"
+  ],
+  "sha256": "3e1ac95b3b7695193dbadb3633a5f4d016be517df36c43ae410171bc9ebb35d6",
+  "outsideWorkspace": true,
+  "offlineInstall": true,
+  "lifecycleScriptsDisabled": true,
+  "publicExportsFunctional": true,
+  "externalTypeDeclarations": true,
+  "limitations": [
+    "Unpublished M0 foundations only; no AI generation or storage adapters",
+    "Uses a locally packed copy of the existing Zod dependency, not npm registry availability proof",
+    "No browser/deployed-host or minimum-Node acceptance from this consumer test",
+    "Consumer uses the installed compiler as a test tool, not an application dependency"
+  ]
+}
