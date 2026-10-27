@@ -1,6 +1,6 @@
 # Provider OAuth connections
 
-The shared hosted wizard and installed Connected Accounts support direct Cloudflare OAuth and Vercel Integration authorization. This is an opt-in self-hosted client path. It does not yet replace the native deployment buttons or establish an anonymous first-install ownership claim.
+The shared hosted wizard and installed Connected Accounts support direct Cloudflare OAuth and Vercel Integration authorization, or an explicitly configured optional callback relay. Native first-install ownership has local qualification but does not yet replace the native deployment buttons. The current isolated Vercel registration has no accepted live grant; see the linked evidence before relying on that provider flow.
 
 ## Configure the OAuth client
 
@@ -14,6 +14,7 @@ Set `FRONTBASE_PUBLIC_ORIGIN` to the exact installation origin. Register its cal
 | `FRONTBASE_VERCEL_OAUTH_CLIENT_ID` | Vercel Integration client ID |
 | `FRONTBASE_VERCEL_OAUTH_CLIENT_SECRET` | Integration server secret |
 | `FRONTBASE_VERCEL_OAUTH_INTEGRATION_SLUG` | Registered integration slug |
+| `FRONTBASE_VERCEL_OAUTH_TEAM_SLUG` | Optional owner/allowed team slug for a private Integration dashboard entry |
 
 Callbacks are `/api/provider-oauth/cloudflare/callback` and `/api/provider-oauth/vercel/callback` on that exact origin. Credentials and private client secrets are runtime server configuration, never browser configuration or Git content. Vercel identity-only sign-in is not a deployment management connection. Its Integration needs the team/project/environment/deployment permissions appropriate to the operations performed; a successful account read alone does not certify every provisioning permission. Cloudflare scopes must include account discovery and the selected resource operations. Operator registrations and provider consent are not implied by configuring an ID.
 
@@ -29,8 +30,16 @@ Setup connections use a durable encrypted vault: Cloudflare's fixed coordinator,
 
 Native D1/KV bindings keep working without a management connection. HTTP adapters using a connected account require valid authorization. Expiry is exposed as reconnect-required; automatic refresh is not claimed. Deleting a connection removes its active application reference; provider revocation is required to invalidate grants retained in historical deployments or encrypted setup handoff copies. No remote integration uninstall is performed implicitly.
 
+## Optional private relay
+
+The owner-approved isolated relay is implemented in [examples/oauth-relay](../../examples/oauth-relay/README.md). It retains registered client secrets on the relay server and hands an expiring encrypted grant to a specifically admitted installation through a receiver-bound, one-use server exchange. The installed app and hosted CF/Vercel/Docker wizard reuse the same owner checks and encrypted provider stores. Direct per-origin clients remain available without a relay.
+
+Set `FRONTBASE_OAUTH_RELAY_URL` to the relay's exact HTTPS origin and `FRONTBASE_OAUTH_RELAY_TARGET` to `{"origin":"https://your-installation.example","host":"cloudflare","purpose":"connect"}` (host may instead be `vercel` or `docker`). The relay operator must explicitly enroll that origin. These values are trusted server configuration, never browser input. A configured relay selects the relay protocol; without it, the direct-client path remains unchanged. Cloudflare receivers require `global_fetch_strictly_public` when fetching a relay Worker. The managed CF configuration generator includes it; custom/native configurations must preserve it explicitly. See [Cloudflare fetch guidance](https://developers.cloudflare.com/workers/runtime-apis/fetch/).
+
+Private Vercel Integrations expose an owner/allowed-team dashboard entry while the external marketplace page returns 404. The optional team slug selects that dashboard entry, but its popup return is unverified. The owner explicitly approved Unlisted visibility for the isolated test registration: it is hidden from search/browse, but direct-link visitors can request installation. The documented external-install route still returns 404 at this checkpoint. No callback-state checks were relaxed. A visibility change requires the operator's deliberate approval; it is not an automatic workaround.
+
+Relay tickets last at most two minutes, pending records at most ten minutes, and consumed credential rows are deleted atomically. The receiving server independently checks its authenticated owner, original cookie, tenant, subject, origin, target and expiry before storing a grant. SQL limits, a bounded keyed-IP rate window and scheduled cleanup constrain the isolated example. Active-row deletion does not erase provider/hosting database backups. The relay's privacy/license notices describe the isolated service; they do not promise a public hosted service or override Apache-2.0/provider terms.
+
 ## Remaining native entry work
 
-The existing native buttons remain unchanged. Arbitrary new deployment origins cannot simply be added to one provider callback registration dynamically. A shared callback relay would receive provider authorization before an encrypted one-use handoff, so it is an additional sensitive service. Automatic approval review rejected implementing that service without specific approval of its destination and credential-handling architecture. No relay is deployed or included here. Fully self-hosted per-origin OAuth clients remain supported.
-
-Before replacing the buttons: register and authorize the provider applications; approve or select a callback/handoff design for arbitrary deployment origins; prove control of the exact CF Worker/Vercel project before minting the installation owner capability; preserve installed bindings on subsequent native builds; and run a fresh button → provider consent → bindings → activation → administrator → publication journey on each host. Do not substitute existing-app upgrade or mocked provider tests for that acceptance.
+Existing native buttons remain unchanged. Explicit zero-state entries verify fixed Worker or ready Vercel project/deployment/alias ownership through the relay. Native ticket redemption reserves a create-only account/project/production claim before an internal establish hook mints the owner capability and enters the protected bootstrap. Different build IDs or aliases cannot acquire another owner; nonsecret claims remain after credential cleanup and require explicit operator recovery for uncertain operations. These paths have local SQLite/provider-double tests, not fresh native acceptance. Button snapshots, trusted deployment-metadata handoff and activated-binding preservation still need integration and fresh button -> consent -> bindings -> activation -> administrator -> publication/restart/refusal proofs. Existing-app connections and mocked tests do not substitute for them.

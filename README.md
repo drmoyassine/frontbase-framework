@@ -1,4 +1,4 @@
-**Provider connections:** [Direct self-hosted OAuth](docs/guides/provider-oauth.md) is implemented for explicitly registered Cloudflare/Vercel clients. Native deployment-button OAuth replacement and live consent acceptance remain open; no shared credential relay is deployed.
+**Provider connections:** [Direct clients and an optional private OAuth relay](docs/guides/provider-oauth.md) reuse encrypted Connected Accounts. [Isolated relay evidence](docs/plans/provider-oauth-relay-20261027.md) verifies real Cloudflare consent and persistence; Vercel consent completion and native deployment-button OAuth replacement remain open. This does not introduce a required hosted control plane.
 
 **Hosted setup:** the opt-in [Cloudflare/Vercel operator entry](docs/guides/hosted-cloud-setup.md) has isolated live activation, administrator and publication evidence. Native buttons remain on their existing defaults; this is not a new OAuth launcher or full template installer.
 

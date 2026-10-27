@@ -1,3 +1,5 @@
+> Historical direct-client checkpoint. The owner subsequently approved and deployed the isolated relay and private registrations; see [current relay evidence](provider-oauth-relay-20261027.md). Earlier statements below about absent approval/registration/relay are superseded, not current blockers. Native-button completion remains open.
+
 # Shared provider OAuth delivery — 2026-10-27
 
 ## Status
