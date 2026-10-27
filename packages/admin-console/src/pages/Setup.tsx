@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { loginProductAdmin, postSetup, type SetupStatus } from '@/lib/api';
+import { getSetupStatus, loginProductAdmin, postSetup, type SetupStatus } from '@/lib/api';
 import { authorizeInitialSetupClaim } from '@/lib/setup-claim';
 
 const PRODUCT_DASHBOARD = '/frontbase-admin/dashboard';
@@ -46,6 +46,9 @@ export function Setup({ status }: { status: SetupStatus }) {
 
         try {
             if (!claimAuthorized) throw new Error('Open a valid secure setup link before creating an administrator.');
+            const current = await getSetupStatus();
+            if (current.setupExpired) throw new Error('The setup authorization has expired. Your entries are preserved. Renew the secure setup link, then try again.');
+            if (!current.setupEnabled) throw new Error('Administrator setup is no longer available. Your entries are preserved.');
             await postSetup(email, password);
             try {
                 await loginProductAdmin(email, password);
@@ -57,7 +60,9 @@ export function Setup({ status }: { status: SetupStatus }) {
             }
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Setup failed';
-            setError(message);
+            setError(['http_403', 'invalid_setup_token', 'setup_link_expired'].includes(message)
+                ? 'Setup authorization was refused or expired. Your entries are preserved. Renew the secure setup link, then try again.'
+                : message);
         } finally {
             setLoading(false);
         }
