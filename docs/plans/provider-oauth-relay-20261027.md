@@ -1,5 +1,13 @@
 # Isolated provider relay continuation — 2026-10-27
 
+## Subsequent native-button continuation
+
+Vercel's Unlisted marketplace/external pages now resolve without changing the registration again. A fresh Frontbase-initiated state-bound external installation, limited to `frontbase-hosted-vercel-261026` and explicitly approved at Install, returns to the recipient, retains an encrypted account and passes its live provider test. The earlier 404 is no longer reproducible; delayed propagation is an inference, not an established root cause. The old invalid manual account is preserved separately and is not counted as OAuth evidence.
+
+Native wiring now derives stable installation identity from build account/project metadata, never browser headers. Vercel's build-only OIDC payload supplies identity hints; it is not treated as authorization or serialized into artifacts. The relay independently verifies provider ownership before its durable claim. Runtime activation settings override initial metadata. CF's deploy wrapper reads current settings with the existing build credential and preserves exact active resources/secrets/closed setup; the credential is never embedded in the Worker. Read-only live planning against the existing CF acceptance app passes. Explicit native snapshots omit administrator/store prompts and retain the complete README. Existing default snapshots remain unchanged until fresh acceptance passes.
+
+Qualification at this continuation: workspace check/build, native metadata/snapshot tests, existing native establish/host/preservation tests, existing button contract and fourteen relay security mutations pass. Fresh native CF/Vercel deployments are still pending.
+
 This supersedes the earlier statement that the relay was unapproved/unimplemented. The owner explicitly approved the isolated relay, private CF registration/scopes and actual CF consent, and private Vercel registration/scopes/agreement/contact plus a single-project Vercel consent. The complete native-button request remains open; this is bounded connection evidence.
 
 Source implementation: `ce31968` (`feat(setup): secure optional OAuth relay and native ownership claims`). This is not a completed native-button delivery.

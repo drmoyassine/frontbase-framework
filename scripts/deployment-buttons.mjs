@@ -9,7 +9,7 @@ export const nativeStore = Object.freeze({ type: 'integration', integrationSlug:
 
 // Named test tags avoid the ambiguous slash-branch parsing observed in native clone UIs.
 // This is a conservative launcher constraint, not a restriction on Git or provider APIs.
-export function nativeDeployButtons({ ref = nativeSourceRef, name = 'frontbase-cms' } = {}) {
+export function nativeDeployButtons({ ref = nativeSourceRef, name = 'frontbase-cms', hosted = false } = {}) {
   if (ref !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(ref)) throw new Error('Use an explicit unambiguous named ref (no slash), or omit ref for the repository default');
   if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(name)) throw new Error('Invalid project name');
   const source = nativeRepository + (ref ? '/tree/' + ref : '');
@@ -17,8 +17,10 @@ export function nativeDeployButtons({ ref = nativeSourceRef, name = 'frontbase-c
   vercel.searchParams.set('repository-url', source);
   vercel.searchParams.set('project-name', name);
   vercel.searchParams.set('root-directory', 'examples/cf-full');
-  vercel.searchParams.set('env', 'ADMIN_EMAIL,ADMIN_PASSWORD');
-  vercel.searchParams.set('stores', JSON.stringify([nativeStore]));
+  if (!hosted) {
+    vercel.searchParams.set('env', 'ADMIN_EMAIL,ADMIN_PASSWORD');
+    vercel.searchParams.set('stores', JSON.stringify([nativeStore]));
+  }
   const cloudflare = new URL('https://deploy.workers.cloudflare.com/');
   cloudflare.searchParams.set('url', source);
   return { vercel: vercel.href, cloudflare: cloudflare.href };

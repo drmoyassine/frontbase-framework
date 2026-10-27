@@ -14,6 +14,7 @@
  * connect/schema flows (Supabase/Neon Postgres) need it at runtime.
  */
 import * as esbuild from 'esbuild';
+import {vercelNativeBuildMetadata} from '../../scripts/deployment-setup/native-build-metadata.mjs';
 import {buildBindingsAssets} from '../../scripts/deployment-setup/bindings-assets.mjs';
 import { gzipSync } from 'node:zlib';
 import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, copyFileSync, cpSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
@@ -24,6 +25,10 @@ import { builtinModules } from 'node:module';
 import { validateStagedConsole } from '../../scripts/console-pin.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const nativeBuildEnv = process.env.VERCEL === '1'
+    ? {...JSON.parse(readFileSync(join(here,'vercel.json'),'utf8')).env,...process.env}
+    : process.env;
+const nativeVercelMetadata = vercelNativeBuildMetadata(nativeBuildEnv);
 mkdirSync(join(here, 'dist'), { recursive: true });
 
 /**
@@ -299,6 +304,7 @@ const bootstrapAssetsPlugin={name:"portable-bootstrap-assets",setup(build){build
 async function emitEdgeArtifact({ entry, outfile, extraPlugins = [], external, platform = shared.platform, banner }) {
     await esbuild.build({
         ...shared,
+        define: {...shared.define, __FRONTBASE_NATIVE_VERCEL__: JSON.stringify(nativeVercelMetadata)},
         platform,
         entryPoints: [entry],
         outfile: join(here, outfile),

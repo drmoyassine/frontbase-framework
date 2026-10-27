@@ -51,6 +51,7 @@ import { bootTimeoutMs, raceBootTimeout, BootTimeoutError } from './boot-guard.j
 
 let enginePromise: Promise<Hono> | null = null;
 let bootstrapHost:any;
+declare const __FRONTBASE_NATIVE_VERCEL__: Record<string,string>;
 const externalFetch = createNodeHttpTransport();
 
 function engine(): Promise<Hono> {
@@ -100,7 +101,8 @@ function engine(): Promise<Hono> {
 }
 
 export async function handler(req: Request): Promise<Response> {
-    if(process.env.FRONTBASE_BOOTSTRAP==='native'){try{bootstrapHost??=createNativeCloudBootstrap(process.env,'vercel',externalFetch);return await bootstrapHost.fetch(req);}catch{return new Response('Setup unavailable',{status:503});}}
+    const nativeEnv = {...(typeof __FRONTBASE_NATIVE_VERCEL__ === 'undefined' ? {} : __FRONTBASE_NATIVE_VERCEL__),...process.env};
+    if(nativeEnv.FRONTBASE_BOOTSTRAP==='native'){try{bootstrapHost??=createNativeCloudBootstrap(nativeEnv,'vercel',externalFetch);return await bootstrapHost.fetch(req);}catch{return new Response('Setup unavailable',{status:503});}}
     if(process.env.FRONTBASE_BOOTSTRAP==='1'){try{bootstrapHost??=createCloudBootstrap(process.env,'vercel',externalFetch);return await bootstrapHost.fetch(req);}catch{return new Response('Setup unavailable',{status:503});}}
     // Boot AND request-path engine work are bounded: an unreachable state DB
     // must answer as a legible 503, not hold the request until the platform's
