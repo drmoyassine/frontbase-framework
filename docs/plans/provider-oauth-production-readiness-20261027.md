@@ -2,7 +2,7 @@
 
 Status: **not production-ready**. Owner requests promotion of hosted setup to the main Cloudflare and Vercel buttons and a production OAuth service. The isolated native snapshots have live acceptance; the main buttons and general multi-tenant service do not. Do not expose the test relay as a production relay or silently replace its enrollment policy.
 
-### Production deployment preparation — 2026-10-27
+### Production deployment preparation — historical checkpoint, 2026-10-27
 
 The owner explicitly approved removal without backup of the obsolete test Worker `frontbase-clean-cf-261022` and D1 `8180f918-c789-47f4-8c94-26f11a103242`; both were deleted. Dedicated D1 `frontbase-oauth-production` (`f8c81e62-7fdd-4b95-a5e5-08148e0112bc`) was created. The `frontbase-oauth-production` Worker is deployed at `oauth.frontbase.dev`, backed by that database with a newly generated Worker encryption secret. Provider clients and public notices are deliberately not configured, so `/health` returns 503 `relay_unavailable`; it is not a functioning public OAuth service yet. The configured custom domain initially hit the existing `*.frontbase.dev/*` community Worker and returned an unrelated 500; an exact `oauth.frontbase.dev/*` Worker route now selects the dedicated relay. The existing wildcard route is unchanged. The new relay's database and secret binding were checked without reading secret values.
 
@@ -24,7 +24,7 @@ The key has no automatic rotation or self-service recovery. A production operato
 
 ## Production registration progress, 2026-10-27
 
-The dedicated Worker and D1 are deployed at `oauth.frontbase.dev` with a specific route ahead of the existing wildcard. The owner-approved privacy and terms endpoints return 200 independently of provider setup; `/health` returns 503 while the Vercel secret remains unconfigured. Cloudflare's `Frontbase` client is Private with seven baseline scopes and domain verification in progress after the DNS TXT was added. The `frontbase-deployment` Vercel integration is Unlisted with approved limited scopes. Neither production OAuth handoff nor fresh deployments have been verified, and README buttons remain unchanged. Workspace check/build and relay suite including 22 mutations passed after the notice endpoint change.
+The dedicated Worker and D1 are deployed at `oauth.frontbase.dev` with a specific route ahead of the existing wildcard. The owner-approved privacy and terms endpoints return 200 independently of provider setup; `/health` returns 503 while the Vercel secret remains unconfigured. Cloudflare's `Frontbase` client is Private, domain verified and branded, with seven baseline scopes. The `frontbase-deployment` Vercel integration is Unlisted with approved limited scopes. Automatic safety review rejected access to the Vercel credential screen because it could expose the secret, despite the owner's transfer approval; the owner was asked to install it directly. Neither production OAuth handoff nor fresh deployments have been verified, and README buttons remain unchanged. Workspace check/build and relay suite including 22 mutations passed after the notice endpoint change.
 
 ## Verified constraints
 
