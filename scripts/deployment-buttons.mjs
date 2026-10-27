@@ -3,13 +3,13 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
 // Nonrelease source snapshot; the public default branch is not the accepted deploy source.
-export const nativeSourceRef = 'frontbase-selfhost-preview-20261026';
+export const nativeSourceRef = 'frontbase-hosted-production-test-20261027';
 export const nativeRepository = 'https://github.com/drmoyassine/frontbase-framework';
 export const nativeStore = Object.freeze({ type: 'integration', integrationSlug: 'tursocloud', productSlug: 'database', protocol: 'storage', allowConnectExistingProduct: true });
 
 // Named test tags avoid the ambiguous slash-branch parsing observed in native clone UIs.
 // This is a conservative launcher constraint, not a restriction on Git or provider APIs.
-export function nativeDeployButtons({ ref = nativeSourceRef, name = 'frontbase-cms', hosted = false } = {}) {
+export function nativeDeployButtons({ ref = nativeSourceRef, name = 'frontbase-cms', hosted = true } = {}) {
   if (ref !== undefined && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(ref)) throw new Error('Use an explicit unambiguous named ref (no slash), or omit ref for the repository default');
   if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(name)) throw new Error('Invalid project name');
   const source = nativeRepository + (ref ? '/tree/' + ref : '');
@@ -26,24 +26,25 @@ export function nativeDeployButtons({ ref = nativeSourceRef, name = 'frontbase-c
   return { vercel: vercel.href, cloudflare: cloudflare.href };
 }
 
-export function verifyNativeButtons({ read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8') } = {}) {
+export function verifyNativeButtons({ read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'), snapshot = false } = {}) {
   const failures = [];
   const expect = (condition, message) => { if (!condition) failures.push(message); };
   const buttons = nativeDeployButtons();
   const readme = read('README.md');
   for (const [host, href] of Object.entries(buttons)) expect(readme.includes('](' + href + ')'), host + ' README button differs from the reviewed contract');
   const pkg = JSON.parse(read('package.json'));
-  expect(/--config wrangler\.toml(?: |$)/.test(pkg.scripts.deploy), 'CF native command must select the root template');
-  expect(/--experimental-auto-create=false(?: |$)/.test(pkg.scripts.deploy), 'CF native command must refuse duplicate auto-provisioning');
-  const toml = read('wrangler.toml');
+  if (snapshot) expect(/deploy-native-cloudflare\.mjs --config wrangler\.toml/.test(pkg.scripts.deploy), 'CF hosted snapshot must use the native bootstrap deployer');
+  const toml = read(snapshot ? 'wrangler.toml' : 'wrangler.native.toml');
   expect(/main\s*=\s*"examples\/cf-full\/dist\/worker.mjs"/.test(toml), 'CF native entry must select the built full application');
-  expect(/database_name\s*=\s*"[^"\r\n]+"/.test(toml) && /database_id\s*=\s*"00000000-0000-0000-0000-000000000000"/.test(toml), 'CF D1 handoff requires a name and inert replaceable ID');
-  expect(/\[\[kv_namespaces\]\][\s\S]*?\bid\s*=\s*"00000000000000000000000000000000"/.test(toml), 'CF KV handoff requires an inert replaceable ID');
+  expect(/FRONTBASE_BOOTSTRAP\s*=\s*"native"/.test(toml), 'CF must use native bootstrap');
+  expect(snapshot ? /FRONTBASE_NATIVE_RELAY_URL\s*=\s*"https:\/\/oauth\.frontbase\.dev"/.test(toml) : /FRONTBASE_NATIVE_RELAY_URL\s*=\s*""/.test(toml), 'CF relay must match the selected setup source');
+  expect(!/\[\[(?:d1_databases|kv_namespaces)\]\]/.test(toml), 'Hosted bootstrap must not require initial D1 or KV bindings');
   expect(!/^\s*account_id\s*=/m.test(toml), 'CF native template cannot pin an operator account');
   const env = read('.env.example').split(/\r?\n/).filter(line => /^[A-Z][A-Z0-9_]*=/.test(line)).map(line => line.split('=')[0]).sort();
-  expect(JSON.stringify(env) === JSON.stringify(['ADMIN_EMAIL', 'ADMIN_PASSWORD']), 'Native prompts must request only initial administrator inputs');
+  if (snapshot) expect(env.length === 0, 'Hosted setup must not prompt for initial credentials');
   const vercel = JSON.parse(read('examples/cf-full/vercel.json'));
   expect(vercel.buildCommand === 'node build.mjs', 'Vercel root directory must build through the full-example entry');
+  if (snapshot) expect(vercel.env?.FRONTBASE_NATIVE_SETUP === '1' && vercel.env?.FRONTBASE_NATIVE_RELAY_URL === 'https://oauth.frontbase.dev', 'Vercel hosted snapshot must select the production relay');
   return { ok: failures.length === 0, failures, buttons };
 }
 
@@ -71,7 +72,7 @@ export async function verifyNativeSource({ ref = nativeSourceRef, fetchImpl = fe
     }
   }
   if (!failures.length) {
-    try { failures.push(...verifyNativeButtons({ read: path => files.get(path) }).failures); }
+    try { failures.push(...verifyNativeButtons({ read: path => files.get(path), snapshot: true }).failures); }
     catch { failures.push('Source deployment contract could not be parsed'); }
   }
   return { ok: failures.length === 0, source: ref ?? 'repository default branch', failures, buttons };
