@@ -12,7 +12,9 @@ assert.equal(plan.vars.FRONTBASE_INSTALLATION_ID,plan.vars.FRONTBASE_NATIVE_INST
 assert.ok(!plan.d1_databases); assert.ok(!plan.kv_namespaces);
 const settings={bindings:[{type:'assets',name:'ASSETS'},...Object.entries(plan.vars).map(([name,text])=>({type:'plain_text',name,text}))]};
 assert.deepEqual(nativeCloudflarePlan(template,{...args,settings}),plan);
-for(const bindings of [[],[...settings.bindings,{type:'secret_text',name:'SESSION_SECRET'}],settings.bindings.map(b=>b.name==='FRONTBASE_BOOTSTRAP'?{...b,text:'1'}:b)])assert.throws(()=>nativeCloudflarePlan(template,{...args,settings:{bindings}}));
+assert.deepEqual(nativeCloudflarePlan(template,{...args,settings:{bindings:[]}}),plan);
+assert.throws(()=>nativeCloudflarePlan(template,{...args,settings:{}}));
+for(const bindings of [[{type:'plain_text',name:'UNKNOWN',text:'value'}],[...settings.bindings,{type:'secret_text',name:'SESSION_SECRET'}],settings.bindings.map(b=>b.name==='FRONTBASE_BOOTSTRAP'?{...b,text:'1'}:b)])assert.throws(()=>nativeCloudflarePlan(template,{...args,settings:{bindings}}));
 const active={bindings:[{type:'assets',name:'ASSETS'},{type:'plain_text',name:'FRONTBASE_BOOTSTRAP',text:'0'},{type:'plain_text',name:'FRONTBASE_INSTALLATION_ID',text:plan.vars.FRONTBASE_INSTALLATION_ID},{type:'secret_text',name:'SESSION_SECRET'},{type:'d1',name:'DB',id:plan.vars.FRONTBASE_INSTALLATION_ID}]};
 const retained=nativeCloudflarePlan(template,{...args,settings:active});assert.equal(retained.vars.FRONTBASE_BOOTSTRAP,'0');assert.equal(retained.d1_databases[0].database_id,plan.vars.FRONTBASE_INSTALLATION_ID);assert.ok(!JSON.stringify(retained).includes('SESSION_SECRET'));
 assert.deepEqual(vercelNativeBuildMetadata({}),{});
