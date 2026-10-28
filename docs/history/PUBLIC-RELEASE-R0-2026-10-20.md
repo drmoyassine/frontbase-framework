@@ -1,0 +1,52 @@
+# R0 reconciliation — 2026-10-20
+
+## Recommended edition and outcome
+
+Retain **Frontbase Framework Developer Preview**, for developers and agents operating their own deployment. This is the already accepted first-edition scope, not a new launch approval. Public distribution remains gated; do not describe Frontbase as GA or imply complete host, visual or behavioral parity. CF-22 remains paused accepted residue. Neither Studygram's pilot nor NoCodeHero's curriculum determines framework release readiness.
+
+R0 reconciliation is complete as an evidence inventory and ordered backlog. R1–R4 acceptance is not complete. No source changes, provider operations, deployment, registry publication or dependency adoption were performed by this audit.
+
+## Baseline and package boundary
+
+Inspected shared checkout: `codex/wordpress-pilot`, HEAD `585944f2fe97539f239b7c04c537ab91f77df1f0`. There were 406 status entries before this session's audit claim, including staged deletions with untracked counterparts and both staged and unstaged modifications. The shared checkout is not an immutable release candidate; no cleanup, staging, reset or overwrite is appropriate.
+
+Ten top-level package manifests classify as seven non-private Apache-2.0 library candidates and three private application artifacts (console, hydrate and admin-console). The six original libraries remain the architectural baseline; the explicitly owner-accepted standalone translation package is the documented exception, not an invitation to add packages. Six library candidates are version `0.0.0`; builder is `0.1.0`. Root `private:true` prevents publishing the monorepo root; it does not certify or prevent publication of its non-private children.
+
+The working backend manifest still uses `drizzle-orm:^0.36.0` and internal `workspace:*` dependencies. Workspace references require correct conversion during packing; they do not alone prove that a packed artifact is broken. Local tags are absent. Root `SECURITY.md`, `CONTRIBUTING.md` and `CHANGELOG.md` are absent. Four workflow files exist (`contracts`, Cloudflare, Vercel and Deno fresh-deploy); file existence is not evidence of successful release automation. No remote registry or tag inventory was performed.
+
+## Evidence reconciliation
+
+| Surface | Evidence that can be retained | Acceptance still required |
+|---|---|---|
+| External libraries and starter | [Consumer proof](PUBLIC-RELEASE-R1-CONSUMER-PROOF.md), [binding types](PUBLIC-RELEASE-R1-BINDING-TYPES.md) establish bounded tarball/runtime and pure-starter results | Fresh coherent seven-package graph, strict declarations, installed lifecycle and versioned full-CMS adoption outside the workspace |
+| Backend public types | [Diagnosis](PUBLIC-RELEASE-R1-DECLARATION-DIAGNOSIS.md), [repair proposal](PUBLIC-RELEASE-R1-UPSTREAM-TYPE-REPAIR-PROPOSAL.md) distinguish a successful copied-package experiment from an adopted distributable remedy | Dependency identity/provenance/maintenance decision, real external installation and mixed-caller type compatibility; do not publish local patched bytes as unchanged upstream |
+| Response versus behavior | [SDK delivery](PUBLIC-RELEASE-R2-SDK-HTTP-DELIVERY.md) retains dated response-conformance evidence; [behavior repair plan](PUBLIC-RELEASE-R2-BEHAVIOR-REPAIR-PLAN.md) explains order-dependent fixtures and false-success risks | Fresh isolated forward/reverse/seeded behavior measurements, positive effects and fault evidence; passing schemas do not prove functional outcomes |
+| Transport and security | [Transport audit](PUBLIC-RELEASE-R2-TRANSPORT-AUDIT.md), [SDK delivery](PUBLIC-RELEASE-R2-SDK-HTTP-DELIVERY.md), [Neon candidate](PUBLIC-RELEASE-R2-NEON-PACKAGE-EVIDENCE.md) record bounded repairs and remaining decisions | Complete guarded transport/native boundary inventory and intended-host DNS/egress, tenant/auth/no-leak/recovery gates; do not reinterpret fixture results as live-host proof |
+| Translation | [Homepage receipt](../plans/frontbase-homepage-arabic-publication-20261019.md), [session recovery](../plans/frontbase-admin-session-recovery-20261020.md), [active implementation plan](../plans/frontbase-ai-native-translation-implementation-20261016.md) supersede the October 17 statement that datasource UI and visual publication are absent | General pages, Block Versions/live records, broader history/publication/query/migration and package acceptance remain separate; the dispatched Study in USA stream owns its implementation |
+| Editable deployment profiles | Shared HEAD records the [accepted profile plan](../plans/frontbase-deployment-profiles-20261020.md). Separate branch `codex/deployment-profiles` at `4fa2b27` records bounded private R2/KV and managed identity/redeploy/recovery acceptance | Review and integrate that branch before attributing its implementation to this checkout. Shared Bindings work remains uncommitted; controlled provider/state changes, actual button/clean-install journeys and live Vercel acceptance remain open; Deno is deferred |
+| Self-host operations | [Deploy guide](../guides/console-and-deploy.md), [Docker guide](../guides/self-host-docker.md) and bounded disposable deployment evidence | Independent clean-room authoring/publication/automation plus upgrade, secret custody, backup/restore and rollback on each claimed target |
+| Claims and release operations | [Strategy](PUBLIC-RELEASE-STRATEGY.md), [readiness checklist](RELEASE-READINESS.md) and README explicitly retain Developer Preview preparation | Review broad README statements about exact WYSIWYG, offline navigation, every admin area and turnkey buttons against accepted evidence; establish versions, support/security reporting and release rehearsal |
+
+The deployment branch's native receipt is available reproducibly with `git show 266338e:docs/plans/frontbase-deployment-native-r2-20261020.md`. Its source commit is `a6a2953`, generated artifact `8991d39`, documentation `266338e`. The subsequent managed lifecycle receipt is available with `git show 4fa2b27:docs/plans/frontbase-deployment-managed-lifecycle-20261020.md`, source `6627a6c`. It records actual disposable create/redeploy, preserved session/database/KV/signed-R2 access and read-only reconciliation of a completed upload after a failed final observation. Unknown creation/upload outcomes, cross-machine races, migration, backup/restore and arbitrary adoption remain excluded. These receipts were inspected as retained evidence, not rerun here. Uncommitted editor/API/UI changes in that isolated checkout are not immutable release evidence. Neither receipt establishes full management-UI parity, permanent public assets, completed deployment buttons or independent clean-room acceptance.
+
+## Ordered executable backlog
+
+| Order | Work | Required completion evidence |
+|---|---|---|
+| 1 / P0 | Establish the candidate source/evidence baseline | Owner-reviewed reconciliation of shared diffs and independently committed branches; explicit inclusion/exclusion list, immutable candidate SHA and artifact hashes. Preserve concurrent work; do not mass-stage this checkout |
+| 2 / P0 | Resolve distributable backend declarations, then repack seven libraries | Adopt a supportable dependency remedy using the existing proposal; external strict NodeNext/Bundler types, public imports/runtime, no workspace/source links, lifecycle and pure starter results on the candidate |
+| 3 / P0 | Repair behavior measurement and finish transport/security decisions | Full operation denominator retained; isolated forward/reverse/seeded results, positive/counterfactual effects, reviewed ledger changes, mutation baselines and intended-host egress evidence. May diagnose alongside step 2 |
+| 4 / P0 | Run the cumulative clean-checkout release matrix | After steps 1–3: `pnpm -r check`, `pnpm -r build`, appropriate package/behavior/conformance/mutation/no-leak/auth/isolation/SSRF gates; exact failures and credential-gated skips retained |
+| 5 / P0 | Integrate bounded lifecycle evidence and finish clean-room adoption | Reuse deployment branch contracts/adapters and retained identity/redeploy/recovery proof. Complete controlled binding changes and actual setup→admin→data/storage→edit→publish→automation, upgrade/restore/rollback. Test CF first, Vercel second; support Node/Docker only to independently proven limits |
+| 6 / P0 | Reconcile documentation and rehearse release operations | Claim/evidence matrix; supported runtime/host/adapters; quick start through troubleshooting; security reporting/contribution/changelog/license provenance; coherent version/tag/package plan and rollback rehearsal; independent adopter sign-off |
+| 7 / gated | Explicitly authorized Developer Preview distribution | Only after steps 1–6: approved package versions/artifacts, repository release and announcements with limitations/support ownership. This audit authorizes none of those external actions |
+
+Translation delivery proceeds in its existing separate stream; its completed work enters the candidate only through reviewed commits and package/security evidence. Missing broader translation features are not silently added to first-edition promises. No new rollout scope or architecture decision is made here.
+
+**Next executable release task:** review the immutable baseline and branch inclusion list (step 1), then adopt and verify the existing backend public-type remedy (step 2). The deployment stream's shared Bindings changes need their own reviewed source checkpoint before controlled application/button/clean-install work; this R0 task does not resume implementation or CF-22.
+
+## Verification and handoff
+
+Freshly inspected Git HEAD/status/local tags, ten manifests, root support files, workflow filenames, backend dependency declarations, release-consumer tooling, the strategy/audit/milestones/decisions/README and relevant dated delivery records. The proposed compiler `cli/init.ts` path was absent; the actual source is `cli/scaffold.ts`, so no init-source result is inferred from the failed path lookup.
+
+This documentation-only refresh runs local Markdown target/fence checks and scoped whitespace validation. No workspace build/typecheck, package suite, provider/API call, deployment, registry test or clean-room exercise was rerun. Historical passes and diagnosed failures remain dated evidence, not fresh outcomes. This session owns only this report and its audit claim/result; existing source and documentation changes remain preserved and uncommitted.
