@@ -68,3 +68,10 @@ Workspace check/build PASS; final admin check PASS after typed lookup correction
 
 
 2026-10-28 owner retry: configured setup deadline had expired. Confirmed uninitialized state, renewed only SETUP_EXPIRES_AT for one hour and refreshed the existing setup claim in a separate background tab using the previously approved one-use recovery. Original entered form untouched. Verified secure form, removed route (404/no cookie), deleted consumed local link. Final unchanged application Worker 419cf4f4-7799-48ac-b0ed-8aa4b888cfe8. Owner submission still pending; browser claim remains bounded to 15 minutes.
+
+
+## 2026-10-28: real-site UI installation started
+
+Owner created administrator and signed in; dashboard and builder verified through browser. Fresh target has one empty Home page, zero datasources, no active whole-site version. New Page supports individual JSON imports; builder offers generic EducationDirectory starter. Complete configured site-template installer is not present and is not claimed. Directory shared configuration requires collection mappings and configured datasource.
+
+Through General UI saved Study in USA, canonical https://study-in-usa.com, default English; success displayed. No DNS/public traffic changes, template/page import, record mutation or publication. Staging UI session redirects to login; owner sign-in requested for actual template export. Asked whether to reuse staging Studygram DB and studygram-selfhost translations connection or separate production connections. Next: export real layouts, remap sources/settings through supported UI, validate before publication; do not use generic static starter as evidence of complete template installation. End-to-end EN/AR/mobile verification remains pending.
