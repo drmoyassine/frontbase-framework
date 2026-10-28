@@ -16,6 +16,16 @@ const abortWait = (signal) => new Promise((resolve, reject) => {
     if (signal.aborted) reject(signal.reason);
     else signal.addEventListener('abort', () => reject(signal.reason), { once: true });
 });
+// Referenced watchdog: under an abort-forwarding fault the guarded call never settles and
+// holds no loop handles; the watchdog keeps the loop alive so the gate fails with a named
+// assertion instead of exiting 13 on an unsettled top-level await.
+const bounded = (promise) => {
+    let timer;
+    const watchdog = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('bounded deadline abort was not forwarded within the test window')), 3000);
+    });
+    return Promise.race([promise, watchdog]).finally(() => clearTimeout(timer));
+};
 try {
     await test('Request POST retains method headers body and manual redirects', async () => {
         const response = await guardedExternalFetch(async (request) => {
@@ -82,10 +92,10 @@ try {
         Object.defineProperty(AbortSignal, 'timeout', { configurable: true, writable: true,
             value: (value) => { milliseconds = value; return deadline.signal; } });
         try {
-            await assert.rejects(() => guardedExternalFetch(async (request) => {
+            await assert.rejects(() => bounded(guardedExternalFetch(async (request) => {
                 const result = abortWait(request.signal); result.catch(() => {});
                 deadline.abort(reason); assert.equal(request.signal.aborted, true, 'deadline listener forwards abort immediately'); return result;
-            }, post(undefined, { signal: caller.signal })), (error) => error === reason);
+            }, post(undefined, { signal: caller.signal }))), (error) => error === reason);
             assert.equal(milliseconds, 10000); assert.equal(caller.signal.aborted, false);
         } finally { Object.defineProperty(AbortSignal, 'timeout', timeoutDescriptor); }
     });
@@ -173,7 +183,7 @@ try {
     await test('URL caller signal cannot disable the fixed host deadline',async()=>{
         const descriptor=Object.getOwnPropertyDescriptor(AbortSignal,'timeout'),native=AbortSignal.timeout.bind(AbortSignal),hold=setTimeout(()=>{},100);
         Object.defineProperty(AbortSignal,'timeout',{configurable:true,writable:true,value:milliseconds=>{assert.equal(milliseconds,10000);return native(5);}});
-        try{await assert.rejects(guardedExternalFetch(async(_url,init)=>abortWait(init.signal),'https://provider.example/slow',{signal:new AbortController().signal}),error=>error.name==='TimeoutError');}
+        try{await assert.rejects(bounded(guardedExternalFetch(async(_url,init)=>abortWait(init.signal),'https://provider.example/slow',{signal:new AbortController().signal})),error=>error.name==='TimeoutError');}
         finally{clearTimeout(hold);Object.defineProperty(AbortSignal,'timeout',descriptor);}
     });
     await test('cross-authority redirects cannot forward credential headers or bodies',async()=>{

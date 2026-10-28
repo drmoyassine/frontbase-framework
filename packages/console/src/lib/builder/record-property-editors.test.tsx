@@ -16,6 +16,8 @@ it('maps the renderer content property and preserves legacy text property suppor
  useBuilderStore.setState({currentPageId:'p',editingVersions:{},pages:[{id:'p',name:'Page',slug:'page',createdAt:'',updatedAt:'',isPublic:false,isHomepage:false,layoutData:{root:{},content:[{id:'list',type:'Repeater',props:{},children}]}}]});
  render(<RepeaterFieldMappings componentId="list" columns={[{name:'cities.city'}]}/>);
  fireEvent.click(screen.getByText('Field mapping shortcuts'));fireEvent.change(screen.getByLabelText('Text content mapping'),{target:{value:'cities.city'}});
- let node=useBuilderStore.getState().pages[0].layoutData!.content[0].children![0];expect(node.props.content).toBe('{{ record["cities.city"] }}');expect(node.props.text).toBe('');
- fireEvent.change(screen.getByLabelText('Heading text mapping'),{target:{value:'cities.city'}});node=useBuilderStore.getState().pages[0].layoutData!.content[0].children![1];expect(node.props.text).toBe('{{ record["cities.city"] }}');
+ // recordExpression emits dotted access for simple dotted paths; the renderer's binding
+ // fallback resolves record.cities.city to the flat quoted key (see bindingFallback.test.ts).
+ let node=useBuilderStore.getState().pages[0].layoutData!.content[0].children![0];expect(node.props.content).toBe('{{ record.cities.city }}');expect(node.props.text).toBe('');
+ fireEvent.change(screen.getByLabelText('Heading text mapping'),{target:{value:'cities.city'}});node=useBuilderStore.getState().pages[0].layoutData!.content[0].children![1];expect(node.props.text).toBe('{{ record.cities.city }}');
 });

@@ -4,6 +4,7 @@ import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/conf
 import { useIframeCanvas } from './useIframeCanvas';
 import { fetchReRender, fetchBuilderRender } from '@/lib/builder/builderApi';
 vi.mock('@/lib/builder/builderApi', () => ({ fetchReRender: vi.fn().mockResolvedValue({ html: '<p>Preview</p>' }), fetchBuilderRender: vi.fn().mockResolvedValue({ html: '<p>Preview</p>' }) }));
+vi.mock('@/components/dashboard/menus/api', () => ({ menuPublicationRequest: vi.fn(async (_url: string, init: any) => ({ ok: true, json: async () => ({ layout: JSON.parse(String(init.body)).layout }) })) }));
 const config = emptyDirectoryConfiguration(); config.site.name = 'USA';
 const page: any = { id: 'p', name: 'Owner title', slug: 'owner', layoutData: { root: { siteConfiguration: { version: 1, role: 'program' } }, content: [{ id: 'name', type: 'Text', props: { text: 'Original', siteBindings: { text: 'site.name' } } }] } };
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
