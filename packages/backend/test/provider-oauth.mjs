@@ -19,6 +19,7 @@ const transport=async(url,init)=>{
  if(String(url).endsWith('/token')||String(url).endsWith('/access_token')){calls++;tokenBody=new URLSearchParams(init.body);if(failProvider)return Response.json({access_token:'DO-NOT-LEAK',error:'private-provider-error'},{status:403});return Response.json({access_token:'synthetic-access-token',refresh_token:'synthetic-refresh-token',token_type:'bearer',expires_in:3600,scope:'account:read',team_id:'team_example'});}
  assert.equal(init.headers.authorization,'Bearer synthetic-access-token');
  if(String(url).includes('cloudflare.com'))return Response.json({success:true,result:[{id:'a'.repeat(32),name:'Test CF account'}]});
+ if(String(url).includes('api.supabase.com'))return Response.json([{id:'b'.repeat(32),ref:'testprojectref',name:'Test Supabase project'}]);
  assert.equal(String(url),'https://api.vercel.com/v2/teams/team_example');return Response.json({id:'team_example',name:'Test team'});
 };
 const make=(store=providerOAuthStore(db,cipher,()=>time))=>createProviderOAuth({origin,clients,store,fetch:transport,now:()=>time,authorize:async req=>{
@@ -56,6 +57,15 @@ pending=await begin();time+=600001;assert.equal((await finish()).status,403);
 pending=await begin();failProvider=true;const failed=await finish();assert.equal(failed.status,409);assert.ok(!(await failed.text()).includes('DO-NOT-LEAK'));assert.equal((await finish()).status,403);failProvider=false;
 const vercel=await begin('vercel');assert.equal(vercel.url.pathname,'/integrations/frontbase-test/new');const vc=await request('vercel/finish',{body:{code:'vercel-code',state:vercel.state},cookie:vercel.cookie});assert.equal(vc.status,200);assert.equal(tokenBody.get('client_secret'),'vc-private');
 clients.vercel.integrationTeamSlug='private-test-team';const privateVercel=await begin('vercel');assert.equal(privateVercel.url.pathname,'/private-test-team/~/integrations/frontbase-test');assert.equal(privateVercel.url.searchParams.get('redirect_uri'),clients.vercel.redirectUri);delete clients.vercel.integrationTeamSlug;assert.throws(()=>createProviderOAuth({origin,clients:{vercel:{...clients.vercel,integrationTeamSlug:'../escape'}},store:providerOAuthStore(db,cipher),fetch:transport,authorize:async()=>actor}));
+// Supabase: standard OAuth2 authorize endpoint with PKCE, unconfigured until the operator sets a client.
+assert.equal((await request('supabase/start',{body:{returnPath:'/'}})).status,409);
+clients.supabase={provider:'supabase',clientId:'sb-public',redirectUri:origin+'/api/provider-oauth/supabase/callback',scopes:['projects.read','database.write']};
+const supa=await begin('supabase');assert.equal(supa.url.origin+supa.url.pathname,'https://api.supabase.com/v1/oauth/authorize');assert.equal(supa.url.searchParams.get('client_id'),'sb-public');assert.equal(supa.url.searchParams.get('response_type'),'code');assert.equal(supa.url.searchParams.get('scope'),'projects.read database.write');assert.equal(supa.url.searchParams.get('code_challenge_method'),'S256');assert.equal(supa.url.searchParams.get('redirect_uri'),clients.supabase.redirectUri);assert.match(supa.cookie,/__Host-fb_oauth_supabase=/);
+const supaFinish=await request('supabase/finish',{body:{code:'supabase-code',state:supa.state},cookie:supa.cookie});assert.equal(supaFinish.status,200);
+assert.equal(tokenBody.get('grant_type'),'authorization_code');assert.equal(tokenBody.get('client_id'),'sb-public');assert.ok(tokenBody.get('code_verifier'));assert.equal(tokenBody.get('redirect_uri'),clients.supabase.redirectUri);assert.equal(tokenBody.get('client_secret'),null);
+const supaStatus=await request('status');const supaJson=await supaStatus.json();
+const supaConn=supaJson.connections.find(c=>c.provider==='supabase');assert.ok(supaConn,'supabase connection listed');assert.equal(supaConn.accountId,'testprojectref');assert.equal(supaConn.reconnectRequired,false);
+assert.ok(!JSON.stringify(supaJson).includes('synthetic-access-token'));assert.ok(!JSON.stringify(supaJson).includes('synthetic-refresh-token'));assert.match(supaConn.label,/Test Supabase project/);
 // Reconnect cannot mutate another provider/tenant or revive a deleted account.
 pending=await begin('cloudflare',{accountId:saved.id});assert.equal((await finish()).status,200);
 const rotatedRaw=String((await db.query('SELECT config FROM edge_resources WHERE id = ? AND tenant_slug = ?',[saved.id,'a']))[0].config);assert.ok(cipher.isEncrypted(rotatedRaw));assert.ok(!rotatedRaw.includes('synthetic-access-token'));
@@ -83,4 +93,4 @@ assert.equal((await installed.fetch(new Request(origin+'/api/provider-oauth/stat
 role='viewer';assert.equal((await installed.fetch(new Request(origin+'/api/provider-oauth/status'))).status,403);
 role='';assert.equal((await installed.fetch(new Request(origin+'/api/provider-oauth/status'))).status,403);
 assert.equal((await installed.fetch(new Request(origin+'/api/provider-oauth/cloudflare/callback?code=redacted&state=none'))).status,200);
-console.log('PASS provider OAuth: CF PKCE / Vercel integration, encrypted SQL/vault restart and handoff, callback CSRF/role/tenant/actor/expiry, one-use concurrency, reconnect deletion and no credential projection');
+console.log('PASS provider OAuth: CF PKCE / Vercel integration / Supabase PKCE + projects, encrypted SQL/vault restart and handoff, callback CSRF/role/tenant/actor/expiry, one-use concurrency, reconnect deletion and no credential projection');

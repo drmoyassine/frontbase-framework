@@ -14,11 +14,11 @@ export function providerOAuthStore(runner:DbRunner,cipher:SecretCipher,now=Date.
         async connections(actor){
             const store=new Phase2Store(runner,actor.tenant,cipher),result=[];
             for(const row of await store.listEdgeResources('provider')){
-                if(!['cloudflare','vercel'].includes(String(row.provider)))continue;
+                if(!['cloudflare','vercel','supabase'].includes(String(row.provider)))continue;
                 const config=await store.getEdgeResourceConfig(String(row.id));
                 if(!config?.oauth||typeof config.oauth!=='object')continue;
                 const metadata=config.oauth as {expires_at?:number};
-                result.push({id:String(row.id),provider:row.provider as 'cloudflare'|'vercel',label:String(row.name),accountId:String(config.account_id??''),reconnectRequired:typeof metadata.expires_at==='number'&&metadata.expires_at<=now()});
+                result.push({id:String(row.id),provider:row.provider as 'cloudflare'|'vercel'|'supabase',label:String(row.name),accountId:String(config.account_id??''),reconnectRequired:typeof metadata.expires_at==='number'&&metadata.expires_at<=now()});
             }return result;
         },
         async put(id,pending){

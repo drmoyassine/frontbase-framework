@@ -12,7 +12,7 @@ export async function importProviderOAuth(runner:DbRunner,cipher:SecretCipher,te
     // Each insert tests the marker in SQL, so a late cold start cannot resurrect a disconnected
     // account. Stable IDs prevent duplicates; the marker is written only after all grants exist.
     for(const grant of input.grants as OAuthAuthorization[]){
-        if(!['cloudflare','vercel'].includes(grant.provider)||typeof grant.accessToken!=='string'||!Array.isArray(grant.accounts)||!grant.accounts.length)throw Error('invalid_oauth_handoff');
+        if(!['cloudflare','vercel','supabase'].includes(grant.provider)||typeof grant.accessToken!=='string'||!Array.isArray(grant.accounts)||!grant.accounts.length)throw Error('invalid_oauth_handoff');
         const accountId='oauth-setup:'+input.installationId+':'+grant.provider+':'+grant.accounts[0]!.id;
         const config=await cipher.encrypt(JSON.stringify(providerAuthorizationConfig(grant)));if(!cipher.isEncrypted(config))throw Error('oauth_vault_unavailable');
         const stamp=new Date().toISOString();

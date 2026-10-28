@@ -1,7 +1,7 @@
 /** Server-only provider connection protocol shared by setup and installed hosts. */
 import { Hono } from 'hono';
 import { timingSafeEqual } from '@frontbase/edge-infra';
-export type OAuthProvider = 'cloudflare' | 'vercel';
+export type OAuthProvider = 'cloudflare' | 'vercel' | 'supabase';
 export interface ProviderOAuthClient {
     provider: OAuthProvider; clientId: string; clientSecret?: string; integrationSlug?:string; integrationTeamSlug?:string;
     /** Exact registered callback; derived from the trusted host origin, never request headers. */
@@ -27,12 +27,12 @@ export interface ProviderOAuthDeps {
     authorize(request: Request): Promise<OAuthActor | null>;
     store: ProviderOAuthStore; fetch: typeof fetch; now?: ()=>number;
 }
-const providers: OAuthProvider[] = ['cloudflare','vercel'];
+const providers: OAuthProvider[] = ['cloudflare','vercel','supabase'];
 const encode=(bytes:Uint8Array)=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const random=()=>encode(crypto.getRandomValues(new Uint8Array(32)));
 const digest=async(raw:string)=>encode(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw))));
 const same=(a:string,b:string)=>timingSafeEqual(new TextEncoder().encode(a),new TextEncoder().encode(b));
-const endpoints={cloudflare:{authorize:'https://dash.cloudflare.com/oauth2/auth',token:'https://dash.cloudflare.com/oauth2/token'},vercel:{authorize:'https://vercel.com/integrations/',token:'https://api.vercel.com/v2/oauth/access_token'}};
+const endpoints={cloudflare:{authorize:'https://dash.cloudflare.com/oauth2/auth',token:'https://dash.cloudflare.com/oauth2/token'},vercel:{authorize:'https://vercel.com/integrations/',token:'https://api.vercel.com/v2/oauth/access_token'},supabase:{authorize:'https://api.supabase.com/v1/oauth/authorize',token:'https://api.supabase.com/v1/oauth/token'}};
 const base='/api/provider-oauth';
 const safePath=(value:unknown):value is string=>typeof value==='string'&&value.startsWith('/')&&!value.startsWith('//')&&!/[\\\r\n#]/.test(value)&&new URL(value,'https://frontbase.invalid').origin==='https://frontbase.invalid';
 /** Body and provider responses are bounded; provider errors/tokens never enter responses or logs. */
@@ -74,9 +74,9 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
         await deps.store.put(await digest(state),{...actor,provider,verifier,expires,returnPath:input.returnPath,accountId:input.accountId});
         const cookie=(origin.protocol==='https:'?'__Host-':'')+'fb_oauth_'+provider;
         c.header('Set-Cookie',cookie+'='+state+'; Path=/; HttpOnly; '+(origin.protocol==='https:'?'Secure; ':'')+'SameSite=Lax; Max-Age=600');
-        const url=new URL(provider==='cloudflare'?endpoints.cloudflare.authorize:client.integrationTeamSlug?'https://vercel.com/'+client.integrationTeamSlug+'/~/integrations/'+client.integrationSlug:endpoints.vercel.authorize+client.integrationSlug+'/new');
+        const url=new URL(provider==='cloudflare'?endpoints.cloudflare.authorize:provider==='supabase'?endpoints.supabase.authorize:client.integrationTeamSlug?'https://vercel.com/'+client.integrationTeamSlug+'/~/integrations/'+client.integrationSlug:endpoints.vercel.authorize+client.integrationSlug+'/new');
         url.searchParams.set('state',state);url.searchParams.set('redirect_uri',client.redirectUri);
-        if(provider==='cloudflare'){url.searchParams.set('client_id',client.clientId);url.searchParams.set('response_type','code');url.searchParams.set('scope',client.scopes.join(' '));url.searchParams.set('code_challenge',await digest(verifier));url.searchParams.set('code_challenge_method','S256');}
+        if(provider!=='vercel'){url.searchParams.set('client_id',client.clientId);url.searchParams.set('response_type','code');url.searchParams.set('scope',client.scopes.join(' '));url.searchParams.set('code_challenge',await digest(verifier));url.searchParams.set('code_challenge_method','S256');}
         return c.json({url:url.href});
     });
     app.post(base+'/:provider/finish',async c=>{
@@ -89,7 +89,7 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
         const pending=await deps.store.consume(await digest(input.state),actor,provider,now());if(!pending)return c.json({error:'oauth_refused'},403);
         c.header('Set-Cookie',cookie+'=; Path=/; HttpOnly; '+(origin.protocol==='https:'?'Secure; ':'')+'SameSite=Lax; Max-Age=0');
         const params=new URLSearchParams({grant_type:'authorization_code',code:input.code,client_id:client.clientId,redirect_uri:client.redirectUri});
-        if(provider==='cloudflare')params.set('code_verifier',pending.verifier);
+        if(provider!=='vercel')params.set('code_verifier',pending.verifier);
         if(client.clientSecret)params.set('client_secret',client.clientSecret);
         const token=await json(await deps.fetch(endpoints[provider].token,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:params.toString(),redirect:'manual',signal:AbortSignal.timeout(20000)}));
         if(typeof token.access_token!=='string'||!token.access_token||token.access_token.length>16384||(token.token_type&&token.token_type.toLowerCase()!=='bearer'))throw Error('oauth_refused');
@@ -97,6 +97,11 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
         if(provider==='cloudflare'){
             const result=await json(await deps.fetch('https://api.cloudflare.com/client/v4/accounts?per_page=50',{headers,redirect:'manual',signal:AbortSignal.timeout(15000)}));
             if(result.success!==true||!Array.isArray(result.result))throw Error('oauth_refused');accounts=result.result.map((a:any)=>({id:a.id,name:a.name}));
+        }else if(provider==='supabase'){
+            // A management API call, not an identity-only response, proves usable authorization.
+            // Projects carry both an id and the ref used by every other Management API path.
+            const result=await json(await deps.fetch('https://api.supabase.com/v1/projects',{headers,redirect:'manual',signal:AbortSignal.timeout(15000)}));
+            if(!Array.isArray(result))throw Error('oauth_refused');accounts=result.map((p:any)=>({id:String(p.ref??p.id),name:String(p.name)}));
         }else{
             // A management API call, not an identity-only userinfo response, proves usable authorization.
             if(typeof token.team_id!=='string'||!/^team_[a-zA-Z0-9]+$/.test(token.team_id))throw Error('oauth_team_required');

@@ -11,6 +11,9 @@ const cases=[
  ['provider-oauth.js','FRONTBASE_OAUTH_TEST_MODULE','bounded request','length > limit','false'],
  ['provider-oauth-store.js','FRONTBASE_OAUTH_STORE_TEST_MODULE','one-use SQL',"AND status = 'active' RETURNING config","AND status IN ('active','consumed') RETURNING config"],
  ['provider-oauth-store.js','FRONTBASE_OAUTH_STORE_TEST_MODULE','encrypted reconnect',"await encrypted(config)",'JSON.stringify(config)'],
+ ['provider-oauth.js','FRONTBASE_OAUTH_TEST_MODULE','supabase PKCE verifier',"if (provider !== 'vercel')\n            params.set('code_verifier', pending.verifier);","if (provider === 'cloudflare')\n            params.set('code_verifier', pending.verifier);"],
+ ['provider-oauth.js','FRONTBASE_OAUTH_TEST_MODULE','supabase project ref id',"String(p.ref ?? p.id)","String(p.id)"],
+ ['provider-oauth-store.js','FRONTBASE_OAUTH_STORE_TEST_MODULE','supabase connection listing',"if (!['cloudflare', 'vercel', 'supabase'].includes(String(row.provider)))","if (!['cloudflare', 'vercel'].includes(String(row.provider)))"],
  ];
 for(const [name,environment,label,before,after] of cases){
  const file=fileURLToPath(new URL('../dist/'+name,import.meta.url)),original=readFileSync(file,'utf8');
@@ -19,4 +22,4 @@ for(const [name,environment,label,before,after] of cases){
  try{writeFileSync(variant,original.replace(before,after));const result=spawnSync(process.execPath,[fileURLToPath(new URL('./provider-oauth.mjs',import.meta.url))],{encoding:'utf8',timeout:30000,env:{...process.env,[environment]:pathToFileURL(variant).href}});assert.notEqual(result.status,0,label);assert.match(result.stderr,/AssertionError/,label+' must fail a behavioral assertion');console.log('PASS detected OAuth '+label);}
  finally{unlinkSync(variant);}assert.equal(readFileSync(file,'utf8'),original);
 }
-console.log('PASS seven OAuth security mutations; sources unchanged');
+console.log('PASS ten OAuth security mutations; sources unchanged');
