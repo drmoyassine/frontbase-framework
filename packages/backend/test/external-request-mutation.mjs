@@ -43,7 +43,7 @@ function baseline(label) {
     assert.equal(buildPackage('@frontbase/backend'), true, label + ' rebuild succeeds');
     const result = gate();
     assert.equal(result.status, 0, label + ' GREEN: ' + result.stdout + result.stderr);
-    assert.match(result.stdout, /external Request: 13 passed, 0 failed; raw global calls 0/);
+    assert.match(result.stdout, /external Request: 16 passed, 0 failed; raw global calls 0/);
 }
 baseline('initial');
 try {
