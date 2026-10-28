@@ -58,7 +58,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
         }
         for(const role of configurableRoles) {
             const binding=manifest.bindings[role],card=node('section',undefined,'fb-binding-card');
-            const heading=node('h3',bindingLabels[role]);heading.append(node('span',role==='state-db'?'Required':'Optional','fb-binding-tag'));card.append(heading);
+            const heading=node('h3',bindingLabels[role]);heading.append(node('span',role==='state-db'?'Required':'Optional',role==='state-db'?'fb-binding-tag fb-tag-required':'fb-binding-tag fb-tag-optional'));card.append(heading);
             const compatible=adapters.filter(a=>a.role===role&&a.selectable&&a.targets.includes(manifest.target)&&(!options.executionCapabilities||options.executionCapabilities.adapters[a.id]?.length));
             const selected=adapters.find(a=>a.role===role&&a.id===binding.adapterId);
             const wrapper=node('div',undefined,'fb-binding-field'),title=node('label','Provider'),select=node('select');

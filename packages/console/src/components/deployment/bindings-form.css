@@ -1,1 +1,22 @@
-.fb-bindings-form{display:grid;gap:1rem;color:inherit}.fb-binding-card{padding:1rem;border:1px solid #9aa9bc66;border-radius:.6rem;background:transparent}.fb-binding-card h3{font-size:1rem;font-weight:600;margin:0 0 .7rem}.fb-binding-tag{font-size:.7rem;font-weight:400;margin-left:.7rem;opacity:.75}.fb-binding-field{display:flex;flex-direction:column;gap:.35rem;margin:.7rem 0}.fb-binding-field label{font-size:.85rem;font-weight:500}.fb-binding-field input,.fb-binding-field select{font:inherit;color:inherit;background:transparent;border:1px solid #9aa9bc88;border-radius:.35rem;min-height:2.6rem;padding:.5rem;width:100%}.fb-binding-field select option{color:#18253a;background:#fff}.fb-binding-field input:focus-visible,.fb-binding-field select:focus-visible{outline:2px solid #5389ec;outline-offset:2px}.fb-binding-note{font-size:.8rem;line-height:1.5;opacity:.8;margin:.7rem 0}.fb-bindings-form[aria-busy=true]{opacity:.7;pointer-events:none}
+/* Bindings form — shared by the bootstrap wizards and the console deployment dialog.
+   Consumes ONLY the wizard shell's --fb-* tokens; falls back to neutral defaults so
+   the console dialog (which defines none of them) renders unchanged. */
+.fb-bindings-form{display:grid;gap:14px;color:inherit}
+.fb-binding-card{padding:18px 18px 15px;border:1px solid var(--fb-card-border,#d7dfeb);border-radius:12px;background:var(--fb-card-surface,transparent);box-shadow:var(--fb-card-shadow,none)}
+.fb-binding-card h3{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;font-weight:650;margin:0 0 2px}
+.fb-binding-tag{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:2.5px 9px;white-space:nowrap}
+.fb-tag-required{color:var(--fb-accent,#2456e6);background:var(--fb-accent-soft,#e9efff);border:1px solid var(--fb-accent-border,#c9d8fa)}
+.fb-tag-optional{color:var(--fb-chip-ink,#5a6a83);background:var(--fb-chip-bg,#f2f5fa);border:1px solid var(--fb-chip-border,#dbe3ef)}
+.fb-binding-field{display:flex;flex-direction:column;gap:6px;margin:12px 0 0}
+.fb-binding-field label{font-size:12.5px;font-weight:550;color:var(--fb-note,#5a6a83)}
+.fb-binding-field input,.fb-binding-field select{font:inherit;font-size:14px;color:inherit;background:var(--fb-input-bg,#fff);border:1px solid var(--fb-input-border,#c3cddb);border-radius:8px;min-height:42px;padding:8px 12px;width:100%}
+.fb-binding-field select{cursor:pointer}
+.fb-binding-field select option{color:var(--fb-option-ink,#18253a);background:var(--fb-option-bg,#fff)}
+.fb-binding-field input:focus-visible,.fb-binding-field select:focus-visible{outline:none;border-color:var(--fb-accent,#2456e6);box-shadow:var(--fb-ring,0 0 0 3px rgba(36,86,230,.22))}
+.fb-binding-note{font-size:12.5px;line-height:1.55;color:var(--fb-note,#5a6a83);margin:12px 0 0;padding-left:10px;border-left:2px solid var(--fb-note-bar,#dbe3ef)}
+.fb-binding-connection{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--fb-conn-bg,#eef3fd);border:1px solid var(--fb-conn-border,#c9d9f8);border-radius:10px;padding:12px 14px}
+.fb-binding-connection p{margin:0;flex:1;font-size:13px;line-height:1.5}
+.fb-binding-connection button{min-height:38px;padding:7px 14px;border-radius:8px;border:1px solid var(--fb-accent,#2456e6);background:var(--fb-accent,#2456e6);color:var(--fb-accent-contrast,#fff);font-weight:600;font-size:13px;cursor:pointer}
+.fb-binding-connection button:hover:not(:disabled){background:var(--fb-accent-hover,#1c46c4);border-color:var(--fb-accent-hover,#1c46c4)}
+.fb-binding-connection button:focus-visible{outline:none;box-shadow:var(--fb-ring,0 0 0 3px rgba(36,86,230,.22))}
+.fb-bindings-form[aria-busy=true]{opacity:.7;pointer-events:none}
