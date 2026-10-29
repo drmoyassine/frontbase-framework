@@ -5,7 +5,8 @@ import {createSecretCipher,noopCipher} from '../dist/db/secret-cipher.js';
 import {Phase2Store} from '../dist/db/phase2-store.js';
 const {createProviderOAuth}=await import(process.env.FRONTBASE_OAUTH_TEST_MODULE??'../dist/provider-oauth.js');
 const {providerOAuthStore}=await import(process.env.FRONTBASE_OAUTH_STORE_TEST_MODULE??'../dist/provider-oauth-store.js');
-import {providerOAuthVault} from '../dist/provider-oauth-vault.js';
+const {providerOAuthVault}=await import(process.env.FRONTBASE_OAUTH_VAULT_TEST_MODULE??'../dist/provider-oauth-vault.js');
+const {refreshOAuthAuthorization,revokeOAuthAuthorization}=await import(process.env.FRONTBASE_OAUTH_REFRESH_TEST_MODULE??'../dist/provider-oauth-refresh.js');
 import {importProviderOAuth} from '../dist/provider-oauth-import.js';
 import {resolveProviderOAuthCredentials} from '../dist/provider-oauth-bindings.js';
 import {createCompatApp} from '../dist/compat/app.js';
@@ -14,9 +15,11 @@ let time=1800000000000,calls=0,failProvider=false;
 const cipher=await createSecretCipher('synthetic-connection-encryption-key'),actor={tenant:'a',subject:'owner'};
 const clients={cloudflare:{provider:'cloudflare',clientId:'cf-public',redirectUri:origin+'/api/provider-oauth/cloudflare/callback',scopes:['account:read']},vercel:{provider:'vercel',clientId:'vc-client',clientSecret:'vc-private',integrationSlug:'frontbase-test',redirectUri:origin+'/api/provider-oauth/vercel/callback',scopes:[]}};
 let tokenBody;
+let revokeStatus=204;const revokeCalls=[];
 const transport=async(url,init)=>{
  assert.equal(init.redirect,'manual');assert.ok(init.signal);
  if(String(url).endsWith('/token')||String(url).endsWith('/access_token')){calls++;tokenBody=new URLSearchParams(init.body);if(failProvider)return Response.json({access_token:'DO-NOT-LEAK',error:'private-provider-error'},{status:403});return Response.json({access_token:'synthetic-access-token',refresh_token:'synthetic-refresh-token',token_type:'bearer',expires_in:3600,scope:'account:read',team_id:'team_example'});}
+ if(String(url)==='https://api.supabase.com/v1/oauth/revoke'){revokeCalls.push(JSON.parse(String(init.body)));return new Response(null,{status:revokeStatus});}
  assert.equal(init.headers.authorization,'Bearer synthetic-access-token');
  if(String(url).includes('cloudflare.com'))return Response.json({success:true,result:[{id:'a'.repeat(32),name:'Test CF account'}]});
  if(String(url).includes('api.supabase.com'))return Response.json([{id:'b'.repeat(32),ref:'testprojectref',name:'Test Supabase project'}]);
@@ -75,7 +78,7 @@ app=make(providerOAuthStore(db,noopCipher,()=>time));assert.equal((await request
 // The callback document remains public, but contains no credential and finishes via authenticated POST.
 app=make();const callback=await request('cloudflare/callback?code=private-code&state=anything',{who:null});assert.equal(callback.status,200);assert.ok(!(await callback.text()).includes('private-code'));assert.match(callback.headers.get('content-security-policy'),/connect-src 'self'/);
 // Bootstrap vault also supports restart/concurrent consumption without an application schema.
-const map=new Map(),vault={get:async key=>map.get(key)??null,insert:async(key,value)=>{if(map.has(key))return false;map.set(key,value);return true;},entries:async prefix=>[...map].filter(([key])=>key.startsWith(prefix)).map(([key,value])=>({key,value}))};
+const map=new Map(),vault={get:async key=>map.get(key)??null,insert:async(key,value)=>{if(map.has(key))return false;map.set(key,value);return true;},replace:async(key,expected,value)=>{if(map.get(key)!==expected)return false;map.set(key,value);return true;},entries:async prefix=>[...map].filter(([key])=>key.startsWith(prefix)).map(([key,value])=>({key,value}))};
 let boot=providerOAuthVault(vault,cipher,actor,()=>time);await boot.store.put('once',{...actor,provider:'cloudflare',verifier:'pkce',expires:time+1000,returnPath:'/frontbase-bootstrap/'});
 boot=providerOAuthVault(vault,cipher,actor,()=>time);const consumed=await Promise.all([boot.store.consume('once',actor,'cloudflare',time),boot.store.consume('once',actor,'cloudflare',time)]);assert.equal(consumed.filter(Boolean).length,1);
 await boot.store.save(actor,{provider:'cloudflare',accessToken:'persisted-bootstrap-token',scopes:[],accounts:[{id:'account',name:'Bootstrap account'}]});assert.ok(!JSON.stringify([...map]).includes('persisted-bootstrap-token'));
@@ -88,10 +91,64 @@ assert.throws(()=>resolveProviderOAuthCredentials(bindingManifest,{},grants.map(
 await Promise.all([importProviderOAuth(db,cipher,'a',envelope),importProviderOAuth(db,cipher,'a',envelope)]);
 const imported=(await accounts.listEdgeResources('provider')).filter(a=>a.id.startsWith('oauth-setup:'));assert.equal(imported.length,1);
 await accounts.deleteEdgeResource(imported[0].id);await importProviderOAuth(db,cipher,'a',envelope);assert.equal(await accounts.getEdgeResource(imported[0].id),null);
+// Token refresh: an expiring supabase grant rotates atomically in the vault; failure degrades to reconnectRequired without leaking provider output.
+await boot.store.save(actor,{provider:'supabase',accessToken:'stale-access',refreshToken:'stale-refresh',expiresAt:time-1,scopes:['projects.read'],accounts:[{id:'testprojectref',name:'Test Supabase project'}]});
+await assert.rejects(boot.store.save(actor,{provider:'supabase',accessToken:'stale-access',scopes:[],accounts:[{id:'testprojectref',name:'Test Supabase project'}]}),/oauth_duplicate_connection/);
+let refreshed=await boot.refresh({supabase:{...clients.supabase,clientSecret:'sb-private'}},{fetch:transport,now:()=>time});
+assert.equal(tokenBody.get('grant_type'),'refresh_token');assert.equal(tokenBody.get('refresh_token'),'stale-refresh');assert.equal(tokenBody.get('client_id'),'sb-public');assert.equal(tokenBody.get('client_secret'),'sb-private');assert.equal(tokenBody.get('redirect_uri'),clients.supabase.redirectUri);
+const supaGrant=refreshed.find(g=>g.provider==='supabase');assert.ok(supaGrant,'refreshed supabase grant returned');
+assert.equal(supaGrant.accessToken,'synthetic-access-token');assert.equal(supaGrant.refreshToken,'synthetic-refresh-token');assert.equal(supaGrant.expiresAt,time+3600000);
+assert.ok(refreshed.some(g=>g.accessToken==='persisted-bootstrap-token'),'unexpired grant passes through');
+assert.equal((await boot.grants()).find(g=>g.provider==='supabase').accessToken,'synthetic-access-token');
+assert.equal((await boot.store.connections(actor)).find(c=>c.provider==='supabase').reconnectRequired,false);
+assert.ok(!JSON.stringify([...map]).includes('stale-refresh'));
+// Direct protocol-level refresh call (the module under mutation), separate from the vault integration above.
+await refreshOAuthAuthorization({provider:'supabase',clientId:'sb-public',redirectUri:clients.supabase.redirectUri,scopes:[],clientSecret:'sb-private'},{provider:'supabase',accessToken:'x',refreshToken:'direct-refresh',scopes:[],accounts:[]},{fetch:transport,now:()=>time});
+assert.equal(tokenBody.get('client_secret'),'sb-private');assert.equal(tokenBody.get('grant_type'),'refresh_token');assert.equal(tokenBody.get('refresh_token'),'direct-refresh');assert.equal(tokenBody.get('client_id'),'sb-public');
+await assert.rejects(refreshOAuthAuthorization({provider:'supabase',clientId:'sb-public',redirectUri:clients.supabase.redirectUri,scopes:[],clientSecret:'sb-private'},{provider:'supabase',accessToken:'x',refreshToken:'r',scopes:[],accounts:[]},{fetch:async()=>Response.json({access_token:'macro-token',token_type:'macro',expires_in:100}),now:()=>time}),/oauth_refresh_refused/);
+// A provider that answers without a new refresh token keeps the stored one (non-rotating providers).
+refreshed=await boot.refresh({supabase:clients.supabase},{fetch:async()=>Response.json({access_token:'kept-token',token_type:'bearer',expires_in:3600}),now:()=>time});
+assert.equal(refreshed.find(g=>g.provider==='supabase').refreshToken,'synthetic-refresh-token');
+time+=3600001;failProvider=true;refreshed=await boot.refresh({supabase:clients.supabase},{fetch:transport,now:()=>time});
+assert.ok(!refreshed.some(g=>g.provider==='supabase'),'unusable grant omitted');
+assert.ok(!JSON.stringify(refreshed).includes('DO-NOT-LEAK'));
+assert.equal((await boot.store.connections(actor)).find(c=>c.provider==='supabase').reconnectRequired,true);
+failProvider=false;
+// A concurrent rotation that lands between read and write wins; the losing refresh adopts the stored result.
+let raceKey;for(const [key,value] of [...map]){if(!key.startsWith('connection:'))continue;const record=JSON.parse(await cipher.decrypt(value));if(record.authorization.provider==='supabase')raceKey=key;}
+assert.ok(raceKey,'supabase connection key present');
+const raceStale={provider:'supabase',accessToken:'race-stale',refreshToken:'race-stale-refresh',expiresAt:time-1,scopes:[],accounts:[{id:'testprojectref',name:'Test Supabase project'}]};
+map.set(raceKey,await cipher.encrypt(JSON.stringify({actor,authorization:raceStale,createdAt:time})));
+assert.equal(await vault.replace(raceKey,'wrong-expected','x'),false);
+const raced=await boot.refresh({supabase:clients.supabase},{fetch:async()=>{
+ map.set(raceKey,await cipher.encrypt(JSON.stringify({actor,authorization:{...raceStale,accessToken:'race-winner-token',refreshToken:'winner-refresh',expiresAt:time+3600000},createdAt:time})));
+ return Response.json({access_token:'race-loser-token',token_type:'bearer',expires_in:3600});
+},now:()=>time});
+assert.equal(raced.find(g=>g.provider==='supabase')?.accessToken,'race-winner-token');
+assert.ok(!JSON.stringify(raced).includes('race-loser-token'));
+// Revocation: exact Supabase JSON contract, best-effort semantics, no call without secret/refresh token.
+const revokeClient={...clients.supabase,clientSecret:'sb-private'},revokeGrant={provider:'supabase',accessToken:'x',refreshToken:'revoke-refresh',scopes:[],accounts:[]};
+assert.equal(await revokeOAuthAuthorization(revokeClient,revokeGrant,{fetch:transport}),true);
+assert.equal(revokeCalls.length,1);assert.deepEqual(revokeCalls[0],{client_id:'sb-public',client_secret:'sb-private',refresh_token:'revoke-refresh'});
+revokeStatus=401;assert.equal(await revokeOAuthAuthorization(revokeClient,revokeGrant,{fetch:transport}),false);
+assert.equal(await revokeOAuthAuthorization(revokeClient,revokeGrant,{fetch:async()=>{throw Error('network');}}),false);
+revokeStatus=204;let revokeProbe=0;
+assert.equal(await revokeOAuthAuthorization(clients.supabase,revokeGrant,{fetch:async()=>{revokeProbe++;return new Response(null,{status:204});}}),false);assert.equal(revokeProbe,0);
+assert.equal(await revokeOAuthAuthorization(clients.vercel,{...revokeGrant,provider:'vercel'},{fetch:transport}),false);
 // Exercise the actual installed-app mount: its resolver/roles remain authoritative.
 let role='owner';const installed=await createCompatApp({makeRunner:()=>db,sessionSecret:'synthetic-connection-encryption-key',resolvePrincipal:async()=>({tenant:'a',user:role?{id:'owner',role}:null}),providerOAuth:{origin,clients},externalFetch:transport});
 assert.equal((await installed.fetch(new Request(origin+'/api/provider-oauth/status'))).status,200);
 role='viewer';assert.equal((await installed.fetch(new Request(origin+'/api/provider-oauth/status'))).status,403);
 role='';assert.equal((await installed.fetch(new Request(origin+'/api/provider-oauth/status'))).status,403);
 assert.equal((await installed.fetch(new Request(origin+'/api/provider-oauth/cloudflare/callback?code=redacted&state=none'))).status,200);
-console.log('PASS provider OAuth: CF PKCE / Vercel integration / Supabase PKCE + projects, encrypted SQL/vault restart and handoff, callback CSRF/role/tenant/actor/expiry, one-use concurrency, reconnect deletion and no credential projection');
+// Disconnect revokes the provider grant best-effort through the installed app's console surface.
+role='owner';clients.supabase={...clients.supabase,clientSecret:'sb-private'};
+const disconnectRow=async(id,refreshToken)=>accounts.upsertEdgeResource({id,kind:'provider',provider:'supabase',name:'Test Supabase project (supabase)',config:await cipher.encrypt(JSON.stringify({api_token:'tok',access_token:'tok',account_id:'testprojectref',oauth:{version:1,provider:'supabase',scopes:[],accounts:[{id:'testprojectref',name:'Test Supabase project'}],expires_at:null,refresh_token:refreshToken}}))},new Date(time).toISOString());
+revokeCalls.length=0;await disconnectRow('oauth-disconnect-a','disconnect-refresh');
+assert.equal((await installed.fetch(new Request(origin+'/api/edge-providers/oauth-disconnect-a',{method:'DELETE'}))).status,204);
+assert.equal(revokeCalls.length,1);assert.deepEqual(revokeCalls[0],{client_id:'sb-public',client_secret:'sb-private',refresh_token:'disconnect-refresh'});
+assert.equal(await accounts.getEdgeResource('oauth-disconnect-a'),null);
+revokeStatus=500;await disconnectRow('oauth-disconnect-b','disconnect-refresh-2');
+assert.equal((await installed.fetch(new Request(origin+'/api/edge-providers/oauth-disconnect-b',{method:'DELETE'}))).status,204);
+assert.equal(await accounts.getEdgeResource('oauth-disconnect-b'),null);revokeStatus=204;
+console.log('PASS provider OAuth: CF PKCE / Vercel integration / Supabase PKCE + projects, encrypted SQL/vault restart and handoff, callback CSRF/role/tenant/actor/expiry, one-use concurrency, reconnect deletion, token refresh rotation/race/failure, disconnect revocation and no credential projection');

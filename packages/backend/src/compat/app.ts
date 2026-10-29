@@ -536,7 +536,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
                 },
             };
         });
-    registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now);
+    registerEdgeProvidersRoutes(app, phase2For, kvFor, secretCipher, externalFetch, now, deps.providerOAuth?.clients);
     registerEdgeGenericRoutes(app, phase2For, secretCipher, externalFetch, now, systemResources, systemEdge, onEdgeResourceMutation,
         // The adopted is_default row is the one registry row the system engine
         // actually uses — its card renders "1 engine: <Local Edge>" (product

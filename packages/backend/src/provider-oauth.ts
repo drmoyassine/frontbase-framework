@@ -32,11 +32,11 @@ const encode=(bytes:Uint8Array)=>btoa(String.fromCharCode(...bytes)).replace(/\+
 const random=()=>encode(crypto.getRandomValues(new Uint8Array(32)));
 const digest=async(raw:string)=>encode(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw))));
 const same=(a:string,b:string)=>timingSafeEqual(new TextEncoder().encode(a),new TextEncoder().encode(b));
-const endpoints={cloudflare:{authorize:'https://dash.cloudflare.com/oauth2/auth',token:'https://dash.cloudflare.com/oauth2/token'},vercel:{authorize:'https://vercel.com/integrations/',token:'https://api.vercel.com/v2/oauth/access_token'},supabase:{authorize:'https://api.supabase.com/v1/oauth/authorize',token:'https://api.supabase.com/v1/oauth/token'}};
+export const endpoints={cloudflare:{authorize:'https://dash.cloudflare.com/oauth2/auth',token:'https://dash.cloudflare.com/oauth2/token'},vercel:{authorize:'https://vercel.com/integrations/',token:'https://api.vercel.com/v2/oauth/access_token'},supabase:{authorize:'https://api.supabase.com/v1/oauth/authorize',token:'https://api.supabase.com/v1/oauth/token'}};
 const base='/api/provider-oauth';
 const safePath=(value:unknown):value is string=>typeof value==='string'&&value.startsWith('/')&&!value.startsWith('//')&&!/[\\\r\n#]/.test(value)&&new URL(value,'https://frontbase.invalid').origin==='https://frontbase.invalid';
 /** Body and provider responses are bounded; provider errors/tokens never enter responses or logs. */
-async function json(response:Response,limit=65536):Promise<any>{
+export async function json(response:Response,limit=65536):Promise<any>{
     const reader=response.body?.getReader();if(!reader)throw Error('oauth_refused');let length=0,text='';const decoder=new TextDecoder();
     try{for(;;){const part=await reader.read();if(part.done)break;length+=part.value.length;if(length>limit)throw Error('oauth_refused');text+=decoder.decode(part.value,{stream:true});}}finally{await reader.cancel().catch(()=>{});}
     if(!response.ok)throw Error('oauth_refused');return JSON.parse(text+decoder.decode());

@@ -338,6 +338,7 @@ export {createProviderOAuth,type ProviderOAuthDeps,type ProviderOAuthClient,type
 export {providerOAuthClients,providerOAuthRelay} from './provider-oauth-config.js';
 export {providerOAuthStore} from './provider-oauth-store.js';
 export {providerOAuthVault,type OAuthVault} from './provider-oauth-vault.js';
+export {refreshOAuthAuthorization,revokeOAuthAuthorization,expiringAuthorization} from './provider-oauth-refresh.js';
 export {importProviderOAuth} from './provider-oauth-import.js';
 export {resolveProviderOAuthCredentials} from './provider-oauth-bindings.js';
 export {createProviderOAuthRelay,type OAuthRelayDeps,type OAuthRelayTarget} from './provider-oauth-relay.js';

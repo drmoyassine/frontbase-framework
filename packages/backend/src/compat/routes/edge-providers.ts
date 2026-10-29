@@ -25,6 +25,8 @@ import {
     invalidateDiscoveryCache,
 } from './edge-providers/strategies/resources/cache.js';
 import { enrichProviderConfig } from '../connect-enrichment.js';
+import type { OAuthProvider, ProviderOAuthClient } from '../../provider-oauth.js';
+import { revokeOAuthAuthorization } from '../../provider-oauth-refresh.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -67,6 +69,7 @@ export function registerEdgeProvidersRoutes(
     secretCipher: SecretCipher,
     externalFetch: CompatFetch,
     now: () => string,
+    providerClients?: Partial<Record<OAuthProvider, ProviderOAuthClient>>,
 ): void {
     // Initialize provider test strategies with external fetch implementation
     initStrategies(externalFetch);
@@ -187,10 +190,26 @@ export function registerEdgeProvidersRoutes(
         return c.json(await providerView(store, await store.getEdgeResource(id) ?? existing));
     });
 
+    // Best-effort provider-side token revocation on disconnect. The connection record is
+    // removed regardless: a network or provider failure must never trap a tenant with a
+    // stored credential they asked to remove, and the provider dashboard stays the certain path.
+    const revokeOnDisconnect = async (tenant: string, row: Record<string, unknown>) => {
+        try {
+            const client = providerClients?.[String(row.provider ?? '') as OAuthProvider];
+            if (!client) return;
+            const config = await p2(tenant).getEdgeResourceConfig(String(row.id)) ?? {};
+            const oauth = (config as { oauth?: { refresh_token?: unknown } }).oauth;
+            if (typeof oauth?.refresh_token !== 'string' || !oauth.refresh_token) return;
+            await revokeOAuthAuthorization(client, { provider: client.provider, accessToken: '', refreshToken: oauth.refresh_token, scopes: [], accounts: [] }, { fetch: externalFetch as unknown as typeof fetch });
+        } catch { /* revocation never blocks disconnect */ }
+    };
+
     // DELETE /api/edge-providers/{provider_id}
     app.delete('/api/edge-providers/:provider_id', async (c) => {
         const id = c.req.param('provider_id');
-        if (!await providerFor(c.get('tenant'), id)) return providerNotFound(c);
+        const existing = await providerFor(c.get('tenant'), id);
+        if (!existing) return providerNotFound(c);
+        await revokeOnDisconnect(c.get('tenant'), existing);
         await p2(c.get('tenant')).deleteEdgeResource(id);
         c.header('content-type', 'application/json');
         return c.body(null, 204);

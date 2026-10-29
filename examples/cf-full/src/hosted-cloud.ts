@@ -89,6 +89,12 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
    if(target==='cloudflare'){await vault.entries(key);const db=runner((await locate())!);return (await db.query('INSERT INTO _frontbase_oauth_vault (key,value) VALUES (?,?) ON CONFLICT(key) DO NOTHING RETURNING key',[key,value])).length===1;}
    try{const result=await api('/v10/projects/'+project+'/env?'+team,'POST',{key:oauthPrefix+await hex(key),value:JSON.stringify({key,value}),type:'plain',target:[environment]});if(result.failed?.length)return false;return !!(result.id||result.created?.id||Array.isArray(result.created)&&result.created[0]?.id);}catch(e:any){if(e.status===400&&['ENV_CONFLICT','ENV_ALREADY_EXISTS','env_already_exists'].includes(e.code))return false;throw e;}
   },
+  replace:async(key,expected,value)=>{
+   // Grant rotation: swap only the record that was inspected before the refresh call.
+   if(target==='cloudflare'){await vault.entries(key);const db=runner((await locate())!);return (await db.query('UPDATE _frontbase_oauth_vault SET value = ? WHERE key = ? AND value = ? RETURNING key',[value,key,expected])).length===1;}
+   if((await vault.get(key))!==expected)return false;
+   try{const result=await api('/v10/projects/'+project+'/env?'+team+'&upsert=true','POST',{key:oauthPrefix+await hex(key),value:JSON.stringify({key,value}),type:'plain',target:[environment]});return !result.failed?.length&&!!(result.id||result.created?.id||Array.isArray(result.created)&&result.created[0]?.id);}catch{return false;}
+  },
  };
  const actor={tenant:'_root',subject:installationId};
  let oauthPromise:Promise<any>|undefined;
@@ -110,13 +116,14 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
  }
  const originalApply=executor.apply;
  executor.apply=async(record:any,credentials:any)=>{
-  const grants=await (await oauth()).grants();
+  // Hand the installed application only grants that are usable now; expiring ones refresh and rotate first.
+  const grants=await (await oauth()).refresh(providerOAuthClients(env,origin),{fetch:transport});
   if(grants.length){const cipher=await createSecretCipher(await secret(owner,'session:'+record.operationId));env.FRONTBASE_OAUTH_CONNECTIONS=await cipher.encrypt(JSON.stringify({installationId,grants}));if(env.FRONTBASE_OAUTH_CONNECTIONS.length>65536)refuse();}
   return originalApply(record,credentials);
  };
  return {journal,executor,initialize,configuration,context,fetch:async(request:Request)=>{
   if(new URL(request.url).origin!==origin)return new Response('Invalid origin',{status:403});
-  if(!appPromise)appPromise=nextSetup().then(link=>createHostedBootstrap({enabled:true,origin,token:owner,expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT,context,journal,executor,initialize,configuration,resolveCredentials:async(manifest,input)=>resolveProviderOAuthCredentials(manifest,input,await (await oauth()).grants()),pendingSetup:true,nextSetup:()=>link}));
+  if(!appPromise)appPromise=nextSetup().then(link=>createHostedBootstrap({enabled:true,origin,token:owner,expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT,context,journal,executor,initialize,configuration,resolveCredentials:async(manifest,input)=>resolveProviderOAuthCredentials(manifest,input,await (await oauth()).refresh(providerOAuthClients(env,origin),{fetch:transport})),pendingSetup:true,nextSetup:()=>link}));
   const url=new URL(request.url);if(url.pathname.startsWith('/api/provider-oauth/'))return (await oauth()).app.fetch(request);if(url.pathname.startsWith('/frontbase-bootstrap/api/'))return (await appPromise).fetch(request);
   const headers={'cache-control':'no-store','referrer-policy':'no-referrer','x-content-type-options':'nosniff','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
   if(url.pathname==='/health')return Response.json({status:'setup_required'},{headers});
