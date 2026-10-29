@@ -118,8 +118,8 @@ Full reference: [docs/guides/console-and-deploy.md](docs/guides/console-and-depl
 
 These buttons launch the hosted setup preview from the tested source snapshot. After deployment, connect the provider and select your bindings in the Frontbase wizard; Cloudflare defaults to D1 and KV, while Vercel requires an existing HTTP-compatible state database. The hosted OAuth relay is optional: the local deployment wizard remains available without it. Independent-account testing and receiver recovery remain open; see [production readiness](docs/plans/provider-oauth-production-readiness-20261027.md).
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdrmoyassine%2Ffrontbase-framework%2Ftree%2Freconcile%2Fpublic-baseline-20261028&project-name=frontbase-cms&root-directory=examples%2Fcf-full)
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Fdrmoyassine%2Ffrontbase-framework%2Ftree%2Freconcile%2Fpublic-baseline-20261028)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdrmoyassine%2Ffrontbase-framework%2Ftree%2Ffrontbase-reconcile-20261029&project-name=frontbase-cms&root-directory=examples%2Fcf-full)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Fdrmoyassine%2Ffrontbase-framework%2Ftree%2Ffrontbase-reconcile-20261029)
 [![Deploy on Deno](https://deno.com/button)](https://console.deno.com/new?clone=https%3A%2F%2Fgithub.com%2Fdrmoyassine%2Ffrontbase-framework&app_directory=examples%2Fcf-full&install=pnpm%20install&build=pnpm%20-r%20build)
 
 The hosted wizard creates the initial administrator after provider authorization and binding configuration. The Cloudflare and Vercel buttons were exercised through test publication on the owner’s accounts; wider independent-account and recovery qualification remains open.
