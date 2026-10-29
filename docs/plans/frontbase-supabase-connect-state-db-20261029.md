@@ -29,6 +29,7 @@ Owner-approved 2026-10-29. Decision record: [DECISIONS.md 2026-10-29](../history
 - Account verification: `GET https://api.supabase.com/v1/projects` with the Bearer token; map to `{id: ref, name}`; same ≤50 shape validation. A management call proves usable authorization (same principle as the Cloudflare/Vercel branches).
 - `provider-oauth-config.ts`: iterate `['cloudflare','vercel','supabase']`.
 - `provider-oauth-import.ts`: allow `supabase` grants.
+- Relay (`provider-oauth-relay-target.ts`): both policies admit `supabase` for `purpose:'connect'` only (it is a resource provider, never an install host); enrolled-origins/receiver gates apply unchanged. Required because the operator's Supabase OAuth app registers `https://oauth.frontbase.dev/api/provider-oauth/supabase/callback` — the shared relay — as its redirect URI.
 - Tests: `test/provider-oauth.mjs` supabase connect cases (unconfigured 409, full start→finish happy path with fake token endpoint, state/cookie/claim refusals); `test/provider-oauth-mutation.mjs` gates for the supabase branch (fault: dropped code_verifier / dropped account fetch → named FAIL).
 
 ### Phase 2 — token refresh + revoke (the one new mechanism)

@@ -18,6 +18,9 @@ const v={origin:'https://stable.vercel.app',host:'vercel',purpose:'install',acco
 await assert.rejects(verify({...v,origin:'https://other.vercel.app'},vg));
 for(const patch of [{projectId:'prj_other'},{readyState:'BUILDING'},{target:'preview'}]){const previous=deployment;deployment={...previous,...patch};await assert.rejects(verify(v,vg));deployment=previous;}
 const enrolled={origin:'https://installed.example',host:'docker',purpose:'connect'};assert.equal(admit(enrolled,'cloudflare'),true);const before=calls.length;await verify(enrolled,grant);assert.equal(calls.length,before);assert.equal(admit({...enrolled,origin:'https://other.example'},'cloudflare'),false);
+// Supabase is connect-only: admitted on enrolled origins, never for install or as a host.
+assert.equal(admit(enrolled,'supabase'),true);await verify(enrolled,{...grant,provider:'supabase'});assert.equal(calls.length,before);
+assert.equal(admit({...enrolled,origin:'https://other.example'},'supabase'),false);assert.equal(admit({...enrolled,purpose:'install'},'supabase'),false);assert.equal(admit(target,'supabase'),false);
 const env={FRONTBASE_OAUTH_RELAY_URL:'https://relay.example',FRONTBASE_OAUTH_RELAY_TARGET:JSON.stringify(enrolled)};assert.equal(providerOAuthRelay(env,enrolled.origin).relayOrigin,'https://relay.example');assert.equal(providerOAuthRelay({},enrolled.origin),undefined);
 assert.equal(providerOAuthRelay({...env,FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY:'a'.repeat(43)},enrolled.origin).registrationKey,'a'.repeat(43));
 assert.throws(()=>providerOAuthRelay({...env,FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY:'short'},enrolled.origin));
@@ -38,6 +41,7 @@ assert.equal(publicPolicy.admit(target,'cloudflare'),true);
 await publicPolicy.verify(target,grant);
 await publicPolicy.verify(v,vg);
 assert.equal(publicPolicy.admit(enrolled,'cloudflare'),false);
+assert.equal(publicPolicy.admit(enrolled,'supabase'),false); // supabase connect follows the same receiver rule
 for(const patch of [{origin:'https://test.attacker.workers.dev'},{account:'b'.repeat(32)},{project:'../other'},{installationId:'bad'},{origin:'https://test.fixture.workers.dev.evil.example'},{deploymentId:'unexpected'}]){
   const changed={...target,...patch};if(publicPolicy.admit(changed,'cloudflare'))await assert.rejects(publicPolicy.verify(changed,grant));else assert.equal(publicPolicy.admit(changed,'cloudflare'),false);
 }
