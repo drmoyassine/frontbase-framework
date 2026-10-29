@@ -22,16 +22,16 @@ export function createProviderRelayClient(deps:ProviderRelayClientDeps){
     const callbackErrors:Record<string,string>=deps.mode==='native-install'?{native_setup_database_rejected:'Cloudflare could not create the setup database. Check D1 capacity and database permissions. Ask the operator to recover this installation before trying again.'}:{};
     app.get(base+'/relay-callback.js',c=>c.body("const messages="+JSON.stringify(callbackErrors)+",u=new URL(location.href),p=u.pathname.split('/').at(-2),ticket=u.searchParams.get('ticket');history.replaceState(null,'',u.pathname);fetch('/api/provider-oauth/'+p+'/relay-finish',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ticket})}).then(async r=>{const result=await r.json();if(!r.ok){document.getElementById('status').textContent=Object.hasOwn(messages,result.error)?messages[result.error]:"+JSON.stringify(callbackFailure)+";return;}location.replace(result.returnPath);}).catch(()=>{document.getElementById('status').textContent="+JSON.stringify(callbackFailure)+";});",200,{'content-type':'text/javascript'}));
     app.get(base+'/:provider/relay-callback',c=>{
-        if(!['cloudflare','vercel'].includes((c.req.param('provider')??''))||c.req.url.length>4096)return c.text('Not found',404);
+        if(!['cloudflare','vercel','supabase'].includes((c.req.param('provider')??''))||c.req.url.length>4096)return c.text('Not found',404);
         return c.html('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect Frontbase</title></head><body><p id="status" role="status">Completing your connection…</p><script src="/api/provider-oauth/relay-callback.js"></script></body></html>');
     });
     app.use(base+'/*',async(c,next)=>{if(!await deps.authorize(c.req.raw))return c.json({error:'oauth_operator_required'},403);if(c.req.method==='POST'&&(c.req.header('origin')!==deps.origin||c.req.header('content-type')?.split(';')[0]!=='application/json'))return c.json({error:'relay_refused'},403);return next();});
     app.get(base+'/status',async c=>{
         const response=await deps.fetch(deps.relayOrigin+'/health',{redirect:'manual',signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('relay_unavailable');const status=await json(response);const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');
-        return c.json({providers:['cloudflare','vercel'].map(provider=>({provider,available:Array.isArray(status.providers)&&status.providers.includes(provider)})),connections:deps.store?await deps.store.connections(actor):[]});
+        return c.json({providers:['cloudflare','vercel','supabase'].map(provider=>({provider,available:Array.isArray(status.providers)&&status.providers.includes(provider)})),connections:deps.store?await deps.store.connections(actor):[]});
     });
     app.post(base+'/:provider/start',async c=>{
-        const provider=c.req.param('provider')??'';if(!['cloudflare','vercel'].includes(provider))return c.json({error:'relay_refused'},400);
+        const provider=c.req.param('provider')??'';if(!['cloudflare','vercel','supabase'].includes(provider))return c.json({error:'relay_refused'},400);
         const input=await json(c.req.raw,8192);if(typeof input.returnPath!=='string'||!input.returnPath.startsWith('/')||input.returnPath.startsWith('//')||/[\\\r\n#]/.test(input.returnPath)||Object.keys(input).some(k=>!['returnPath','accountId'].includes(k))||input.accountId!==undefined&&(typeof input.accountId!=='string'||input.accountId.length>256))throw Error('relay_refused');
         const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');const verifier=deps.mode==='authenticated'&&deps.registrationKey?deps.registrationKey:random();if(!/^[\w-]{43}$/.test(verifier))throw Error('relay_refused');
         const value=await seal({...actor,verifier,provider,expires:now()+600000,target:deps.target,returnPath:input.returnPath,accountId:input.accountId});if(value.length>4096)throw Error('relay_refused');
@@ -39,7 +39,7 @@ export function createProviderRelayClient(deps:ProviderRelayClientDeps){
         const url=new URL('/connect',deps.relayOrigin);url.searchParams.set('provider',provider);url.searchParams.set('target',JSON.stringify(deps.target));url.searchParams.set('challenge',await hash(verifier));return c.json({url:url.href,relayOrigin:deps.relayOrigin});
     });
     app.post(base+'/:provider/relay-finish',async c=>{
-        const provider=c.req.param('provider') as OAuthProvider;if(!['cloudflare','vercel'].includes(provider))throw Error('relay_refused');
+        const provider=c.req.param('provider') as OAuthProvider;if(!['cloudflare','vercel','supabase'].includes(provider))throw Error('relay_refused');
         const input=await json(c.req.raw,8192);if(Object.keys(input).length!==1||typeof input.ticket!=='string'||!/^[\w-]{43}$/.test(input.ticket))throw Error('relay_refused');
         const name='__Host-fb_relay_client_'+provider,values=(c.req.header('cookie')??'').split(';').map(s=>s.trim()).filter(s=>s.startsWith(name+'='));if(values.length!==1)throw Error('relay_refused');
         const pending=await read(values[0]!.slice(name.length+1)),actor=await deps.authorize(c.req.raw);

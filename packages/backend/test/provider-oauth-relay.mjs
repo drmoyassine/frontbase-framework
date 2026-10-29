@@ -12,9 +12,10 @@ const clients={cloudflare:{provider:'cloudflare',clientId:'private-fixture',scop
 const provider=async(url,init)=>{
  assert.equal(init.redirect,'manual');
  if(String(url).endsWith('/token')){exchanges++;const p=new URLSearchParams(init.body);assert.ok(p.get('code_verifier'));return Response.json({access_token:'fixture-sensitive-provider-token',refresh_token:'fixture-sensitive-refresh-token',token_type:'bearer',expires_in:3600});}
+ if(new URL(String(url)).origin==='https://api.supabase.com')return Response.json([{id:'f'.repeat(32),ref:'fixturesupabase',name:'Fixture Supabase project'}]);
  assert.equal(new URL(String(url)).origin,'https://api.cloudflare.com');return Response.json({success:true,result:[{id:'a'.repeat(32),name:'Isolated account'}]});
 };
-const deps={origin:relayOrigin,clients,cipher,vault:await sqlOAuthRelayVault(db,()=>clock),fetch:provider,now:()=>clock,admit:t=>t?.origin===origin&&t.host==='docker'&&t.purpose==='connect',verify:async(t,a)=>{verified++;if(refuseOwner||t.origin!==origin||a.provider!=='cloudflare')throw Error('wrong owner');}};
+const deps={origin:relayOrigin,clients,cipher,vault:await sqlOAuthRelayVault(db,()=>clock),fetch:provider,now:()=>clock,admit:t=>t?.origin===origin&&t.host==='docker'&&t.purpose==='connect',verify:async(t,a)=>{verified++;if(refuseOwner||t.origin!==origin||!['cloudflare','supabase'].includes(a.provider))throw Error('wrong owner');}};
 assert.throws(()=>createProviderOAuthRelay({...deps,requireReceiverProof:true,verifyReceiver:undefined,notices:{privacy:'privacy '.repeat(12),terms:'terms '.repeat(16)}}));
 let relay=createProviderOAuthRelay(deps);
 const dispatch=(app,host,path,{body,cookie,owner=true,requestOrigin=host,headers={}}={})=>app.fetch(new Request(host+path,{method:body===undefined?'GET':'POST',headers:{...(owner?{'x-owner':'yes'}:{}),...(cookie?{cookie}:{}),...(body===undefined?{}:{origin:requestOrigin,'content-type':'application/json'}),...headers},...(body===undefined?{}:{body:JSON.stringify(body)})}));
@@ -23,13 +24,13 @@ const store=providerOAuthStore(appDB,appCipher,()=>clock);
 const receiver=createProviderRelayClient({origin,relayOrigin,target,mode:'authenticated',cipher:appCipher,store,now:()=>clock,authorize:async r=>r.headers.get('x-owner')==='yes'?{tenant:'test',subject:'owner'}:null,fetch:async(input,init)=>relay.fetch(new Request(String(input),init))});
 const client=(path,opts)=>dispatch(receiver,origin,path,opts);
 const cookie=r=>r.headers.get('set-cookie').split(';')[0];
-async function flow(clientFor=client){
- const start=await clientFor('/api/provider-oauth/cloudflare/start',{body:{returnPath:'/frontbase-admin/settings?tab=accounts'}});assert.equal(start.status,200);const clientCookie=cookie(start),url=new URL((await start.json()).url);if(establishedKey)assert.ok(!url.href.includes(establishedKey),'registration secret never enters browser URL');
+async function flow(clientFor=client,providerName='cloudflare'){
+ const start=await clientFor('/api/provider-oauth/'+providerName+'/start',{body:{returnPath:'/frontbase-admin/settings?tab=accounts'}});assert.equal(start.status,200);const clientCookie=cookie(start),url=new URL((await start.json()).url);if(establishedKey)assert.ok(!url.href.includes(establishedKey),'registration secret never enters browser URL');
  const opened=await call(url.pathname+url.search);assert.equal(opened.status,200);const relayCookie=cookie(opened);assert.ok(!(await opened.text()).includes('fixture-sensitive'));
- const begin=await call('/api/provider-oauth/cloudflare/start',{cookie:relayCookie,body:{returnPath:'/complete'}});assert.equal(begin.status,200);const state=new URL((await begin.json()).url).searchParams.get('state'),stateCookie=cookie(begin);
+ const begin=await call('/api/provider-oauth/'+providerName+'/start',{cookie:relayCookie,body:{returnPath:'/complete'}});assert.equal(begin.status,200);const state=new URL((await begin.json()).url).searchParams.get('state'),stateCookie=cookie(begin);
  // Another isolate resumes the same durable encrypted transaction.
  relay=createProviderOAuthRelay({...deps,vault:await sqlOAuthRelayVault(db,()=>clock)});
- const finish=await call('/api/provider-oauth/cloudflare/finish',{cookie:relayCookie+'; '+stateCookie,body:{state,code:'test-code'}});assert.equal(finish.status,200);const text=await finish.text();assert.ok(!text.includes('fixture-sensitive'));const complete=await call(JSON.parse(text).returnPath,{cookie:relayCookie});assert.equal(complete.status,302);const ticket=new URL(complete.headers.get('location')).searchParams.get('ticket');return {ticket,clientCookie};
+ const finish=await call('/api/provider-oauth/'+providerName+'/finish',{cookie:relayCookie+'; '+stateCookie,body:{state,code:'test-code'}});assert.equal(finish.status,200);const text=await finish.text();assert.ok(!text.includes('fixture-sensitive'));const complete=await call(JSON.parse(text).returnPath,{cookie:relayCookie});assert.equal(complete.status,302);const ticket=new URL(complete.headers.get('location')).searchParams.get('ticket');return {ticket,clientCookie};
 }
 assert.equal((await client('/api/provider-oauth/status',{owner:false})).status,403);
 assert.equal((await call('/connect?provider=cloudflare&challenge='+'a'.repeat(43)+'&target='+encodeURIComponent(JSON.stringify({...target,origin:'https://attacker.example'})))).status,409);
@@ -48,6 +49,14 @@ clock+=120001;await deps.vault.purge();assert.equal((await client('/api/provider
 assert.equal((await db.query("SELECT key FROM _frontbase_oauth_relay WHERE key LIKE 'ticket:%'")).length,0);
 await assert.rejects(deps.vault.insert('plaintext','provider-token'));
 console.log('PASS relay → callback → PKCE handoff → installed encrypted account; restart/concurrency, CSRF, recipient/owner binding, replay, expiry and physical credential deletion');
+// Supabase connect rides the same relay handoff (connect-only resource provider; admission policies still fence install purpose).
+clients.supabase={provider:'supabase',clientId:'supabase-fixture',scopes:['projects.read'],redirectUri:relayOrigin+'/api/provider-oauth/supabase/callback'};
+const supa=await flow(client,'supabase');assert.equal((await client('/api/provider-oauth/supabase/relay-finish',{cookie:supa.clientCookie,body:{ticket:supa.ticket}})).status,200);
+const supaRows=(await accounts.listEdgeResources('provider')).filter(r=>r.provider==='supabase');assert.equal(supaRows.length,1,'supabase grant persisted receiver-side');
+const supaConfig=await accounts.getEdgeResourceConfig(supaRows[0].id);assert.equal(supaConfig.account_id,'fixturesupabase');assert.equal(supaConfig.oauth.refresh_token,'fixture-sensitive-refresh-token');
+const supaStatus=await (await client('/api/provider-oauth/status')).json();assert.ok(supaStatus.providers.some(p=>p.provider==='supabase'&&p.available),'relay client status lists supabase');
+assert.ok(!JSON.stringify(supaStatus).includes('fixture-sensitive'));
+console.log('PASS supabase relay connect: consent page, PKCE handoff, receiver-side grant and status listing');
 
 // Zero-state receivers may establish an owner only after a durable project claim.
 let established=0;const nativeTarget={origin,host:'cloudflare',purpose:'install',account:'a'.repeat(32),project:'native-fixture',installationId:'00000000-0000-4000-a000-000000000001'};
