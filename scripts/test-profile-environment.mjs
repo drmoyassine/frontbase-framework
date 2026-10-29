@@ -20,4 +20,9 @@ assert.equal(wireEnv.APP_DB_URL,'postgres://edge%20role:p%40ss%3Aword@db.example
 assert.ok(!wireEnv.FRONTBASE_DEPLOYMENT_MANIFEST.includes('p@ss:word'));assert.ok(!wireEnv.FRONTBASE_DEPLOYMENT_MANIFEST.includes('p%40ss%3Aword'));
 const cloudWire=resolveDeploymentManifest('cloudflare',undefined,{'state-db':supa({host:'db.example.test',database:'postgres'},{username:'state/role',password:'state/role-secret'})});
 assert.throws(()=>profileEnvironment({manifest:cloudWire,credentials:{'state/role':'r','state/role-secret':'s'}}),/state_wire_requires_hyperdrive/);
-console.log('PASS supabase state lowering: PostgREST env identical on every host, encoded wire DSN without manifest echo, Cloudflare wire refused until Hyperdrive');
+// Only the native executor opts in: it lowers the opt-in flag plus the same encoded
+// DSN (the loud no-binding fallback), and nothing hyperdrive-shaped echoes elsewhere.
+const cloudNative=profileEnvironment({manifest:cloudWire,credentials:{'state/role':'r','state/role-secret':'s'}},{nativeHyperdrive:true});
+assert.equal(cloudNative.APP_DB_HYPERDRIVE,'1');assert.equal(cloudNative.APP_DB_URL,'postgres://r:s@db.example.test:5432/postgres');
+assert.ok(!('APP_DB_HYPERDRIVE' in wireEnv));assert.ok(!cloudNative.FRONTBASE_DEPLOYMENT_MANIFEST.includes('postgres://r:s@'));
+console.log('PASS supabase state lowering: PostgREST env identical on every host, encoded wire DSN without manifest echo, Cloudflare wire refused outside the Hyperdrive-provisioning executor');

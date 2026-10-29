@@ -68,7 +68,7 @@ jobs:
       - name: Deployment profile and local bootstrap security
         run: pnpm test:deployment-gates && pnpm test:deployment-setup
       - name: State-db resolver contract
-        run: pnpm --filter @frontbase/example-cf-full test:state-db
+        run: pnpm --filter @frontbase/example-cf-full test:state-db && pnpm --filter @frontbase/example-cf-full test:state-db-mutation
       - name: vercel.json routing contract
         run: pnpm --filter @frontbase/example-cf-full test:vercel-config
       - name: Console artifact guarantees

@@ -98,6 +98,39 @@ try {
  }
  const failedProbe=fixture();await assert.rejects(executeCloudflareFirstInstall(external,context,{exampleRoot:root,runWrangler:failedProbe.run,onReceipt:receipt,checkExternalState:async()=>{throw Error('not empty');}}));
  assert.ok(!failedProbe.calls.some(c=>c.args[0]==='secret'||c.args[0]==='deploy'||c.args.includes('create')));
+
+ // Supabase state on the Cloudflare executor: wire gets a Hyperdrive config created,
+ // bound into the staged config and journaled — never a D1; PostgREST is plain HTTPS.
+ const supaWire=structuredClone(prepared);
+ supaWire.manifest.bindings['state-db']={adapterId:'supabase-postgres',mode:'connect',config:{host:'db.fixture.supabase.co',port:'5432',database:'postgres'},secretRefs:{username:'state/username',password:'state/password'}};
+ supaWire.credentials={'state/username':'edge_role','state/password':'p@ss:word'};
+ const hyperdriveId='b'.repeat(32);const wireDsn='postgres://edge_role:p%40ss%3Aword@db.fixture.supabase.co:5432/postgres';
+ for(const fault of ['none','create-failed','bad-identity']) {
+  const base=fixture(),calls=[];const run=async(args,opts)=>{calls.push({args,opts});
+   if(args[0]==='hyperdrive')return fault==='create-failed'?{code:1,stdout:'',stderr:'name already exists'}:fault==='bad-identity'?{code:0,stdout:'Created new Hyperdrive config: unknown',stderr:''}:{code:0,stdout:`Created new Hyperdrive Postgresql config: ${hyperdriveId}`,stderr:''};
+   return base.run(args,opts);};
+  const operation=executeCloudflareFirstInstall(supaWire,context,{exampleRoot:root,runWrangler:run,onReceipt:receipt,checkExternalState:async value=>{assert.deepEqual(value,supaWire);}});
+  if(fault==='none') {
+   await operation;
+   const stage=stages.at(-1),config=readFileSync(join(stage,'wrangler.toml'),'utf8');
+   assert.ok(config.includes('[[hyperdrive]]')&&config.includes('binding = "HYPERDRIVE"')&&config.includes(hyperdriveId),'hyperdrive binding staged');
+   assert.deepEqual(JSON.parse(readFileSync(join(stage,'deployment-receipt.json'),'utf8')).resources.hyperdrive,{name:'profile-fixture-state',id:hyperdriveId,binding:'HYPERDRIVE'});
+   const create=calls.find(call=>call.args[0]==='hyperdrive');
+   assert.deepEqual(create.args,['hyperdrive','create','profile-fixture-state','--connection-string',wireDsn,'--caching-disabled'],'fixed name, reviewed DSN, response caching disabled');
+   assert.ok(calls.some(call=>call.args[0]==='secret'&&call.args[2]==='APP_DB_HYPERDRIVE'&&call.opts.stdin==='1'),'resolver opt-in pushed as a secret');
+   assert.ok(calls.some(call=>call.args[0]==='secret'&&call.args[2]==='APP_DB_URL'&&call.opts.stdin===wireDsn),'DSN lowered as the loud fallback');
+   assert.ok(!calls.some(call=>call.args[0]==='d1'),'wire state provisions no D1');
+   assert.equal(calls.filter(call=>JSON.stringify(call.args).includes(wireDsn)).length,1,'encoded DSN rides exactly the one create argv');
+   assert.ok(!JSON.stringify(calls.map(call=>call.args)).includes('p@ss:word'),'raw credential never in argv');
+   for(const path of walk(stage))assert.ok(!readFileSync(path,'utf8').includes('p@ss:word'),'DSN credential persisted to stage');
+  } else {await assert.rejects(operation);assert.ok(!calls.some(call=>call.args[0]==='secret'||call.args[0]==='deploy'),'hyperdrive refusal must precede worker writes');}
+ }
+ const supaRest=structuredClone(prepared);
+ supaRest.manifest.bindings['state-db']={adapterId:'supabase-postgres',mode:'connect',config:{url:'https://postgrest.fixture.example/rest/v1'},secretRefs:{token:'state/token'}};
+ supaRest.credentials={'state/token':'fixture-postgrest-bearer'};
+ const restFake=fixture();await executeCloudflareFirstInstall(supaRest,context,{exampleRoot:root,runWrangler:restFake.run,onReceipt:receipt,checkExternalState:async()=>{}});
+ assert.ok(!restFake.calls.some(call=>call.args[0]==='hyperdrive'||call.args[0]==='d1'),'PostgREST is plain HTTPS: no Hyperdrive, no D1');
+ assert.ok(restFake.calls.some(call=>call.args[0]==='secret'&&call.args[2]==='APP_DB_POSTGREST_URL'&&call.options.stdin.includes('postgrest.fixture.example')));
  const wrongName=structuredClone(withCache);wrongName.manifest.bindings.cache.config.resourceName='other-cache';const unused=fixture();await assert.rejects(executeCloudflareFirstInstall(wrongName,context,{exampleRoot:root,runWrangler:unused.run}));assert.equal(unused.calls.length,0);
 
  const withStorage=structuredClone(withCache);withStorage.manifest.bindings.storage.mode='create';withStorage.manifest.bindings.storage.config.resourceName='profile-fixture-storage';

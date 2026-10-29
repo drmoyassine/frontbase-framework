@@ -14,7 +14,7 @@ import { parseDatabaseId } from '../../packages/compiler/dist/cli/provision-d1.j
 import { workerExists } from '../../packages/compiler/dist/cli/app-identity.js';
 const repoRoot=join(dirname(fileURLToPath(import.meta.url)),'../..');
 const defaultExample=join(repoRoot,'examples/cf-full');
-export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create','reuse'],'cloudflare-kv':['create','reuse'],'cloudflare-r2':['create'],'libsql-http':['connect'],'d1-http':['connect'],'upstash-http':['connect'],'cloudflare-vectorize-http':['connect'],'libsql-vector-http':['connect'],'s3-http':['connect'],'qstash-http':['connect']}};
+export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create','reuse'],'cloudflare-kv':['create','reuse'],'cloudflare-r2':['create'],'libsql-http':['connect'],'d1-http':['connect'],'supabase-postgres':['connect'],'upstash-http':['connect'],'cloudflare-vectorize-http':['connect'],'libsql-vector-http':['connect'],'s3-http':['connect'],'qstash-http':['connect']}};
 export function cloudflareExecutionIssues(manifest,context) {
     const issues=[];
     if(manifest.target!=='cloudflare' || manifest.environment!==context.environment)issues.push({code:'execution_target_mismatch'});
@@ -77,7 +77,7 @@ export async function executeCloudflareFirstInstall(prepared,context,{exampleRoo
     const plan=validateDeploymentManifest(prepared?.manifest);
     if(!plan.ready || cloudflareExecutionIssues(plan.manifest,context).length || !prepared.credentials)throw new Error('unsupported_cloudflare_execution_plan');
     if(installationId && (!/^[a-f0-9-]{36}$/.test(installationId) || !/^[a-f0-9-]{36}$/.test(operationId??'')))throw new Error('invalid_installation_identity');
-    const environment=profileEnvironment(prepared);
+    const environment=profileEnvironment(prepared,{nativeHyperdrive:true});
     if(environment.FRONTBASE_STORAGE && plan.manifest.bindings.storage.mode==='connect'){const storage=JSON.parse(environment.FRONTBASE_STORAGE);storage.namespace='cloudflare:'+context.accountId+':'+context.appName;environment.FRONTBASE_STORAGE=JSON.stringify(storage);}
     const stage=stageCloudflareArtifacts(context,exampleRoot);
     const resources={};
@@ -159,6 +159,24 @@ export async function executeCloudflareFirstInstall(prepared,context,{exampleRoo
         if(cache.mode==='reuse') {
             resources.cache={name:cache.config.resourceName,id:cache.resourceRef,binding:'FRONTBASE_KV'};
             writeFileSync(join(stage,'wrangler.toml'),readFileSync(join(stage,'wrangler.toml'),'utf8')+`\n[[kv_namespaces]]\nbinding = "FRONTBASE_KV"\nid = "${cache.resourceRef}"\n`,{mode:0o600});
+        }
+        // Supabase wire state on Cloudflare: a Worker has no TCP, so the scoped-role
+        // DSN becomes a Hyperdrive config this executor owns, and the Worker reaches
+        // Postgres through the HYPERDRIVE binding (APP_DB_HYPERDRIVE=1 opts the
+        // resolver in; the DSN itself lowers as the loud no-binding refusal). SQL-
+        // response caching is disabled — application state must read its own writes.
+        // The connection string rides the create argv for the lifetime of that one
+        // child process: wrangler offers no stdin/env alternative, and the same DSN
+        // is delivered to Cloudflare either way.
+        if(state.adapterId==='supabase-postgres' && state.mode==='connect' && !state.config.url) {
+            pending='state';journal('hyperdrive_create_started');
+            const created=await runWrangler(['hyperdrive','create',`${context.appName}-state`,'--connection-string',environment.APP_DB_URL,'--caching-disabled'],{cwd:stage});
+            if(created.code!==0)throw new Error('hyperdrive_create_failed');
+            const hyperdriveId=created.stdout.match(/config: ([a-f0-9]{32})/)?.[1];
+            if(!hyperdriveId)throw new Error('hyperdrive_create_identity_unknown');
+            resources.hyperdrive={name:`${context.appName}-state`,id:hyperdriveId,binding:'HYPERDRIVE'};
+            writeFileSync(join(stage,'wrangler.toml'),readFileSync(join(stage,'wrangler.toml'),'utf8')+`\n[[hyperdrive]]\nbinding = "HYPERDRIVE"\nid = "${hyperdriveId}"\n`,{mode:0o600});
+            pending=null;journal('hyperdrive_created');
         }
         const result=await deploy('.', {cwd:stage,target:'cloudflare',appName:context.appName,...(state.mode==='reuse'?{d1DatabaseId:state.resourceRef}:state.mode==='connect'?{externalStateConfigured:true}:{}),runWrangler:run,onSetupLink});
         if(!result.ok)throw new Error('cloudflare_deployment_failed');

@@ -20,4 +20,10 @@ await verifyEmptyExternalState({manifest:supaWire,credentials:{'state/role':'edg
  assert.equal(env.APP_DB_URL,'postgres://edge_role:fixture-password@db.example.test:5432/postgres');assert.ok(!env.APP_DB_POSTGRES_SCHEMA);
  return {query:async sql=>{assert.match(sql,/^SELECT tablename FROM pg_tables WHERE schemaname='public' LIMIT 1$/);return [];}};}});
 for(const outcome of [[{tablename:'sites'}],null])await assert.rejects(verifyEmptyExternalState({manifest:supaPostgrest,credentials:{'state/token':'fixture-bearer'}},{makeRunner:()=>({query:async()=>outcome})}),/external_state_not_verified_empty/);
-console.log('PASS external state preflight: shared resolver configuration, read-only schema probe, nonempty/unknown refusal, supabase PostgREST and wire transports probe the application schema');
+// Cloudflare wire state reaches the probe too (the executor provisions its Hyperdrive
+// config); the origin database is verified directly over TCP from the operator machine.
+const cloudWire=resolveDeploymentManifest('cloudflare',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'connect',config:{host:'db.example.test',database:'postgres',schema:'edge_state'},secretRefs:{username:'state/role',password:'state/role-secret'}}});
+await verifyEmptyExternalState({manifest:cloudWire,credentials:{'state/role':'edge_role','state/role-secret':'fixture-password'}},{makeRunner:env=>{
+ assert.equal(env.APP_DB_URL,'postgres://edge_role:fixture-password@db.example.test:5432/postgres');assert.equal(env.APP_DB_HYPERDRIVE,'1');assert.equal(env.APP_DB_POSTGRES_SCHEMA,'edge_state');
+ return {query:async sql=>{assert.match(sql,/^SELECT tablename FROM pg_tables WHERE schemaname='edge_state' LIMIT 1$/);return [];}};}});
+console.log('PASS external state preflight: shared resolver configuration, read-only schema probe, nonempty/unknown refusal, supabase PostgREST and wire transports (docker and cloudflare-native) probe the application schema');

@@ -24,6 +24,10 @@ const faults=[
  ['fixed mutation target','executor',s=>s.replace("if((kind==='secret put' || args[0]==='deploy') && args[args.indexOf('--name')+1]!==context.appName)",'if(false)')],
  ['context validation','executor',s=>s.replaceAll('    assertCloudflareExecutionContext(context);','    // removed')],
  ['supported execution binding','executor',s=>s.replace('cloudflareExecutionIssues(plan.manifest,context).length','false')],
+ ['supabase execution admission','executor',s=>s.replace("'supabase-postgres':['connect'],",'')],
+ ['hyperdrive response caching','executor',s=>s.replace(",'--caching-disabled'",'')],
+ ['hyperdrive binding staged','executor',s=>s.replace('\\n[[hyperdrive]]\\nbinding = "HYPERDRIVE"\\nid = "${hyperdriveId}"\\n','\\n')],
+ ['hyperdrive identity fence','executor',s=>s.replace("if(!hyperdriveId)throw new Error('hyperdrive_create_identity_unknown');",'if(false)')],
 ];
 try {
  for(const [name,type,mutate] of faults){
@@ -37,4 +41,4 @@ try {
   if(name.startsWith('baseline')){assert.equal(result.status,0,`transformed baseline failed: ${name}: ${result.stderr}`);console.log(`PASS ${name}`);}else{assert.ok(result.status!==0 && result.status!==null,`fault escaped or timed out: ${name}`);console.log(`PASS detected: ${name}`);}
  }
 } finally {rmSync(temp,{recursive:true,force:true});}
-console.log('Fifteen execution faults detected; production source unchanged');
+console.log('Nineteen execution faults detected; production source unchanged');

@@ -3,10 +3,10 @@
  * is the one seam every host entry uses to turn its environment into the
  * engine's `runner`, so these are the properties every host inherits:
  *
- *   1. Precedence — Hyperdrive (cloud mode only) > PostgREST pair > APP_DB_URL
- *      (postgres:// → direct wire) > D1-REST trio > D1 binding > host default;
- *      exactly one runner is built, first match wins. A Hyperdrive binding
- *      WITHOUT FRONTBASE_DEPLOYMENT_MODE=cloud is
+ *   1. Precedence — Hyperdrive (cloud mode or the explicit APP_DB_HYPERDRIVE=1
+ *      opt-in) > PostgREST pair > APP_DB_URL (postgres:// → direct wire) >
+ *      D1-REST trio > D1 binding > host default; exactly one runner is built,
+ *      first match wins. A Hyperdrive binding with NEITHER key is
  *      IGNORED: the committed wrangler.toml ships the cloud deployment's
  *      binding, and neither a self-host reusing that file nor a local
  *      `wrangler dev` may adopt the cloud state plane.
@@ -22,7 +22,7 @@
  * Pure unit level: runners are constructed but never connected — every case
  * asserts on the RESOLUTION (kind/label/url/displayUrl/card/runner shape).
  */
-import { describeStateDb, resolveStateDb, StateDbConfigError } from '../dist/state-db.mjs';
+const { describeStateDb, resolveStateDb, StateDbConfigError } = await import(process.env.FRONTBASE_STATE_DB_TEST_MODULE ?? '../dist/state-db.mjs');
 
 const TOKEN = 'unit-test-auth-token-9f2a7c';
 const API_TOKEN = 'unit-test-cf-api-token-31b8e0';
@@ -91,6 +91,30 @@ check('a Hyperdrive binding WITHOUT cloud mode falls through to the D1 binding (
         host: 'cloudflare',
     });
     return r.kind === 'd1-binding' && r.displayUrl === 'd1://system-d1';
+});
+check('APP_DB_HYPERDRIVE=1 + binding → postgres-hyperdrive WITHOUT cloud mode (wizard-native install)', () => {
+    const r = resolveStateDb({
+        env: envOf({ APP_DB_HYPERDRIVE: '1', APP_DB_POSTGRES_SCHEMA: 'frontbase_edge_state' }),
+        d1Binding: FAKE_D1,
+        hyperdriveBinding: { connectionString: PG_SECRET },
+        host: 'cloudflare',
+    });
+    return r.kind === 'postgres-hyperdrive' && r.runner.dialect === 'postgres'
+        && r.label === 'PostgreSQL (Hyperdrive)' && r.displayUrl === 'hyperdrive://application-state'
+        && r.card.provider === 'postgres'
+        && !JSON.stringify({ label: r.label, displayUrl: r.displayUrl, card: r.card }).includes(PG_SECRET);
+});
+throwsWith('APP_DB_HYPERDRIVE=1 without the binding fails loud (never a silent D1 fallback)', () =>
+    resolveStateDb({ env: envOf({ APP_DB_HYPERDRIVE: '1' }), d1Binding: FAKE_D1, host: 'cloudflare' }),
+    ['APP_DB_HYPERDRIVE', 'HYPERDRIVE binding']);
+check('the explicit opt-in beats APP_DB_URL, PostgREST and the D1 binding', () => {
+    const r = resolveStateDb({
+        env: envOf({ APP_DB_HYPERDRIVE: '1', APP_DB_URL: ':memory:', APP_DB_POSTGREST_URL: 'https://api.example.test/rest/v1', APP_DB_POSTGREST_TOKEN: TOKEN }),
+        d1Binding: FAKE_D1,
+        hyperdriveBinding: { connectionString: PG_SECRET },
+        host: 'cloudflare',
+    });
+    return r.kind === 'postgres-hyperdrive';
 });
 
 check('PostgREST pair → postgres-postgrest on any host (pure HTTPS, no TCP driver)', () => {

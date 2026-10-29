@@ -3,7 +3,9 @@ import {profileEnvironment} from './profile-environment.mjs';
 // The same runners used by the host; inspect only schema, never initialize/migrate here.
 export async function verifyEmptyExternalState(prepared,{makeRunner}={}) {
  const b=prepared.manifest.bindings['state-db'];if(b.mode!=='connect')return;
- const env=profileEnvironment(prepared);
+ // The probe runs only inside the Cloudflare native executor, which provisions the
+ // Hyperdrive config a cloudflare wire manifest implies — so admit it here too.
+ const env=profileEnvironment(prepared,{nativeHyperdrive:true});
  try {
   const postgres=b.adapterId==='supabase-postgres';
   const runner=makeRunner?makeRunner(env):b.adapterId==='libsql-http'?sqliteRunner(env.APP_DB_URL,env.APP_DB_AUTH_TOKEN):postgres?(env.APP_DB_POSTGREST_URL?supabaseRunner({url:env.APP_DB_POSTGREST_URL,serviceKey:env.APP_DB_POSTGREST_TOKEN,restUrl:env.APP_DB_POSTGREST_URL}):postgresStateRunner({connectionString:env.APP_DB_URL})):d1RunnerFromRest({accountId:env.APP_DB_D1_ACCOUNT_ID,databaseId:env.APP_DB_D1_DATABASE_ID,apiToken:env.CLOUDFLARE_API_TOKEN});
