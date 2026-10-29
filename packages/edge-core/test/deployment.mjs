@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-const { adaptersFor, defaultDeploymentManifest, resolveDeploymentManifest, validateDeploymentManifest, stateBindingChanged } = await import(process.env.FRONTBASE_DEPLOYMENT_TEST_MODULE || new URL('../dist/deployment.js', import.meta.url).href);
+const { adaptersFor, defaultDeploymentManifest, resolveDeploymentManifest, validateDeploymentManifest, stateBindingChanged, readManagedRuntimeManifest } = await import(process.env.FRONTBASE_DEPLOYMENT_TEST_MODULE || new URL('../dist/deployment.js', import.meta.url).href);
 let passed=0;
 const test=(label,fn)=>{fn();passed++;console.log('PASS '+label);};
 const disabledCache={adapterId:'cloudflare-kv',mode:'disabled',config:{},secretRefs:{}};
@@ -22,4 +22,24 @@ test('reuse requires a resource reference and correct host',()=>{const p=cf();p.
 test('state provider change requires migration, cache change does not',()=>{const before=cf();assert.equal(stateBindingChanged(before,resolveDeploymentManifest('cloudflare',before,{'state-db':remote})),true);assert.equal(stateBindingChanged(before,resolveDeploymentManifest('cloudflare',before,{cache:{adapterId:'upstash-http',mode:'disabled',config:{},secretRefs:{}}})),false);});
 test('invalid manifest fields never echo a rejected secret',()=>{const p=cf();p.target='private-fixture';assert.deepEqual(validateDeploymentManifest(p),{ready:false,issues:[{code:'invalid_manifest'}],operations:[]});});
 test('preview and production default resource names are separated',()=>assert.notEqual(defaultDeploymentManifest('cloudflare','preview').bindings['state-db'].config.resourceName,defaultDeploymentManifest('cloudflare','production').bindings['state-db'].config.resourceName));
+const supa=(config,secretRefs={})=>({adapterId:'supabase-postgres',mode:'connect',config,secretRefs});
+test('supabase PostgREST state connects over https with a private bearer',()=>{const p=resolveDeploymentManifest('docker',undefined,{'state-db':supa({url:'https://api.example.supabase.co/rest/v1',schema:'frontbase_edge_state'},{token:'vault/supa-bearer'})});const out=validateDeploymentManifest(p);assert.equal(out.ready,true);assert.equal(out.operations[0].adapterId,'supabase-postgres');assert.ok(readManagedRuntimeManifest(p));});
+test('supabase wire state connects from parts on every target without a credential-bearing DSN',()=>{for(const target of ['cloudflare','vercel','docker']){const p=resolveDeploymentManifest(target,target==='cloudflare'?cf():undefined,{'state-db':supa({host:'db.example.com',port:'5432',database:'postgres',schema:'frontbase_edge_state'},{username:'vault/role',password:'vault/role-secret'})});assert.equal(validateDeploymentManifest(p).ready,true,target+' wire connect');assert.ok(readManagedRuntimeManifest(p),target+' runtime manifest');}});
+test('supabase state refuses ambiguous transport, DSN-shaped urls and bad parts',()=>{
+ const codesOf=(m)=>validateDeploymentManifest(m).issues;
+ const neither=resolveDeploymentManifest('docker',undefined,{'state-db':supa({},{token:'vault/x'})});
+ assert.ok(codesOf(neither).some(i=>i.code==='state_transport_required'));
+ const both=resolveDeploymentManifest('docker',undefined,{'state-db':supa({url:'https://api.example.com',host:'db.example.com'},{token:'vault/x',username:'u',password:'p'})});
+ assert.ok(codesOf(both).some(i=>i.code==='state_transport_required'));
+ const mixed=resolveDeploymentManifest('docker',undefined,{'state-db':supa({url:'https://api.example.com',database:'postgres'},{token:'t',password:'p'})});
+ assert.ok(codesOf(mixed).some(i=>i.code==='state_transport_conflict'));
+ const noToken=resolveDeploymentManifest('docker',undefined,{'state-db':supa({url:'https://api.example.com'},{})});
+ assert.ok(codesOf(noToken).some(i=>i.code==='missing_secret_reference'&&i.field==='token'));
+ const dsn=resolveDeploymentManifest('docker',undefined,{'state-db':supa({url:'postgres://role:private-fixture@db.example.com/postgres'},{token:'vault/x'})});
+ assert.ok(codesOf(dsn).some(i=>i.code==='invalid_public_endpoint'));assert.ok(!JSON.stringify(codesOf(dsn)).includes('private-fixture'));
+ const noPassword=resolveDeploymentManifest('docker',undefined,{'state-db':supa({host:'db.example.com',database:'postgres'},{username:'vault/role'})});
+ assert.ok(codesOf(noPassword).some(i=>i.code==='missing_secret_reference'&&i.field==='password'));
+ const badParts=resolveDeploymentManifest('docker',undefined,{'state-db':supa({host:'bad host name',port:'99999',database:'postgres',schema:'bad schema'},{username:'u',password:'p'})});
+ assert.ok(codesOf(badParts).some(i=>i.code==='invalid_host'));assert.ok(codesOf(badParts).some(i=>i.code==='invalid_port'));assert.ok(codesOf(badParts).some(i=>i.code==='invalid_schema'));
+});
 console.log(`${passed} deployment contract cases passed`);

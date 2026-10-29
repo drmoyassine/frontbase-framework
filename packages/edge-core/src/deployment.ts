@@ -51,6 +51,10 @@ export const deploymentAdapters: readonly DeploymentAdapter[] = [
     {id:'turso-marketplace',role:'state-db',targets:['vercel'],selectable:true,modes:['reuse'],configKeys:[],secretKeys:[]},
     {id:'libsql-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'d1-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','databaseId'],secretKeys:['token'],requiredConfig:['accountId','databaseId'],requiredSecrets:['token']},
+    // Connect routes exist today: a PostgREST HTTPS endpoint (self-hosted Postgres without wire reachability,
+    // via the CF-20 supabaseRunner transport) or wire connection parts whose credentials stay in secrets.
+    // Provisioned create/reuse of frontbase_edge_* schemas register with the apply-time executor, not before.
+    {id:'supabase-postgres',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url','schema','host','port','database'],secretKeys:['token','username','password']},
     {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'upstash-http',role:'cache',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'cloudflare-r2',role:'storage',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
@@ -109,6 +113,24 @@ export function validateDeploymentManifest(input: unknown): DeploymentPlan | {re
                 if((url.protocol!=='https:' && !(libsql && url.protocol==='libsql:')) || url.username || url.password || url.hash || url.search)
                     issues.push({role,field,code:'invalid_public_endpoint'});
             } catch {issues.push({role,field,code:'invalid_public_endpoint'});}
+        }
+        if(adapter.id==='supabase-postgres'&&binding.mode==='connect'){
+            const postgrest=!!binding.config.url,wire=!!binding.config.host;
+            // Exactly one transport: a PostgREST HTTPS endpoint, or wire parts whose credentials stay in secrets.
+            // A credential-bearing postgres:// DSN never enters the manifest (the generic url check refuses it too).
+            if(postgrest===wire)issues.push({role,code:'state_transport_required'});
+            if(postgrest&&(binding.config.database||binding.config.port||binding.secretRefs.username||binding.secretRefs.password))issues.push({role,code:'state_transport_conflict'});
+            if(postgrest&&!binding.secretRefs.token)issues.push({role,field:'token',code:'missing_secret_reference'});
+            if(wire){
+                if(!binding.config.database?.trim())issues.push({role,field:'database',code:'missing_config'});
+                if(!binding.secretRefs.username)issues.push({role,field:'username',code:'missing_secret_reference'});
+                if(!binding.secretRefs.password)issues.push({role,field:'password',code:'missing_secret_reference'});
+                if(binding.secretRefs.token)issues.push({role,code:'state_transport_conflict'});
+                if(!/^[a-zA-Z0-9][a-zA-Z0-9.:-]{0,252}[a-zA-Z0-9]$/.test(binding.config.host))issues.push({role,field:'host',code:'invalid_host'});
+                const port=Number(binding.config.port??'5432');
+                if(!Number.isInteger(port)||port<1||port>65535)issues.push({role,field:'port',code:'invalid_port'});
+            }
+            if(binding.config.schema&&!/^[a-zA-Z_][a-zA-Z0-9_]{0,62}$/.test(binding.config.schema))issues.push({role,field:'schema',code:'invalid_schema'});
         }
         operations.push({role,adapterId:adapter.id,mode:binding.mode,...(binding.resourceRef?{resourceRef:binding.resourceRef}:{})});
     }
