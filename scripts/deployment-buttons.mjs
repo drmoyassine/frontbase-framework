@@ -4,8 +4,9 @@ import { resolve } from 'node:path';
 
 // Nonrelease source snapshot; the public default branch is not the accepted deploy source.
 // Tag (slash-free, per the launcher constraint) bookmarking the reconcile baseline tip —
-// superseded frontbase-hosted-production-test-20261027, which deployed the pre-redesign wizard.
-export const nativeSourceRef = 'frontbase-reconcile-20261029';
+// superseded frontbase-hosted-production-test-20261027 and frontbase-reconcile-20261029
+// (which predates the supabase wizard exposure).
+export const nativeSourceRef = 'frontbase-reconcile-supabase-20261029';
 export const nativeRepository = 'https://github.com/drmoyassine/frontbase-framework';
 export const nativeStore = Object.freeze({ type: 'integration', integrationSlug: 'tursocloud', productSlug: 'database', protocol: 'storage', allowConnectExistingProduct: true });
 
