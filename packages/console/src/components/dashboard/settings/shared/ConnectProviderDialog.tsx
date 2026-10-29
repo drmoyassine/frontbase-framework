@@ -81,7 +81,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
         resetForm,
     } = state;
     useEffect(()=>{let current=true;setOAuthAvailable(false);
-        if(open&&['cloudflare','vercel'].includes(effectiveProvider))void readProviderConnections().then(status=>{if(current)setOAuthAvailable(status.providers.some(p=>p.provider===effectiveProvider&&p.available));}).catch(()=>{});
+        if(open&&['cloudflare','vercel','supabase'].includes(effectiveProvider))void readProviderConnections().then(status=>{if(current)setOAuthAvailable(status.providers.some(p=>p.provider===effectiveProvider&&p.available));}).catch(()=>{});
         return ()=>{current=false;};
     },[open,effectiveProvider]);
 
@@ -261,7 +261,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                         </div>
                     )}
 
-                    {oauthAvailable&&<Button type="button" onClick={()=>void connectProvider(effectiveProvider as 'cloudflare'|'vercel','/frontbase-admin/settings?tab=accounts',editProvider?.id).catch(()=>setError('Could not start provider authorization. Please try again.'))}>Connect to {currentConfig.label}</Button>}
+                    {oauthAvailable&&<Button type="button" onClick={()=>void connectProvider(effectiveProvider as 'cloudflare'|'vercel'|'supabase','/frontbase-admin/settings?tab=accounts',editProvider?.id).catch(()=>setError('Could not start provider authorization. Please try again.'))}>Connect to {currentConfig.label}</Button>}
                     {!oauthAvailable&&currentConfig.fields.map(field => (
                         <div key={field.key} className="space-y-2">
                             <Label>{field.label}{!editProvider && field.required && ' *'}</Label>

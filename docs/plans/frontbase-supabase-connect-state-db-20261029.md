@@ -46,13 +46,15 @@ Owner-approved 2026-10-29. Decision record: [DECISIONS.md 2026-10-29](../history
 ### Phase 4 — wizard state-db adapter
 
 - `edge-core/deployment.ts`: new state-db adapter entry `supabase-postgres` — targets cloudflare/vercel/docker; modes connect/create/reuse; configKeys (url or project ref, schema), secretKeys (role password); D1 remains default.
+- **PostgREST connect mode (owner requirement 2026-10-29, DECISIONS.md):** connect accepts either a wire-protocol DSN or a PostgREST endpoint — the `postgrest` transport reuses the existing CF-20 `supabaseRunner`/`supabasePostgrestClient` (SQL over PostgREST RPC via the documented `execute_query` database function) for self-hosted Postgres without wire reachability. The helper-function prerequisite is stated in the wizard; the mode is labeled HTTP-per-statement, not throughput-equivalent.
 - Wizard form card + review validation (bounded, no provisioning during review).
-- Apply-time: create/reuse via existing provisioning SQL; worker receives only the scoped-role DSN, never the PAT/OAuth grant.
+- Apply-time: create/reuse via existing provisioning SQL; worker receives only the scoped-role DSN (or PostgREST endpoint+credential), never the PAT/OAuth grant.
 
 ### Phase 5 — runtime transport + host wiring
 
 - Cloudflare native deploy: create/bind Hyperdrive with the scoped-role pooler DSN (extends existing native resource creation); `postgresStateRunner` consumes the binding.
 - Vercel/Docker: direct role DSN.
+- PostgREST transport: host-independent plain HTTPS (no Hyperdrive/wire access needed) — the one mode that runs unchanged on every target.
 - Migrations self-apply on first boot (already portable across SQLite/D1/Turso/Postgres).
 
 ### Phase 6 — gates + live verification

@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { fireEvent } from '@testing-library/react';
-import { defaultDeploymentManifest } from '@frontbase/edge-core/deployment';
+import { defaultDeploymentManifest, deploymentAdapters, type DeploymentAdapter } from '@frontbase/edge-core/deployment';
 import { mountBindingsForm } from './bindings-form';
 let form:ReturnType<typeof mountBindingsForm>|undefined;
 afterEach(()=>{form?.destroy();document.body.replaceChildren();});
@@ -110,4 +110,16 @@ test('Vectorize does not inherit the baseline D1 and KV OAuth token',()=>{
  expect(form!.snapshot().manifest.bindings.vector.secretRefs.token).not.toBe('oauth/cloudflare/token');
  expect(root.textContent).toContain('token that has Vectorize access');
  expect(root.querySelector('input[type=password]')).not.toBeNull();
+});
+
+test('a supabase adapter raises the Supabase connection row and passes the provider through',()=>{
+ const postgres:DeploymentAdapter={id:'supabase-postgres',role:'state-db',targets:['cloudflare','vercel','docker'],selectable:true,modes:['connect'],configKeys:['url'],secretKeys:[]};
+ const onConnect=vi.fn(async()=>{}),root=mount('cloudflare',{adapters:[...deploymentAdapters,postgres],providerConnections:{supabase:{available:true,connected:false}},onConnect});
+ expect(root.querySelector('.fb-binding-connection[aria-label="Supabase connection"]')).toBeNull();
+ select(root,'binding-provider-state-db','supabase-postgres');
+ const row=root.querySelector('.fb-binding-connection[aria-label="Supabase connection"]')!;
+ expect(row.getAttribute('aria-label')).toBe('Supabase connection');
+ expect(row.textContent).toContain('Connect to Supabase');
+ fireEvent.click(row.querySelector('button')!);
+ expect(onConnect).toHaveBeenCalledWith('supabase');
 });

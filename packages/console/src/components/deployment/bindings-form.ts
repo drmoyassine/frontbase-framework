@@ -10,8 +10,8 @@ export interface BindingsFormOptions {
     credentials?: 'entry' | 'references';
     resourceOptions?: Record<string,Array<{id:string;name:string}>>;
     /** Only supplied by a host with an authenticated server-side connection flow. */
-    providerConnections?: Partial<Record<'cloudflare'|'vercel',{available:boolean;connected:boolean;label?:string;accountId?:string}>>;
-    onConnect?: (provider:'cloudflare'|'vercel')=>Promise<void>;
+    providerConnections?: Partial<Record<'cloudflare'|'vercel'|'supabase',{available:boolean;connected:boolean;label?:string;accountId?:string}>>;
+    onConnect?: (provider:'cloudflare'|'vercel'|'supabase')=>Promise<void>;
     onChange?: () => void;
 }
 /** One browser-only editor for bootstrap and console. Credential values never enter the manifest. */
@@ -40,13 +40,14 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     function render() {
         root.classList.add('fb-bindings-form');root.replaceChildren();
         if(options.providerConnections){
-            const needed=new Set<'cloudflare'|'vercel'>();
+            const needed=new Set<'cloudflare'|'vercel'|'supabase'>();
             for(const binding of Object.values(manifest.bindings))if(binding.mode!=='disabled'){
                 if(binding.adapterId.startsWith('cloudflare-')||binding.adapterId==='d1-http')needed.add('cloudflare');
                 if(binding.adapterId==='turso-marketplace')needed.add('vercel');
+                if(binding.adapterId.startsWith('supabase'))needed.add('supabase');
             }
             for(const provider of needed){
-                const connection=options.providerConnections[provider],label=provider==='cloudflare'?'Cloudflare':'Vercel';
+                const connection=options.providerConnections[provider],label=provider==='cloudflare'?'Cloudflare':provider==='supabase'?'Supabase':'Vercel';
                 const row=node('section',undefined,'fb-binding-connection');row.setAttribute('aria-label',label+' connection');
                 if(connection?.connected)row.append(node('p',connection.label??label+' connected'));
                 else if(connection?.available&&options.onConnect){
