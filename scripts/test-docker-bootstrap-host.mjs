@@ -28,5 +28,25 @@ const separate=mkdtempSync(join(tmpdir(),'fb-existing-'));writeFileSync(join(sep
 const failureDir=mkdtempSync(join(tmpdir(),'fb-failed-'));const failed=await createDockerBootstrapHost({...options,env:{...env,FRONTBASE_BOOTSTRAP_DIRECTORY:resolve(failureDir)},boot:async()=>{throw Error('database_unavailable');}});
 const {reviewBootstrap,applyBootstrap,reconcileBootstrap}=await import('../packages/edge-core/dist/deployment-bootstrap.js');const pending=await reviewBootstrap(failed.context,manifest,failed.journal,failed.executor);const uncertain=await applyBootstrap(failed.context,pending.operationId,{},failed.journal,failed.executor);assert.equal(uncertain.phase,'uncertain');assert.equal((await reconcileBootstrap(failed.context,failed.journal,failed.executor)).phase,'uncertain');await assert.rejects(reviewBootstrap(failed.context,manifest,failed.journal,failed.executor));assert.ok(existsSync(join(failureDir,'runtime.json')));
 await assert.rejects(createDockerBootstrapHost({...options,env:{...env,FRONTBASE_BOOTSTRAP_DIRECTORY:resolve(failureDir)},boot:async()=>{throw Error('database_unavailable');}}),/database_unavailable/);
+// Supabase create/reuse provisions through the Management API and lowers the minted scoped
+// role; the operator token never reaches the runtime volume, and provisioned state skips the
+// generic external probe (its DDL preflight verified emptiness already).
+const supaDir=mkdtempSync(join(tmpdir(),'fb-supa-'));
+const apiCalls=[];
+const fetchState=async(url,init)=>{apiCalls.push({url,init});const query=JSON.parse(init.body).query;
+ if(query.includes('FROM pg_tables'))return {status:200,json:async()=>[]};
+ if(query.includes('FROM information_schema.schemata'))return {status:200,json:async()=>[{schema_name:'present'}]};
+ return {status:200,json:async()=>[]};};
+let supaValues;const supaBoot=async e=>{supaValues=e;return {engine:{fetch:async()=>new Response('private',{status:401})}};};
+const supaHost=await createDockerBootstrapHost({env:{...env,FRONTBASE_BOOTSTRAP_DIRECTORY:resolve(supaDir)},boot:supaBoot,assets:options.assets,fetchState,probeExternal:async()=>{throw Error('provisioned state must not re-probe');}});
+const supaRequest=async(path,body,authenticated=true)=>supaHost.fetch(new Request(origin+'/frontbase-bootstrap/'+path,{method:body===undefined?'GET':'POST',headers:{origin,'content-type':'application/json',...(authenticated&&supaCookie?{cookie:supaCookie}:{})},body:body===undefined?undefined:JSON.stringify(body)}));
+let supaCookie;const supaClaim=await supaRequest('api/claim',{token:env.FRONTBASE_BOOTSTRAP_TOKEN},false);assert.equal(supaClaim.status,200);supaCookie=supaClaim.headers.get('set-cookie').split(';')[0];
+const supaManifest=defaultDeploymentManifest('docker');
+supaManifest.bindings['state-db']={adapterId:'supabase-postgres',mode:'create',config:{projectRef:'dockerproj',schema:'frontbase_edge_docker_state'},secretRefs:{token:'state/token'}};
+const supaReview=await supaRequest('api/review',{manifest:supaManifest});assert.equal(supaReview.status,200,'supabase create passes wizard review');const {reviewId:supaReviewId}=await supaReview.json();
+const supaApplied=await supaRequest('api/apply',{reviewId:supaReviewId,credentials:{'state/token':'sbp_docker_fixture'}});assert.equal(supaApplied.status,200);assert.equal((await supaApplied.json()).phase,'active','provisioned apply must reach an active installation');
+assert.match(supaValues.APP_DB_URL,/^postgres:\/\/frontbase_edge_docker_state_role:[^@]+@db\.dockerproj\.supabase\.co:5432\/postgres$/);
+assert.equal(apiCalls.length,2);assert.equal(apiCalls[0].init.headers.authorization,'Bearer sbp_docker_fixture');
+assert.ok(!readFileSync(join(supaDir,'runtime.json'),'utf8').includes('sbp_docker_fixture'),'operator token never reaches the runtime volume');
 const persisted=JSON.parse(readFileSync(join(directory,'runtime.json'),'utf8'));assert.equal(persisted.environment.SESSION_SECRET,values.SESSION_SECRET);
 console.log('Docker hosted bootstrap: zero-state, ownership, origin, apply, setup handoff, restart, secret isolation and installed-state refusal PASS');

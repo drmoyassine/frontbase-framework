@@ -7,7 +7,8 @@ import {createHostedBootstrap} from '../../packages/backend/dist/hosted-bootstra
 import {dockerBootstrapJournal} from './docker-bootstrap-journal.mjs';
 import {profileEnvironment} from './profile-environment.mjs';
 import {verifyEmptyExternalState} from './cloudflare-state.mjs';
-export async function createDockerBootstrapHost({env,boot,assets,probeExternal=verifyEmptyExternalState}) {
+import {planSupabaseStateProvision,provisionSupabaseState} from './supabase-state-provision.mjs';
+export async function createDockerBootstrapHost({env,boot,assets,probeExternal=verifyEmptyExternalState,fetchState=globalThis.fetch}) {
  if(env.FRONTBASE_BOOTSTRAP!=='1')throw Error('explicit_bootstrap_required');
  const origin=env.FRONTBASE_PUBLIC_ORIGIN,directory=env.FRONTBASE_BOOTSTRAP_DIRECTORY;
  if(!directory||resolve(directory)!==directory)throw Error('absolute_bootstrap_volume_required');
@@ -27,8 +28,14 @@ export async function createDockerBootstrapHost({env,boot,assets,probeExternal=v
  const executor={
   preflight:async(c,manifest)=>{configuredEnvironment();if(c.installationId!==context.installationId||c.destination!==origin||existsSync(file)||runtime)throw Error('installed_destination_refused');if(manifest.bindings['state-db'].adapterId==='sqlite-file'&&existsSync(database))throw Error('existing_state_refused');},
   apply:async(record,credentials)=>{
-   const prepared={manifest:record.manifest,credentials};const values=profileEnvironment(prepared);
-   if(record.manifest.bindings['state-db'].adapterId==='sqlite-file'){if(existsSync(database))throw Error('existing_state_refused');values.APP_DB_URL='file:'+database.replaceAll('\\','/');}else await probeExternal(prepared);
+   const prepared={manifest:record.manifest,credentials};
+   // Supabase create/reuse provisions first (Management API) and lowers the transformed connect
+   // profile; the operator token never reaches the runtime environment or the mounted volume.
+   const provision=planSupabaseStateProvision(prepared);
+   let live=prepared;
+   if(provision)live=(await provisionSupabaseState(prepared,{fetch:fetchState},provision)).prepared;
+   const values=profileEnvironment(live);
+   if(record.manifest.bindings['state-db'].adapterId==='sqlite-file'){if(existsSync(database))throw Error('existing_state_refused');values.APP_DB_URL='file:'+database.replaceAll('\\','/');}else if(!provision)await probeExternal(live);
    if(values.FRONTBASE_STORAGE){const storage=JSON.parse(values.FRONTBASE_STORAGE);if(storage.provider!=='none'){storage.namespace='installation-'+context.installationId;values.FRONTBASE_STORAGE=JSON.stringify(storage);}}
    const environment={...values,FRONTBASE_PUBLIC_ORIGIN:origin,SESSION_SECRET:randomBytes(32).toString('hex'),SETUP_TOKEN:randomBytes(32).toString('hex'),SETUP_EXPIRES_AT:new Date(Date.now()+3600000).toISOString()};
    for(const [name,value] of Object.entries(env))if(/^FRONTBASE_(CLOUDFLARE|VERCEL)_OAUTH_(CLIENT_ID|CLIENT_SECRET|SCOPES|INTEGRATION_SLUG|TEAM_SLUG)$/.test(name)||['FRONTBASE_OAUTH_RELAY_URL','FRONTBASE_OAUTH_RELAY_TARGET'].includes(name))environment[name]=value;

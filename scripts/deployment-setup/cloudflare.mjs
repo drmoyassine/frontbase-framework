@@ -1,6 +1,7 @@
 import {profileEnvironment} from './profile-environment.mjs';
 import {verifyEmptyExternalState} from './cloudflare-state.mjs';
 import {resourceName,verifyEmptyCloudflareResources} from './cloudflare-resources.mjs';
+import {planSupabaseStateProvision,provisionSupabaseState,supabaseStateSchema} from './supabase-state-provision.mjs';
 import { createHash } from 'node:crypto';
 import { cpSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, lstatSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,19 +15,23 @@ import { parseDatabaseId } from '../../packages/compiler/dist/cli/provision-d1.j
 import { workerExists } from '../../packages/compiler/dist/cli/app-identity.js';
 const repoRoot=join(dirname(fileURLToPath(import.meta.url)),'../..');
 const defaultExample=join(repoRoot,'examples/cf-full');
-export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create','reuse'],'cloudflare-kv':['create','reuse'],'cloudflare-r2':['create'],'libsql-http':['connect'],'d1-http':['connect'],'supabase-postgres':['connect'],'upstash-http':['connect'],'cloudflare-vectorize-http':['connect'],'libsql-vector-http':['connect'],'s3-http':['connect'],'qstash-http':['connect']}};
+export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create','reuse'],'cloudflare-kv':['create','reuse'],'cloudflare-r2':['create'],'libsql-http':['connect'],'d1-http':['connect'],'supabase-postgres':['connect','create','reuse'],'upstash-http':['connect'],'cloudflare-vectorize-http':['connect'],'libsql-vector-http':['connect'],'s3-http':['connect'],'qstash-http':['connect']}};
 export function cloudflareExecutionIssues(manifest,context) {
     const issues=[];
     if(manifest.target!=='cloudflare' || manifest.environment!==context.environment)issues.push({code:'execution_target_mismatch'});
     for(const [role,binding] of Object.entries(manifest.bindings))if(binding.mode!=='disabled'&&!cloudflareExecutionCapabilities.adapters[binding.adapterId]?.includes(binding.mode))issues.push({role,code:'execution_adapter_not_supported'});
     const state=manifest.bindings['state-db'];
-    if(state.mode==='create' && state.config.resourceName!==`${context.appName}-db`)issues.push({role:'state-db',code:'execution_database_name_mismatch'});
+    // The fixed D1 name applies to D1 creation only; supabase creates a schema in the operator's project.
+    if(state.mode==='create' && state.adapterId==='cloudflare-d1' && state.config.resourceName!==`${context.appName}-db`)issues.push({role:'state-db',code:'execution_database_name_mismatch'});
     if(manifest.bindings.cache.mode==='create' && manifest.bindings.cache.config.resourceName!==`${context.appName}-cache`)issues.push({role:'cache',code:'execution_cache_name_mismatch'});
     if(manifest.bindings.storage.mode==='create' && manifest.bindings.storage.config.resourceName!==`${context.appName}-storage`)issues.push({role:'storage',code:'execution_storage_name_mismatch'});
     if(manifest.bindings.storage.mode==='create' && (manifest.bindings.storage.config.resourceName?.length??0)>63)issues.push({role:'storage',code:'execution_storage_name_too_long'});
     for(const role of ['state-db','cache']) {
         const b=manifest.bindings[role];
-        if(b.mode==='reuse' && (!resourceName.test(b.config.resourceName??'') || !(role==='state-db'?/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/:/^[a-f0-9]{32}$/).test(b.resourceRef??'')))issues.push({role,code:'invalid_reused_resource'});
+        if(b.mode!=='reuse')continue;
+        // Supabase reuse addresses a provisioned schema by name, not a Wrangler resource by UUID.
+        if(role==='state-db' && b.adapterId==='supabase-postgres'){if(!supabaseStateSchema.test(b.resourceRef??''))issues.push({role,code:'invalid_reused_resource'});continue;}
+        if(!resourceName.test(b.config.resourceName??'') || !(role==='state-db'?/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/:/^[a-f0-9]{32}$/).test(b.resourceRef??''))issues.push({role,code:'invalid_reused_resource'});
     }
     return issues;
 }
@@ -72,13 +77,17 @@ export function stageCloudflareArtifacts(context,exampleRoot=defaultExample) {
     return stage;
 }
 /** First-install bridge around the existing compiler executor; never modifies committed host config. */
-export async function executeCloudflareFirstInstall(prepared,context,{exampleRoot=defaultExample,runWrangler=nativeWrangler(context.accountId),deploy=deployCommand,onSetupLink=()=>{},onReceipt=()=>{},onCheckpoint=()=>{},installationId,operationId,checkExternalState=verifyEmptyExternalState}={}) {
+export async function executeCloudflareFirstInstall(prepared,context,{exampleRoot=defaultExample,runWrangler=nativeWrangler(context.accountId),deploy=deployCommand,onSetupLink=()=>{},onReceipt=()=>{},onCheckpoint=()=>{},installationId,operationId,checkExternalState=verifyEmptyExternalState,fetchState=globalThis.fetch}={}) {
     assertCloudflareExecutionContext(context);
     const plan=validateDeploymentManifest(prepared?.manifest);
     if(!plan.ready || cloudflareExecutionIssues(plan.manifest,context).length || !prepared.credentials)throw new Error('unsupported_cloudflare_execution_plan');
     if(installationId && (!/^[a-f0-9-]{36}$/.test(installationId) || !/^[a-f0-9-]{36}$/.test(operationId??'')))throw new Error('invalid_installation_identity');
-    const environment=profileEnvironment(prepared,{nativeHyperdrive:true});
-    if(environment.FRONTBASE_STORAGE && plan.manifest.bindings.storage.mode==='connect'){const storage=JSON.parse(environment.FRONTBASE_STORAGE);storage.namespace='cloudflare:'+context.accountId+':'+context.appName;environment.FRONTBASE_STORAGE=JSON.stringify(storage);}
+    // Supabase create/reuse provisions past every refusal preflight and lowers the transformed
+    // connect profile it returns; `environment` follows that transformation, never the reviewed
+    // provisioned shape (profileEnvironment refuses non-connect modes by name). Every other
+    // profile lowers up front — an invalid one refuses before any host interaction at all.
+    const provision=planSupabaseStateProvision(prepared);
+    let environment=provision?null:profileEnvironment(prepared,{nativeHyperdrive:true}),runtimePlan=plan;
     const stage=stageCloudflareArtifacts(context,exampleRoot);
     const resources={};
     let pending=null;
@@ -96,7 +105,7 @@ export async function executeCloudflareFirstInstall(prepared,context,{exampleRoo
         if(kind==='d1 create'){pending='database';journal('database_create_started');}
         if(kind==='secret put' || args[0]==='deploy'){pending='worker';journal('worker_write_started');}
         if(args[0]==='deploy')for(const [name,value] of Object.entries(environment)){if(name==='FRONTBASE_DEPLOYMENT_MANIFEST')continue;const pushed=await runWrangler(['secret','put',name,'--name',context.appName],{cwd:stage,stdin:value});if(pushed.code!==0)throw Error('profile_secret_upload_failed');}
-        const actualArgs=args[0]==='deploy' && installationId?[...args,'--var',`FRONTBASE_INSTALLATION_ID:${installationId}`,'--tag',operationId,'--var','FRONTBASE_DEPLOYMENT_MANIFEST:'+JSON.stringify(managedRuntimeManifest(plan.manifest,resources))]:args;
+        const actualArgs=args[0]==='deploy' && installationId?[...args,'--var',`FRONTBASE_INSTALLATION_ID:${installationId}`,'--tag',operationId,'--var','FRONTBASE_DEPLOYMENT_MANIFEST:'+JSON.stringify(managedRuntimeManifest(runtimePlan.manifest,resources))]:args;
         const result=await runWrangler(actualArgs,opts);
         if(kind==='d1 create' && result.code===0 && installationId){
             const id=parseDatabaseId(result.stdout);
@@ -111,15 +120,17 @@ export async function executeCloudflareFirstInstall(prepared,context,{exampleRoo
     };
     try {
         if(await workerExists(context.appName,stage,run))throw new Error('worker_already_exists');
-        await checkExternalState(prepared);
+        // Provisioned supabase state verifies existence/emptiness through its own DDL preflight;
+        // the generic external probe would re-dial the direct database host for nothing.
+        if(!provision)await checkExternalState(prepared);
         await verifyEmptyCloudflareResources(plan.manifest,runWrangler,stage);
-        const state=plan.manifest.bindings['state-db'];
-        if(state.mode==='create') {
+        const nativeState=plan.manifest.bindings['state-db'];
+        if(nativeState.adapterId==='cloudflare-d1' && nativeState.mode==='create') {
         const info=await runWrangler(['d1','info',`${context.appName}-db`,'--json'],{cwd:stage});
         if(info.code===0)throw new Error('database_already_exists');
         if(!/couldn.t find a D1 DB with name|D1 database .*not found|could not find.*database/i.test(info.stderr+' '+info.stdout))throw new Error('database_existence_unknown');
-        } else if(state.mode==='reuse') {
-            resources.database={name:state.config.resourceName,id:state.resourceRef,binding:'DB'};
+        } else if(nativeState.adapterId==='cloudflare-d1' && nativeState.mode==='reuse') {
+            resources.database={name:nativeState.config.resourceName,id:nativeState.resourceRef,binding:'DB'};
         }
         // List failure/malformed output is not evidence that a namespace is absent.
         const cache=plan.manifest.bindings.cache;
@@ -137,6 +148,22 @@ export async function executeCloudflareFirstInstall(prepared,context,{exampleRoo
             if(!/The specified bucket does not exist\. \[code: 10006\]/.test(info.stderr+' '+info.stdout))throw new Error('storage_existence_unknown');
         }
         journal('running');
+        let state=nativeState,live=prepared;
+        if(provision) {
+            // Supabase DDL over the Management API, past every refusal preflight: the operator
+            // token provisions the isolated schema and scoped role, then never crosses this
+            // line — the executor lowers only the transformed connect profile it returns.
+            pending='state';journal('state_provision_started');
+            const provisioned=await provisionSupabaseState(prepared,{fetch:fetchState},provision);
+            resources.database={name:provisioned.schemaName};
+            runtimePlan=validateDeploymentManifest(provisioned.prepared.manifest);
+            if(!runtimePlan.ready)throw new Error('unsupported_cloudflare_execution_plan');
+            state=runtimePlan.manifest.bindings['state-db'];
+            live=provisioned.prepared;
+            pending=null;journal('state_provisioned');
+        }
+        if(!environment)environment=profileEnvironment(live,{nativeHyperdrive:true});
+        if(environment.FRONTBASE_STORAGE && runtimePlan.manifest.bindings.storage.mode==='connect'){const storage=JSON.parse(environment.FRONTBASE_STORAGE);storage.namespace='cloudflare:'+context.accountId+':'+context.appName;environment.FRONTBASE_STORAGE=JSON.stringify(storage);}
         if(storage.mode==='create') {
             pending='storage';journal('storage_create_started');
             const created=await runWrangler(['r2','bucket','create',storage.config.resourceName,'--binding','FRONTBASE_R2','--update-config=false'],{cwd:stage});

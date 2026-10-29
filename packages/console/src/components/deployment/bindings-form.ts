@@ -2,7 +2,7 @@ import { configurableRoles, deploymentAdapters, type DeploymentAdapter, type Dep
 
 export const bindingLabels = { 'state-db':'State database', cache:'Application cache', storage:'Object storage', vector:'Vector index', queue:'Queue delivery', 'email-send':'Outbound email' };
 const names: Record<string,string> = {'turso-marketplace':'Turso (connected Vercel integration)','cloudflare-d1':'Cloudflare D1','cloudflare-kv':'Cloudflare KV','cloudflare-r2':'Cloudflare R2 (private)','libsql-http':'Remote libSQL / Turso','d1-http':'Cloudflare D1 over HTTP','supabase-postgres':'Supabase Postgres','upstash-http':'Upstash Redis over HTTP','s3-http':'S3-compatible storage','cloudflare-vectorize-http':'Cloudflare Vectorize over HTTP','libsql-vector-http':'libSQL vector index over HTTP','qstash-http':'Upstash QStash'};
-const fields: Record<string,string> = {url:'Service URL',endpoint:'Endpoint',region:'Region',bucket:'Bucket',accountId:'Account ID',databaseId:'Database ID',indexName:'Index name',destination:'Callback URL',resourceName:'Resource name',from:'Sender address',token:'Access token',accessKeyId:'Access key ID',secretAccessKey:'Secret access key',signingKey:'Signing key',nextSigningKey:'Next signing key',schema:'Schema',host:'Host',port:'Port',database:'Database',username:'Role name',password:'Role password'};
+const fields: Record<string,string> = {url:'Service URL',endpoint:'Endpoint',region:'Region',bucket:'Bucket',accountId:'Account ID',databaseId:'Database ID',indexName:'Index name',destination:'Callback URL',resourceName:'Resource name',from:'Sender address',token:'Access token',accessKeyId:'Access key ID',secretAccessKey:'Secret access key',signingKey:'Signing key',nextSigningKey:'Next signing key',schema:'Schema',host:'Host',port:'Port',database:'Database',projectRef:'Project reference',username:'Role name',password:'Role password'};
 export interface BindingsFormOptions {
     manifest: DeploymentManifest;
     adapters?: readonly DeploymentAdapter[];
@@ -91,7 +91,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                     const modeWrapper=node('div',undefined,'fb-binding-field'),modeTitle=node('label','Resource action'),mode=node('select');
                     mode.id='binding-mode-'+role;modeTitle.htmlFor=mode.id;
                     for(const value of modes(selected))mode.append(option({create:'Create resource',reuse:'Reuse resource',connect:'Connect existing service',disabled:'Disabled'}[value],value));
-                    mode.value=binding.mode;mode.addEventListener('change',()=>{binding.mode=mode.value as BindingSelection['mode'];delete binding.resourceRef;if(binding.mode==='create' && createNames.get(role))binding.config.resourceName=createNames.get(role)!;render();change();});
+                    mode.value=binding.mode;mode.addEventListener('change',()=>{binding.mode=mode.value as BindingSelection['mode'];delete binding.resourceRef;const modeKeys=selected.configKeysByMode?.[binding.mode];if(modeKeys)binding.config=Object.fromEntries(Object.entries(binding.config).filter(([key])=>modeKeys.includes(key)));if(binding.mode==='create' && createNames.get(role))binding.config.resourceName=createNames.get(role)!;render();change();});
                     modeWrapper.append(modeTitle,mode);card.append(modeWrapper);
                     if(binding.mode==='reuse') {
                         const resources=options.resourceOptions?.[selected.id];
@@ -103,7 +103,8 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                             if(!resources.length)card.append(node('p','Connect a compatible resource to this project and environment, then restart local setup.','fb-binding-note'));
                         } else field(card,'Resource reference',binding.resourceRef,value=>binding.resourceRef=value,false,true);
                     }
-                    for(const key of selected.configKeys.filter(key=>key!=='resourceName'||binding.mode==='create'))field(card,fields[key]??key,binding.config[key],value=>binding.config[key]=value,false,selected.requiredConfig?.includes(key));
+                    const configFields=selected.configKeysByMode?.[binding.mode]??selected.configKeys.filter(key=>key!=='resourceName'||binding.mode==='create');
+                    for(const key of configFields)field(card,fields[key]??key,binding.config[key],value=>binding.config[key]=value,false,selected.requiredConfig?.includes(key));
                     if(entry)for(const key of selected.secretKeys){
                         if(useOAuth&&key==='token'){card.append(node('p','Authorization uses your connected Cloudflare account.','fb-binding-note'));continue;}
                         const reference=binding.secretRefs[key]??role+'/'+key;

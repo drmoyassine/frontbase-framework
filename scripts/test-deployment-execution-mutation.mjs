@@ -24,15 +24,18 @@ const faults=[
  ['fixed mutation target','executor',s=>s.replace("if((kind==='secret put' || args[0]==='deploy') && args[args.indexOf('--name')+1]!==context.appName)",'if(false)')],
  ['context validation','executor',s=>s.replaceAll('    assertCloudflareExecutionContext(context);','    // removed')],
  ['supported execution binding','executor',s=>s.replace('cloudflareExecutionIssues(plan.manifest,context).length','false')],
- ['supabase execution admission','executor',s=>s.replace("'supabase-postgres':['connect'],",'')],
  ['hyperdrive response caching','executor',s=>s.replace(",'--caching-disabled'",'')],
  ['hyperdrive binding staged','executor',s=>s.replace('\\n[[hyperdrive]]\\nbinding = "HYPERDRIVE"\\nid = "${hyperdriveId}"\\n','\\n')],
  ['hyperdrive identity fence','executor',s=>s.replace("if(!hyperdriveId)throw new Error('hyperdrive_create_identity_unknown');",'if(false)')],
+ ['supabase create admission','executor',s=>s.replace("'supabase-postgres':['connect','create','reuse']","'supabase-postgres':['connect']")],
+ ['supabase provisioning call','executor',s=>s.replace('if(provision) {','if(false) {')],
+ ['provisioned probe skip','executor',s=>s.replace('if(!provision)await checkExternalState(prepared);','await checkExternalState(prepared);')],
+ ['provisioned state receipt','executor',s=>s.replace('resources.database={name:provisioned.schemaName};','resources.database={};')],
 ];
 try {
  for(const [name,type,mutate] of faults){
   const url=type==='server'?serverUrl:executorUrl;const source=readFileSync(url,'utf8');let changed=mutate(source);if(!name.startsWith('baseline'))assert.notEqual(changed,source,name);
-  for(const path of ['../../packages/edge-core/dist/deployment.js','../../packages/compiler/dist/cli/deploy.js','../../packages/compiler/dist/cli/app-identity.js','../../packages/compiler/dist/cli/provision-d1.js','../console-pin.mjs','./bindings-assets.mjs','./cloudflare-resources.mjs','./profile-environment.mjs','./cloudflare-state.mjs'])changed=changed.replace(JSON.stringify(path).replaceAll('"',"'"),JSON.stringify(new URL(path,url).href));
+  for(const path of ['../../packages/edge-core/dist/deployment.js','../../packages/compiler/dist/cli/deploy.js','../../packages/compiler/dist/cli/app-identity.js','../../packages/compiler/dist/cli/provision-d1.js','../console-pin.mjs','./bindings-assets.mjs','./cloudflare-resources.mjs','./profile-environment.mjs','./cloudflare-state.mjs','./supabase-state-provision.mjs'])changed=changed.replace(JSON.stringify(path).replaceAll('"',"'"),JSON.stringify(new URL(path,url).href));
   changed=changed.replace('new URL(asset[0],import.meta.url)',`new URL(asset[0],${JSON.stringify(serverUrl.href)})`);
   const candidate=join(temp,'fault.mjs');writeFileSync(candidate,changed);
   const suite=fileURLToPath(new URL(type==='server'?'./test-deployment-setup-execution.mjs':'./test-cloudflare-setup-executor.mjs',import.meta.url));
@@ -41,4 +44,4 @@ try {
   if(name.startsWith('baseline')){assert.equal(result.status,0,`transformed baseline failed: ${name}: ${result.stderr}`);console.log(`PASS ${name}`);}else{assert.ok(result.status!==0 && result.status!==null,`fault escaped or timed out: ${name}`);console.log(`PASS detected: ${name}`);}
  }
 } finally {rmSync(temp,{recursive:true,force:true});}
-console.log('Nineteen execution faults detected; production source unchanged');
+console.log('Twenty-two execution faults detected; production source unchanged');

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
-const { executeCloudflareFirstInstall, fingerprintCloudflareArtifacts }=await import(process.env.FRONTBASE_CF_EXECUTOR_TEST_MODULE??new URL('./deployment-setup/cloudflare.mjs',import.meta.url).href);
+const { executeCloudflareFirstInstall, fingerprintCloudflareArtifacts, cloudflareExecutionIssues }=await import(process.env.FRONTBASE_CF_EXECUTOR_TEST_MODULE??new URL('./deployment-setup/cloudflare.mjs',import.meta.url).href);
 import { defaultDeploymentManifest } from '../packages/edge-core/dist/deployment.js';
 const root=mkdtempSync(join(tmpdir(),'frontbase-executor-test-'));
 const stages=[];
@@ -132,6 +132,65 @@ try {
  assert.ok(!restFake.calls.some(call=>call.args[0]==='hyperdrive'||call.args[0]==='d1'),'PostgREST is plain HTTPS: no Hyperdrive, no D1');
  assert.ok(restFake.calls.some(call=>call.args[0]==='secret'&&call.args[2]==='APP_DB_POSTGREST_URL'&&call.options.stdin.includes('postgrest.fixture.example')));
  const wrongName=structuredClone(withCache);wrongName.manifest.bindings.cache.config.resourceName='other-cache';const unused=fixture();await assert.rejects(executeCloudflareFirstInstall(wrongName,context,{exampleRoot:root,runWrangler:unused.run}));assert.equal(unused.calls.length,0);
+
+ // Supabase create/reuse provisions the isolated schema past every refusal preflight, then
+ // rides the Hyperdrive path on the minted scoped-role DSN. The operator token stays in the
+ // Management-API headers: never in argv, secret stdin, the stage or the receipt.
+ const managementApi=({tables=[],schema=true}={}) => {
+  const apiCalls=[];
+  const fetchState=async(url,init)=>{
+   apiCalls.push({url,init});
+   const query=JSON.parse(init.body).query;
+   if(query.includes('FROM pg_tables'))return {status:200,json:async()=>tables.length?[{tablename:tables[0]}]:[]};
+   if(query.includes('FROM information_schema.schemata'))return {status:200,json:async()=>schema?[{schema_name:'present'}]:[]};
+   return {status:200,json:async()=>[]};
+  };
+  return {apiCalls,fetchState};
+ };
+ const supaCreate=structuredClone(prepared);
+ supaCreate.manifest.bindings['state-db']={adapterId:'supabase-postgres',mode:'create',config:{projectRef:'fixtureproj',schema:'frontbase_edge_fixture_state'},secretRefs:{token:'state/token'}};
+ supaCreate.credentials={'state/token':'sbp_management_fixture'};
+ // Review checks: supabase create/reuse follow schema rules, not D1's fixed name/UUID contract.
+ assert.deepEqual(cloudflareExecutionIssues(supaCreate.manifest,context).filter(issue=>issue.role==='state-db'),[]);
+ assert.ok(cloudflareExecutionIssues({...supaCreate.manifest,bindings:{...supaCreate.manifest.bindings,'state-db':{...supaCreate.manifest.bindings['state-db'],mode:'reuse',resourceRef:'shared',config:{projectRef:'fixtureproj'}}}},context).some(issue=>issue.code==='invalid_reused_resource'));
+ assert.ok(cloudflareExecutionIssues({...prepared.manifest,bindings:{...prepared.manifest.bindings,'state-db':{...prepared.manifest.bindings['state-db'],config:{resourceName:'renamed-db'}}}},context).some(issue=>issue.code==='execution_database_name_mismatch'),'D1 create still enforces its fixed name');
+ const createdApi=managementApi();
+ const hyperFake=()=>{const base=fixture();const run=async(args,opts)=>{if(args[0]==='hyperdrive'){base.calls.push({args,opts});return {code:0,stdout:`Created new Hyperdrive Postgresql config: ${'b'.repeat(32)}`,stderr:''};}return base.run(args,opts);};return {calls:base.calls,run};};
+ const createFake=hyperFake();
+ await executeCloudflareFirstInstall(supaCreate,context,{exampleRoot:root,runWrangler:createFake.run,onReceipt:receipt,fetchState:createdApi.fetchState,checkExternalState:async()=>{throw Error('provisioned state must not re-probe');}});
+ assert.equal(createdApi.apiCalls.length,2,'emptiness check then DDL');
+ for(const call of createdApi.apiCalls){assert.equal(call.url,'https://api.supabase.com/v1/projects/fixtureproj/database/query');assert.equal(call.init.headers.authorization,'Bearer sbp_management_fixture');}
+ assert.match(JSON.parse(createdApi.apiCalls.at(-1).init.body).query,/CREATE SCHEMA IF NOT EXISTS "frontbase_edge_fixture_state";/);
+ const savedReceipt=JSON.parse(readFileSync(join(stages.at(-1),'deployment-receipt.json'),'utf8'));
+ assert.equal(savedReceipt.resources.database.name,'frontbase_edge_fixture_state');
+ assert.equal(savedReceipt.resources.hyperdrive.binding,'HYPERDRIVE');
+ const hyperCreate=createFake.calls.find(call=>call.args[0]==='hyperdrive');
+ const mintedDsn=hyperCreate.args[4];
+ assert.deepEqual(hyperCreate.args.slice(0,4),['hyperdrive','create','profile-fixture-state','--connection-string']);
+ assert.match(mintedDsn,/^postgres:\/\/frontbase_edge_fixture_state_role:[^@]+@db\.fixtureproj\.supabase\.co:5432\/postgres$/,'DSN built from the minted role credential');
+ assert.ok(createFake.calls.some(call=>call.args[0]==='secret'&&call.args[2]==='APP_DB_URL'&&call.options.stdin===mintedDsn),'lowered DSN matches the Hyperdrive argv exactly');
+ assert.ok(!createFake.calls.some(call=>JSON.stringify(call.args).includes('sbp_management_fixture')),'management token never in argv');
+ for(const path of walk(stages.at(-1)))assert.ok(!readFileSync(path,'utf8').includes('sbp_management_fixture'),'management token persisted to stage');
+ const supaReuse=structuredClone(prepared);
+ supaReuse.manifest.bindings['state-db']={adapterId:'supabase-postgres',mode:'reuse',resourceRef:'frontbase_edge_fixture_state',config:{projectRef:'fixtureproj'},secretRefs:{token:'state/token'}};
+ supaReuse.credentials={'state/token':'sbp_management_fixture'};
+ const reuseApi=managementApi();
+ const reuseFake=hyperFake();
+ await executeCloudflareFirstInstall(supaReuse,context,{exampleRoot:root,runWrangler:reuseFake.run,onReceipt:receipt,fetchState:reuseApi.fetchState,checkExternalState:async()=>{throw Error('provisioned state must not re-probe');}});
+ assert.equal(reuseApi.apiCalls.length,3,'existence, emptiness, role re-arm');
+ const reset=JSON.parse(reuseApi.apiCalls.at(-1).init.body).query;
+ assert.ok(reset.startsWith('DO $$')&&!reset.includes('CREATE SCHEMA'),'reuse re-arms the role without recreating the schema');
+ assert.equal(JSON.parse(readFileSync(join(stages.at(-1),'deployment-receipt.json'),'utf8')).resources.database.name,'frontbase_edge_fixture_state');
+ assert.ok(reuseFake.calls.some(call=>call.args[0]==='hyperdrive'));
+ // A schema that turns out occupied refuses inside the DDL preflight — before any write.
+ const occupiedApi=managementApi({tables:['users']});
+ const occupiedFake=fixture();
+ await assert.rejects(executeCloudflareFirstInstall(supaCreate,context,{exampleRoot:root,runWrangler:occupiedFake.run,onReceipt:receipt,fetchState:occupiedApi.fetchState,checkExternalState:async()=>{throw Error('provisioned state must not re-probe');}}));
+ assert.ok(!occupiedFake.calls.some(call=>call.args[0]==='secret'||call.args[0]==='deploy'||call.args.includes('create')),'provisioned refusal precedes every host write');
+ const missingApi=managementApi({schema:false});
+ const missingFake=fixture();
+ await assert.rejects(executeCloudflareFirstInstall(supaReuse,context,{exampleRoot:root,runWrangler:missingFake.run,onReceipt:receipt,fetchState:missingApi.fetchState,checkExternalState:async()=>{throw Error('provisioned state must not re-probe');}}));
+ assert.ok(!missingFake.calls.some(call=>call.args[0]==='secret'||call.args[0]==='deploy'||call.args.includes('create')));
 
  const withStorage=structuredClone(withCache);withStorage.manifest.bindings.storage.mode='create';withStorage.manifest.bindings.storage.config.resourceName='profile-fixture-storage';
  for(const fault of ['none','existing','unknown','create-failed']) {

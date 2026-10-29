@@ -42,4 +42,29 @@ test('supabase state refuses ambiguous transport, DSN-shaped urls and bad parts'
  const badParts=resolveDeploymentManifest('docker',undefined,{'state-db':supa({host:'bad host name',port:'99999',database:'postgres',schema:'bad schema'},{username:'u',password:'p'})});
  assert.ok(codesOf(badParts).some(i=>i.code==='invalid_host'));assert.ok(codesOf(badParts).some(i=>i.code==='invalid_port'));assert.ok(codesOf(badParts).some(i=>i.code==='invalid_schema'));
 });
+test('supabase state create and reuse provision a fenced schema with the operator token',()=>{
+ const create=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'create',config:{projectRef:'fixtureproj',schema:'frontbase_edge_fixture_state'},secretRefs:{token:'vault/supa-pat'}}});
+ const planned=validateDeploymentManifest(create);assert.equal(planned.ready,true);assert.deepEqual(planned.operations[0],{role:'state-db',adapterId:'supabase-postgres',mode:'create'});
+ const reuse=resolveDeploymentManifest('vercel',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'reuse',resourceRef:'frontbase_edge_fixture_state',config:{projectRef:'fixtureproj'},secretRefs:{token:'vault/supa-pat'}}});
+ assert.equal(validateDeploymentManifest(reuse).ready,true);
+});
+test('supabase state create/reuse refuses transport mixing, bad names and missing references',()=>{
+ const codesOf=(m)=>validateDeploymentManifest(m).issues;
+ const noProject=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'create',config:{schema:'frontbase_edge_fixture_state'},secretRefs:{token:'vault/x'}}});
+ assert.ok(codesOf(noProject).some(i=>i.code==='missing_config'&&i.field==='projectRef'));
+ const noSchema=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'create',config:{projectRef:'fixtureproj'},secretRefs:{token:'vault/x'}}});
+ assert.ok(codesOf(noSchema).some(i=>i.code==='missing_config'&&i.field==='schema'));
+ const badSchema=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'create',config:{projectRef:'fixtureproj',schema:'public'},secretRefs:{token:'vault/x'}}});
+ assert.ok(codesOf(badSchema).some(i=>i.code==='invalid_schema'));
+ const badRef=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'reuse',resourceRef:'shared',config:{projectRef:'fixtureproj'},secretRefs:{token:'vault/x'}}});
+ assert.ok(codesOf(badRef).some(i=>i.code==='invalid_schema'&&i.field==='resourceRef'));
+ const noToken=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'create',config:{projectRef:'fixtureproj',schema:'frontbase_edge_fixture_state'},secretRefs:{}}});
+ assert.ok(codesOf(noToken).some(i=>i.code==='missing_secret_reference'&&i.field==='token'));
+ const mixedTransport=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'create',config:{projectRef:'fixtureproj',schema:'frontbase_edge_fixture_state',host:'db.example.com'},secretRefs:{token:'vault/x',username:'u',password:'p'}}});
+ assert.ok(codesOf(mixedTransport).some(i=>i.code==='state_transport_conflict'));
+ // D1 creation still requires its resourceName; supabase creation never asks for one.
+ const d1=cf();d1.bindings['state-db'].config.resourceName='';
+ assert.ok(codesOf(d1).some(i=>i.code==='missing_resource_name'));
+ assert.ok(!codesOf(noProject).some(i=>i.code==='missing_resource_name'));
+});
 console.log(`${passed} deployment contract cases passed`);

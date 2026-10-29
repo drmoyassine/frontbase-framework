@@ -1,4 +1,5 @@
 import {randomBytes} from 'node:crypto';
+import {supabaseStateSchemaName} from '../../packages/edge-core/dist/deployment.js';
 // Supabase state-db provisioning for the deployment wizard's create/reuse modes (phase 4).
 // Reuses the Edge Databases lifecycle SQL verbatim (compat/routes/edge-databases.ts):
 // an isolated frontbase_edge_* schema plus a scoped LOGIN role, DDL over the Management
@@ -8,7 +9,7 @@ import {randomBytes} from 'node:crypto';
 // the transformed profile handed to the executors carries only the scoped-role DSN
 // parts, the same shape a manual connect selection produces.
 const SUPABASE_API='https://api.supabase.com/v1';
-export const supabaseStateSchema=/^frontbase_edge_[a-z0-9_]+$/;
+export const supabaseStateSchema=supabaseStateSchemaName;
 const projectRefPattern=/^[a-z0-9]{4,30}$/;
 const randomPassword=()=>randomBytes(32).toString('base64url');
 /** Pure planning: the provision target for a create/reuse state-db binding, or null when

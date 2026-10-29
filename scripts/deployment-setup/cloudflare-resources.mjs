@@ -20,7 +20,9 @@ export async function discoverCloudflareResources(run,cwd) {
  return {'cloudflare-d1':options(databases,'uuid','name',uuid),'cloudflare-kv':options(caches,'id','title',hex)};
 }
 export async function verifyEmptyCloudflareResources(manifest,run,cwd) {
- const reused=Object.values(manifest.bindings).filter(b=>b.mode==='reuse');
+ // Wrangler-discoverable native resources only; other adapters (supabase state provisioning)
+ // verify existence/emptiness through their own apply-time executor.
+ const reused=Object.values(manifest.bindings).filter(b=>b.mode==='reuse'&&['cloudflare-d1','cloudflare-kv'].includes(b.adapterId));
  if(!reused.length)return;
  const available=await discoverCloudflareResources(run,cwd);
  for(const binding of reused){

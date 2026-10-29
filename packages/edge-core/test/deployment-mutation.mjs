@@ -13,6 +13,7 @@ const faults=[
  ['adapter readiness','if(!adapter.selectable)','if(false)'],
  ['missing secret refusal',"if(!binding.secretRefs[field])","if(false)"],
  ['supabase transport fence',"if(postgrest===wire)issues.push({role,code:'state_transport_required'});","if(false)"],
+ ['supabase provisioning fence',"if(adapter.id==='supabase-postgres'&&(binding.mode==='create'||binding.mode==='reuse')){","if(false){"],
 ];
 for(const [name,needle,replacement] of faults){
  assert.ok(source.includes(needle),name+' mutation anchor');
@@ -28,4 +29,4 @@ for(const [name,needle,replacement] of faults){
   console.log('PASS detected: '+name);
  }finally{rmSync(temporary,{force:true});}
 }
-console.log('Six deployment contract faults detected; source unchanged');
+console.log('Seven deployment contract faults detected; source unchanged');

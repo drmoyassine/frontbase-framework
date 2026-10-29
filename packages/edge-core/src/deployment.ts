@@ -42,8 +42,12 @@ export interface DeploymentAdapter {
     secretKeys: readonly string[];
     requiredConfig?: readonly string[];
     requiredSecrets?: readonly string[];
+    /** Per-mode config field ids for adapters whose fields differ by mode; absent modes fall back to configKeys. */
+    configKeysByMode?: Partial<Record<BindingSelection['mode'],readonly string[]>>;
 }
 const both: readonly DeploymentTarget[] = ['cloudflare', 'vercel', 'docker'];
+/** Provisioned supabase schemas are namespaced and pattern-fenced; the provisioning module re-checks this. */
+export const supabaseStateSchemaName = /^frontbase_edge_[a-z0-9_]+$/;
 /** Inventory-backed adapters. Native wiring not yet accepted remains a recommendation only. */
 export const deploymentAdapters: readonly DeploymentAdapter[] = [
     {id:'sqlite-file',role:'state-db',targets:['docker'],selectable:true,modes:['connect'],configKeys:[],secretKeys:[]},
@@ -53,9 +57,10 @@ export const deploymentAdapters: readonly DeploymentAdapter[] = [
     {id:'d1-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','databaseId'],secretKeys:['token'],requiredConfig:['accountId','databaseId'],requiredSecrets:['token']},
     // Connect routes exist today: a PostgREST HTTPS endpoint (self-hosted Postgres without wire reachability,
     // via the CF-20 supabaseRunner transport) or wire connection parts whose credentials stay in secrets.
-    // Provisioned create/reuse of frontbase_edge_* schemas register with the apply-time executor, not before.
+    // Create/reuse provision an isolated frontbase_edge_* schema at apply time (Management API); the operator
+    // token never reaches a host — executors lower only the transformed connect profile it provisions.
     // Schema identifiers stay lowercase: postgresStateRunner refuses other quoting-sensitive names at boot.
-    {id:'supabase-postgres',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url','schema','host','port','database'],secretKeys:['token','username','password']},
+    {id:'supabase-postgres',role:'state-db',targets:both,selectable:true,modes:['connect','create','reuse'],configKeys:['url','schema','host','port','database','projectRef'],secretKeys:['token','username','password'],configKeysByMode:{connect:['url','schema','host','port','database'],create:['projectRef','schema'],reuse:['projectRef']}},
     {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'upstash-http',role:'cache',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'cloudflare-r2',role:'storage',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
@@ -107,7 +112,8 @@ export function validateDeploymentManifest(input: unknown): DeploymentPlan | {re
         for(const field of adapter.requiredConfig??[]) if(!binding.config[field]?.trim()) issues.push({role,field,code:'missing_config'});
         for(const field of adapter.requiredSecrets??[]) if(!binding.secretRefs[field]) issues.push({role,field,code:'missing_secret_reference'});
         if(binding.mode==='reuse' && !binding.resourceRef) issues.push({role,code:'missing_resource_reference'});
-        if(binding.mode==='create' && !binding.config.resourceName?.trim()) issues.push({role,code:'missing_resource_name'});
+        // Named-resource creation applies to resourceName-based adapters; supabase creates a schema instead.
+        if(binding.mode==='create' && adapter.configKeys.includes('resourceName') && !binding.config.resourceName?.trim()) issues.push({role,code:'missing_resource_name'});
         for(const field of ['url','endpoint','destination']) {
             const raw=binding.config[field]; if(!raw)continue;
             try { const url=new URL(raw);const libsql=field==='url' && ['libsql-http','libsql-vector-http'].includes(adapter.id);
@@ -132,6 +138,19 @@ export function validateDeploymentManifest(input: unknown): DeploymentPlan | {re
                 if(!Number.isInteger(port)||port<1||port>65535)issues.push({role,field:'port',code:'invalid_port'});
             }
             if(binding.config.schema&&!/^[a-z_][a-z0-9_]{0,62}$/.test(binding.config.schema))issues.push({role,field:'schema',code:'invalid_schema'});
+        }
+        if(adapter.id==='supabase-postgres'&&(binding.mode==='create'||binding.mode==='reuse')){
+            // Provisioned selections carry only the Management-API project reference, a schema name and the
+            // operator token reference; transport parts and role credentials belong to the transformed
+            // connect profile the apply-time executor derives, never to the reviewed manifest.
+            if(!binding.config.projectRef?.trim())issues.push({role,field:'projectRef',code:'missing_config'});
+            if(binding.mode==='create'){
+                if(!binding.config.schema?.trim())issues.push({role,field:'schema',code:'missing_config'});
+                if(!supabaseStateSchemaName.test(binding.config.schema??''))issues.push({role,field:'schema',code:'invalid_schema'});
+            }else if(!supabaseStateSchemaName.test(binding.resourceRef??''))issues.push({role,field:'resourceRef',code:'invalid_schema'});
+            if(!binding.secretRefs.token)issues.push({role,field:'token',code:'missing_secret_reference'});
+            if(binding.secretRefs.username||binding.secretRefs.password)issues.push({role,code:'state_transport_conflict'});
+            if(binding.config.url||binding.config.host||binding.config.port||binding.config.database)issues.push({role,code:'state_transport_conflict'});
         }
         operations.push({role,adapterId:adapter.id,mode:binding.mode,...(binding.resourceRef?{resourceRef:binding.resourceRef}:{})});
     }
