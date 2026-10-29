@@ -64,6 +64,7 @@ const supa=await begin('supabase');assert.equal(supa.url.origin+supa.url.pathnam
 const supaFinish=await request('supabase/finish',{body:{code:'supabase-code',state:supa.state},cookie:supa.cookie});assert.equal(supaFinish.status,200);
 assert.equal(tokenBody.get('grant_type'),'authorization_code');assert.equal(tokenBody.get('client_id'),'sb-public');assert.ok(tokenBody.get('code_verifier'));assert.equal(tokenBody.get('redirect_uri'),clients.supabase.redirectUri);assert.equal(tokenBody.get('client_secret'),null);
 const supaStatus=await request('status');const supaJson=await supaStatus.json();
+clients.supabase={...clients.supabase,scopes:[]};const supaNoScope=await begin('supabase');assert.equal(supaNoScope.url.searchParams.has('scope'),false);clients.supabase.scopes=['projects.read','database.write'];
 const supaConn=supaJson.connections.find(c=>c.provider==='supabase');assert.ok(supaConn,'supabase connection listed');assert.equal(supaConn.accountId,'testprojectref');assert.equal(supaConn.reconnectRequired,false);
 assert.ok(!JSON.stringify(supaJson).includes('synthetic-access-token'));assert.ok(!JSON.stringify(supaJson).includes('synthetic-refresh-token'));assert.match(supaConn.label,/Test Supabase project/);
 // Reconnect cannot mutate another provider/tenant or revive a deleted account.

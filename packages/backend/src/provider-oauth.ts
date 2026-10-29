@@ -76,7 +76,7 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
         c.header('Set-Cookie',cookie+'='+state+'; Path=/; HttpOnly; '+(origin.protocol==='https:'?'Secure; ':'')+'SameSite=Lax; Max-Age=600');
         const url=new URL(provider==='cloudflare'?endpoints.cloudflare.authorize:provider==='supabase'?endpoints.supabase.authorize:client.integrationTeamSlug?'https://vercel.com/'+client.integrationTeamSlug+'/~/integrations/'+client.integrationSlug:endpoints.vercel.authorize+client.integrationSlug+'/new');
         url.searchParams.set('state',state);url.searchParams.set('redirect_uri',client.redirectUri);
-        if(provider!=='vercel'){url.searchParams.set('client_id',client.clientId);url.searchParams.set('response_type','code');url.searchParams.set('scope',client.scopes.join(' '));url.searchParams.set('code_challenge',await digest(verifier));url.searchParams.set('code_challenge_method','S256');}
+        if(provider!=='vercel'){url.searchParams.set('client_id',client.clientId);url.searchParams.set('response_type','code');/* Supabase scopes are fixed at app registration; the authorize-time scope parameter is deprecated there. */if(client.scopes.length)url.searchParams.set('scope',client.scopes.join(' '));url.searchParams.set('code_challenge',await digest(verifier));url.searchParams.set('code_challenge_method','S256');}
         return c.json({url:url.href});
     });
     app.post(base+'/:provider/finish',async c=>{

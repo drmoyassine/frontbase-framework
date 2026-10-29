@@ -34,7 +34,7 @@ Owner-approved 2026-10-29. Decision record: [DECISIONS.md 2026-10-29](../history
 
 ### Phase 2 — token refresh + revoke (the one new mechanism)
 
-- New module `provider-oauth-refresh.ts`: given a client + stored authorization, if `expiresAt` passed and `refreshToken` present, POST `grant_type=refresh_token` to `https://api.supabase.com/v1/oauth/refresh`; return rotated authorization (Supabase rotates refresh tokens). Revoke: `POST /v1/oauth/revoke` on disconnect.
+- New module `provider-oauth-refresh.ts`: given a client + stored authorization, if `expiresAt` passed and `refreshToken` present, POST `grant_type=refresh_token` — per the official guide, refresh uses the **same** `POST https://api.supabase.com/v1/oauth/token` endpoint as the code exchange (no separate /refresh path). Return rotated authorization (Supabase rotates refresh tokens). Revoke on disconnect. Verify live during Phase 6 whether Supabase requires the `client_secret` as a Basic-auth header (per guide) in addition to/instead of the form parameter the current exchange sends.
 - Vault: add atomic rotate-by-connection-key (`save` stays create-only; rotation replaces under the same key with owner checks).
 - Consumers call refresh before use; `reconnectRequired` only when refresh is impossible (revoked/expired-sliding-window).
 - Tests + mutation gates: refresh rotation, refresh-failure → reconnectRequired, revoke-on-disconnect, no-leak (tokens absent from responses/logs).
