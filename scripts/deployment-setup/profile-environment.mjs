@@ -22,6 +22,15 @@ export function profileEnvironment(prepared) {
    case 'sqlite-file':if(plan.manifest.target!=='docker')throw Error('invalid_local_state');env.APP_DB_URL='file:application.db';break;
    case 'libsql-http':env.APP_DB_URL=c.url;env.APP_DB_AUTH_TOKEN=get(b,'token');break;
    case 'd1-http':if(!/^[a-f0-9]{32}$/.test(c.accountId)||! /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(c.databaseId))throw Error('invalid_state_identity');env.APP_DB_D1_ACCOUNT_ID=c.accountId;env.APP_DB_D1_DATABASE_ID=c.databaseId;env.CLOUDFLARE_API_TOKEN=get(b,'token');break;
+   case 'supabase-postgres':{
+    // PostgREST is plain HTTPS — the one transport lowered identically on every target. Wire needs direct TCP:
+    // Docker and the Node-runtime Vercel function have it; a Worker would need a Hyperdrive binding no executor
+    // provisions yet, so refuse rather than deploy a certain boot failure. Parts are encoded into the DSN here —
+    // private process env, the same posture as APP_DB_AUTH_TOKEN; the manifest keeps references only.
+    if(c.url){env.APP_DB_POSTGREST_URL=c.url;env.APP_DB_POSTGREST_TOKEN=get(b,'token');}
+    else{if(plan.manifest.target==='cloudflare')throw Error('state_wire_requires_hyperdrive');env.APP_DB_URL=`postgres://${encodeURIComponent(get(b,'username'))}:${encodeURIComponent(get(b,'password'))}@${c.host}:${c.port||'5432'}/${c.database}`;}
+    if(c.schema)env.APP_DB_POSTGRES_SCHEMA=c.schema;break;
+   }
    case 'upstash-http':json('FRONTBASE_CACHE',{provider:'upstash',url:c.url,token:get(b,'token')});break;
    case 'libsql-vector-http':json('FRONTBASE_VECTOR',{provider:'libsql',url:c.url,token:get(b,'token')});break;
    case 'cloudflare-vectorize-http':json('FRONTBASE_VECTOR',{provider:'vectorize',url:c.indexName,cfAccountId:c.accountId,cfApiToken:get(b,'token')});break;

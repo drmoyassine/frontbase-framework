@@ -17,6 +17,10 @@
  *   sqlite-memory  SQLite in memory (ephemeral)            — :memory:
  *   libsql-remote  libSQL over HTTP (Turso, self-hosted    — libsql:// or
  *                  sqld; HRANA over fetch)                   https://
+ *   postgres-postgrest  PostgreSQL over HTTPS (PostgREST; — APP_DB_POSTGREST_
+ *                      the CF-20 supabaseRunner transport)   URL + _TOKEN
+ *   postgres-wire  PostgreSQL direct TCP (node/vercel;     — APP_DB_URL
+ *                  Cloudflare only via cloud-mode Hyperdrive) postgres://
  *   postgres-hyperdrive  PostgreSQL/Supabase through a     — env.HYPERDRIVE
  *                        Cloudflare Hyperdrive binding
  *
@@ -24,7 +28,10 @@
  * logged once at boot by the caller):
  *   1. CLOUD MODE (FRONTBASE_DEPLOYMENT_MODE=cloud) + Hyperdrive binding
  *                                → postgresStateRunner(connectionString)
- *   2. APP_DB_URL set            → sqliteRunner(url, APP_DB_AUTH_TOKEN)
+ *   1b. PostgREST pair complete → supabaseRunner (https only, any host);
+ *       the pair plus APP_DB_URL set is an ambiguous refusal
+ *   2. APP_DB_URL set            → sqliteRunner(url, APP_DB_AUTH_TOKEN);
+ *       a postgres:// URL is postgres-wire (refused where no TCP exists)
  *   3. D1-REST trio complete     → d1RunnerFromRest(...)
  *   4. partial D1-REST trio, or APP_DB_AUTH_TOKEN without APP_DB_URL
  *                                → StateDbConfigError naming the missing var(s)
@@ -50,6 +57,7 @@ import {
     d1RunnerFromRest,
     postgresStateRunner,
     sqliteRunner,
+    supabaseRunner,
     type DbRunner,
 } from '@frontbase/edge-infra';
 
@@ -59,6 +67,8 @@ export type StateDbKind =
     | 'sqlite-file'
     | 'sqlite-memory'
     | 'libsql-remote'
+    | 'postgres-postgrest'
+    | 'postgres-wire'
     | 'postgres-hyperdrive';
 
 export type StateDbHost = 'cloudflare' | 'node' | 'deno' | 'vercel';
@@ -85,6 +95,17 @@ export class StateDbConfigError extends Error {
 }
 
 const D1_REST_VARS = ['APP_DB_D1_ACCOUNT_ID', 'APP_DB_D1_DATABASE_ID', 'CLOUDFLARE_API_TOKEN'] as const;
+
+/** A printable postgres endpoint: host/port/database only — userinfo and query
+ *  string are credential territory and never reach a label or system card. */
+function redactPostgresDisplay(dsn: string): string {
+    try {
+        const parsed = new URL(dsn);
+        return `postgres://${parsed.hostname}${parsed.port ? `:${parsed.port}` : ''}${parsed.pathname}`;
+    } catch {
+        return 'postgres://application-state';
+    }
+}
 
 function libsqlCard(url: string): ResolvedStateDb['card'] {
     return { provider: 'sqlite', name: 'libSQL (remote)', url };
@@ -133,6 +154,48 @@ export function describeStateDb(input: {
         };
     }
 
+    // 1b. PostgREST selection — PostgreSQL over HTTPS (the CF-20 supabaseRunner
+    // transport; self-hosted Postgres behind PostgREST, no wire reachability
+    // needed). Plain fetch: the one postgres transport that runs unchanged on
+    // every host. https only — the bearer never travels in clear text.
+    const postgrestUrl = env.APP_DB_POSTGREST_URL?.trim() || undefined;
+    const postgrestToken = env.APP_DB_POSTGREST_TOKEN?.trim() || undefined;
+    const postgresSchema = env.APP_DB_POSTGRES_SCHEMA?.trim() || undefined;
+    if (postgrestUrl && postgrestToken) {
+        if (url) {
+            throw new StateDbConfigError(
+                'APP_DB_POSTGREST_URL and APP_DB_URL are both set — exactly one state database selection is allowed. Remove one.',
+            );
+        }
+        if (!/^https:\/\//.test(postgrestUrl)) {
+            throw new StateDbConfigError(
+                'APP_DB_POSTGREST_URL must be an https:// endpoint — the bearer token never travels in clear text.',
+            );
+        }
+        return {
+            kind: 'postgres-postgrest',
+            label: 'PostgreSQL (PostgREST)',
+            url: '',
+            displayUrl: postgrestUrl,
+            card: { provider: 'postgres', name: 'PostgreSQL (PostgREST)', url: postgrestUrl },
+            makeRunner: () => supabaseRunner({
+                url: postgrestUrl,
+                serviceKey: postgrestToken,
+                restUrl: postgrestUrl,
+                schema: postgresSchema,
+            }),
+        };
+    }
+    // Half a pair fails loud; APP_DB_POSTGRES_SCHEMA alone is legal only when a
+    // postgres:// APP_DB_URL claims it below (it selects the schema for both
+    // postgres transports and is meaningless with any other selection).
+    if (postgrestUrl || postgrestToken || (postgresSchema && !url?.startsWith('postgres'))) {
+        const missing = [!postgrestUrl && 'APP_DB_POSTGREST_URL', !postgrestToken && 'APP_DB_POSTGREST_TOKEN'].filter(Boolean);
+        throw new StateDbConfigError(
+            `Partial PostgREST configuration — missing ${missing.join(', ')}. Set both (plus optional APP_DB_POSTGRES_SCHEMA), or remove them to use another selection.`,
+        );
+    }
+
     // 1. Explicit URL selection — the operator's override, on any host.
     if (url) {
         if (url === ':memory:') {
@@ -163,6 +226,31 @@ export function describeStateDb(input: {
                 displayUrl: url,
                 card: { provider: 'sqlite', name: 'SQLite (libsql)', url },
                 makeRunner: () => sqliteRunner(url, token),
+            };
+        }
+        if (url.startsWith('postgres://') || url.startsWith('postgresql://')) {
+            // Direct wire PostgreSQL needs a TCP-capable runtime: node and the
+            // Node-runtime Vercel function qualify; Deno Deploy and Workers do
+            // not (Cloudflare reaches Postgres through cloud-mode Hyperdrive,
+            // which matched earlier, or the PostgREST selection).
+            if (host === 'cloudflare') {
+                throw new StateDbConfigError(
+                    'APP_DB_URL postgres:// has no direct TCP on Cloudflare Workers. Use cloud-mode Hyperdrive (FRONTBASE_DEPLOYMENT_MODE=cloud + the HYPERDRIVE binding) or the PostgREST selection (APP_DB_POSTGREST_URL).',
+                );
+            }
+            if (host === 'deno') {
+                throw new StateDbConfigError(
+                    'APP_DB_URL postgres:// needs a TCP-capable Node runtime. On Deno Deploy use APP_DB_URL libsql:// or https://, or the PostgREST selection (APP_DB_POSTGREST_URL).',
+                );
+            }
+            const dsn = url;
+            return {
+                kind: 'postgres-wire',
+                label: 'PostgreSQL (direct)',
+                url: '',
+                displayUrl: redactPostgresDisplay(dsn),
+                card: { provider: 'postgres', name: 'PostgreSQL (direct)', url: redactPostgresDisplay(dsn) },
+                makeRunner: () => postgresStateRunner({ connectionString: dsn, schema: postgresSchema }),
             };
         }
         // libsql:// / https:// / http:// / wss: / ws: — a remote libSQL server

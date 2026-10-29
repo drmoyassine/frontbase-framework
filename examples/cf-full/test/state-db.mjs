@@ -3,9 +3,10 @@
  * is the one seam every host entry uses to turn its environment into the
  * engine's `runner`, so these are the properties every host inherits:
  *
- *   1. Precedence — Hyperdrive (cloud mode only) > APP_DB_URL > D1-REST trio
- *      > D1 binding > host default; exactly one runner is built, first match
- *      wins. A Hyperdrive binding WITHOUT FRONTBASE_DEPLOYMENT_MODE=cloud is
+ *   1. Precedence — Hyperdrive (cloud mode only) > PostgREST pair > APP_DB_URL
+ *      (postgres:// → direct wire) > D1-REST trio > D1 binding > host default;
+ *      exactly one runner is built, first match wins. A Hyperdrive binding
+ *      WITHOUT FRONTBASE_DEPLOYMENT_MODE=cloud is
  *      IGNORED: the committed wrangler.toml ships the cloud deployment's
  *      binding, and neither a self-host reusing that file nor a local
  *      `wrangler dev` may adopt the cloud state plane.
@@ -92,6 +93,21 @@ check('a Hyperdrive binding WITHOUT cloud mode falls through to the D1 binding (
     return r.kind === 'd1-binding' && r.displayUrl === 'd1://system-d1';
 });
 
+check('PostgREST pair → postgres-postgrest on any host (pure HTTPS, no TCP driver)', () => {
+    const r = resolveStateDb({
+        env: envOf({ APP_DB_POSTGREST_URL: 'https://api.example.test/rest/v1', APP_DB_POSTGREST_TOKEN: TOKEN, APP_DB_POSTGRES_SCHEMA: 'frontbase_edge_state' }),
+        host: 'deno',
+    });
+    return r.kind === 'postgres-postgrest' && r.displayUrl === 'https://api.example.test/rest/v1'
+        && r.card.provider === 'postgres' && r.label === 'PostgreSQL (PostgREST)'
+        && typeof r.runner.query === 'function' && typeof r.runner.exec === 'function';
+});
+check('APP_DB_URL postgres:// → postgres-wire with a redacted display (node/vercel)', () => {
+    const r = resolveStateDb({ env: envOf({ APP_DB_URL: PG_SECRET, APP_DB_POSTGRES_SCHEMA: 'frontbase_edge_state' }), host: 'node' });
+    return r.kind === 'postgres-wire' && r.runner.dialect === 'postgres'
+        && r.displayUrl === 'postgres://db.example.test:5432/postgres'
+        && !r.displayUrl.includes('unit-test-password');
+});
 check('APP_DB_URL=:memory: wins over a complete trio AND a D1 binding', () => {
     const r = resolveStateDb({
         env: envOf({ APP_DB_URL: ':memory:', APP_DB_D1_ACCOUNT_ID: 'a', APP_DB_D1_DATABASE_ID: 'd', CLOUDFLARE_API_TOKEN: API_TOKEN }),
@@ -148,6 +164,21 @@ throwsWith('whitespace-only vars count as unset (trim)', () =>
 throwsWith('APP_DB_AUTH_TOKEN without APP_DB_URL names APP_DB_URL', () =>
     resolveStateDb({ env: envOf({ APP_DB_AUTH_TOKEN: TOKEN }), host: 'deno' }),
     ['APP_DB_URL', 'APP_DB_AUTH_TOKEN']);
+throwsWith('PostgREST missing APP_DB_POSTGREST_URL', () =>
+    resolveStateDb({ env: envOf({ APP_DB_POSTGREST_TOKEN: TOKEN }), host: 'vercel' }),
+    ['APP_DB_POSTGREST_URL']);
+throwsWith('PostgREST missing APP_DB_POSTGREST_TOKEN', () =>
+    resolveStateDb({ env: envOf({ APP_DB_POSTGREST_URL: 'https://api.example.test/rest/v1' }), host: 'node' }),
+    ['APP_DB_POSTGREST_TOKEN']);
+throwsWith('PostgREST schema alone names both transport vars', () =>
+    resolveStateDb({ env: envOf({ APP_DB_POSTGRES_SCHEMA: 'edge_state' }), host: 'node' }),
+    ['APP_DB_POSTGREST_URL', 'APP_DB_POSTGREST_TOKEN']);
+throwsWith('PostgREST pair plus APP_DB_URL is an ambiguous refusal', () =>
+    resolveStateDb({ env: envOf({ APP_DB_POSTGREST_URL: 'https://api.example.test', APP_DB_POSTGREST_TOKEN: TOKEN, APP_DB_URL: ':memory:' }), host: 'node' }),
+    ['APP_DB_POSTGREST_URL', 'APP_DB_URL']);
+throwsWith('PostgREST http:// endpoint refused (bearer never in clear text)', () =>
+    resolveStateDb({ env: envOf({ APP_DB_POSTGREST_URL: 'http://api.example.test', APP_DB_POSTGREST_TOKEN: TOKEN }), host: 'node' }),
+    ['https']);
 
 console.log('\n=== state-db resolver: host honesty (no fs on the edge) ===');
 throwsWith('file: refused on vercel, supported forms named', () =>
@@ -165,6 +196,12 @@ throwsWith('vercel with nothing set lists accepted forms', () =>
 throwsWith('cloudflare WITHOUT a binding lists its own forms (incl. file:)', () =>
     resolveStateDb({ env: envOf({}), host: 'cloudflare' }),
     ['cloudflare', 'env.DB', 'APP_DB_URL']);
+throwsWith('postgres:// refused on deno (no TCP) — PostgREST named', () =>
+    resolveStateDb({ env: envOf({ APP_DB_URL: PG_SECRET }), host: 'deno' }),
+    ['PostgREST', 'libsql://']);
+throwsWith('postgres:// refused on cloudflare without cloud-mode Hyperdrive', () =>
+    resolveStateDb({ env: envOf({ APP_DB_URL: PG_SECRET }), host: 'cloudflare', d1Binding: FAKE_D1 }),
+    ['Hyperdrive', 'PostgREST']);
 
 console.log('\n=== state-db resolver: NO-LEAK (credentials never leave the runner) ===');
 check('postgres-hyperdrive: connection string absent from label/displayUrl/card', () => {
@@ -179,6 +216,23 @@ check('postgres-hyperdrive: connection string absent from label/displayUrl/card'
 check('libsql-remote: token absent from label/displayUrl/card', () => {
     const r = resolveStateDb({ env: envOf({ APP_DB_URL: 'libsql://db.turso.io', APP_DB_AUTH_TOKEN: TOKEN }), host: 'vercel' });
     return noLeak(r);
+});
+check('postgres-postgrest: bearer token absent from label/displayUrl/card', () => {
+    const r = resolveStateDb({ env: envOf({ APP_DB_POSTGREST_URL: 'https://api.example.test/rest/v1', APP_DB_POSTGREST_TOKEN: TOKEN }), host: 'vercel' });
+    return r.kind === 'postgres-postgrest' && noLeak(r);
+});
+check('postgres-wire: DSN credentials absent from label/displayUrl/card', () => {
+    const r = resolveStateDb({ env: envOf({ APP_DB_URL: PG_SECRET }), host: 'vercel' });
+    return r.kind === 'postgres-wire'
+        && !JSON.stringify({ label: r.label, displayUrl: r.displayUrl, card: r.card }).includes(PG_SECRET);
+});
+check('PostgREST partial-error message carries no token', () => {
+    try {
+        resolveStateDb({ env: envOf({ APP_DB_POSTGREST_TOKEN: TOKEN }), host: 'vercel' });
+        return false;
+    } catch (e) {
+        return e instanceof StateDbConfigError && !e.message.includes(TOKEN);
+    }
 });
 check('d1-rest: api token absent from label/displayUrl/card', () => {
     const r = resolveStateDb({

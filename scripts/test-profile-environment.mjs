@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';import {profileEnvironment} from './deployment-setup/profile-environment.mjs';import {defaultDeploymentManifest,readManagedRuntimeManifest} from '../packages/edge-core/dist/deployment.js';
+import assert from 'node:assert/strict';const {profileEnvironment}=await import(process.env.FRONTBASE_PROFILE_ENV_MODULE??'./deployment-setup/profile-environment.mjs');import {defaultDeploymentManifest,resolveDeploymentManifest,readManagedRuntimeManifest} from '../packages/edge-core/dist/deployment.js';
 const manifest=defaultDeploymentManifest('vercel');manifest.bindings['state-db'].config.url='https://state.example';manifest.bindings['state-db'].secretRefs.token='state/token';
 const credentials={'state/token':'synthetic-state-secret'},env=profileEnvironment({manifest,credentials});assert.equal(env.APP_DB_AUTH_TOKEN,credentials['state/token']);assert.ok(!env.FRONTBASE_DEPLOYMENT_MANIFEST.includes(credentials['state/token']));assert.deepEqual(readManagedRuntimeManifest(env.FRONTBASE_DEPLOYMENT_MANIFEST),manifest);
 assert.throws(()=>profileEnvironment({manifest,credentials:{}}));assert.throws(()=>profileEnvironment({manifest,credentials:{...credentials,other:'unreferenced'}}));
@@ -8,3 +8,16 @@ console.log('PASS portable profile lowering: real resolver keys, referenced cred
 
 const native=defaultDeploymentManifest('vercel');native.bindings['state-db']={adapterId:'turso-marketplace',mode:'reuse',resourceRef:'store_test',config:{},secretRefs:{}};const nativeEnv=profileEnvironment({manifest:native,credentials:{}});assert.deepEqual(Object.keys(nativeEnv).sort(),['FRONTBASE_CACHE','FRONTBASE_QUEUE','FRONTBASE_VECTOR','FRONTBASE_STORAGE','FRONTBASE_DEPLOYMENT_MANIFEST'].sort());for(const key of ['FRONTBASE_CACHE','FRONTBASE_QUEUE','FRONTBASE_VECTOR'])assert.deepEqual(JSON.parse(nativeEnv[key]),{provider:'none'});assert.deepEqual(readManagedRuntimeManifest(nativeEnv.FRONTBASE_DEPLOYMENT_MANIFEST),native);
 const unsafe=structuredClone(native);unsafe.bindings['state-db'].config.apiKey='synthetic-forbidden';assert.equal(readManagedRuntimeManifest(unsafe),null);const cross=structuredClone(native);cross.target='cloudflare';assert.equal(readManagedRuntimeManifest(cross),null);console.log('PASS Marketplace profile metadata: native reference only, no local token transfer, unknown/cross-target refusal');
+
+const supa=(config,secretRefs)=>({adapterId:'supabase-postgres',mode:'connect',config,secretRefs});
+const postgrest=resolveDeploymentManifest('docker',undefined,{'state-db':supa({url:'https://api.example.test/rest/v1',schema:'frontbase_edge_state'},{token:'state/token'})});
+const postgrestEnv=profileEnvironment({manifest:postgrest,credentials:{'state/token':'synthetic-bearer'}});
+assert.equal(postgrestEnv.APP_DB_POSTGREST_URL,'https://api.example.test/rest/v1');assert.equal(postgrestEnv.APP_DB_POSTGREST_TOKEN,'synthetic-bearer');assert.equal(postgrestEnv.APP_DB_POSTGRES_SCHEMA,'frontbase_edge_state');
+assert.ok(!postgrestEnv.FRONTBASE_DEPLOYMENT_MANIFEST.includes('synthetic-bearer'));assert.ok(!('APP_DB_URL' in postgrestEnv));
+const wire=resolveDeploymentManifest('docker',undefined,{'state-db':supa({host:'db.example.test',port:'5432',database:'postgres',schema:'edge_state'},{username:'state/role',password:'state/role-secret'})});
+const wireEnv=profileEnvironment({manifest:wire,credentials:{'state/role':'edge role','state/role-secret':'p@ss:word'}});
+assert.equal(wireEnv.APP_DB_URL,'postgres://edge%20role:p%40ss%3Aword@db.example.test:5432/postgres');assert.equal(wireEnv.APP_DB_POSTGRES_SCHEMA,'edge_state');
+assert.ok(!wireEnv.FRONTBASE_DEPLOYMENT_MANIFEST.includes('p@ss:word'));assert.ok(!wireEnv.FRONTBASE_DEPLOYMENT_MANIFEST.includes('p%40ss%3Aword'));
+const cloudWire=resolveDeploymentManifest('cloudflare',undefined,{'state-db':supa({host:'db.example.test',database:'postgres'},{username:'state/role',password:'state/role-secret'})});
+assert.throws(()=>profileEnvironment({manifest:cloudWire,credentials:{'state/role':'r','state/role-secret':'s'}}),/state_wire_requires_hyperdrive/);
+console.log('PASS supabase state lowering: PostgREST env identical on every host, encoded wire DSN without manifest echo, Cloudflare wire refused until Hyperdrive');

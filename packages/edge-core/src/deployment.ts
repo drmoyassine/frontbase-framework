@@ -54,6 +54,7 @@ export const deploymentAdapters: readonly DeploymentAdapter[] = [
     // Connect routes exist today: a PostgREST HTTPS endpoint (self-hosted Postgres without wire reachability,
     // via the CF-20 supabaseRunner transport) or wire connection parts whose credentials stay in secrets.
     // Provisioned create/reuse of frontbase_edge_* schemas register with the apply-time executor, not before.
+    // Schema identifiers stay lowercase: postgresStateRunner refuses other quoting-sensitive names at boot.
     {id:'supabase-postgres',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url','schema','host','port','database'],secretKeys:['token','username','password']},
     {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'upstash-http',role:'cache',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
@@ -130,7 +131,7 @@ export function validateDeploymentManifest(input: unknown): DeploymentPlan | {re
                 const port=Number(binding.config.port??'5432');
                 if(!Number.isInteger(port)||port<1||port>65535)issues.push({role,field:'port',code:'invalid_port'});
             }
-            if(binding.config.schema&&!/^[a-zA-Z_][a-zA-Z0-9_]{0,62}$/.test(binding.config.schema))issues.push({role,field:'schema',code:'invalid_schema'});
+            if(binding.config.schema&&!/^[a-z_][a-z0-9_]{0,62}$/.test(binding.config.schema))issues.push({role,field:'schema',code:'invalid_schema'});
         }
         operations.push({role,adapterId:adapter.id,mode:binding.mode,...(binding.resourceRef?{resourceRef:binding.resourceRef}:{})});
     }
