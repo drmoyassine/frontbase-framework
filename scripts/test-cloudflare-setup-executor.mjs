@@ -132,6 +132,23 @@ try {
  const restFake=fixture();await executeCloudflareFirstInstall(supaRest,context,{exampleRoot:root,runWrangler:restFake.run,onReceipt:receipt,checkExternalState:async()=>{}});
  assert.ok(!restFake.calls.some(call=>call.args[0]==='hyperdrive'||call.args[0]==='d1'),'PostgREST is plain HTTPS: no Hyperdrive, no D1');
  assert.ok(restFake.calls.some(call=>call.args[0]==='secret'&&call.args[2]==='APP_DB_POSTGREST_URL'&&call.options.stdin.includes('postgrest.fixture.example')));
+ // Self-hosted Postgres behind PostgREST lowers the same HTTPS pair with no Hyperdrive and
+ // no D1 anywhere in the run — the admission the wizard lists is exactly this lowering.
+ const selfHosted=structuredClone(prepared);
+ selfHosted.manifest.bindings['state-db']={adapterId:'postgrest-http',mode:'connect',config:{url:'https://state.fixture.example/rest/v1',schema:'frontbase_edge_state'},secretRefs:{token:'state/token'}};
+ selfHosted.credentials={'state/token':'fixture-selfhost-bearer'};
+ const selfFake=fixture();await executeCloudflareFirstInstall(selfHosted,context,{exampleRoot:root,runWrangler:selfFake.run,onReceipt:receipt,checkExternalState:async value=>{assert.deepEqual(value,selfHosted);}});
+ assert.ok(!selfFake.calls.some(call=>call.args[0]==='hyperdrive'||call.args[0]==='d1'),'postgrest-http connect: no Hyperdrive, no D1');
+ const lowered=name=>selfFake.calls.find(call=>call.args[0]==='secret'&&call.args[2]===name)?.options.stdin;
+ assert.equal(lowered('APP_DB_POSTGREST_URL'),'https://state.fixture.example/rest/v1');
+ assert.equal(lowered('APP_DB_POSTGREST_TOKEN'),'fixture-selfhost-bearer');
+ assert.equal(lowered('APP_DB_POSTGRES_SCHEMA'),'frontbase_edge_state');
+ assert.equal(lowered('APP_DB_HYPERDRIVE'),undefined,'connect-only PostgREST never opts into Hyperdrive');
+ assert.equal(lowered('APP_DB_D1_ACCOUNT_ID'),undefined);assert.equal(lowered('APP_DB_D1_DATABASE_ID'),undefined);
+ assert.ok(!JSON.stringify(selfFake.calls.map(call=>call.args)).includes('fixture-selfhost-bearer'),'bearer never in argv');
+ for(const path of walk(stages.at(-1)))assert.ok(!readFileSync(path,'utf8').includes('fixture-selfhost-bearer'),'bearer persisted to stage');
+ const restConfig=readFileSync(join(stages.at(-1),'wrangler.toml'),'utf8');
+ assert.ok(!restConfig.includes('hyperdrive')&&!restConfig.includes('[[d1_databases]]'),'staged config binds neither Hyperdrive nor D1');
  const wrongName=structuredClone(withCache);wrongName.manifest.bindings.cache.config.resourceName='other-cache';const unused=fixture();await assert.rejects(executeCloudflareFirstInstall(wrongName,context,{exampleRoot:root,runWrangler:unused.run}));assert.equal(unused.calls.length,0);
 
  // Supabase create/reuse provisions the isolated schema past every refusal preflight, then

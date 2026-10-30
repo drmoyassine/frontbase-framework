@@ -7,7 +7,9 @@ export async function verifyEmptyExternalState(prepared,{makeRunner}={}) {
  // Hyperdrive config a cloudflare wire manifest implies — so admit it here too.
  const env=profileEnvironment(prepared,{nativeHyperdrive:true});
  try {
-  const postgres=b.adapterId==='supabase-postgres';
+  // postgrest-http always lowers the PostgREST pair (its url is required), so it probes the
+  // same endpoint transport; only supabase-postgres can fall back to the wire DSN branch.
+  const postgres=b.adapterId==='supabase-postgres'||b.adapterId==='postgrest-http';
   const runner=makeRunner?makeRunner(env):b.adapterId==='libsql-http'?sqliteRunner(env.APP_DB_URL,env.APP_DB_AUTH_TOKEN):postgres?(env.APP_DB_POSTGREST_URL?supabaseRunner({url:env.APP_DB_POSTGREST_URL,serviceKey:env.APP_DB_POSTGREST_TOKEN,restUrl:env.APP_DB_POSTGREST_URL}):postgresStateRunner({connectionString:env.APP_DB_URL})):d1RunnerFromRest({accountId:env.APP_DB_D1_ACCOUNT_ID,databaseId:env.APP_DB_D1_DATABASE_ID,apiToken:env.CLOUDFLARE_API_TOKEN});
   let timer;
   // Postgres probes count tables in the application schema only — Supabase service schemas (auth, storage)

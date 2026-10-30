@@ -15,7 +15,7 @@ import { parseDatabaseId } from '../../packages/compiler/dist/cli/provision-d1.j
 import { workerExists } from '../../packages/compiler/dist/cli/app-identity.js';
 const repoRoot=join(dirname(fileURLToPath(import.meta.url)),'../..');
 const defaultExample=join(repoRoot,'examples/cf-full');
-export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create','reuse'],'cloudflare-kv':['create','reuse'],'cloudflare-r2':['create'],'libsql-http':['connect'],'d1-http':['connect'],'supabase-postgres':['connect','create','reuse'],'upstash-http':['connect'],'cloudflare-vectorize-http':['connect'],'libsql-vector-http':['connect'],'s3-http':['connect'],'qstash-http':['connect']}};
+export const cloudflareExecutionCapabilities={adapters:{'cloudflare-d1':['create','reuse'],'cloudflare-kv':['create','reuse'],'cloudflare-r2':['create'],'libsql-http':['connect'],'d1-http':['connect'],'postgrest-http':['connect'],'supabase-postgres':['connect','create','reuse'],'upstash-http':['connect'],'cloudflare-vectorize-http':['connect'],'libsql-vector-http':['connect'],'s3-http':['connect'],'qstash-http':['connect']}};
 export function cloudflareExecutionIssues(manifest,context) {
     const issues=[];
     if(manifest.target!=='cloudflare' || manifest.environment!==context.environment)issues.push({code:'execution_target_mismatch'});

@@ -19,7 +19,8 @@ export function createNativeCloudBootstrap(env:any,host:'cloudflare'|'vercel',tr
   if(url.pathname==='/health')return Response.json({status:'setup_required'},{headers});
   // supabase-postgres is cloudflare-only here: the vercel native executor has no
   // provisioning route, so advertising create/reuse there would fail closed at apply.
-  if(url.pathname==='/frontbase-bootstrap/native-configuration')return Response.json({target:host,manifest:defaultDeploymentManifest(host,'production'),adapters:deploymentAdapters.filter(a=>a.targets.includes(host)&&['cloudflare-d1','cloudflare-kv','libsql-http','d1-http',...(host==='cloudflare'?['supabase-postgres']:[]),'upstash-http','libsql-vector-http','cloudflare-vectorize-http','s3-http','qstash-http'].includes(a.id))},{headers});
+  // postgrest-http is connect-only (no provisioning), so it ships on both hosts.
+  if(url.pathname==='/frontbase-bootstrap/native-configuration')return Response.json({target:host,manifest:defaultDeploymentManifest(host,'production'),adapters:deploymentAdapters.filter(a=>a.targets.includes(host)&&['cloudflare-d1','cloudflare-kv','libsql-http','d1-http','postgrest-http',...(host==='cloudflare'?['supabase-postgres']:[]),'upstash-http','libsql-vector-http','cloudflare-vectorize-http','s3-http','qstash-http'].includes(a.id))},{headers});
   const key=url.pathname==='/frontbase-bootstrap/'?'/frontbase-bootstrap/native':url.pathname,asset=assets[key];if(asset)return new Response(asset.body,{headers:{...headers,'content-type':asset.type}});
   if(url.pathname.startsWith('/api/'))return new Response('Not found',{status:404,headers});
   return new Response(null,{status:302,headers:{...headers,location:'/frontbase-bootstrap/'}});

@@ -1,18 +1,24 @@
 /* Frontbase deployment setup — shared shell for the hosted, native and local wizards.
    System fonts only (CSP: default-src 'self'), no external assets. The bindings form
    (bindings-form.css) consumes the --fb-* tokens defined here; hosts without this
-   shell fall back to its neutral defaults. */
-:root{--bg:#f3f6fb;--bg-glow:#e9eff9;--surface:#fff;--surface-2:#f6f9fd;--ink:#0f1c30;--muted:#55647d;--faint:#8a97ac;--border:#dce4ef;--border-strong:#c2cede;--accent:#2456e6;--accent-hover:#1c46c4;--accent-contrast:#fff;--accent-soft:#e9efff;--accent-border:#c9d8fa;--danger:#b3261e;--danger-bg:#fdf1f0;--danger-border:#f2cfc9;--success:#0f6b3f;--success-bg:#eefaf2;--success-border:#c6e8d3;--info-bg:#f2f6fc;--info-border:#d9e4f4;--radius:14px;--radius-s:9px;--shadow:0 1px 2px rgba(15,28,48,.05),0 10px 30px rgba(15,28,48,.06);--ring:0 0 0 3px rgba(36,86,230,.22);--fb-card-surface:var(--surface);--fb-card-border:var(--border);--fb-card-shadow:var(--shadow);--fb-input-bg:#fff;--fb-input-border:#c2cede;--fb-note:#5a6a83;--fb-note-bar:#dbe3ef;--fb-conn-bg:var(--accent-soft);--fb-conn-border:var(--accent-border);--fb-option-ink:#18253a;--fb-option-bg:#fff;--fb-accent:var(--accent);--fb-accent-hover:var(--accent-hover);--fb-accent-contrast:var(--accent-contrast);--fb-accent-soft:var(--accent-soft);--fb-accent-border:var(--accent-border);--fb-ring:var(--ring);--fb-chip-bg:var(--surface-2);--fb-chip-border:var(--border);--fb-chip-ink:var(--muted)}
-@media(prefers-color-scheme:dark){:root{--bg:#0c1320;--bg-glow:#101b30;--surface:#141e30;--surface-2:#0f1826;--ink:#e7edf9;--muted:#a3b2ca;--faint:#6d7d96;--border:#263449;--border-strong:#384a66;--accent:#6b8dfa;--accent-hover:#8aa4ff;--accent-contrast:#0b1220;--accent-soft:#1b2a49;--accent-border:#31437a;--danger:#ff8f86;--danger-bg:#3a1713;--danger-border:#6e2a24;--success:#6fd0a0;--success-bg:#0f2b1e;--success-border:#1f5238;--info-bg:#152238;--info-border:#2b3d5c;--shadow:0 1px 2px rgba(0,0,0,.4),0 12px 34px rgba(0,0,0,.35);--ring:0 0 0 3px rgba(107,141,250,.3);--fb-input-bg:#101a2b;--fb-input-border:#384a66;--fb-note:#a3b2ca;--fb-note-bar:#33445f;--fb-option-ink:#e7edf9;--fb-option-bg:#141e30;--fb-chip-bg:#0f1826;--fb-chip-border:#263449;--fb-chip-ink:#a3b2ca}}
+   shell fall back to its neutral defaults. Token values mirror the console design
+   system (packages/console/src/index.css :root and .dark), switched by
+   prefers-color-scheme — the wizard pages set <meta name="color-scheme" light dark>. */
+:root{--bg:hsl(0 0% 100%);--surface:hsl(0 0% 100%);--surface-2:hsl(210 40% 96.1%);--ink:hsl(222.2 84% 4.9%);--muted:hsl(215.4 16.3% 46.9%);--faint:hsl(215.4 16.3% 46.9%);--border:hsl(214.3 31.8% 91.4%);--border-strong:hsl(214.3 31.8% 91.4%);--accent:hsl(222.2 47.4% 11.2%);--accent-hover:hsl(222.2 47.4% 11.2%/.9);--accent-contrast:hsl(210 40% 98%);--accent-soft:hsl(210 40% 96.1%);--accent-border:hsl(214.3 31.8% 91.4%);--danger:hsl(0 84.2% 60.2%);--danger-bg:hsl(0 84.2% 60.2%/.08);--danger-border:hsl(0 84.2% 60.2%/.25);--success:#0f6b3f;--success-bg:#eefaf2;--success-border:#c6e8d3;--info-bg:hsl(210 40% 96.1%);--info-border:hsl(214.3 31.8% 91.4%);--radius:0.5rem;--radius-s:calc(0.5rem - 2px);--shadow:0 1px 2px rgb(0 0 0/.05);--ring:0 0 0 3px hsl(222.2 84% 4.9%/.5);--fb-card-surface:var(--surface);--fb-card-border:var(--border);--fb-card-shadow:var(--shadow);--fb-radius:var(--radius);--fb-input-bg:var(--bg);--fb-input-border:var(--border-strong);--fb-note:var(--muted);--fb-note-bar:var(--border);--fb-conn-bg:var(--surface-2);--fb-conn-border:var(--border);--fb-option-ink:var(--ink);--fb-option-bg:var(--surface);--fb-accent:var(--accent);--fb-accent-hover:var(--accent-hover);--fb-accent-contrast:var(--accent-contrast);--fb-accent-soft:var(--accent-soft);--fb-accent-border:var(--accent-border);--fb-ring:var(--ring);--fb-chip-bg:var(--surface-2);--fb-chip-border:var(--border);--fb-chip-ink:var(--muted)}
+@media(prefers-color-scheme:dark){:root{--bg:hsl(222.2 84% 4.9%);--surface:hsl(222.2 84% 4.9%);--surface-2:hsl(217.2 32.6% 17.5%);--ink:hsl(210 40% 98%);--muted:hsl(215 20.2% 65.1%);--faint:hsl(215 20.2% 65.1%);--border:hsl(217.2 32.6% 17.5%);--border-strong:hsl(217.2 32.6% 17.5%);--accent:hsl(210 40% 98%);--accent-hover:hsl(210 40% 98%/.9);--accent-contrast:hsl(222.2 47.4% 11.2%);--accent-soft:hsl(217.2 32.6% 17.5%);--accent-border:hsl(217.2 32.6% 17.5%);--danger:#ff8f86;--danger-bg:hsl(0 62.8% 30.6%/.3);--danger-border:hsl(0 62.8% 30.6%/.6);--success:#6fd0a0;--success-bg:#0f2b1e;--success-border:#1f5238;--info-bg:hsl(217.2 32.6% 17.5%);--info-border:hsl(217.2 32.6% 17.5%);--shadow:0 1px 2px rgb(0 0 0/.4);--ring:0 0 0 3px hsl(212.7 26.8% 83.9%/.5)}
+/* Vercel's black block inverts on dark surfaces. Scoped to this shell because the
+   console dialog themes by .dark class instead and loads only bindings-form.css. */
+body .fb-connect-vercel{background:#fff;border-color:#fff;color:#000}
+body .fb-connect-vercel:hover:not(:disabled){background:#e5e5e5;border-color:#e5e5e5;color:#000}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:linear-gradient(180deg,var(--bg-glow),var(--bg) 320px) var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
 main{max-width:880px;margin:0 auto;padding:44px 20px 80px}
 [hidden]{display:none!important}
 .page-header{margin:0 0 24px}
 .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.01em;color:var(--ink);margin-bottom:18px}
 .brand svg{display:block}
-.eyebrow{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.13em;color:var(--accent);margin:0 0 6px}
+.eyebrow{font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);margin:0 0 6px}
 h1{font-size:27px;line-height:1.15;font-weight:700;letter-spacing:-.02em;margin:0 0 8px}
 .lede{color:var(--muted);max-width:62ch;margin:0}
 .steps{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0 0 20px;padding:0;font-size:12.5px;color:var(--faint)}
@@ -28,14 +34,14 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:none;borde
 form#unlock label{display:block;margin:0 0 6px}
 form#unlock input{margin:0 0 14px}
 button{min-height:44px;padding:10px 18px;border-radius:var(--radius-s);border:1px solid var(--border-strong);background:var(--surface);font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
-button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+button:hover:not(:disabled){background:var(--surface-2);border-color:var(--border-strong)}
 button:disabled{opacity:.55;cursor:not-allowed}
 button.primary,form#unlock button[type=submit],#continue,#review,#prepare,#deploy,#apply{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast)}
 button.primary:hover:not(:disabled),form#unlock button[type=submit]:hover:not(:disabled),#continue:hover:not(:disabled),#review:hover:not(:disabled),#prepare:hover:not(:disabled),#deploy:hover:not(:disabled),#apply:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover);color:var(--accent-contrast)}
 #reconcile{background:transparent;border-color:transparent;color:var(--muted);text-decoration:underline;text-underline-offset:3px;min-height:38px}
 #reconcile:hover:not(:disabled){color:var(--accent);border-color:transparent}
 .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:16px 0 0}
-#status,#result,#deployment-result{font-size:13.5px;line-height:1.55;white-space:pre-wrap;border-radius:10px;border:1px solid var(--info-border);background:var(--info-bg);color:var(--muted);padding:12px 14px;margin:14px 0 0}
+#status,#result,#deployment-result{font-size:13.5px;line-height:1.55;white-space:pre-wrap;border-radius:var(--radius-s);border:1px solid var(--info-border);background:var(--info-bg);color:var(--muted);padding:12px 14px;margin:14px 0 0}
 #status:empty,#result:empty,#deployment-result:empty{display:none}
 #status.error,#result.error,#deployment-result.error{background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger)}
 #status.success,#result.success,#deployment-result.success{background:var(--success-bg);border-color:var(--success-border);color:var(--success)}

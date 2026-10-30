@@ -4,7 +4,7 @@ import {DEPLOY_SECRET_NAMES} from '../deploy-environment.mjs';
 import {vercelOperation} from './vercel-operation.mjs';
 import {profileEnvironment} from './profile-environment.mjs';
 const script=fileURLToPath(new URL('../deploy-vercel.mjs',import.meta.url));
-export const vercelExecutionCapabilities={adapters:{'turso-marketplace':['reuse'],'libsql-http':['connect'],'d1-http':['connect'],'upstash-http':['connect'],'cloudflare-vectorize-http':['connect'],'libsql-vector-http':['connect'],'qstash-http':['connect'],'s3-http':['connect']}};
+export const vercelExecutionCapabilities={adapters:{'turso-marketplace':['reuse'],'libsql-http':['connect'],'d1-http':['connect'],'postgrest-http':['connect'],'upstash-http':['connect'],'cloudflare-vectorize-http':['connect'],'libsql-vector-http':['connect'],'qstash-http':['connect'],'s3-http':['connect']}};
 export function assertVercelProfileContext(context) {
  if(!/^team_[a-zA-Z0-9]+$/.test(context.scope??'')||!/^[a-z0-9][a-z0-9-]{0,62}$/.test(context.project??'')||!['production','preview'].includes(context.environment)||!['create','redeploy','resume'].includes(context.intent??'create'))throw Error('invalid_vercel_profile_context');
 }

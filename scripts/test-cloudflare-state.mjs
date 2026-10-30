@@ -23,6 +23,16 @@ await verifyEmptyExternalState({manifest:restPostgrest,credentials:{'state/token
  assert.equal(env.APP_DB_POSTGREST_URL,'https://api.example.test/rest/v1');assert.equal(env.APP_DB_POSTGREST_TOKEN,'fixture-bearer');assert.equal(env.APP_DB_POSTGRES_SCHEMA,'frontbase_edge_state');restCalls++;
  return {query:async()=>[]};}});
 assert.equal(restCalls,1);
+// The real selection (no makeRunner — the path the executor and the docker host run) must
+// route postgrest-http through the PostgREST probe, never the D1 fallback.
+let rpcCall=null;const previousFetch=globalThis.fetch;
+globalThis.fetch=async(input,init={})=>{rpcCall={url:String(input),authorization:init.headers instanceof Headers?init.headers.get('authorization'):init.headers?.authorization,body:String(init.body)};return Response.json([{result:[]}]);};
+try{await verifyEmptyExternalState({manifest:restPostgrest,credentials:{'state/token':'fixture-bearer'}});}finally{globalThis.fetch=previousFetch;}
+assert.equal(rpcCall.url,'https://api.example.test/rest/v1/rpc/execute_query');
+assert.equal(rpcCall.authorization,'Bearer fixture-bearer');
+assert.ok(rpcCall.body.includes("schemaname='frontbase_edge_state'"),'the probe counts tables in the application schema only');
+globalThis.fetch=async()=>Response.json([{result:[{tablename:'users'}]}]);
+try{await assert.rejects(verifyEmptyExternalState({manifest:restPostgrest,credentials:{'state/token':'fixture-bearer'}}),/external_state_not_verified_empty/);}finally{globalThis.fetch=previousFetch;}
 const supaWire=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'connect',config:{host:'db.example.test',port:'5432',database:'postgres'},secretRefs:{username:'state/role',password:'state/role-secret'}}});
 await verifyEmptyExternalState({manifest:supaWire,credentials:{'state/role':'edge_role','state/role-secret':'fixture-password'}},{makeRunner:env=>{
  assert.equal(env.APP_DB_URL,'postgres://edge_role:fixture-password@db.example.test:5432/postgres');assert.ok(!env.APP_DB_POSTGRES_SCHEMA);
@@ -34,4 +44,4 @@ const cloudWire=resolveDeploymentManifest('cloudflare',undefined,{'state-db':{ad
 await verifyEmptyExternalState({manifest:cloudWire,credentials:{'state/role':'edge_role','state/role-secret':'fixture-password'}},{makeRunner:env=>{
  assert.equal(env.APP_DB_URL,'postgres://edge_role:fixture-password@db.example.test:5432/postgres');assert.equal(env.APP_DB_HYPERDRIVE,'1');assert.equal(env.APP_DB_POSTGRES_SCHEMA,'edge_state');
  return {query:async sql=>{assert.match(sql,/^SELECT tablename FROM pg_tables WHERE schemaname='edge_state' LIMIT 1$/);return [];}};}});
-console.log('PASS external state preflight: shared resolver configuration, read-only schema probe, nonempty/unknown refusal, supabase PostgREST and wire transports (docker and cloudflare-native) probe the application schema, postgrest-http lowers the identical pair');
+console.log('PASS external state preflight: shared resolver configuration, read-only schema probe, nonempty/unknown refusal, supabase PostgREST and wire transports (docker and cloudflare-native) probe the application schema, postgrest-http lowers the identical pair and its real runner selection probes the PostgREST endpoint');
