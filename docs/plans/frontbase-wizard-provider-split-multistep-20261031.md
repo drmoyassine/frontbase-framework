@@ -46,6 +46,22 @@ Owner-directed 2026-10-31 ("Analyze everything I said and make a plan"). Status:
 - The **consent round** (phase 6 of the 2026-10-29 plan: fresh relay-enrolled deploy → Connect Cloudflare → Connect Supabase, capturing the consent screen) is unchanged and should ride the first post-redesign button deploy.
 - Steps 2–6 keep today's adapters; no new cache/queue/vector/storage provider work is in scope.
 
+## Parallelization (added 2026-10-31 after owner question)
+
+File-ownership analysis of phases A–F (single clean worktree, explicit file partitioning per AGENTS.md; agents never commit — Git stays with the integrating session):
+
+- **Wave 0 (serial, small) — Phase A.** Edge-core inventory + validation is the contract every other stream reads (`postgrest-http` entry, supabase picker metadata, validation rules + edge-core tests/mutation gate). Too small to split; parallelizing it buys nothing.
+- **Wave 1 (three parallel streams, file-disjoint):**
+  - **B — discovery endpoints:** new `packages/backend/src/provider-oauth-resources.ts` + mounts in `hosted-bootstrap.ts` and `native-cloud.ts` + read-only/no-leak tests.
+  - **E — apply wiring:** `provider-oauth-bindings.ts` learns `oauth/supabase/token`; executor + docker-host suites. Shares `packages/backend` with B but zero files with it.
+  - **C-UI — form redesign against stubbed endpoints:** multi-step scaffold, Supabase picker flow (fetch fixed to B's URL contract, stubbed), PostgREST card, brand buttons, `native-index.html`/`hosted-index.html` step chrome. Only stream allowed to touch `bindings-form.ts`.
+- **Wave 2 (two parallel streams, disjoint):**
+  - **F — surface gates:** `native-cloud.ts` allow-list + the `hosted-cloud.ts` configuration/preflight gap fix + `native-cloud.mjs` cases. Sequential after B (same file `native-cloud.ts`).
+  - **D — restyle:** console tokens into `style.css` + `bindings-form.css`. Sequential after C (same DOM). F and D are disjoint with each other.
+- **Wave 3 (serial closeout):** C↔B end-to-end wire-up test, full gates (`test:deployment-setup`, `test:hosted-bootstrap`, `test:deployment-bindings`, `native-cloud.mjs`, console `check`, `pnpm -r check`, cf-full dry-run), docs rewrite to implemented truth, DECISIONS.md entry, audit evidence, commit/push, owner redeploy + consent round.
+
+Long pole in Wave 1 is E (executor + mutation suites are the slowest gates). Commit granularity stays per-phase at integration; every stream records its scoped check results before the wave merges.
+
 ## Verification plan
 
 Per phase: the named suites + mutation gates + `pnpm -r check`; Phases C/D additionally `pnpm -C packages/console check`, `test:deployment-bindings`, `node scripts/test-deployment-setup.mjs`, `node examples/cf-full/test/native-cloud.mjs`, `test:hosted-bootstrap`; Phase E the executor + docker-host + provision mutation chains. Every delivery lands with exact results recorded in the audit, then owner-approved fast-forward to `main`, then a fresh button deploy shows the new wizard.
