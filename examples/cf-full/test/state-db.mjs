@@ -282,6 +282,30 @@ check('token-without-URL error carries no token', () => {
     }
 });
 
+console.log('\n=== state-db resolver: postgrest-http adapter admission (wave 0, provider split) ===');
+// The wizard's postgrest-http entry lowers to the SAME APP_DB_POSTGREST_* pair as the
+// supabase-postgres connect selection, so the resolver admits it through the one 1b branch:
+// https only, loud on a half pair, bearer never displayed. The existing PostgREST refusal
+// checks above therefore cover both adapters by construction.
+check('postgrest-http lowering (url+token+schema) resolves as postgres-postgrest on any host', () => {
+    const r = resolveStateDb({
+        env: envOf({ APP_DB_POSTGREST_URL: 'https://postgrest.example.internal', APP_DB_POSTGREST_TOKEN: TOKEN, APP_DB_POSTGRES_SCHEMA: 'frontbase_edge_state' }),
+        host: 'cloudflare',
+    });
+    return r.kind === 'postgres-postgrest' && r.displayUrl === 'https://postgrest.example.internal'
+        && r.label === 'PostgreSQL (PostgREST)' && r.card.provider === 'postgres' && noLeak(r);
+});
+check('postgrest-http display stays redacted — the bearer appears nowhere printable', () => {
+    const r = resolveStateDb({
+        env: envOf({ APP_DB_POSTGREST_URL: 'https://postgrest.example.internal', APP_DB_POSTGREST_TOKEN: TOKEN }),
+        host: 'node',
+    });
+    return !JSON.stringify({ label: r.label, url: r.url, displayUrl: r.displayUrl, card: r.card }).includes(TOKEN);
+});
+throwsWith('postgrest-http http:// endpoint refused (https only, bearer never in clear text)', () =>
+    resolveStateDb({ env: envOf({ APP_DB_POSTGREST_URL: 'http://postgrest.example.internal', APP_DB_POSTGREST_TOKEN: TOKEN }), host: 'vercel' }),
+    ['https']);
+
 console.log(`\n=== state-db resolver: ${failures === 0 ? 'ALL PASSED ✅' : `${failures} FAILURE(S) ❌`} ===`);
 // Marketplace credentials use the same HTTP runner and do not displace explicit APP_DB selections.
 { const selected=describeStateDb({host:'vercel',env:{TURSO_DATABASE_URL:'https://test.turso.io',TURSO_AUTH_TOKEN:TOKEN}});

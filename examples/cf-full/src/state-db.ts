@@ -19,6 +19,8 @@
  *                  sqld; HRANA over fetch)                   https://
  *   postgres-postgrest  PostgreSQL over HTTPS (PostgREST; — APP_DB_POSTGREST_
  *                      the CF-20 supabaseRunner transport)   URL + _TOKEN
+ *                      (one pair serving BOTH wizard adapters: supabase
+ *                      connect and the self-hosted postgrest-http entry)
  *   postgres-wire  PostgreSQL direct TCP (node/vercel;     — APP_DB_URL
  *                  Cloudflare only via Hyperdrive)          postgres://
  *   postgres-hyperdrive  PostgreSQL/Supabase through a     — env.HYPERDRIVE
@@ -190,7 +192,10 @@ export function describeStateDb(input: {
     // 1b. PostgREST selection — PostgreSQL over HTTPS (the CF-20 supabaseRunner
     // transport; self-hosted Postgres behind PostgREST, no wire reachability
     // needed). Plain fetch: the one postgres transport that runs unchanged on
-    // every host. https only — the bearer never travels in clear text.
+    // every host. https only — the bearer never travels in clear text. The
+    // wizard's supabase-postgres connect and postgrest-http adapters both lower
+    // to this pair, so they resolve here unchanged — one admission, no
+    // per-provider branching.
     const postgrestUrl = env.APP_DB_POSTGREST_URL?.trim() || undefined;
     const postgrestToken = env.APP_DB_POSTGREST_TOKEN?.trim() || undefined;
     if (postgrestUrl && postgrestToken) {

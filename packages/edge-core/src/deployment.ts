@@ -60,7 +60,12 @@ export const deploymentAdapters: readonly DeploymentAdapter[] = [
     // Create/reuse provision an isolated frontbase_edge_* schema at apply time (Management API); the operator
     // token never reaches a host — executors lower only the transformed connect profile it provisions.
     // Schema identifiers stay lowercase: postgresStateRunner refuses other quoting-sensitive names at boot.
-    {id:'supabase-postgres',role:'state-db',targets:both,selectable:true,modes:['connect','create','reuse'],configKeys:['url','schema','host','port','database','projectRef'],secretKeys:['token','username','password'],configKeysByMode:{connect:['url','schema','host','port','database'],create:['projectRef','schema'],reuse:['projectRef']}},
+    // configKeysByMode is the picker form (connect: endpoint pair; create/reuse: project + schema pick),
+    // while validation still consults configKeys, so stored wire profiles keep applying unchanged.
+    {id:'supabase-postgres',role:'state-db',targets:both,selectable:true,modes:['connect','create','reuse'],configKeys:['url','schema','host','port','database','projectRef'],secretKeys:['token','username','password'],configKeysByMode:{connect:['url','schema'],create:['projectRef','schema'],reuse:['projectRef','schema']}},
+    // Self-hosted Postgres behind PostgREST: a separate provider entry that reuses the existing
+    // supabaseRunner HTTP transport lowering (APP_DB_POSTGREST_URL/_TOKEN) — no wire parts, no Management API.
+    {id:'postgrest-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url','schema'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'upstash-http',role:'cache',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'cloudflare-r2',role:'storage',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
@@ -139,6 +144,8 @@ export function validateDeploymentManifest(input: unknown): DeploymentPlan | {re
             }
             if(binding.config.schema&&!/^[a-z_][a-z0-9_]{0,62}$/.test(binding.config.schema))issues.push({role,field:'schema',code:'invalid_schema'});
         }
+        // postgrest-http keeps the same plain-lowercase schema fence the probe quote-doubling relies on.
+        if(adapter.id==='postgrest-http'&&binding.config.schema&&!/^[a-z_][a-z0-9_]{0,62}$/.test(binding.config.schema))issues.push({role,field:'schema',code:'invalid_schema'});
         if(adapter.id==='supabase-postgres'&&(binding.mode==='create'||binding.mode==='reuse')){
             // Provisioned selections carry only the Management-API project reference, a schema name and the
             // operator token reference; transport parts and role credentials belong to the transformed
@@ -147,7 +154,11 @@ export function validateDeploymentManifest(input: unknown): DeploymentPlan | {re
             if(binding.mode==='create'){
                 if(!binding.config.schema?.trim())issues.push({role,field:'schema',code:'missing_config'});
                 if(!supabaseStateSchemaName.test(binding.config.schema??''))issues.push({role,field:'schema',code:'invalid_schema'});
-            }else if(!supabaseStateSchemaName.test(binding.resourceRef??''))issues.push({role,field:'resourceRef',code:'invalid_schema'});
+            }else{
+                if(!supabaseStateSchemaName.test(binding.resourceRef??''))issues.push({role,field:'resourceRef',code:'invalid_schema'});
+                // Picker-driven reuse also names the picked schema in config; it must stay fenced and agree with the resource pick.
+                if(binding.config.schema&&(!supabaseStateSchemaName.test(binding.config.schema)||binding.config.schema!==binding.resourceRef))issues.push({role,field:'schema',code:'invalid_schema'});
+            }
             if(!binding.secretRefs.token)issues.push({role,field:'token',code:'missing_secret_reference'});
             if(binding.secretRefs.username||binding.secretRefs.password)issues.push({role,code:'state_transport_conflict'});
             if(binding.config.url||binding.config.host||binding.config.port||binding.config.database)issues.push({role,code:'state_transport_conflict'});

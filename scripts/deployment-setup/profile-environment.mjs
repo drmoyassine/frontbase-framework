@@ -36,6 +36,11 @@ export function profileEnvironment(prepared,{nativeHyperdrive=false}={}) {
     else{if(plan.manifest.target==='cloudflare'){if(!nativeHyperdrive)throw Error('state_wire_requires_hyperdrive');env.APP_DB_HYPERDRIVE='1';}env.APP_DB_URL=`postgres://${encodeURIComponent(get(b,'username'))}:${encodeURIComponent(get(b,'password'))}@${c.host}:${c.port||'5432'}/${c.database}`;}
     if(c.schema)env.APP_DB_POSTGRES_SCHEMA=c.schema;break;
    }
+   case 'postgrest-http':
+    // Self-hosted Postgres behind PostgREST lowers through the same supabaseRunner HTTP
+    // transport pair as the supabase-postgres connect path (url is https-only and required
+    // at manifest validation, so no wire branch exists here).
+    env.APP_DB_POSTGREST_URL=c.url;env.APP_DB_POSTGREST_TOKEN=get(b,'token');if(c.schema)env.APP_DB_POSTGRES_SCHEMA=c.schema;break;
    case 'upstash-http':json('FRONTBASE_CACHE',{provider:'upstash',url:c.url,token:get(b,'token')});break;
    case 'libsql-vector-http':json('FRONTBASE_VECTOR',{provider:'libsql',url:c.url,token:get(b,'token')});break;
    case 'cloudflare-vectorize-http':json('FRONTBASE_VECTOR',{provider:'vectorize',url:c.indexName,cfAccountId:c.accountId,cfApiToken:get(b,'token')});break;

@@ -25,4 +25,13 @@ assert.throws(()=>profileEnvironment({manifest:cloudWire,credentials:{'state/rol
 const cloudNative=profileEnvironment({manifest:cloudWire,credentials:{'state/role':'r','state/role-secret':'s'}},{nativeHyperdrive:true});
 assert.equal(cloudNative.APP_DB_HYPERDRIVE,'1');assert.equal(cloudNative.APP_DB_URL,'postgres://r:s@db.example.test:5432/postgres');
 assert.ok(!('APP_DB_HYPERDRIVE' in wireEnv));assert.ok(!cloudNative.FRONTBASE_DEPLOYMENT_MANIFEST.includes('postgres://r:s@'));
+// Wave 0 (docs/plans/frontbase-wizard-provider-split-multistep-20261031.md): postgrest-http lowers
+// through the identical supabaseRunner HTTP transport pair — same env, same https-only source, no wire branch.
+const selfHosted=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'postgrest-http',mode:'connect',config:{url:'https://api.example.test/rest/v1',schema:'frontbase_edge_state'},secretRefs:{token:'state/token'}}});
+const selfHostedEnv=profileEnvironment({manifest:selfHosted,credentials:{'state/token':'synthetic-bearer'}});
+assert.equal(selfHostedEnv.APP_DB_POSTGREST_URL,postgrestEnv.APP_DB_POSTGREST_URL);assert.equal(selfHostedEnv.APP_DB_POSTGREST_TOKEN,postgrestEnv.APP_DB_POSTGREST_TOKEN);assert.equal(selfHostedEnv.APP_DB_POSTGRES_SCHEMA,postgrestEnv.APP_DB_POSTGRES_SCHEMA);
+assert.ok(!('APP_DB_URL' in selfHostedEnv));assert.ok(!('APP_DB_HYPERDRIVE' in selfHostedEnv));assert.ok(!selfHostedEnv.FRONTBASE_DEPLOYMENT_MANIFEST.includes('synthetic-bearer'));
+const vercelHosted=profileEnvironment({manifest:resolveDeploymentManifest('vercel',undefined,{'state-db':{adapterId:'postgrest-http',mode:'connect',config:{url:'https://api.example.test/rest/v1'},secretRefs:{token:'state/token'}}}),credentials:{'state/token':'synthetic-bearer'}});
+assert.equal(vercelHosted.APP_DB_POSTGREST_URL,'https://api.example.test/rest/v1');assert.equal(vercelHosted.APP_DB_POSTGREST_TOKEN,'synthetic-bearer');assert.ok(!('APP_DB_POSTGRES_SCHEMA' in vercelHosted));
 console.log('PASS supabase state lowering: PostgREST env identical on every host, encoded wire DSN without manifest echo, Cloudflare wire refused outside the Hyperdrive-provisioning executor');
+console.log('PASS postgrest-http lowering: identical supabase PostgREST pair on docker and vercel, optional schema, no wire branch');

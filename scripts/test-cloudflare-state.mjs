@@ -15,6 +15,14 @@ await verifyEmptyExternalState({manifest:supaPostgrest,credentials:{'state/token
  assert.equal(env.APP_DB_POSTGREST_URL,'https://api.example.test/rest/v1');assert.equal(env.APP_DB_POSTGREST_TOKEN,'fixture-bearer');assert.equal(env.APP_DB_POSTGRES_SCHEMA,'frontbase_edge_state');
  return {query:async sql=>{pgCalls++;assert.match(sql,/^SELECT tablename FROM pg_tables WHERE schemaname='frontbase_edge_state' LIMIT 1$/);return [];}};}});
 assert.equal(pgCalls,1);
+// postgrest-http (self-hosted Postgres behind PostgREST) lowers to the identical pair, so the
+// probe path receives the same env a supabase-postgres PostgREST manifest would feed it.
+const restPostgrest=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'postgrest-http',mode:'connect',config:{url:'https://api.example.test/rest/v1',schema:'frontbase_edge_state'},secretRefs:{token:'state/token'}}});
+let restCalls=0;
+await verifyEmptyExternalState({manifest:restPostgrest,credentials:{'state/token':'fixture-bearer'}},{makeRunner:env=>{
+ assert.equal(env.APP_DB_POSTGREST_URL,'https://api.example.test/rest/v1');assert.equal(env.APP_DB_POSTGREST_TOKEN,'fixture-bearer');assert.equal(env.APP_DB_POSTGRES_SCHEMA,'frontbase_edge_state');restCalls++;
+ return {query:async()=>[]};}});
+assert.equal(restCalls,1);
 const supaWire=resolveDeploymentManifest('docker',undefined,{'state-db':{adapterId:'supabase-postgres',mode:'connect',config:{host:'db.example.test',port:'5432',database:'postgres'},secretRefs:{username:'state/role',password:'state/role-secret'}}});
 await verifyEmptyExternalState({manifest:supaWire,credentials:{'state/role':'edge_role','state/role-secret':'fixture-password'}},{makeRunner:env=>{
  assert.equal(env.APP_DB_URL,'postgres://edge_role:fixture-password@db.example.test:5432/postgres');assert.ok(!env.APP_DB_POSTGRES_SCHEMA);
@@ -26,4 +34,4 @@ const cloudWire=resolveDeploymentManifest('cloudflare',undefined,{'state-db':{ad
 await verifyEmptyExternalState({manifest:cloudWire,credentials:{'state/role':'edge_role','state/role-secret':'fixture-password'}},{makeRunner:env=>{
  assert.equal(env.APP_DB_URL,'postgres://edge_role:fixture-password@db.example.test:5432/postgres');assert.equal(env.APP_DB_HYPERDRIVE,'1');assert.equal(env.APP_DB_POSTGRES_SCHEMA,'edge_state');
  return {query:async sql=>{assert.match(sql,/^SELECT tablename FROM pg_tables WHERE schemaname='edge_state' LIMIT 1$/);return [];}};}});
-console.log('PASS external state preflight: shared resolver configuration, read-only schema probe, nonempty/unknown refusal, supabase PostgREST and wire transports (docker and cloudflare-native) probe the application schema');
+console.log('PASS external state preflight: shared resolver configuration, read-only schema probe, nonempty/unknown refusal, supabase PostgREST and wire transports (docker and cloudflare-native) probe the application schema, postgrest-http lowers the identical pair');
