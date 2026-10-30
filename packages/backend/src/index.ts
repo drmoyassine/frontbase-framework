@@ -345,3 +345,4 @@ export {createProviderOAuthRelay,type OAuthRelayDeps,type OAuthRelayTarget} from
 export {sqlOAuthRelayVault,sqlOAuthNativeClaims} from './provider-oauth-relay-store.js';
 export {relayTargetPolicy} from './provider-oauth-relay-target.js';
 export {createProviderRelayClient,type ProviderRelayClientDeps} from './provider-oauth-relay-client.js';
+export {createProviderOAuthResources,type ProviderOAuthResourcesDeps} from './provider-oauth-resources.js';

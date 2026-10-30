@@ -1,5 +1,5 @@
 import {createHostedBootstrap} from '@frontbase/backend';
-import {resolveProviderOAuthCredentials,createSecretCipher,createProviderOAuth,createProviderRelayClient,providerOAuthRelay,providerOAuthClients,providerOAuthVault,type OAuthVault} from '@frontbase/backend';
+import {resolveProviderOAuthCredentials,createSecretCipher,createProviderOAuth,createProviderOAuthResources,createProviderRelayClient,providerOAuthRelay,providerOAuthClients,providerOAuthVault,type OAuthVault} from '@frontbase/backend';
 import {guardedExternalFetch} from '../../../packages/backend/src/compat/external-http';
 import {reconcileBootstrap} from '@frontbase/edge-core/deployment-bootstrap';
 import {d1RunnerFromRest,d1RunnerFromBinding,sqliteRunner,timingSafeEqual} from '@frontbase/edge-infra';
@@ -111,7 +111,7 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
    const configuration={origin,clients:providerOAuthClients(env,origin),store:connection.store,fetch:transport,authorize:async (request:Request)=>{
     if(new URL(request.url).origin!==origin||!appPromise)return null;
     const probe=await (await appPromise).fetch(new Request(origin+'/frontbase-bootstrap/api/configuration',{headers:{cookie:request.headers.get('cookie')??''}}));if(!probe.ok)return null;const state=await probe.json();return state.operation&&['applying','uncertain'].includes(state.operation.phase)?null:actor;
-   }};const relay=providerOAuthRelay(env,origin);return {...connection,app:relay?createProviderRelayClient({...configuration,...relay,mode:'authenticated',cipher}):createProviderOAuth(configuration)};
+   }};const relay=providerOAuthRelay(env,origin);const authorize=configuration.authorize;return {...connection,app:relay?createProviderRelayClient({...configuration,...relay,mode:'authenticated',cipher}):createProviderOAuth(configuration),resources:createProviderOAuthResources({origin,authorize,fetch:transport,supabaseGrant:async()=>{const grants=await connection.refresh(providerOAuthClients(env,origin),{fetch:transport});return grants.find(g=>g.provider==='supabase')??null;}})};
   });
  }
  const originalApply=executor.apply;
@@ -123,7 +123,7 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
  };
  return {journal,executor,initialize,configuration,context,fetch:async(request:Request)=>{
   if(new URL(request.url).origin!==origin)return new Response('Invalid origin',{status:403});
-  if(!appPromise)appPromise=nextSetup().then(link=>createHostedBootstrap({enabled:true,origin,token:owner,expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT,context,journal,executor,initialize,configuration,resolveCredentials:async(manifest,input)=>resolveProviderOAuthCredentials(manifest,input,await (await oauth()).refresh(providerOAuthClients(env,origin),{fetch:transport})),pendingSetup:true,nextSetup:()=>link}));
+  if(!appPromise)appPromise=nextSetup().then(async link=>createHostedBootstrap({enabled:true,origin,token:owner,expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT,context,journal,executor,initialize,configuration,resolveCredentials:async(manifest,input)=>resolveProviderOAuthCredentials(manifest,input,await (await oauth()).refresh(providerOAuthClients(env,origin),{fetch:transport})),pendingSetup:true,nextSetup:()=>link,providerResources:(await oauth()).resources}));
   const url=new URL(request.url);if(url.pathname.startsWith('/api/provider-oauth/'))return (await oauth()).app.fetch(request);if(url.pathname.startsWith('/frontbase-bootstrap/api/'))return (await appPromise).fetch(request);
   const headers={'cache-control':'no-store','referrer-policy':'no-referrer','x-content-type-options':'nosniff','content-security-policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
   if(url.pathname==='/health')return Response.json({status:'setup_required'},{headers});

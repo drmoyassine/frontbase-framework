@@ -1,18 +1,23 @@
 import assert from 'node:assert/strict';
 import {defaultDeploymentManifest} from '../../edge-core/dist/deployment.js';
 const {createHostedBootstrap}=await import(process.env.FRONTBASE_HOSTED_BOOTSTRAP_TEST_MODULE??'../dist/hosted-bootstrap.js');
+const {createProviderOAuthResources}=await import(process.env.FRONTBASE_RESOURCES_TEST_MODULE??'../dist/provider-oauth-resources.js');
 const origin='https://setup.example',token='synthetic-bootstrap-capability-'.repeat(2),context={installationId:'11111111-2222-4333-8444-555555555555',target:'docker',destination:'test/container'};
 let time=Date.parse('2026-10-26T12:00:00Z'),value=null,writes=0,proof=null;
 const journal={read:async()=>structuredClone(value),compareAndSwap:async(c,r,n)=>{if((value?.revision??null)!==r)return false;value=structuredClone(n);return true;}};
 const executor={preflight:async()=>{},apply:async r=>{writes++;proof={operationId:r.operationId,fingerprint:r.fingerprint,healthy:true,bootstrapDisabled:true}},inspect:async()=>proof};
+const discoveryTransport=async(url,init)=>{assert.equal(init.redirect,'manual');assert.ok(init.signal);if(String(url)==='https://api.supabase.com/v1/projects')return Response.json([{ref:'fixtureprojectref',name:'Fixture project'}]);return Response.json([{schema_name:'frontbase_edge_demo',has_role:true}]);};
+const resources=createProviderOAuthResources({origin,fetch:discoveryTransport,now:()=>time,authorize:async req=>req.headers.get('x-actor')?{tenant:'_root',subject:'owner'}:null,supabaseGrant:async()=>({provider:'supabase',accessToken:'synthetic-discovery-token',scopes:[],accounts:[{id:'fixtureprojectref',name:'Fixture project'}]})});
 const deps={enabled:true,origin,token,expiresAt:'2026-10-26T12:30:00Z',context,journal,executor,now:()=>time};let app=createHostedBootstrap(deps);
-const request=(path,{body,cookie,otherOrigin,host=origin,method=body===undefined?'GET':'POST'}={})=>app.fetch(new Request(host+'/frontbase-bootstrap/api/'+path,{method,headers:{...(body===undefined?{}:{'content-type':'application/json',origin:otherOrigin??origin}),...(cookie?{cookie}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})}));
+const request=(path,{body,cookie,otherOrigin,host=origin,method=body===undefined?'GET':'POST',headers={}}={})=>app.fetch(new Request(host+'/frontbase-bootstrap/api/'+path,{method,headers:{...(body===undefined?{}:{'content-type':'application/json',origin:otherOrigin??origin}),...(cookie?{cookie}:{}),...headers},...(body===undefined?{}:{body:JSON.stringify(body)})}));
 assert.equal((await request('configuration')).status,403);
 assert.equal((await request('claim',{body:{token:'wrong'}})).status,403);
 assert.equal((await request('claim',{body:{token},otherOrigin:'https://attacker.example'})).status,403);
 assert.equal((await request('claim',{body:{token},host:'https://wrong.example'})).status,403);
 assert.equal((await request('claim?leak=1',{body:{token}})).status,403);
 assert.equal((await request('claim',{body:{token:'a'.repeat(70000)}})).status,409);
+// Provider discovery mounts under the same bootstrap session: refused before the owner claim.
+app=createHostedBootstrap({...deps,providerResources:resources});assert.equal((await request('provider-resources/supabase/projects',{body:{},headers:{'x-actor':'_root/owner'}})).status,403);
 const claimed=await request('claim',{body:{token}});assert.equal(claimed.status,200);const cookie=claimed.headers.get('set-cookie').split(';')[0];
 assert.match(claimed.headers.get('set-cookie'),/HttpOnly; Secure; SameSite=Strict/);assert.ok(!cookie.includes(token));
 assert.equal((await request('configuration',{cookie:cookie+'; '+cookie})).status,403);
@@ -20,13 +25,22 @@ assert.equal((await request('configuration',{cookie:cookie.slice(0,-1)+'!'})).st
 app=createHostedBootstrap({...deps,context:{...context,destination:'another/container'}});assert.equal((await request('configuration',{cookie})).status,403);
 app=createHostedBootstrap(deps);assert.equal((await request('configuration',{cookie})).status,200);
 let r=await request('configuration',{cookie});assert.equal(r.headers.get('cache-control'),'no-store');assert.ok(!(await r.text()).includes(token));
+// Without the mount the discovery path is an ordinary 404; with it, discovery rides the claim cookie and dies with the install.
+app=createHostedBootstrap(deps);assert.equal((await request('provider-resources/supabase/projects',{body:{},cookie,headers:{'x-actor':'_root/owner'}})).status,404);
+app=createHostedBootstrap({...deps,providerResources:resources});
+r=await request('provider-resources/supabase/projects',{body:{},cookie,headers:{'x-actor':'_root/owner'}});assert.equal(r.status,200);
+const discoveryText=await r.text();assert.equal(r.headers.get('cache-control'),'no-store');assert.deepEqual(JSON.parse(discoveryText),{projects:[{ref:'fixtureprojectref',name:'Fixture project'}]});assert.ok(!discoveryText.includes('synthetic-discovery-token'));
+assert.deepEqual((await (await request('provider-resources/supabase/schemas',{body:{projectRef:'fixtureprojectref'},cookie,headers:{'x-actor':'_root/owner'}})).json()),{schemas:[{name:'frontbase_edge_demo',hasRole:true}]});
+const operatorRequired=await request('provider-resources/supabase/projects',{body:{},cookie});assert.equal(operatorRequired.status,403);assert.deepEqual(JSON.parse(await operatorRequired.text()),{error:'oauth_operator_required'});
+assert.equal((await request('provider-resources/supabase/projects',{body:{},cookie,otherOrigin:'https://attacker.example',headers:{'x-actor':'_root/owner'}})).status,403);
 const manifest=defaultDeploymentManifest('docker');manifest.bindings['state-db']={adapterId:'libsql-http',mode:'connect',config:{url:'https://db.example'},secretRefs:{token:'db/token'}};
 assert.equal((await request('review',{cookie,body:{manifest},otherOrigin:'https://attacker.example'})).status,403);
 r=await request('review',{cookie,body:{manifest}});assert.equal(r.status,200);const review=await r.json();assert.equal(writes,0);
 r=await request('apply',{cookie,body:{reviewId:review.reviewId,credentials:{'db/token':'fixture-provider-secret'}}});assert.equal(r.status,200);assert.equal((await r.json()).phase,'active');assert.equal(writes,1);assert.ok(!JSON.stringify(value).includes('fixture-provider-secret'));
 assert.equal((await request('configuration',{cookie})).status,410);assert.equal((await request('claim',{body:{token}})).status,410);
+assert.equal((await request('provider-resources/supabase/projects',{body:{},cookie,headers:{'x-actor':'_root/owner'}})).status,410);
 value=null;time+=900001;assert.equal((await request('configuration',{cookie})).status,403);
 time+=900000;assert.equal((await request('claim',{body:{token}})).status,410);
 app=createHostedBootstrap({...deps,enabled:false});assert.equal((await request('claim',{body:{token}})).status,410);
 assert.throws(()=>createHostedBootstrap({...deps,token:'weak'}));assert.throws(()=>createHostedBootstrap({...deps,origin:'http://setup.example'}));
-console.log('PASS hosted bootstrap API: zero DB, scoped expiring cookie across instances, origin/CSRF/body bounds, active-install lock, no secret projection and existing manifest/transaction reuse');
+console.log('PASS hosted bootstrap API: zero DB, scoped expiring cookie across instances, origin/CSRF/body bounds, active-install lock, no secret projection, existing manifest/transaction reuse and provider-discovery mount under the same session');

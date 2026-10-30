@@ -1,5 +1,6 @@
 import { registerDeploymentBindingsRoutes } from './routes/deployment-bindings.js';
 import {createProviderOAuth,type ProviderOAuthClient,type OAuthProvider} from '../provider-oauth.js';
+import {createProviderOAuthResources} from '../provider-oauth-resources.js';
 import {providerOAuthStore} from '../provider-oauth-store.js';
 import {createProviderRelayClient} from '../provider-oauth-relay-client.js';
 import type {OAuthRelayTarget} from '../provider-oauth-relay.js';
@@ -305,7 +306,21 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
             if(deps.cloudMode||!principal.tenant||!user||!['master_admin','owner','admin'].includes(user.role??''))return null;
             const subject=user.id??user.sub;return subject?{tenant:principal.tenant,subject}:null;
         },
-    };app.route('/',deps.providerOAuth.relay?createProviderRelayClient({...configuration,...deps.providerOAuth.relay,mode:'authenticated',cipher:secretCipher}):createProviderOAuth(configuration));}
+    };app.route('/',deps.providerOAuth.relay?createProviderRelayClient({...configuration,...deps.providerOAuth.relay,mode:'authenticated',cipher:secretCipher}):createProviderOAuth(configuration));
+    // Read-only supabase discovery for setup surfaces, authorized identically and reading the
+    // same tenant-scoped encrypted provider records the /status endpoint lists.
+    app.route('/api/provider-resources',createProviderOAuthResources({origin:deps.providerOAuth.origin,authorize:configuration.authorize,fetch:externalFetch as typeof fetch,supabaseGrant:async actor=>{
+        const store=new Phase2Store(runner,actor.tenant,secretCipher);
+        for(const row of await store.listEdgeResources('provider')){
+            if(String(row.provider)!=='supabase')continue;
+            const config=await store.getEdgeResourceConfig(String(row.id));
+            if(!config?.oauth||typeof config.oauth!=='object')continue;
+            const accessToken=String(config.access_token??'');if(!accessToken)continue;
+            const meta=config.oauth as {accounts?:Array<{id:string;name:string}>;scopes?:string[];expires_at?:number|null;refresh_token?:string|null};
+            return {provider:'supabase',accessToken,refreshToken:typeof meta.refresh_token==='string'&&meta.refresh_token?meta.refresh_token:undefined,expiresAt:typeof meta.expires_at==='number'?meta.expires_at:undefined,scopes:Array.isArray(meta.scopes)?meta.scopes:[],accounts:Array.isArray(meta.accounts)&&meta.accounts.length?meta.accounts:[{id:String(config.account_id??''),name:String(row.name)}]};
+        }
+        return null;
+    }}));}
     registerAppUserRoutes(app,runner,secretCipher,externalFetch,now,deps.requestTenant??(deps.cloudMode?async()=>undefined:undefined));
     // 2. Client hydration data plane (product parity — public route, no systemKeyAuth)
     registerDataExecuteRoute(
