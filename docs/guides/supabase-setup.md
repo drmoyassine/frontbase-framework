@@ -270,62 +270,103 @@ between tenants, use separate Supabase projects (out of scope for this seam).
 ## The deployment wizard's state database (2026-10)
 
 The self-host deployment wizard (the `/frontbase-bootstrap/` flows on Cloudflare and
-Docker, and the managed Cloudflare setup) can select **Supabase Postgres** as the
-application state database. D1 remains the Cloudflare default; this is an explicit
-selection. Three resource actions are offered:
+Docker, the managed Cloudflare/Vercel setup, and the console's deployment bindings
+editor share one form) is a **multi-step wizard**: **State Database** first — the only
+required step — followed by optional, skippable steps for File Storage, Application
+Cache, Queue Delivery, Vector Database and Email Delivery. Deployment is possible as
+soon as the State Database step holds a valid selection, and schema creation for a
+provisioned selection happens at apply time — setup never mutates a provider before the
+operator applies. The State Database picker keeps every previous option — **Cloudflare
+D1, Turso / remote libSQL and Docker-local LibSQL are unchanged** — and the Postgres
+family is now two separate entries rather than one adapter with many fields:
 
-| Action | What happens | What you provide |
+| Entry | What it is | What you provide in the wizard |
 | --- | --- | --- |
-| Connect | The application talks to a database you already prepared | PostgREST URL + bearer, or wire parts (host/port/database + role name/password) |
-| Create | Setup creates an isolated schema and a scoped login role, then connects | Project reference, schema name, a Management-API token |
-| Reuse | Setup adopts an **empty** existing schema, re-arms its role password, then connects | Project reference, the schema name, the same token |
+| **Supabase** (`supabase-postgres`) | A Supabase project, schema-isolated | OAuth Connect, then pick a project and a schema (existing, or name a new one) |
+| **Self-hosted Postgres (PostgREST)** (`postgrest-http`) | Any Postgres exposed through a PostgREST endpoint | Service URL + service role key (bearer); optional schema name |
 
-Provisioned schemas are fenced to the `frontbase_edge_<name>` pattern — anything else is
-refused at review, before any host is touched. A schema that already contains tables is
-refused too: first installs never risk existing data (an occupied schema needs an explicit
-migration instead of a wizard install). Every apply mints a fresh password for the scoped
-role (`<schema>_role`), so a redeploy never inherits an old credential.
+### Supabase: OAuth-only in the wizard
 
-### The PAT fallback (no OAuth required)
+The wizard's Supabase card has no credential fields. The flow is **Connect Supabase →
+project → schema**:
 
-OAuth is optional — an unconfigured installation simply keeps the manual token path.
-To provision with a personal access token:
+1. Select **Supabase** and use the Connect Supabase button (an installation without a
+   registered Supabase OAuth app or an enrolled relay shows an authorization note
+   instead of the button).
+2. Pick the project from the dropdown of the connected account's projects.
+3. Pick the schema: discovered `frontbase_edge_*` schemas are offered for **reuse**,
+   or choose **Create new schema…** and type the name — the input is fenced to the
+   `frontbase_edge_<name>` pattern.
 
-1. Create a PAT in the Supabase dashboard: **Account → Access Tokens** (tokens start with
-   `sbp_`). It must belong to an account that can run SQL on the project.
-2. In the wizard choose Supabase Postgres → Create (or Reuse) and enter the project
-   reference — the `<ref>` in `db.<ref>.supabase.co` — and the schema name.
-3. Paste the PAT into the token field and apply. Credentials live only in the setup
+The schema is created or adopted when the deployment is applied, never during setup.
+The same fences as before hold: a schema that already contains tables is refused (first
+installs never risk existing data — an occupied schema needs an explicit migration
+instead of a wizard install), and every apply mints a fresh password for the scoped
+role (`<schema>_role`), so a redeploy never inherits an old credential. Authorization
+rides the connected OAuth grant end to end: the grant token never reaches the
+application's environment, the Docker runtime volume, command lines, receipts or Git.
+The running application authenticates only as the schema-scoped role.
+
+**Native zero-state limitation, stated plainly.** The fresh-install wizard served by a
+native Cloudflare or Vercel worker holds no server-side copy of the Supabase grant
+(the grant passes once through activation into the installed worker), so its
+project/schema dropdowns are not available there. The native zero-state wizard connects
+the Supabase project chosen at OAuth time and takes the schema name inline — a single
+project select plus the fenced `frontbase_edge_<name>` create input; the schema is
+still created at apply. The full project/schema dropdowns live in the hosted setup
+wizard (Cloudflare, Vercel and Docker bootstrap) and the console deployment bindings
+editor today. Server-side project/schema listing from a native installation is recorded
+follow-up work, not an available feature.
+
+### The PAT fallback (CLI/headless, no longer a wizard field)
+
+The browser wizard no longer offers a personal-access-token field. The PAT remains the
+documented fallback for CLI/headless flows: a deployment profile or manifest prepared
+outside the browser wizard can carry a Supabase access token as the provisioning token
+secret, and setup resolves it exactly like a wizard selection:
+
+1. Create a PAT in the Supabase dashboard: **Account → Access Tokens** (tokens start
+   with `sbp_`). It must belong to an account that can run SQL on the project.
+2. Select Supabase create/reuse in the profile with the project reference — the `<ref>`
+   in `db.<ref>.supabase.co` — and the schema name.
+3. Supply the token as the `token` secret and apply. Credentials live only in the setup
    session; a later re-apply asks again.
 
 The token is used for exactly one purpose: the DDL call over the Management API
 (`POST https://api.supabase.com/v1/projects/<ref>/database/query`) that creates the
 schema, the scoped role and its grants. Provisioning deletes the token from the
 deployment profile the moment it finishes — it never reaches the application's
-environment, the Docker runtime volume, command lines, receipts or Git. The running
-application authenticates only as the schema-scoped role. You can revoke the PAT in the
-dashboard afterwards; the deployment does not need it again.
+environment, the Docker runtime volume, command lines, receipts or Git. You can revoke
+the PAT in the dashboard afterwards; the deployment does not need it again.
 
-### Transport notes
+### Self-hosted Postgres (PostgREST)
 
-- **Cloudflare:** the direct Postgres DSN becomes a Hyperdrive configuration the executor
-  creates and binds, with SQL-response caching disabled so the application reads its own
-  writes. No TCP or IPv6 requirement applies to the Worker itself.
+The second Postgres entry connects any Postgres database exposed through a PostgREST
+endpoint — your own server, or any provider's hosted Postgres. It asks for exactly two
+operational fields: the **Service URL** (HTTPS is enforced) and the **service role
+key**, sent as the bearer token; the schema name is optional and defaults to the
+endpoint's exposed schema. This is a connect-only entry: setup never creates resources
+on a self-hosted server. It lowers to the same PostgREST environment pair the Supabase
+HTTP transport uses, so the application's runtime behavior is identical. It is labeled
+honestly as HTTP-per-statement — portable and convenient, not throughput-equivalent to
+a wire transport — and it needs the `execute_query` / `execute_sql` helper functions
+from the Quick Start above.
+
+### Transport notes (Supabase)
+
+- **Cloudflare:** the provisioned Postgres DSN becomes a Hyperdrive configuration the
+  executor creates and binds, with SQL-response caching disabled so the application
+  reads its own writes. No TCP or IPv6 requirement applies to the Worker itself.
 - **Docker / Node:** the application connects directly to `db.<ref>.supabase.co:5432`.
-  That host is IPv6-preferred; on IPv4-only networks prefer **Connect** with the Supavisor
-  pooler connection from the Supabase dashboard, entering its host, port, database and
-  role credentials as the wire parts.
-- **PostgREST (Connect):** runs anywhere HTTPS does and needs the `execute_query` /
-  `execute_sql` helper functions from the Quick Start above. It is labeled honestly as
-  HTTP-per-statement — portable and convenient, not throughput-equivalent to the wire
-  transport.
+  That host is IPv6-preferred; on IPv4-only networks the Self-hosted Postgres entry
+  over the Supavisor pooler's PostgREST endpoint is the portable alternative.
 
-### OAuth instead of a PAT
+### OAuth setup
 
-An installation with a registered Supabase OAuth app (or an enrolled relay) offers a
-Connect Supabase button and provisions with a short-lived OAuth grant instead; see
-[Provider OAuth](./provider-oauth.md). Both paths produce the same schema-isolated
-result — the choice is only how the one-time DDL is authorized.
+The Connect Supabase button needs a registered Supabase OAuth app (or an enrolled
+relay); see [Provider OAuth](./provider-oauth.md). The OAuth grant and the CLI PAT path
+produce the same schema-isolated result — the choice is only how the one-time DDL is
+authorized.
 
 ---
 
