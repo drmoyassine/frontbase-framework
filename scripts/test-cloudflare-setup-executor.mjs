@@ -4,6 +4,7 @@ import { join, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 const { executeCloudflareFirstInstall, fingerprintCloudflareArtifacts, cloudflareExecutionIssues }=await import(process.env.FRONTBASE_CF_EXECUTOR_TEST_MODULE??new URL('./deployment-setup/cloudflare.mjs',import.meta.url).href);
 import { defaultDeploymentManifest } from '../packages/edge-core/dist/deployment.js';
+import { resolveProviderOAuthCredentials } from '../packages/backend/dist/index.js';
 const root=mkdtempSync(join(tmpdir(),'frontbase-executor-test-'));
 const stages=[];
 for(const directory of ['dist','src','console-dist'])mkdirSync(join(root,directory));
@@ -191,6 +192,31 @@ try {
  const missingFake=fixture();
  await assert.rejects(executeCloudflareFirstInstall(supaReuse,context,{exampleRoot:root,runWrangler:missingFake.run,onReceipt:receipt,fetchState:missingApi.fetchState,checkExternalState:async()=>{throw Error('provisioned state must not re-probe');}}));
  assert.ok(!missingFake.calls.some(call=>call.args[0]==='secret'||call.args[0]==='deploy'||call.args.includes('create')));
+
+ // The hosted bootstrap resolves 'oauth/supabase/token' to the actor's refreshed grant before the
+ // executor runs; the resolver output drives the same create path and the Management token rides
+ // only the API headers — never argv, stdin, the stage or the receipt.
+ const grantToken='refreshed-supabase-management-token';
+ const supaGrantCreate=structuredClone(prepared);
+ supaGrantCreate.manifest.bindings['state-db']={adapterId:'supabase-postgres',mode:'create',config:{projectRef:'fixtureproj',schema:'frontbase_edge_fixture_state'},secretRefs:{token:'oauth/supabase/token'}};
+ supaGrantCreate.credentials=resolveProviderOAuthCredentials(supaGrantCreate.manifest,{},[{provider:'supabase',accessToken:grantToken,scopes:[],accounts:[{id:'fixtureproj',name:'Fixture project'}]}]);
+ assert.deepEqual(supaGrantCreate.credentials,{'oauth/supabase/token':grantToken});
+ const grantApi=managementApi();
+ const grantFake=hyperFake();
+ await executeCloudflareFirstInstall(supaGrantCreate,context,{exampleRoot:root,runWrangler:grantFake.run,onReceipt:receipt,fetchState:grantApi.fetchState,checkExternalState:async()=>{throw Error('provisioned state must not re-probe');}});
+ assert.equal(grantApi.apiCalls.length,2,'emptiness check then DDL over the resolved grant');
+ for(const call of grantApi.apiCalls){assert.equal(call.url,'https://api.supabase.com/v1/projects/fixtureproj/database/query');assert.equal(call.init.headers.authorization,'Bearer '+grantToken);}
+ assert.match(JSON.parse(grantApi.apiCalls.at(-1).init.body).query,/CREATE SCHEMA IF NOT EXISTS "frontbase_edge_fixture_state";/);
+ assert.ok(!JSON.stringify(grantFake.calls).includes(grantToken),'grant token never in argv or stdin');
+ const grantStage=stages.at(-1);
+ for(const path of walk(grantStage))assert.ok(!readFileSync(path,'utf8').includes(grantToken),'grant token persisted to stage');
+ const grantReceipt=JSON.parse(readFileSync(join(grantStage,'deployment-receipt.json'),'utf8'));
+ assert.ok(!JSON.stringify(grantReceipt).includes(grantToken),'grant token persisted to receipt');
+ assert.equal(grantReceipt.resources.database.name,'frontbase_edge_fixture_state');
+ assert.match(grantFake.calls.find(call=>call.args[0]==='hyperdrive').args[4],/^postgres:\/\/frontbase_edge_fixture_state_role:[^@]+@db\.fixtureproj\.supabase\.co:5432\/postgres$/,'minted scoped-role DSN lowers, not the grant');
+ // The resolver still refuses the PAT-shape references it does not own, unchanged.
+ assert.throws(()=>resolveProviderOAuthCredentials(supaGrantCreate.manifest,{'oauth/supabase/token':grantToken},[{provider:'supabase',accessToken:grantToken,scopes:[],accounts:[{id:'fixtureproj',name:'Fixture project'}]}]),/oauth_credential_override/);
+ assert.throws(()=>resolveProviderOAuthCredentials({...supaGrantCreate.manifest,bindings:{...supaGrantCreate.manifest.bindings,'state-db':{...supaGrantCreate.manifest.bindings['state-db'],mode:'connect'}}},{},[{provider:'supabase',accessToken:grantToken,scopes:[],accounts:[{id:'fixtureproj',name:'Fixture project'}]}]),/oauth_binding_refused/,'the Management grant is not a PostgREST bearer');
 
  const withStorage=structuredClone(withCache);withStorage.manifest.bindings.storage.mode='create';withStorage.manifest.bindings.storage.config.resourceName='profile-fixture-storage';
  for(const fault of ['none','existing','unknown','create-failed']) {

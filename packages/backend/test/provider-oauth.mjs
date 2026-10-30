@@ -114,6 +114,30 @@ assert.ok(!refreshed.some(g=>g.provider==='supabase'),'unusable grant omitted');
 assert.ok(!JSON.stringify(refreshed).includes('DO-NOT-LEAK'));
 assert.equal((await boot.store.connections(actor)).find(c=>c.provider==='supabase').reconnectRequired,true);
 failProvider=false;
+// Apply-time grant resolution: the supabase binding consumes the actor's stored grant — refreshed
+// before use, refused by name when unusable, never via a browser-supplied oauth/ override.
+const supaBinding={bindings:{state:{adapterId:'supabase-postgres',mode:'create',config:{projectRef:'testprojectref',schema:'frontbase_edge_apply'},secretRefs:{token:'oauth/supabase/token'}}}};
+let applyKey;for(const [key,value] of [...map]){if(!key.startsWith('connection:'))continue;const record=JSON.parse(await cipher.decrypt(value));if(record.authorization.provider==='supabase')applyKey=key;}
+assert.ok(applyKey,'supabase vault record present');
+const expireApply=async accessToken=>{const raw=map.get(applyKey),record=JSON.parse(await cipher.decrypt(raw));map.set(applyKey,await cipher.encrypt(JSON.stringify({...record,authorization:{...record.authorization,accessToken,expiresAt:time+1000}})));};
+await expireApply('expiring-apply-token');
+let applyRefreshBody;const applyGrants=await boot.refresh({supabase:{...clients.supabase,clientSecret:'sb-private'}},{fetch:async(url,init)=>{assert.equal(String(url),'https://api.supabase.com/v1/oauth/token');applyRefreshBody=new URLSearchParams(init.body);return Response.json({access_token:'apply-refreshed-token',refresh_token:'apply-rotated-refresh',token_type:'bearer',expires_in:3600});},now:()=>time});
+assert.equal(applyRefreshBody.get('grant_type'),'refresh_token');assert.equal(applyRefreshBody.get('refresh_token'),'synthetic-refresh-token');assert.equal(applyRefreshBody.get('client_id'),'sb-public');
+assert.equal(applyGrants.find(g=>g.provider==='supabase').accessToken,'apply-refreshed-token');
+assert.equal(resolveProviderOAuthCredentials(supaBinding,{},applyGrants,time)['oauth/supabase/token'],'apply-refreshed-token');
+assert.ok(!JSON.stringify([...map]).includes('expiring-apply-token')&&!JSON.stringify([...map]).includes('apply-refreshed-token'),'rotated grant exists only as ciphertext');
+await expireApply('stale-apply-token');
+const failedGrants=await boot.refresh({supabase:{...clients.supabase,clientSecret:'sb-private'}},{fetch:async()=>Response.json({access_token:'DO-NOT-LEAK',error:'private-provider-error'},{status:403}),now:()=>time});
+assert.ok(!failedGrants.some(g=>g.provider==='supabase'),'unrefreshable grant omitted');
+assert.throws(()=>resolveProviderOAuthCredentials(supaBinding,{},failedGrants,time),/oauth_binding_account_required/);
+assert.ok(!JSON.stringify(failedGrants).includes('stale-apply-token')&&!JSON.stringify(failedGrants).includes('DO-NOT-LEAK'));
+assert.equal(resolveProviderOAuthCredentials(supaBinding,{},applyGrants,time)['oauth/supabase/token'],'apply-refreshed-token');
+assert.throws(()=>resolveProviderOAuthCredentials(supaBinding,{'oauth/supabase/token':'browser-override'},applyGrants,time),/oauth_credential_override/);
+assert.throws(()=>resolveProviderOAuthCredentials({...supaBinding,bindings:{state:{...supaBinding.bindings.state,config:{projectRef:'otherprojectref'}}}},{},applyGrants,time),/oauth_binding_account_required/);
+assert.throws(()=>resolveProviderOAuthCredentials({...supaBinding,bindings:{state:{...supaBinding.bindings.state,mode:'connect'}}},{},applyGrants,time),/oauth_binding_refused/,'the Management grant is not a PostgREST bearer');
+assert.throws(()=>resolveProviderOAuthCredentials({...supaBinding,bindings:{state:{...supaBinding.bindings.state,secretRefs:{apiKey:'oauth/supabase/token'}}}},{},applyGrants,time),/oauth_binding_refused/);
+assert.throws(()=>resolveProviderOAuthCredentials({...supaBinding,bindings:{state:{...supaBinding.bindings.state,secretRefs:{token:'oauth/vercel/token'}}}},{},applyGrants,time),/oauth_binding_refused/);
+assert.throws(()=>resolveProviderOAuthCredentials({...supaBinding,bindings:{state:{...supaBinding.bindings.state,adapterId:'d1-http'}}},{},applyGrants,time),/oauth_binding_refused/);
 // A concurrent rotation that lands between read and write wins; the losing refresh adopts the stored result.
 let raceKey;for(const [key,value] of [...map]){if(!key.startsWith('connection:'))continue;const record=JSON.parse(await cipher.decrypt(value));if(record.authorization.provider==='supabase')raceKey=key;}
 assert.ok(raceKey,'supabase connection key present');
