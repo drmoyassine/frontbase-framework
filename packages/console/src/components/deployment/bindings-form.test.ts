@@ -3,14 +3,14 @@ import { fireEvent } from '@testing-library/react';
 import { defaultDeploymentManifest } from '@frontbase/edge-core/deployment';
 import { mountBindingsForm } from './bindings-form';
 let form:ReturnType<typeof mountBindingsForm>|undefined;
-afterEach(()=>{form?.destroy();document.body.replaceChildren();});
+afterEach(()=>{form?.destroy();document.body.replaceChildren();vi.unstubAllGlobals();});
 function mount(target:'cloudflare'|'vercel'='cloudflare',options:Partial<Parameters<typeof mountBindingsForm>[1]>={}){
  const root=document.createElement('div');document.body.append(root);
  form=mountBindingsForm(root,{manifest:defaultDeploymentManifest(target),...options});return root;
 }
 function select(root:HTMLElement,id:string,value:string){fireEvent.change(root.querySelector('#'+id)!,{target:{value}});}
 test('native defaults are editable recommendations and required state cannot be disabled',()=>{
- const root=mount();expect(root.textContent).toContain('State database');
+ const root=mount();expect(root.textContent).toContain('State Database');
  const provider=root.querySelector<HTMLSelectElement>('#binding-provider-state-db')!;
  expect([...provider.options].some(o=>o.value==='disabled')).toBe(false);
  expect(root.querySelector<HTMLSelectElement>('#binding-provider-storage')!.value).toBe('disabled');
@@ -112,14 +112,126 @@ test('Vectorize does not inherit the baseline D1 and KV OAuth token',()=>{
  expect(root.querySelector('input[type=password]')).not.toBeNull();
 });
 
-test('a supabase adapter raises the Supabase connection row and passes the provider through',()=>{
- const onConnect=vi.fn(async()=>{}),root=mount('cloudflare',{providerConnections:{supabase:{available:true,connected:false}},onConnect});
+test('multi-step renders one visible card with a numbered indicator and omits adapterless roles',()=>{
+ const root=mount('cloudflare');
+ const visible=root.querySelectorAll('.fb-binding-card:not([hidden])');
+ expect(visible).toHaveLength(1);
+ expect(visible[0].querySelector('h3')!.textContent).toContain('State Database');
+ const indicator=root.querySelector('.fb-binding-steps')!;
+ expect(indicator.textContent).toContain('File Storage');
+ expect(indicator.textContent).toContain('Application Cache');
+ expect(indicator.textContent).not.toContain('Email Delivery'); // zero compatible adapters on cloudflare
+ expect(root.querySelectorAll('.fb-binding-step')).toHaveLength(5);
+ expect(root.querySelector('.fb-binding-step[aria-current="step"]')!.textContent).toContain('State Database');
+});
+test('state database Next is blocked while its selection is invalid',()=>{
+ const root=mount('cloudflare');
+ expect(root.querySelector<HTMLButtonElement>('.fb-step-next')!.disabled).toBe(false);
+ select(root,'binding-provider-state-db','libsql-http');
+ const next=root.querySelector<HTMLButtonElement>('.fb-step-next')!;
+ expect(next.disabled).toBe(true);
+ const inputs=[...root.querySelectorAll<HTMLInputElement>('.fb-binding-card:not([hidden]) input')];
+ fireEvent.input(inputs[0],{target:{value:'https://state.example'}});
+ fireEvent.input(inputs[1],{target:{value:'synthetic-session-token'}});
+ expect(next.disabled).toBe(false);
+});
+test('Skip on an optional step sets the binding to disabled and advances',()=>{
+ const root=mount('cloudflare');
+ fireEvent.click(root.querySelector('.fb-step-next')!);
+ expect(root.querySelector('.fb-binding-card:not([hidden]) h3')!.textContent).toContain('File Storage');
+ select(root,'binding-provider-storage','cloudflare-r2');
+ expect(form!.snapshot().manifest.bindings.storage.mode).toBe('create');
+ fireEvent.click(root.querySelector('.fb-step-skip')!);
+ expect(form!.snapshot().manifest.bindings.storage.mode).toBe('disabled');
+ expect(root.querySelector('.fb-binding-card:not([hidden]) h3')!.textContent).toContain('Application Cache');
+ expect(root.querySelector('.fb-binding-step[aria-current="step"]')!.textContent).toContain('Application Cache');
+});
+test('provider connection rows use branded buttons and keep the connect flow',()=>{
+ const onConnect=vi.fn(async()=>{}),root=mount('cloudflare',{providerConnections:{cloudflare:{available:true,connected:false},supabase:{available:true,connected:false}},onConnect});
+ const cloudflare=root.querySelector('button.fb-connect-btn.fb-connect-cloudflare')!;
+ expect(cloudflare.querySelector('svg')).toBeTruthy();
+ expect(cloudflare.textContent).toContain('Connect Cloudflare');
+ fireEvent.click(cloudflare);
+ expect(onConnect).toHaveBeenCalledWith('cloudflare');
  expect(root.querySelector('.fb-binding-connection[aria-label="Supabase connection"]')).toBeNull();
  select(root,'binding-provider-state-db','supabase-postgres');
- const row=root.querySelector('.fb-binding-connection[aria-label="Supabase connection"]')!;
- expect(row.textContent).toContain('Connect to Supabase');
- fireEvent.click(row.querySelector('button')!);
+ const button=root.querySelector('button.fb-connect-btn.fb-connect-supabase')!;
+ expect(button.querySelector('svg')).toBeTruthy();
+ expect(button.textContent).toContain('Connect Supabase');
+ fireEvent.click(button);
  expect(onConnect).toHaveBeenCalledWith('supabase');
- expect(root.textContent).toContain('Supabase Postgres');
- expect(root.querySelectorAll('input[type=password]').length).toBe(3); // bearer token, role name, role password
+ const providers=root.querySelector<HTMLSelectElement>('#binding-provider-state-db')!;
+ expect(providers.textContent).toContain('Self-hosted Postgres (PostgREST)');
+ // Not connected: the picker implies the mode, so no resource-action select and no fields render.
+ expect(root.querySelector('#binding-mode-state-db')).toBeNull();
+ expect(root.querySelector('#binding-project-state-db')).toBeNull();
+ expect(root.querySelector('input[type=password]')).toBeNull();
+});
+test('postgrest-http renders the self-hosted Postgres fields without any picker',()=>{
+ const root=mount('cloudflare');
+ select(root,'binding-provider-state-db','postgrest-http');
+ const labels=[...root.querySelectorAll('.fb-binding-card:not([hidden]) label')].map(l=>l.textContent);
+ expect(labels).toContain('Service URL');
+ expect(labels).toContain('Schema');
+ expect(labels).toContain('Access token');
+ expect(root.querySelector('input[type=password]')).toBeTruthy();
+ const binding=form!.snapshot().manifest.bindings['state-db'];
+ expect(binding.adapterId).toBe('postgrest-http');
+ expect(binding.mode).toBe('connect');
+});
+test('connected supabase picker flow: projects, schemas, reuse and create carry the grant reference',async()=>{
+ const calls:string[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
+  calls.push(String(url));
+  if(String(url).endsWith('/provider-resources/supabase/projects'))return {ok:true,status:200,json:async()=>({projects:[{ref:'proj_1',name:'Alpha Project'}]})};
+  return {ok:true,status:200,json:async()=>({schemas:[{name:'frontbase_edge_existing',hasRole:true}]})};
+ }));
+ const root=mount('cloudflare',{providerConnections:{supabase:{available:true,connected:true,label:'Acme',accountId:'acct_9'}},discoveryBase:'/frontbase-bootstrap/api'});
+ select(root,'binding-provider-state-db','supabase-postgres');
+ expect(root.querySelector('#binding-mode-state-db')).toBeNull();
+ await vi.waitFor(()=>expect(root.querySelector('#binding-project-state-db')).toBeTruthy());
+ expect(calls).toContain('/frontbase-bootstrap/api/provider-resources/supabase/projects');
+ select(root,'binding-project-state-db','proj_1');
+ await vi.waitFor(()=>expect(root.querySelector('#binding-schema-state-db')).toBeTruthy());
+ const schema=root.querySelector<HTMLSelectElement>('#binding-schema-state-db')!;
+ expect(schema.options[0].textContent).toBe('Create new schema…');
+ expect([...schema.options].some(o=>o.value==='frontbase_edge_existing')).toBe(true);
+ select(root,'binding-schema-state-db','frontbase_edge_existing');
+ let binding=form!.snapshot().manifest.bindings['state-db'];
+ expect(binding.mode).toBe('reuse');
+ expect(binding.config).toEqual({projectRef:'proj_1',schema:'frontbase_edge_existing'});
+ expect(binding.resourceRef).toBe('frontbase_edge_existing');
+ expect(binding.secretRefs.token).toBe('oauth/supabase/token');
+ expect(form!.snapshot().credentials).toEqual({});
+ expect(root.querySelector('input[type=password]')).toBeNull();
+ select(root,'binding-schema-state-db','__create__');
+ fireEvent.input(root.querySelector('#binding-schema-suffix-state-db')!,{target:{value:'Blog2 Site'}});
+ binding=form!.snapshot().manifest.bindings['state-db'];
+ expect(binding.mode).toBe('create');
+ expect(binding.config).toEqual({projectRef:'proj_1',schema:'frontbase_edge_blog2_site'});
+ expect(binding.secretRefs.token).toBe('oauth/supabase/token');
+});
+test('discovery failure falls back to the connected project and a fenced create input without an error',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:false,status:502,json:async()=>({error:'provider_request_failed'})})));
+ const root=mount('cloudflare',{providerConnections:{supabase:{available:true,connected:true,label:'Acme',accountId:'acct_9'}},discoveryBase:''});
+ select(root,'binding-provider-state-db','supabase-postgres');
+ await vi.waitFor(()=>expect(root.querySelector('#binding-project-state-db')).toBeTruthy());
+ const project=root.querySelector<HTMLSelectElement>('#binding-project-state-db')!;
+ expect(project.options).toHaveLength(1);
+ expect(project.options[0].value).toBe('acct_9');
+ expect(project.options[0].textContent).toBe('Acme');
+ expect(root.querySelector('#binding-schema-suffix-state-db')).toBeTruthy();
+ expect(root.textContent).not.toContain('Could not load projects');
+ fireEvent.input(root.querySelector('#binding-schema-suffix-state-db')!,{target:{value:'Alpha-1'}});
+ const binding=form!.snapshot().manifest.bindings['state-db'];
+ expect(binding.mode).toBe('create');
+ expect(binding.config).toEqual({projectRef:'acct_9',schema:'frontbase_edge_alpha_1'});
+ expect(binding.secretRefs.token).toBe('oauth/supabase/token');
+});
+test('connected discovery without an account id reports the honest reconnect note',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:false,status:502,json:async()=>({})})));
+ const root=mount('cloudflare',{providerConnections:{supabase:{available:true,connected:true}},discoveryBase:''});
+ select(root,'binding-provider-state-db','supabase-postgres');
+ await vi.waitFor(()=>expect(root.textContent).toContain('Could not load projects. Reconnect Supabase and try again.'));
+ expect(root.querySelector('#binding-project-state-db')).toBeNull();
 });
