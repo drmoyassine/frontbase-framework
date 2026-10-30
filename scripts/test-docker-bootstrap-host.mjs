@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {mkdtempSync,existsSync,readFileSync,writeFileSync} from 'node:fs';
-import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {randomUUID,randomBytes} from 'node:crypto';
+import {mkdtempSync,existsSync,readFileSync,writeFileSync,readdirSync,mkdirSync} from 'node:fs';
+import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {randomUUID,randomBytes,createHash} from 'node:crypto';
 const {createDockerBootstrapHost}=await import(process.env.FRONTBASE_DOCKER_HOST_TEST_MODULE||new URL('./deployment-setup/docker-bootstrap-host.mjs',import.meta.url).href);
 import {defaultDeploymentManifest} from '../packages/edge-core/dist/deployment.js';
 const directory=mkdtempSync(join(tmpdir(),'fb-host-')),origin='https://bootstrap.example';
@@ -48,5 +48,43 @@ const supaApplied=await supaRequest('api/apply',{reviewId:supaReviewId,credentia
 assert.match(supaValues.APP_DB_URL,/^postgres:\/\/frontbase_edge_docker_state_role:[^@]+@db\.dockerproj\.supabase\.co:5432\/postgres$/);
 assert.equal(apiCalls.length,2);assert.equal(apiCalls[0].init.headers.authorization,'Bearer sbp_docker_fixture');
 assert.ok(!readFileSync(join(supaDir,'runtime.json'),'utf8').includes('sbp_docker_fixture'),'operator token never reaches the runtime volume');
+// OAuth grant path: the hosted bootstrap resolves 'oauth/supabase/token' from the actor's stored
+// supabase connection — refresh-before-use through the vault rotation — and the refreshed
+// Management token reaches only the provisioning API headers: never argv, volume or journal.
+const grantToken='refreshed-apply-management-token';
+const {createSecretCipher}=await import('../packages/backend/dist/index.js');
+const supaGrantDir=mkdtempSync(join(tmpdir(),'fb-supa-oauth-'));
+const grantEnv={...env,FRONTBASE_BOOTSTRAP_DIRECTORY:resolve(supaGrantDir),FRONTBASE_SUPABASE_OAUTH_CLIENT_ID:'sb-apply-client',FRONTBASE_SUPABASE_OAUTH_CLIENT_SECRET:'sb-apply-secret'};
+const grantCipher=await createSecretCipher(env.FRONTBASE_BOOTSTRAP_TOKEN);
+const grantCalls=[];
+const grantFetchState=async(url,init)=>{grantCalls.push({url,init});const query=JSON.parse(init.body).query;
+ if(query.includes('FROM pg_tables'))return {status:200,json:async()=>[]};
+ return {status:200,json:async()=>[]};};
+let grantValues;const grantBoot=async e=>{grantValues=e;return {engine:{fetch:async()=>new Response('private',{status:401})}};};
+const grantHost=await createDockerBootstrapHost({env:grantEnv,boot:grantBoot,assets:options.assets,fetchState:grantFetchState,probeExternal:async()=>{throw Error('provisioned state must not re-probe');}});
+mkdirSync(join(supaGrantDir,'oauth'),{recursive:true,mode:0o700});
+writeFileSync(join(supaGrantDir,'oauth',createHash('sha256').update('connection:apply-grant').digest('hex')+'.json'),JSON.stringify({key:'connection:apply-grant',value:await grantCipher.encrypt(JSON.stringify({actor:{tenant:'_root',subject:env.FRONTBASE_INSTALLATION_ID},authorization:{provider:'supabase',accessToken:'expiring-apply-token',refreshToken:'expiring-apply-refresh',expiresAt:Date.now()+1000,scopes:['projects.read','database.write'],accounts:[{id:'dockerproj',name:'Docker project'}]},createdAt:Date.now()}))}),{mode:0o600});
+const walkVolume=directory=>readdirSync(directory,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?walkVolume(join(directory,entry.name)):[join(directory,entry.name)]);
+let grantCookie,refreshBodies=[];
+const previousFetch=globalThis.fetch;globalThis.fetch=async(url,init)=>{assert.equal(String(url),'https://api.supabase.com/v1/oauth/token');refreshBodies.push(new URLSearchParams(init.body));return Response.json({access_token:grantToken,refresh_token:'rotated-apply-refresh',token_type:'bearer',expires_in:3600});};
+let grantApplied;
+try{
+ const grantRequest=async(path,body,authenticated=true)=>grantHost.fetch(new Request(origin+'/frontbase-bootstrap/'+path,{method:body===undefined?'GET':'POST',headers:{origin,'content-type':'application/json',...(authenticated&&grantCookie?{cookie:grantCookie}:{})},body:body===undefined?undefined:JSON.stringify(body)}));
+ const grantClaim=await grantRequest('api/claim',{token:env.FRONTBASE_BOOTSTRAP_TOKEN},false);assert.equal(grantClaim.status,200);grantCookie=grantClaim.headers.get('set-cookie').split(';')[0];
+ const grantManifest=defaultDeploymentManifest('docker');
+ grantManifest.bindings['state-db']={adapterId:'supabase-postgres',mode:'create',config:{projectRef:'dockerproj',schema:'frontbase_edge_oauth_state'},secretRefs:{token:'oauth/supabase/token'}};
+ const grantReview=await grantRequest('api/review',{manifest:grantManifest});assert.equal(grantReview.status,200,'oauth grant binding passes review');
+ const {reviewId:grantReviewId}=await grantReview.json();
+ // Empty credentials: the browser never carries an oauth/ value; the resolver injects the grant refresh-first.
+ grantApplied=await grantRequest('api/apply',{reviewId:grantReviewId,credentials:{}});
+}finally{globalThis.fetch=previousFetch;}
+assert.equal(grantApplied.status,200);assert.equal((await grantApplied.json()).phase,'active','grant-resolved provisioning activates');
+assert.equal(refreshBodies.length,1);assert.equal(refreshBodies[0].get('grant_type'),'refresh_token');assert.equal(refreshBodies[0].get('refresh_token'),'expiring-apply-refresh');assert.equal(refreshBodies[0].get('client_id'),'sb-apply-client');
+assert.equal(grantCalls.length,2,'emptiness check then DDL');
+for(const call of grantCalls)assert.equal(call.init.headers.authorization,'Bearer '+grantToken);
+assert.match(JSON.parse(grantCalls.at(-1).init.body).query,/CREATE SCHEMA IF NOT EXISTS "frontbase_edge_oauth_state";/);
+assert.match(grantValues.APP_DB_URL,/^postgres:\/\/frontbase_edge_oauth_state_role:[^@]+@db\.dockerproj\.supabase\.co:5432\/postgres$/,'minted scoped-role DSN lowers, not the grant');
+assert.equal(grantValues.APP_DB_POSTGREST_TOKEN,undefined);
+for(const path of walkVolume(supaGrantDir)){const text=readFileSync(path,'utf8');assert.ok(!text.includes(grantToken)&&!text.includes('expiring-apply-token')&&!text.includes('expiring-apply-refresh'),'grant material persisted to the volume: '+path);}
 const persisted=JSON.parse(readFileSync(join(directory,'runtime.json'),'utf8'));assert.equal(persisted.environment.SESSION_SECRET,values.SESSION_SECRET);
 console.log('Docker hosted bootstrap: zero-state, ownership, origin, apply, setup handoff, restart, secret isolation and installed-state refusal PASS');
