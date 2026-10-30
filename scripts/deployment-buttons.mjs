@@ -2,11 +2,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
-// Nonrelease source snapshot; the public default branch is not the accepted deploy source.
-// Tag (slash-free, per the launcher constraint) bookmarking the reconcile baseline tip —
-// superseded frontbase-hosted-production-test-20261027 and frontbase-reconcile-20261029
-// (which predates the supabase wizard exposure).
-export const nativeSourceRef = 'frontbase-reconcile-supabase-20261029';
+// Deploy source is the default branch `main` (slash-free, per the launcher constraint).
+// Since 2026-10-30 main is merge-gated: reconcile work lands there only by owner-approved
+// fast-forward, so the button always deploys the reviewed baseline. Earlier named tags
+// (frontbase-hosted-production-test-20261027, frontbase-reconcile-20261029,
+// frontbase-reconcile-supabase-20261029) are superseded snapshots.
+export const nativeSourceRef = 'main';
 export const nativeRepository = 'https://github.com/drmoyassine/frontbase-framework';
 export const nativeStore = Object.freeze({ type: 'integration', integrationSlug: 'tursocloud', productSlug: 'database', protocol: 'storage', allowConnectExistingProduct: true });
 
