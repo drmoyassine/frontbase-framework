@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
+import { readFile } from 'node:fs/promises';
 const { startDeploymentSetup }=await import(process.env.FRONTBASE_SETUP_TEST_MODULE??new URL('./deployment-setup/server.mjs',import.meta.url).href);
 const secret='fixture-private-credential-never-return';
 async function call(app,path,{method='GET',body,headers={},raw}={}) {
@@ -89,3 +90,11 @@ try {
  assert.equal((await call(preserve,'/api/prepare',{method:'POST',body:value,headers:auth})).status,422);
  console.log('PASS preserved-credential review: no key reentry, credential injection and state change refused');
 } finally {await preserve.close();}
+
+// The wizard pages must thread the clicked provider into the OAuth start call — the native page once
+// started the deployment target's flow for every connect button (Connect Supabase opened Cloudflare).
+for(const [page,markers] of [['native-app.js',['onConnect:async provider=>{try{await connect(provider);','connectProvider(provider??host']],['hosted-app.js',['connectProvider(provider,']]]) {
+    const source=await readFile(new URL('./deployment-setup/'+page,import.meta.url),'utf8');
+    for(const marker of markers)assert.ok(source.includes(marker),page+' must pass the clicked provider to connectProvider');
+}
+console.log('PASS wizard pages thread the clicked provider into the oauth start call');
