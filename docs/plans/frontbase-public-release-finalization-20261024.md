@@ -1,6 +1,33 @@
 # Frontbase Developer Preview: current release plan
 
-## Current checkpoint — 2026-10-27
+## Current checkpoint — 2026-10-31
+
+The verified main implementation checkpoint is `1ea8d2266e2528f0c7da35a2310c013f1b3338db`, containing the tested Vercel stale-page repair `033f496b` and the completed Cloudflare no-coordinator bootstrap. Both are normal authenticated-owner merges; no rebase or force-push. The README buttons select main, and the public deployment-source contract passes at that exact merge. Later documentation commits do not establish another live-build result. This is source promotion and local qualification, not a fresh live deployment of the repaired Vercel flow.
+
+| Surface | Current status | Evidence / remaining exit |
+|---|---|---|
+| Cloudflare zero-resource native setup | Bounded repair COMPLETE | Native Git deployment and Review allocate no D1/KV; Apply alone creates selected resources. Activation, encrypted account retention and native upgrade pass. The final fixture reached administrator setup; it did not create an administrator or publish. [Exact receipt](cloudflare-metadata-bootstrap-20261031.md). |
+| Cloudflare/Supabase Connected Accounts | Owner-account acceptance COMPLETE at the recorded revision | Retained CF authorization and actual Supabase connection/test/project discovery pass without source-record changes. This does not qualify every Supabase state-db path. [Receipt](native-provider-connect-20261031.md). |
+| Vercel initial integration and Git import | Actual standard-Chrome popup/return and native builds PASS | The new private test copy completed initial integration and READY Git/handoff deployments without a CLI source upload. [Browser receipt](vercel-native-browser-acceptance-20261031.md). The old popup-visibility failure is no longer the sole current blocker. |
+| Vercel stale native page during rollout | Repair merged; local qualification PASS; fresh repaired-live proof OPEN | Protected read-only session verification and bounded navigation replace the stale page without repeating consent, claims or provisioning. Check/build, native and Vercel mutation gates pass. A diagnostic refresh of the old run is not uninterrupted acceptance. |
+| Vercel fresh activation → publication | OPEN — next task | A fresh main README run must reach bindings, activate an empty state database, create an administrator, publish, test the retained account and preserve session/data on an ordinary Git upgrade. No CLI deployment, secret injection or claim recovery substitutes for this proof. |
+| Framework public release | OPEN — Developer Preview preparation | One candidate manifest, cumulative qualification, supported install/recovery evidence and versioned distribution remain distinct gates below. No GA or package-publication claim. |
+
+### Immediate execution order
+
+1. **Close the Vercel browser acceptance gap.** Follow the [exact checklist](vercel-native-browser-acceptance-20261031.md#next-run-checklist) in standard Chrome from the current public README. Record source/build IDs, an empty database's identity, activation, first administrator, publication, anonymous denial, retained Connected Account and upgrade preservation. The browser safety control previously stopped because it could not determine Chrome's URL; this is an automation barrier, not evidence of a new Vercel service failure. The owner handles authentication/consent/password submissions when required.
+2. **Freeze one release candidate.** Record included source, tool/runtime versions, generated console/hydration/host artifacts and all seven library archives with hashes. Main integration is now delivered through the checkpoint above, but main alone is not an immutable release manifest. Reproduce and classify the dated standalone console type inventory; the green scoped workspace check does not erase it. Preserve the existing generated cms.mjs diff until reproducibly accounted for.
+3. **Qualify that exact candidate.** Run changed-surface functional/security/mutation/conformance gates and strict external consumers for all seven library candidates. Retain dated unchanged evidence. Prove supported public-source install, ordinary upgrade and backup/restore on the hosts actually promised; Vercel support is Node Functions, not Vercel Edge.
+4. **Settle hosted-service and advertised-provider support.** Qualify independent-account isolation and the required relay rotation/refresh/recovery/operations, or explicitly restrict that service's preview claim. Complete actual reset-mail inbox/lifecycle proof and test only provider combinations advertised as supported. Unverified optional adapters remain experimental; a dropdown is not certification.
+5. **Finish distribution and publish the scoped preview.** Clean-room public docs, support matrix, npm authority, coordinated versions/ranges, archive/license/provenance checks, publish dry-run and partial-publication recovery precede exact-version packages/tag/notes and a fresh registry consumer. No publication occurs as part of this documentation update.
+
+The owner-led real Study-in-USA installation/template configuration through the UI is a separate adoption exercise after onboarding; do not overwrite that installation or infer permission for a production cutover. Bulk datasource translations/media, other WordPress sites, CF-22, Deno parity, every optional provider and a SaaS launch do not expand this release scope.
+
+Documentation reconciliation only: the checks cited here were completed for the repair before merge. This update does not rerun runtime/provider tests, deploy an application or close fresh browser acceptance. Older dated checkpoints below are retained history; this section and the current task receipt govern the next execution order.
+
+<a id="current-checkpoint--2026-10-27"></a>
+
+## Historical checkpoint — 2026-10-27
 
 Cloudflare and Vercel fresh native deployments using the production OAuth relay reached administrator creation and public page publication on the owner's accounts. README buttons were changed in commit `257bfa4` on `codex/integrated-finalization-20261022`; they are not on the repository default branch. The tested source is the named branch `frontbase-hosted-production-test-20261027` at `c94bddfd1294b5627eebc63893db56910aa54444` at verification time, not an immutable tag. Cloudflare's first import needed one retry; Vercel needed a separately provisioned Turso database and setup-session recovery. See [production OAuth evidence](provider-oauth-production-readiness-20261027.md).
 
@@ -34,7 +61,9 @@ Already delivered: visual composition and data binding; record-aware multilingua
 
 Outside this release critical path: CF-22 parity, Deno/Vercel Edge parity, certification of every optional adapter, complete Study-in-USA translations/media, other WordPress sites and the production website cutover. Keep the accepted label **Frontbase Framework Developer Preview**; general availability is not claimed.
 
-## Current checkpoint — 2026-10-26
+<a id="current-checkpoint--2026-10-26"></a>
+
+## Historical checkpoint — 2026-10-26
 
 Latest accepted runtime is **6b8b96e** ([reusable-template URLs/SEO receipt](reusable-template-urls-seo-20261026.md)), on `codex/integrated-finalization-20261022`, with site generation35. Shared templates now own293 program,18 institution and957 article URLs, including110 reconciled retained routes. Dynamic multilingual SEO and editable conditional notices/Actions pass EN/AR desktop/mobile acceptance; original settings, views and paths are preserved. Qualification must include this later runtime. The earlier **e25e27b** [navigation/General translations delivery](navigation-general-translations-20261026.md) remains included. Configurable navigation arrows and General translation disclosures are complete and deployed, with EN/AR desktop/mobile acceptance. The preceding settings/data simplification is also complete: one site name/form, staged branding, distinct Connections/Saved Views operations, Destination authoring retired with legacy content preserved, header contact actions in Menus. Gallery/detail layouts, visual composition, bindings, multilingual frontend editing and deployment-profile implementations are also delivered. [Latest acceptance](settings-consolidation-20261025.md#follow-up-staging-acceptance). Older entries below retain their original dates and are not the current source checkpoint.
 
@@ -66,7 +95,9 @@ Latest bounded delivery: provenance-based frontend saves and ordinary editable P
 
 ## Release-critical summary
 
-### Post-detail checkpoint: what is actually open
+<a id="post-detail-checkpoint-what-is-actually-open"></a>
+
+### Historical post-detail checkpoint
 
 The earlier detail checkpoint was runtime `50f0580`, site generation30, with receipt commit `951fd32` on `codex/integrated-finalization-20261022`. Detail templates, cards, visual composition, binding/@ mapping, Actions and multilingual frontend save routing are delivered. They are candidate inputs, not unfinished implementation tasks. No new runtime failure was reproduced in this documentation review; do not interpret that as a fresh full-suite pass.
 
@@ -132,7 +163,7 @@ Work on documentation, package inventory and support choices can proceed alongsi
 
 ### Current observations and support boundaries
 
-- Read-only Git discovery on 2026-10-24 reports default `main` at `44423df49b849813338d55709ddcb4c73a2ecb79`. This review does not establish its ancestry or certify it for the latest integrated delivery. Public/default-ref certification remains open; a difference in ref names is not itself proof of a missing feature.
+- Historical Git discovery on 2026-10-24 reported main at `44423df49b849813338d55709ddcb4c73a2ecb79`. The October 31 checkpoint above supersedes that source-integration status; exact public-release candidate certification is still separate from a default-branch merge.
 - The [registry inventory](../reports/frontbase-registry-inventory-20261023.json) has `namespaceOwnershipVerified: false` and `registryPublication: false`. Its package 404s do not prove ownership or universal absence. Refresh authenticated inventory before selecting/publishing immutable versions.
 - Local archives already prove strict NodeNext/Bundler consumption and an independent starter. They do not prove installation from published versions. Use the existing release packer and consumer-proof tooling, including the adopted licensed backend declaration remedy.
 - Current native qualification is Node 22. Windows Node 24 native-SQLite stress remains failed/unaccepted; this is a runtime support restriction, not a mandate to block a properly scoped Node 22 preview. Runtime claims must match that boundary.
@@ -157,6 +188,6 @@ CF-22/product-equivalence work remains parked and outside this edition. Complete
 
 ## Next executable task
 
-Prepare the release integration/candidate manifest first. Reconcile branches and public source refs without overwriting another session; identify the exact checks and live proofs affected by the latest backend/console changes. Then execute the clean candidate matrix and public-source adopter journey. Do not reopen closed Neon/behavior/workflow/PostgREST repairs without a new reproducible failure. No new product feature is required merely to advance this release plan.
+First close the [fresh native Vercel browser journey](vercel-native-browser-acceptance-20261031.md#next-run-checklist), then prepare the candidate manifest and execute the ordered work in the October 31 checkpoint above. Do not reopen completed Cloudflare, Neon, behavior, workflow or PostgREST repairs without a new reproducible failure. No new product feature is required merely to advance this release plan.
 
 Documentation verification for this checkpoint: compared the committed detail receipt, support policy, README, existing registry inventory and retained standalone console log; checked changed Markdown links and whitespace. No application tests, provider/registry inventory refresh, live certification, deploy, package publication or branch integration were performed for this plan update. Existing credentials are not assumed to remain valid.
