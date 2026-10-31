@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {nativeCloudflarePlan} from './deployment-setup/native-cloudflare-plan.mjs';
+const {handoffNativeBuildCredential,nativeBuildCredential,cloudflareBuildPermissions}=await import(process.env.FRONTBASE_BUILD_HANDOFF_MODULE||'./deployment-setup/native-build-handoff.mjs');
+const account='a'.repeat(32),project='build-fixture',owner='b'.repeat(64),token='private-build-fixture-token';
+const plan=nativeCloudflarePlan({assets:{binding:'ASSETS'}},{account,project,subdomain:'fixture',relay:'https://relay.example'});
+const auth={type:'api_token',token};let writes=0,seen;
+const read=async path=>path===''?{id:account}:[];
+const establish=async(context,grant)=>{writes++;seen={context,grant};return {returnPath:'/frontbase-bootstrap/activation#claim='+context.buildOwner};};
+const link=await handoffNativeBuildCredential(plan,auth,{read,establish,owner});
+assert.equal(link,'https://build-fixture.fixture.workers.dev/frontbase-bootstrap/activation#claim='+owner);
+assert.equal(writes,1);assert.equal(seen.context.target.account,account);assert.equal(seen.context.target.installationId,plan.vars.FRONTBASE_INSTALLATION_ID);assert.equal(seen.grant.accessToken,token);assert.deepEqual(seen.grant.scopes,[],'do not invent OAuth scopes for an API token');
+assert.deepEqual(seen.grant.capabilities,['vectorize']);
+await handoffNativeBuildCredential(plan,auth,{read:async path=>{if(path.startsWith('/vectorize/'))throw Error('optional permission absent');return read(path);},establish,owner});
+assert.deepEqual(seen.grant.capabilities,[],'optional permission failure does not advertise Vectorize or block the default installation');
+assert.ok(!JSON.stringify(plan).includes(token));assert.ok(!link.includes(token));
+for(const invalid of [{type:'oauth',token},{type:'api_key',token},{type:'api_token',token:''},null])assert.throws(()=>nativeBuildCredential(invalid),/native_build_api_token_required/);
+for(const probe of cloudflareBuildPermissions){writes=0;await assert.rejects(()=>handoffNativeBuildCredential(plan,auth,{read:async path=>{if(path===probe.path)throw Error('private upstream '+token);return read(path);},establish,owner}),error=>error.message==='native_build_permission_required: '+probe.permission&&!error.message.includes(token));assert.equal(writes,0);}
+writes=0;await assert.rejects(()=>handoffNativeBuildCredential(plan,auth,{read:async()=>({id:'c'.repeat(32)}),establish,owner}),/native_build_account_mismatch/);assert.equal(writes,0);
+for(const badOwner of ['short','Z'.repeat(64),'_'.repeat(64)])await assert.rejects(()=>handoffNativeBuildCredential(plan,auth,{read,establish,owner:badOwner}),/native_build_handoff_refused/);
+await assert.rejects(()=>handoffNativeBuildCredential({...plan,vars:{...plan.vars,FRONTBASE_BOOTSTRAP:'0'}},auth,{read,establish,owner}),/native_build_handoff_refused/);
+await assert.rejects(()=>handoffNativeBuildCredential(plan,auth,{read,establish:async()=>({returnPath:'https://attacker.example/#claim='+owner}),owner}),/native_build_handoff_unconfirmed/);
+writes=0;await assert.rejects(()=>handoffNativeBuildCredential(plan,auth,{read,establish:async()=>{writes++;throw Error('lost response');},owner}),/lost response/);assert.equal(writes,1,'never retry an uncertain provider write');
+console.log('PASS native build handoff: persistent credential only, account/permission preflight, secret-free manifest/link, private owner capability and no replay');

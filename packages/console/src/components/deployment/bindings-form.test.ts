@@ -111,6 +111,14 @@ test('Vectorize does not inherit the baseline D1 and KV OAuth token',()=>{
  expect(root.textContent).toContain('token that has Vectorize access');
  expect(root.querySelector('input[type=password]')).not.toBeNull();
 });
+test('a build connection with server-probed Vectorize access is reused without another token field',()=>{
+ const accountId='a'.repeat(32),root=mount('cloudflare',{providerConnections:{cloudflare:{available:false,connected:true,accountId,capabilities:['vectorize']}}});
+ select(root,'binding-provider-vector','cloudflare-vectorize-http');
+ expect(form!.snapshot().manifest.bindings.vector.secretRefs.token).toBe('oauth/cloudflare/token');
+ expect(form!.snapshot().manifest.bindings.vector.config.accountId).toBe(accountId);
+ expect(root.querySelector('input[type=password]')).toBeNull();
+ expect(form!.snapshot().credentials).toEqual({});
+});
 
 test('multi-step renders one visible card with a numbered indicator and omits adapterless roles',()=>{
  const root=mount('cloudflare');

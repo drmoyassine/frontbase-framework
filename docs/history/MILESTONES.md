@@ -22,6 +22,8 @@
 
 # Frontbase Framework Evolution: Milestones (Chimera)
 
+2026-10-31 native CF build-token handoff is locally qualified: persistent initial deployment authorization follows the existing secret/bootstrap/account import path; owner setup links still gate the public installer. Shared Vectorize reuse requires server-probed access. Required Node22 build/check, native/OAuth/cloud faults and 32 binding cases pass. Fresh live deployment is blocked on a persistent test token: CLI OAuth cannot manage tokens and the browser is signed out. [Receipt and resumption](../plans/cloudflare-build-credential-handoff-20261031.md). Default-source promotion and release gates remain open.
+
 2026-10-26 reusable template URL/SEO task COMPLETE: runtime `6b8b96e`/site generation 35 reconcile 110 retained routes into the program/institution templates, add progressive URLs/defaults/rules and localized @ SEO, and preserve settings/source catalog/paths/aliases. EN/AR desktop/mobile and targeted check/build/mutation acceptance pass. [Receipt](../plans/reusable-template-urls-seo-20261026.md). Include in candidate qualification; broader public-release gates remain open.
 
 2026-10-26 navigation/General translations COMPLETE: runtime e25e27b adds reusable responsive arrow controls and organizes translation settings under General with existing configuration preserved. Native builder and EN/AR desktop/mobile acceptance pass; check/build pass. [Receipt](../plans/navigation-general-translations-20261026.md). Include in candidate qualification; no public-release gate is closed by this UI task.

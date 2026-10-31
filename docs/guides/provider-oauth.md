@@ -1,5 +1,17 @@
 # Provider OAuth connections
 
+## Cloudflare native build token handoff
+
+The native Cloudflare deployer retains the API token selected in Workers Builds as an application secret and passes it through the existing encrypted bootstrap grant and one-time Connected Accounts import. Open the private owner setup link from the deployment output: the wizard already lists Cloudflare as connected. The public Worker address alone cannot authorize setup. There is no manual token field. `--setup-link-file PATH` writes the owner link to a new private local file instead of stdout for CLI/automation use; no provider token is printed in either mode.
+
+In the provider's initial build-token selection, select a **persistent API token**, limited to the intended account, with Account Settings Read, Workers Scripts Edit (including read access), D1 Edit (including read access), and Workers KV Storage Edit (including read access). Add Vectorize Read/Edit if you intend to use an existing Vectorize index. The build probes required read access before deployment and optional Vectorize access before advertising it. These probes do not certify write permissions: each provider operation independently enforces them. Cloudflare's generated build-token defaults may omit D1 and Vectorize; choose a suitably scoped token during initial deployment. Frontbase cannot expand a token's own rights or change the native form's token-creation controls.
+
+The API token stays in memory until uploaded through Cloudflare secret bindings. It never enters generated Wrangler variables, source, manifests, frontend responses or repository files. Activation re-encrypts it with the application session key and imports one connected account. Repeated startup cannot recreate a deleted account. A native upgrade preserves the existing installation and secrets. Short-lived `wrangler login` access tokens are refused for this persistent handoff; managed CLI deployment and the existing OAuth paths remain available.
+
+An inherited connection is used by D1 HTTP bindings and, when the server probe confirms optional access, Vectorize HTTP bindings. Optional Vectorize access is public capability metadata, not a fabricated OAuth scope or a guarantee of write permissions. The server still checks the bound account, grant expiry and capability before resolving its private credential. A baseline OAuth connection without that capability continues to require a separately scoped Vectorize token. Revoking the build token also invalidates the installed connection; coordinate token rotation with the deployment owner. Build-token connections do not automatically enroll a receiver in the optional OAuth relay; manual Connected Accounts credential management remains available.
+
+Candidate implementation and verification status: [October 31 handoff record](../plans/cloudflare-build-credential-handoff-20261031.md). Earlier paragraphs describe the retained OAuth path and historical native tests.
+
 The shared hosted wizard and installed Connected Accounts support direct Cloudflare OAuth, Vercel Integration authorization and Supabase resource connections, or an explicitly configured optional callback relay. Fresh native Cloudflare and Vercel deployments have passed with the isolated relay, including real consent, activation, publication and upgrades. The main README buttons still use the earlier defaults; the isolated relay is not a general public service. See the [live acceptance evidence](../plans/provider-oauth-relay-20261027.md).
 
 ## Configure the OAuth client

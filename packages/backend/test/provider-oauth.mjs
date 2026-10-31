@@ -8,7 +8,7 @@ const {providerOAuthStore}=await import(process.env.FRONTBASE_OAUTH_STORE_TEST_M
 const {providerOAuthVault}=await import(process.env.FRONTBASE_OAUTH_VAULT_TEST_MODULE??'../dist/provider-oauth-vault.js');
 const {refreshOAuthAuthorization,revokeOAuthAuthorization}=await import(process.env.FRONTBASE_OAUTH_REFRESH_TEST_MODULE??'../dist/provider-oauth-refresh.js');
 import {importProviderOAuth} from '../dist/provider-oauth-import.js';
-import {resolveProviderOAuthCredentials} from '../dist/provider-oauth-bindings.js';
+const {resolveProviderOAuthCredentials}=await import(process.env.FRONTBASE_OAUTH_BINDINGS_TEST_MODULE||'../dist/provider-oauth-bindings.js');
 import {createCompatApp} from '../dist/compat/app.js';
 const origin='https://setup.example',db=sqliteRunner(':memory:');await migrateUp(db);
 let time=1800000000000,calls=0,failProvider=false;
@@ -85,6 +85,9 @@ await boot.store.save(actor,{provider:'cloudflare',accessToken:'persisted-bootst
 const grants=await boot.grants(),envelope=await cipher.encrypt(JSON.stringify({installationId:'test-installation',grants}));
 const bindingManifest={bindings:{state:{adapterId:'d1-http',mode:'connect',config:{accountId:'account'},secretRefs:{token:'oauth/cloudflare/token'}}}};
 assert.equal(resolveProviderOAuthCredentials(bindingManifest,{},grants,time)['oauth/cloudflare/token'],'persisted-bootstrap-token');
+const vectorManifest={...bindingManifest,bindings:{vector:{adapterId:'cloudflare-vectorize-http',mode:'connect',config:{accountId:grants[0].accounts[0].id,indexName:'fixture-index'},secretRefs:{token:'oauth/cloudflare/token'}}}};
+assert.throws(()=>resolveProviderOAuthCredentials(vectorManifest,{},grants,time),/oauth_vectorize_permission_required/);
+assert.equal(resolveProviderOAuthCredentials(vectorManifest,{},grants.map(g=>({...g,capabilities:['vectorize']})),time)['oauth/cloudflare/token'],'persisted-bootstrap-token');
 assert.throws(()=>resolveProviderOAuthCredentials(bindingManifest,{'oauth/cloudflare/token':'browser-override'},grants,time));
 assert.throws(()=>resolveProviderOAuthCredentials({...bindingManifest,bindings:{state:{...bindingManifest.bindings.state,config:{accountId:'another-account'}}}},{},grants,time));
 assert.throws(()=>resolveProviderOAuthCredentials(bindingManifest,{},grants.map(g=>({...g,expiresAt:time-1})),time));

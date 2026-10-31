@@ -1,7 +1,7 @@
 /** Shared browser protocol: only authorization URLs and public status cross this boundary. */
 export interface ProviderConnectionStatus {
     providers:Array<{provider:'cloudflare'|'vercel'|'supabase';available:boolean}>;
-    connections:Array<{id:string;provider:'cloudflare'|'vercel'|'supabase';label:string;accountId:string;reconnectRequired:boolean}>;
+    connections:Array<{id:string;provider:'cloudflare'|'vercel'|'supabase';label:string;accountId:string;reconnectRequired:boolean;capabilities?:string[]}>;
 }
 export async function readProviderConnections():Promise<ProviderConnectionStatus>{
     const response=await fetch('/api/provider-oauth/status',{credentials:'same-origin',cache:'no-store'});
@@ -16,5 +16,5 @@ export async function connectProvider(provider:'cloudflare'|'vercel'|'supabase',
     location.assign(url.href);
 }
 export function connectionOptions(status:ProviderConnectionStatus){
-    return Object.fromEntries(status.providers.map(p=>{const connection=status.connections.find(c=>c.provider===p.provider&&!c.reconnectRequired);return [p.provider,{available:p.available,connected:!!connection,label:connection?.label,accountId:connection?.accountId}];}));
+    return Object.fromEntries(status.providers.map(p=>{const connection=status.connections.find(c=>c.provider===p.provider&&!c.reconnectRequired);return [p.provider,{available:p.available,connected:!!connection,label:connection?.label,accountId:connection?.accountId,capabilities:connection?.capabilities}];}));
 }

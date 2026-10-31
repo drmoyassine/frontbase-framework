@@ -24,7 +24,7 @@ export function providerOAuthVault(vault:OAuthVault,cipher:SecretCipher,actor:OA
         return result;
     };
     const store:ProviderOAuthStore={
-        async connections(value){owner(value);return (await grants()).map((grant,index)=>({id:String(index),provider:grant.provider,label:grant.accounts[0]!.name,accountId:grant.accounts[0]!.id,reconnectRequired:grant.expiresAt!==undefined&&grant.expiresAt<=now()}));},
+        async connections(value){owner(value);return (await grants()).map((grant,index)=>({id:String(index),provider:grant.provider,label:grant.accounts[0]!.name,accountId:grant.accounts[0]!.id,reconnectRequired:grant.expiresAt!==undefined&&grant.expiresAt<=now(),...(grant.capabilities?.includes('vectorize')?{capabilities:['vectorize' as const]}:{})}));},
         async put(id,pending){owner(pending);if((await vault.entries('pending:')).length>=32)throw Error('oauth_attempt_limit');if(!await vault.insert('pending:'+id,await seal(pending)))throw Error('oauth_attempt_conflict');},
         async consume(id,value,provider,time){
             owner(value);const raw=await vault.get('pending:'+id);if(!raw)return null;

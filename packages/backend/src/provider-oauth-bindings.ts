@@ -14,6 +14,7 @@ export function resolveProviderOAuthCredentials(manifest:DeploymentManifest,inpu
         if(!provider||!rule||key!=='token'||!rule.adapters.includes(binding.adapterId)||rule.modes&&!rule.modes.includes(binding.mode))throw Error('oauth_binding_refused');
         const grant=grants.find(grant=>grant.provider===provider&&(!grant.expiresAt||grant.expiresAt>now)&&grant.accounts.some(account=>account.id===binding.config[rule.accountKey]));
         if(!grant)throw Error('oauth_binding_account_required');
+        if(binding.adapterId==='cloudflare-vectorize-http'&&!grant.capabilities?.includes('vectorize'))throw Error('oauth_vectorize_permission_required');
         if(result[reference]&&result[reference]!==grant.accessToken)throw Error('oauth_binding_account_conflict');
         result[reference]=grant.accessToken;
     }return result;

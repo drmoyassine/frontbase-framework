@@ -7,12 +7,17 @@ const fail=():never=>{throw Error('native_installation_refused');};
 const uuid=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/;
 const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
 const hash=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
-export interface NativeClaimContext {target:OAuthRelayTarget;relayOrigin:string;registrationKey?:string;}
-/** Internal relay-receiver establish hook only, after its durable project claim.
- * Never mount as a browser-callable API. No credentials may appear in logs/receipts. */
+export interface NativeClaimContext {target:OAuthRelayTarget;relayOrigin:string;registrationKey?:string;
+ /** Server-side build entry only: the deployment owner receives this capability privately.
+  * Never read it from an HTTP request or infer it from the public Worker address. */
+ buildOwner?:string;}
+/** Internal relay receiver or privileged build hook. Relay calls follow its durable
+ * project claim; build calls require the target's management API token and create
+ * the fixed coordinator once. Never mount as a browser-callable API. */
 export async function claimNativeInstallation(context:NativeClaimContext,grant:OAuthAuthorization,transport:typeof fetch=fetch){
  const target=context.target,host=target.host,account=target.account,project=target.project,installationId=target.installationId,origin=target.origin;
  if(target.purpose!=='install'||!['cloudflare','vercel'].includes(host)||grant.provider!==host||!uuid.test(installationId??'')||!account||!project||new URL(context.relayOrigin).origin!==context.relayOrigin||!context.relayOrigin.startsWith('https://'))fail();
+ if(context.buildOwner!==undefined&&(host!=='cloudflare'||!/^[a-f0-9]{64}$/.test(context.buildOwner)||context.registrationKey!==undefined))fail();
  const subdomain=host==='cloudflare'?new URL(origin).hostname.split('.').slice(1,-2).join('.'):'unused';
  const policy=relayTargetPolicy({cloudflareAccount:host==='cloudflare'?account:'0'.repeat(32),cloudflareSubdomain:subdomain,vercelTeam:host==='vercel'?account:'team_unused',connectedOrigins:[]},transport);
  await policy.verify(target,grant); // Recheck after relay redemption, immediately before provider writes.
@@ -28,7 +33,10 @@ export async function claimNativeInstallation(context:NativeClaimContext,grant:O
   }
   return host==='cloudflare'?parsed.result:parsed;
  }
- const owner=random(),expires=new Date(Date.now()+3600000).toISOString(),environment:any={FRONTBASE_BOOTSTRAP:'1',FRONTBASE_INSTALLATION_ID:installationId,FRONTBASE_PUBLIC_ORIGIN:origin,FRONTBASE_BOOTSTRAP_TOKEN:owner,FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN:grant.accessToken,FRONTBASE_BOOTSTRAP_EXPIRES_AT:expires,FRONTBASE_BOOTSTRAP_ACCOUNT:account,FRONTBASE_BOOTSTRAP_PROJECT:project,FRONTBASE_BOOTSTRAP_ENVIRONMENT:'production',FRONTBASE_OAUTH_RELAY_URL:context.relayOrigin,FRONTBASE_OAUTH_RELAY_TARGET:JSON.stringify({origin,host,purpose:'connect'})};
+ const owner=context.buildOwner??random(),expires=new Date(Date.now()+3600000).toISOString(),environment:any={FRONTBASE_BOOTSTRAP:'1',FRONTBASE_INSTALLATION_ID:installationId,FRONTBASE_PUBLIC_ORIGIN:origin,FRONTBASE_BOOTSTRAP_TOKEN:owner,FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN:grant.accessToken,FRONTBASE_BOOTSTRAP_EXPIRES_AT:expires,FRONTBASE_BOOTSTRAP_ACCOUNT:account,FRONTBASE_BOOTSTRAP_PROJECT:project,FRONTBASE_BOOTSTRAP_ENVIRONMENT:'production'};
+ // A build API token has no OAuth receiver registration. Keep the existing manual
+ // reconnect path rather than configuring a relay that cannot authenticate this receiver.
+ if(context.buildOwner===undefined){environment.FRONTBASE_OAUTH_RELAY_URL=context.relayOrigin;environment.FRONTBASE_OAUTH_RELAY_TARGET=JSON.stringify({origin,host,purpose:'connect'});}
  if(context.registrationKey!==undefined){if(!/^[\w-]{43}$/.test(context.registrationKey))fail();environment.FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY=context.registrationKey;}
  const selected=grant.accounts.find(a=>a.id===account);if(!selected)fail();
  environment.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS=await (await createSecretCipher(owner)).encrypt(JSON.stringify([{...grant,accounts:[selected,...grant.accounts.filter(a=>a.id!==account)]}]));
@@ -37,7 +45,8 @@ export async function claimNativeInstallation(context:NativeClaimContext,grant:O
   const settings=await api(cf+'/workers/scripts/'+project+'/settings'),bindings=settings.bindings;
   const permitted=new Set(['FRONTBASE_HOSTED_SETUP','FRONTBASE_BOOTSTRAP','FRONTBASE_NATIVE_ACCOUNT','FRONTBASE_NATIVE_PROJECT','FRONTBASE_NATIVE_RELAY_URL','FRONTBASE_NATIVE_PUBLIC_ORIGIN','FRONTBASE_NATIVE_INSTALLATION_ID','FRONTBASE_INSTALLATION_ID','FRONTBASE_PUBLIC_ORIGIN']);
   if(!Array.isArray(bindings)||bindings.filter((b:any)=>b.type==='assets'&&b.name==='ASSETS').length!==1||new Set(bindings.map((b:any)=>b.name)).size!==bindings.length||bindings.some((b:any)=>!(b.type==='assets'&&b.name==='ASSETS'||b.type==='plain_text'&&permitted.has(b.name))))fail();
-  // The relay's account/project CAS already selected this single establish hook.
+  // Relay calls follow its account/project CAS. A build proves control via the
+  // provider token; the unique fixed database name fences competing build claims.
   // Never adopt an existing database or retry a possibly committed creation.
   const created=await api(cf+'/d1/database','POST',{name:'fb-setup-'+installationId});if(!uuid.test(created?.uuid??''))fail();
   const runner=d1RunnerFromRest({accountId:account,databaseId:created.uuid,apiToken:grant.accessToken,fetchImpl:(input,init)=>transport(input,{...init,redirect:'manual',signal:AbortSignal.timeout(20000)})});

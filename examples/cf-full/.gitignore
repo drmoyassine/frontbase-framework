@@ -1,5 +1,6 @@
 dist/
 .wrangler/
+.native-build-*/
 node_modules/
 
 # Vercel: api/cms.mjs IS tracked (see below — Vercel's function glob snapshots

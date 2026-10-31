@@ -21,7 +21,7 @@ export interface BindingsFormOptions {
     credentials?: 'entry' | 'references';
     resourceOptions?: Record<string,Array<{id:string;name:string}>>;
     /** Only supplied by a host with an authenticated server-side connection flow. */
-    providerConnections?: Partial<Record<ProviderName,{available:boolean;connected:boolean;label?:string;accountId?:string}>>;
+    providerConnections?: Partial<Record<ProviderName,{available:boolean;connected:boolean;label?:string;accountId?:string;capabilities?:string[]}>>;
     onConnect?: (provider:ProviderName)=>Promise<void>;
     /** Origin-relative base of the read-only discovery endpoints; '' talks to the same origin. */
     discoveryBase?: string;
@@ -249,8 +249,8 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                     else renderSupabasePicker(card,role);
                 }else{
                     const oauth=options.providerConnections?.cloudflare;
-                    const useOAuth=oauth?.connected&&selected.id==='d1-http';
-                    if(selected.id==='cloudflare-vectorize-http'){if(binding.secretRefs.token==='oauth/cloudflare/token')delete binding.secretRefs.token;card.append(node('p','Connect an existing Vectorize index with a token that has Vectorize access. The standard Cloudflare setup connection covers D1, Workers and KV.','fb-binding-note'));}
+                    const useOAuth=oauth?.connected&&(selected.id==='d1-http'||selected.id==='cloudflare-vectorize-http'&&oauth.capabilities?.includes('vectorize'));
+                    if(selected.id==='cloudflare-vectorize-http'&&!useOAuth){if(binding.secretRefs.token==='oauth/cloudflare/token')delete binding.secretRefs.token;card.append(node('p','Connect an existing Vectorize index with a token that has Vectorize access. Include Vectorize Read/Edit in the initial build token to reuse your connected Cloudflare account.','fb-binding-note'));}
                     if(useOAuth){if(!binding.config.accountId&&oauth.accountId)binding.config.accountId=oauth.accountId;binding.secretRefs.token='oauth/cloudflare/token';}
                     if(!compatibleAdapters.includes(selected))card.append(node('p','This adapter is unavailable in this deployment flow.','fb-binding-note'));
                     else {

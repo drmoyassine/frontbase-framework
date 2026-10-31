@@ -19,6 +19,7 @@ const cases=[
  ['provider-oauth-refresh.js','FRONTBASE_OAUTH_REFRESH_TEST_MODULE','revoke client secret','{ client_id: client.clientId, client_secret: client.clientSecret, refresh_token: authorization.refreshToken }','{ client_id: client.clientId, refresh_token: authorization.refreshToken }'],
  ['provider-oauth-vault.js','FRONTBASE_OAUTH_VAULT_TEST_MODULE','refresh rotation persisted','if (await replace(record.key, record.raw, await seal({ actor, authorization: rotated, createdAt: record.createdAt })))','if (true)'],
  ['provider-oauth-vault.js','FRONTBASE_OAUTH_VAULT_TEST_MODULE','rotation race re-read','const raw = await vault.get(record.key);','const raw = null;'],
+ ['provider-oauth-bindings.js','FRONTBASE_OAUTH_BINDINGS_TEST_MODULE','Vectorize capability gate',"!grant.capabilities?.includes('vectorize')",'false'],
  ];
 for(const [name,environment,label,before,after] of cases){
  const file=fileURLToPath(new URL('../dist/'+name,import.meta.url)),original=readFileSync(file,'utf8');
@@ -27,4 +28,4 @@ for(const [name,environment,label,before,after] of cases){
  try{writeFileSync(variant,original.replace(before,after));const result=spawnSync(process.execPath,[fileURLToPath(new URL('./provider-oauth.mjs',import.meta.url))],{encoding:'utf8',timeout:30000,env:{...process.env,[environment]:pathToFileURL(variant).href}});assert.notEqual(result.status,0,label);assert.match(result.stderr,/AssertionError/,label+' must fail a behavioral assertion');console.log('PASS detected OAuth '+label);}
  finally{unlinkSync(variant);}assert.equal(readFileSync(file,'utf8'),original);
 }
-console.log('PASS fifteen OAuth security mutations; sources unchanged');
+console.log('PASS sixteen OAuth security mutations; sources unchanged');

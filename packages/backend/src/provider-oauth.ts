@@ -13,10 +13,12 @@ export interface OAuthPending extends OAuthActor {
 }
 export interface OAuthAuthorization {
     provider: OAuthProvider; accessToken: string; refreshToken?: string; expiresAt?: number;
+    /** Server-probed optional capabilities; never accepted from a wizard snapshot. */
+    capabilities?: Array<'vectorize'>;
     scopes: string[]; accounts: Array<{id:string;name:string}>;
 }
 export interface ProviderOAuthStore {
-    connections(actor:OAuthActor):Promise<Array<{id:string;provider:OAuthProvider;label:string;accountId:string;reconnectRequired:boolean}>>;
+    connections(actor:OAuthActor):Promise<Array<{id:string;provider:OAuthProvider;label:string;accountId:string;reconnectRequired:boolean;capabilities?:Array<'vectorize'>}>>;
     put(id: string, pending: OAuthPending): Promise<void>;
     /** Atomic one-use claim; include actor/provider/expiry in the storage predicate. */
     consume(id: string, actor: OAuthActor, provider: OAuthProvider, now: number): Promise<OAuthPending | null>;

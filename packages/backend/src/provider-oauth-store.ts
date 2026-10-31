@@ -4,7 +4,7 @@ import {Phase2Store} from './db/phase2-store.js';
 import type {OAuthActor,OAuthPending,OAuthAuthorization,ProviderOAuthStore} from './provider-oauth.js';
 export function providerAuthorizationConfig(authorization:OAuthAuthorization){
     const first=authorization.accounts[0]!;
-    return {api_token:authorization.accessToken,access_token:authorization.accessToken,account_id:first.id,...(authorization.provider==='vercel'?{team_id:first.id}:{}),oauth:{version:1,provider:authorization.provider,scopes:authorization.scopes,accounts:authorization.accounts,expires_at:authorization.expiresAt??null,refresh_token:authorization.refreshToken??null}};
+    return {api_token:authorization.accessToken,access_token:authorization.accessToken,account_id:first.id,...(authorization.provider==='vercel'?{team_id:first.id}:{}),oauth:{version:1,provider:authorization.provider,scopes:authorization.scopes,accounts:authorization.accounts,capabilities:authorization.capabilities??[],expires_at:authorization.expiresAt??null,refresh_token:authorization.refreshToken??null}};
 }
 const hash=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
 /** Reuses the encrypted tenant-scoped resource vault. Transactions never appear in provider lists. */
@@ -17,8 +17,8 @@ export function providerOAuthStore(runner:DbRunner,cipher:SecretCipher,now=Date.
                 if(!['cloudflare','vercel','supabase'].includes(String(row.provider)))continue;
                 const config=await store.getEdgeResourceConfig(String(row.id));
                 if(!config?.oauth||typeof config.oauth!=='object')continue;
-                const metadata=config.oauth as {expires_at?:number};
-                result.push({id:String(row.id),provider:row.provider as 'cloudflare'|'vercel'|'supabase',label:String(row.name),accountId:String(config.account_id??''),reconnectRequired:typeof metadata.expires_at==='number'&&metadata.expires_at<=now()});
+                const metadata=config.oauth as {expires_at?:number;capabilities?:Array<'vectorize'>};
+                result.push({id:String(row.id),provider:row.provider as 'cloudflare'|'vercel'|'supabase',label:String(row.name),accountId:String(config.account_id??''),reconnectRequired:typeof metadata.expires_at==='number'&&metadata.expires_at<=now(),...(metadata.capabilities?.includes('vectorize')?{capabilities:['vectorize' as const]}:{})});
             }return result;
         },
         async put(id,pending){
