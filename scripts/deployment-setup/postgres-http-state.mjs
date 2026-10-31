@@ -32,9 +32,12 @@ INSERT INTO ${q}._frontbase_state_owner VALUES('${installationId}');
 GRANT USAGE,CREATE ON SCHEMA ${q} TO "${role}";
 CREATE FUNCTION public.${query}(query_sql text,query_params jsonb DEFAULT '[]'::jsonb) RETURNS TABLE(result jsonb)
 LANGUAGE plpgsql SECURITY INVOKER SET search_path=${q},pg_catalog,pg_temp AS $query$
+DECLARE state_row record;
 BEGIN
  IF query_params <> '[]'::jsonb THEN RAISE EXCEPTION 'parameters_must_be_inlined'; END IF;
- RETURN QUERY EXECUTE 'SELECT COALESCE(jsonb_agg(to_jsonb(state_row)),''[]''::jsonb) FROM (' || query_sql || ') state_row';
+ FOR state_row IN EXECUTE query_sql LOOP
+  result=to_jsonb(state_row); RETURN NEXT;
+ END LOOP;
 END $query$;
 CREATE FUNCTION public.${exec}(query_sql text,query_params jsonb DEFAULT '[]'::jsonb) RETURNS TABLE(result jsonb)
 LANGUAGE plpgsql SECURITY INVOKER SET search_path=${q},pg_catalog,pg_temp AS $exec$

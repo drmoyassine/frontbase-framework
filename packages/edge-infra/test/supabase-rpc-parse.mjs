@@ -106,6 +106,7 @@ try {
     ]) {
         globalThis.fetch = async (_url, init) => {
             const headers = new Headers(init.headers);
+            assert.deepEqual(JSON.parse(init.body).query_params,[],'PostgREST jsonb arguments must be JSON arrays, not encoded JSON strings');
             assert.equal(headers.get('apikey'), serviceKey);
             assert.equal(headers.get('authorization'), expectedBearer);
             return new Response(JSON.stringify([{ result: [{ name: 'institutions' }] }]), { headers: { 'Content-Type': 'application/json' } });
@@ -124,3 +125,17 @@ try {
     }
 } finally {globalThis.fetch=originalFetch;}
 console.log('supabase-exec: scalar JSON and wrapped affected-row results passed');
+
+try {
+    for (const payload of [[{result:{id:'one'}},{result:{id:'two'}}],[{result:[{id:'one'},{id:'two'}]}]]) {
+        globalThis.fetch=async()=>Response.json(payload);
+        assert.deepEqual(await supabaseRunner({url:'https://example.supabase.co',serviceKey:'sb_secret_fixture',queryFunction:'fixture_query'}).query('SELECT id FROM fixture'),[{id:'one'},{id:'two'}]);
+    }
+    for (const operation of ['query','exec']) {
+        globalThis.fetch=async()=>Response.json({code:'PGRST202',message:'missing RPC'},{status:404});
+        await assert.rejects(supabaseRunner({url:'https://example.supabase.co',serviceKey:'sb_secret_fixture'})[operation]('SELECT 1'),/RPC is unavailable/);
+        globalThis.fetch=async()=>Response.json({code:'42501',message:'permission denied for execute_query'},{status:403});
+        await assert.rejects(supabaseRunner({url:'https://example.supabase.co',serviceKey:'sb_secret_fixture'})[operation]('SELECT 1'),/permission denied for execute_query/);
+    }
+} finally {globalThis.fetch=originalFetch;}
+console.log('supabase custom RPC rows/legacy arrays and precise missing/permission errors passed');

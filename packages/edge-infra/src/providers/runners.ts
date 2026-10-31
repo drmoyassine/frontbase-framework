@@ -235,27 +235,24 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
             try {
                 const { data, error } = await client.rpc(opts.queryFunction??'execute_query', {
                     query_sql: inlinePgParams(sql, params as unknown[]),
-                    query_params: '[]' as never,
+                    query_params: [] as never,
                 });
 
+                if(error?.code==='PGRST202') throw new Error('[Supabase] SQL query RPC is unavailable. Verify its configured schema, function name and server-role permissions; see docs/guides/supabase-setup.md.');
                 if (error) throw new Error(`[Supabase] query failed: ${error.message}`);
 
                 // execute_query is RETURNS TABLE(result jsonb) → PostgREST gives
                 // [{result: <rows>}] where <rows> is the json_agg array (already parsed).
+                // Installation RPCs emit one wrapped row per result, so the SQL
+                // can be SELECT or a write with RETURNING. Preserve legacy
+                // custom functions that aggregate rows into one result array.
+                if(opts.queryFunction && Array.isArray(data)) return data.flatMap(entry=>{
+                    const value=extractRpcResult([entry]);
+                    return Array.isArray(value)?value:value && typeof value==='object'?[value as Record<string,unknown>]:[];
+                });
                 const rows = extractRpcResult(data);
                 return Array.isArray(rows) ? rows as Record<string, unknown>[] : [];
             } catch (e) {
-                // If execute_query function doesn't exist, provide clear guidance
-                if ((e as Error).message.includes('execute_query')) {
-                    throw new Error(
-                        '[Supabase] execute_query function not found. Create it in your Supabase SQL editor:\n' +
-                        'CREATE OR REPLACE FUNCTION execute_query(query_sql text, query_params jsonb = \'[]\'::jsonb)\n' +
-                        'RETURNS TABLE(result jsonb) LANGUAGE plpgsql SECURITY DEFINER AS $$\n' +
-                        'DECLARE rows_jsonb jsonb; BEGIN EXECUTE format(\'%s\', query_sql) USING ' +
-                        'SELECT jsonb_array_elements(query_params)::text AS param INTO rows_jsonb; ' +
-                        'RETURN QUERY SELECT rows_jsonb AS result; END; $$;'
-                    );
-                }
                 throw e;
             }
         },
@@ -265,9 +262,10 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
             try {
                 const { data, error } = await client.rpc(opts.execFunction??'execute_sql', {
                     query_sql: inlinePgParams(sql, params as unknown[]),
-                    query_params: '[]' as never,
+                    query_params: [] as never,
                 });
 
+                if(error?.code==='PGRST202') throw new Error('[Supabase] SQL execution RPC is unavailable. Verify its configured schema, function name and server-role permissions; see docs/guides/supabase-setup.md.');
                 if (error) throw new Error(`[Supabase] exec failed: ${error.message}`);
 
                 // execute_sql is RETURNS TABLE(result jsonb) → [{result: <jsonb>}];
@@ -280,16 +278,6 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
                 }
                 return 0;
             } catch (e) {
-                if ((e as Error).message.includes('execute_sql')) {
-                    throw new Error(
-                        '[Supabase] execute_sql function not found. Create it in your Supabase SQL editor:\n' +
-                        'CREATE OR REPLACE FUNCTION execute_sql(query_sql text, query_params jsonb = \'[]\'::jsonb)\n' +
-                        'RETURNS TABLE(result jsonb) LANGUAGE plpgsql SECURITY DEFINER AS $$\n' +
-                        'DECLARE result_jsonb jsonb; BEGIN EXECUTE format(\'%s\', query_sql) USING ' +
-                        'SELECT jsonb_array_elements(query_params)::text AS param INTO result_jsonb; ' +
-                        'RETURN QUERY SELECT result_jsonb AS result; END; $$;'
-                    );
-                }
                 throw e;
             }
         },
