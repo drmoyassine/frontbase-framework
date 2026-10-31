@@ -1,5 +1,9 @@
 # Deployment support matrix
 
+## Hosted HTTP state candidate — 2026-11-01
+
+The owner-selected Supabase/PostgREST HTTP state path has pushed implementation and local qualification at `c986dc74`; it is not yet merged or live-qualified. Supabase reuses OAuth project/schema discovery; self-hosted PostgREST adds read-only connection/schema testing. Apply alone creates an empty dedicated application schema and private invoker RPCs, using the existing runner and host activation. Actual isolated local PostgREST HTTP create/reuse, migrations, writes and privilege tests also pass. Actual CF/Vercel acceptance remains open; existing connection receipts do not certify state provisioning. See [the exact candidate/gates/live checklist](../plans/hosted-postgres-state-20261031.md) and [setup guide](supabase-setup.md). Runtime Supabase server keys can have project-wide authority; a dedicated schema is not a scoped-login guarantee. Existing local/wire and legacy connect-only profiles remain supported under their earlier evidence.
+
 ## Current native onboarding evidence — 2026-10-31
 
 The verified provider repairs are merged on main at 2b7b0725. The actual public main-source preflight passes for both README buttons, including root Wrangler configuration and Vercel's initial Frontbase integration parameters. Run `node scripts/deployment-buttons.mjs --verify-source` before a future launch to detect source drift; this read-only check creates nothing.

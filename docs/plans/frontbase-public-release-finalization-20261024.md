@@ -2,6 +2,8 @@
 
 ## Current checkpoint — 2026-10-31
 
+**November 1 owner-directed binding task:** finish the [hosted Supabase/PostgREST HTTP state path](hosted-postgres-state-20261031.md) before returning to the recorded order below. Candidate `c986dc74` is committed/pushed with final workspace check/build, real local PostgreSQL/PostgREST HTTP and existing deployment/security gates passing. Native candidate acceptance awaits CF action-time access confirmation and Vercel authenticator entry; no state-path live qualification or main merge is claimed. The owner's selected protocol is HTTPS on both CF and Vercel. Setup renewal and the uninterrupted public-main Vercel browser journey remain separate open exits. Preserve the owner's unconfigured Study-in-USA installation.
+
 The verified main implementation checkpoint is `1ea8d2266e2528f0c7da35a2310c013f1b3338db`, containing the tested Vercel stale-page repair `033f496b` and the completed Cloudflare no-coordinator bootstrap. Both are normal authenticated-owner merges; no rebase or force-push. The README buttons select main, and the public deployment-source contract passes at that exact merge. Later documentation commits do not establish another live-build result. This is source promotion and local qualification, not a fresh live deployment of the repaired Vercel flow.
 
 | Surface | Current status | Evidence / remaining exit |
