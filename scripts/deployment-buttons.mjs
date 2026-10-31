@@ -9,6 +9,7 @@ import { resolve } from 'node:path';
 // frontbase-reconcile-supabase-20261029) are superseded snapshots.
 export const nativeSourceRef = 'main';
 export const nativeRepository = 'https://github.com/drmoyassine/frontbase-framework';
+export const nativeVercelIntegration = 'oac_V83Y4Hs1Y1VJFj2311jVVVCW';
 export const nativeStore = Object.freeze({ type: 'integration', integrationSlug: 'tursocloud', productSlug: 'database', protocol: 'storage', allowConnectExistingProduct: true });
 
 // Named test tags avoid the ambiguous slash-branch parsing observed in native clone UIs.
@@ -21,7 +22,11 @@ export function nativeDeployButtons({ ref = nativeSourceRef, name = 'frontbase-c
   vercel.searchParams.set('repository-url', source);
   vercel.searchParams.set('project-name', name);
   vercel.searchParams.set('root-directory', 'examples/cf-full');
-  if (!hosted) {
+  if (hosted) {
+    vercel.searchParams.set('integration-ids', nativeVercelIntegration);
+    vercel.searchParams.set('redirect-url', 'https://oauth.frontbase.dev/native-vercel/complete');
+    vercel.searchParams.set('external-id', 'frontbase-native-v1');
+  } else {
     vercel.searchParams.set('env', 'ADMIN_EMAIL,ADMIN_PASSWORD');
     vercel.searchParams.set('stores', JSON.stringify([nativeStore]));
   }

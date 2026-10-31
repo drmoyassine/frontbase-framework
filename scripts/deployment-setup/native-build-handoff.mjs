@@ -14,6 +14,17 @@ export const cloudflareBuildPermissions=Object.freeze([
   {path:'/storage/kv/namespaces?per_page=1',permission:'Workers KV Storage: Edit and Read'},
 ]);
 
+/** Upgrade only a recognized earlier build-token installation. Existing relay
+ * configuration is never replaced. Only the new receiver verifier is secret;
+ * inherited provider credentials and the session key remain untouched. */
+export function nativeBuildReceiverSecrets(plan,settings,relay){
+  const bindings=settings?.bindings??[],names=new Set(bindings.map(b=>b.name));
+  if(plan.vars?.FRONTBASE_BOOTSTRAP!=='0'||names.has('FRONTBASE_OAUTH_RELAY_URL')||names.has('FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY')||!names.has('FRONTBASE_OAUTH_CONNECTIONS')||!names.has('FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN'))return;
+  const origin=`https://${plan.name}.${new URL(plan.vars.FRONTBASE_PUBLIC_ORIGIN).hostname.split('.').slice(1,-2).join('.')}.workers.dev`;
+  if(origin!==plan.vars.FRONTBASE_PUBLIC_ORIGIN||!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(plan.vars.FRONTBASE_INSTALLATION_ID??'')||typeof relay!=='string'||new URL(relay).origin!==relay||!relay.startsWith('https://'))throw Error('native_receiver_upgrade_refused');
+  return {FRONTBASE_OAUTH_RELAY_URL:relay,FRONTBASE_OAUTH_RELAY_TARGET:JSON.stringify({origin,host:'cloudflare',purpose:'connect'}),FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY:randomBytes(32).toString('base64url'),FRONTBASE_OAUTH_RELAY_ENROLL:'1'};
+}
+
 /** Read probes do not prove write privileges. The existing claim/provisioning
  * path checks those operations and refuses without replay on an uncertain result. */
 export async function verifyNativeBuildPermissions(account,read) {

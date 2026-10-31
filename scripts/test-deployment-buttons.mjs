@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {nativeDeployButtons,verifyNativeButtons,verifyNativeSource,nativeSourceRef} from './deployment-buttons.mjs';
+import {nativeDeployButtons,verifyNativeButtons,verifyNativeSource,nativeSourceRef,nativeVercelIntegration} from './deployment-buttons.mjs';
 import {nativeSnapshotFiles} from './deployment-setup/native-snapshot.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 assert.equal(verifyNativeButtons().ok,true,JSON.stringify(verifyNativeButtons().failures));
 const buttons=nativeDeployButtons();const v=new URL(buttons.vercel);assert.equal(v.searchParams.has('env'),false);assert.equal(v.searchParams.has('stores'),false);assert.match(v.searchParams.get('repository-url'),new RegExp(nativeSourceRef+'$'));
+assert.equal(v.searchParams.get('integration-ids'),nativeVercelIntegration);assert.equal(v.searchParams.get('redirect-url'),'https://oauth.frontbase.dev/native-vercel/complete');assert.equal(v.searchParams.get('external-id'),'frontbase-native-v1');
+assert.equal(new URL(nativeDeployButtons({hosted:false}).vercel).searchParams.has('integration-ids'),false);
 assert.throws(()=>nativeDeployButtons({ref:'codex/ambiguous'}));assert.throws(()=>nativeDeployButtons({name:'../bad'}));
 const snapshot=nativeSnapshotFiles({read,relay:'https://oauth.frontbase.dev',ref:nativeSourceRef,paths:[]});const snapRead=p=>snapshot[p]??read(p);
 assert.equal(verifyNativeButtons({read:snapRead,snapshot:true}).ok,true,JSON.stringify(verifyNativeButtons({read:snapRead,snapshot:true}).failures));

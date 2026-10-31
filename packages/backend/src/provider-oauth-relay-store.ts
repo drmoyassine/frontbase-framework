@@ -20,15 +20,34 @@ export async function sqlOAuthNativeClaims(runner:DbRunner,now=Date.now,limit=10
  * can enroll. Ambiguous origins and malformed ledger entries fail closed. */
 export async function sqlOAuthNativeReceiver(runner:DbRunner){
     await runner.exec('CREATE TABLE IF NOT EXISTS _frontbase_native_claims (resource TEXT PRIMARY KEY, installation_id TEXT NOT NULL, origin TEXT NOT NULL, receiver_proof TEXT NOT NULL, created_at INTEGER NOT NULL)');
+    await runner.exec('CREATE TABLE IF NOT EXISTS _frontbase_oauth_receivers (origin TEXT PRIMARY KEY, host TEXT NOT NULL, receiver_proof TEXT NOT NULL, created_at INTEGER NOT NULL)');
     return async(target:OAuthRelayTarget,proof:string):Promise<boolean>=>{
         if(target.purpose!=='connect'||!['cloudflare','vercel'].includes(target.host)||!/^[\w-]{43}$/.test(proof))return false;
         try{
             const origin=new URL(target.origin);if(origin.protocol!=='https:'||origin.origin!==target.origin||origin.port||origin.username||origin.password)return false;
             const rows=await runner.query('SELECT resource FROM _frontbase_native_claims WHERE origin = ? AND receiver_proof = ? LIMIT 2',[target.origin,proof]);
+            if(rows.length===0){if((await runner.query('SELECT resource FROM _frontbase_native_claims WHERE origin = ? LIMIT 1',[target.origin])).length)return false;const enrolled=await runner.query('SELECT host FROM _frontbase_oauth_receivers WHERE origin = ? AND receiver_proof = ?',[target.origin,proof]);return enrolled.length===1&&enrolled[0]!.host===target.host;}
             if(rows.length!==1)return false;
             const resource=JSON.parse(String(rows[0]!.resource));
             return Array.isArray(resource)&&resource.length===4&&resource[0]===target.host&&resource[3]==='production';
         }catch{return false;}
+    };
+}
+
+/** Additional-provider receiver enrollment is not an installation ownership claim.
+ * The relay first reads this exact fingerprint from the canonical provider host.
+ * Only its private preimage can redeem an OAuth ticket. Existing claims win. */
+export async function sqlOAuthReceiverRegistration(runner:DbRunner,now=Date.now,limit=100000){
+    if(!Number.isSafeInteger(limit)||limit<1||limit>100000)throw Error('receiver_limit_refused');
+    await sqlOAuthNativeReceiver(runner);
+    return async(target:OAuthRelayTarget,proof:string)=>{
+        if(target.purpose!=='connect'||!['cloudflare','vercel'].includes(target.host)||!/^[\w-]{43}$/.test(proof))return false;
+        try{const url=new URL(target.origin);if(url.protocol!=='https:'||url.origin!==target.origin||url.port||url.username||url.password)return false;}catch{return false;}
+        const legacy=await runner.query('SELECT receiver_proof,resource FROM _frontbase_native_claims WHERE origin = ? LIMIT 2',[target.origin]);
+        if(legacy.length){if(legacy.length!==1||legacy[0]!.receiver_proof!==proof)return false;const resource=JSON.parse(String(legacy[0]!.resource));return resource[0]===target.host;}
+        await runner.query('INSERT INTO _frontbase_oauth_receivers (origin,host,receiver_proof,created_at) SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM _frontbase_oauth_receivers) < ? ON CONFLICT(origin) DO NOTHING RETURNING origin',[target.origin,target.host,proof,now(),limit]);
+        const rows=await runner.query('SELECT host,receiver_proof FROM _frontbase_oauth_receivers WHERE origin = ?',[target.origin]);
+        return rows.length===1&&rows[0]!.host===target.host&&rows[0]!.receiver_proof===proof;
     };
 }
 /** Dedicated bounded expiring store; never uses or migrates an application's state database. */
