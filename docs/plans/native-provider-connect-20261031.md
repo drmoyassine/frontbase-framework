@@ -2,6 +2,12 @@
 
 Owner scope: promote the verified Cloudflare credential handoff, make Vercel retain its initial Deploy Button integration authorization, verify Connect Supabase, and merge verified repairs into main. This is bounded onboarding acceptance, not Frontbase GA, general provider parity or an independent-account certification.
 
+## Latest checkpoint — source promoted, fresh browser completion open
+
+Main `1ea8d226` now includes the locally qualified stale-native-page repair `033f496b`; remote ancestry, exact source and README source-contract verification pass. Cloudflare's later no-coordinator repair is also merged and natively qualified; see its [separate final receipt](cloudflare-metadata-bootstrap-20261031.md). Existing connected-account and publication results below retain their recorded revisions.
+
+The subsequent actual standard-Chrome README run completed the Vercel integration popup/return and both native Git/handoff builds without a CLI upload. It exposed a stale native page during authorized runtime replacement, repaired by bounded read-only routing through the existing protected owner session. The previous popup visibility limitation is historical, not the current unresolved diagnosis. Fresh repaired activation, administrator creation, publication and uninterrupted browser/upgrade evidence remain open in the [current browser checklist](vercel-native-browser-acceptance-20261031.md#next-run-checklist). A diagnostic refresh and local mutation success do not close that gate.
+
 ## Delivered protocol
 
 Cloudflare retains the selected persistent build API token as a runtime secret and imports it once into encrypted Connected Accounts. The private deployment-owner capability remains required; a public Worker address proves no ownership. For additional OAuth providers, a separate private receiver verifier stays in the installation. The optional relay reads only its public fingerprint from the canonical managed runtime and makes a bounded, create-only receiver registration. It never receives the CF build API token. Recognized older build-token installs receive receiver configuration on upgrade without replacing their resources, credentials, session or existing receiver settings.
@@ -47,5 +53,5 @@ The temporary public-metadata popup experiment was retired because it did not re
 ## Remaining boundaries
 
 1. Engineering delivery, main merge/push, exact-source upgrade and remote README preflight are complete. Protocol repair `92520541`, bounded readiness repair `b6a0bfdb`, acceptance docs `cfc5c31c`, authenticated-owner merge `2b7b0725`. Private diagnostic tail stopped. No uncommitted implementation is intentionally left.
-2. Standard-browser uninterrupted Vercel popup regression remains a manual-provider-UI check. Provider popup failure does not authorize replay of a claimed/uncertain operation.
+2. Uninterrupted repaired Vercel onboarding remains open under the latest checkpoint above. Real standard-Chrome popup/return and Git builds now have evidence; the stale-page repair needs a fresh automatic wizard return followed by UI activation/publication and upgrade. Do not replay a claimed/uncertain operation or relabel the older CLI-assisted c run as clean native proof.
 3. Independent customer accounts, general relay refresh/rotation/recovery operations, real Docker OAuth consent, paid/optional provider breadth and public package/release gates remain separate. Existing local/direct-client self-hosting stays available without the hosted relay.
