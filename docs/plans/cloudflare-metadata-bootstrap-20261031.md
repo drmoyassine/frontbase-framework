@@ -41,3 +41,8 @@ Final gates: pnpm -r check/build PASS; test:native-cloud-setup PASS including ni
 After evidence capture, only the new disposable Worker and its selected D1/KV were retired, restoring the account to 9 D1 / 25 KV and freeing the test database slot. The shared build token was not revoked or changed. No Study-in-USA, staging, existing native acceptance application, source record or original Git copy was changed. The retired test Git copy and immutable initial candidate tag remain historical artifacts; the candidate tag is not the final deployment source.
 
 All source and documentation fixes are committed; generated examples/cf-full/api/cms.mjs remains unstaged under the existing artifact rule. The main README selects main; final promotion/default-source verification is recorded in the subsequent Git receipt. Native source builds regenerate host artifacts. Remaining executable work belongs to the separate uninterrupted standard-browser Vercel test and wider release qualification, not this completed CF repair.
+
+
+## Default-branch promotion receipt
+
+Normal authenticated-owner merge 7b9f923aeb5ce65617e975f552c216831004d175 promotes the verified implementation and delivery record into main, without rebase or force-push. Actual remote README/native-source preflight passes with source main and zero failures. Remote metadata-adapter blob 141970c26217d50fb7aa5199c5b59e6817ca1d13 exactly matches the locally reviewed and natively tested source. The production relay remains healthy with Cloudflare, Vercel and Supabase registered. This closes the bounded no-coordinator-D1 repair; it does not close the separate Vercel browser or general release gates.
