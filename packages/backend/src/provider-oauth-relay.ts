@@ -70,7 +70,7 @@ export function createProviderOAuthRelay(deps:OAuthRelayDeps){
         const escape=(s:string)=>s.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!));
         return c.html('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect Frontbase</title></head><body><h1>Connect '+escape(provider==='cloudflare'?'Cloudflare':provider==='supabase'?'Supabase':'Vercel')+'</h1><p>Authorization will be delivered securely to <strong>'+escape(target.origin)+'</strong>.</p><button id="connect" type="button">Continue to provider</button><p id="status" role="status"></p><script src="/connect.js"></script></body></html>');
     });
-    app.get('/connect.js',c=>c.body("document.getElementById('connect').addEventListener('click',async()=>{const p=new URL(location.href).searchParams.get('provider');const r=await fetch('/api/provider-oauth/'+p+'/start',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({returnPath:'/complete'})});if(!r.ok){document.getElementById('status').textContent='Connection unavailable. Return to Frontbase and reconnect.';return;}location.assign((await r.json()).url);});",200,{'content-type':'text/javascript'}));
+    app.get('/connect.js',c=>c.body("document.getElementById('connect').addEventListener('click',async()=>{const p=new URL(location.href).searchParams.get('provider');const r=await fetch('/api/provider-oauth/'+p+'/start',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json','x-frontbase-relay-proof':new URL(location.href).searchParams.get('challenge')},body:JSON.stringify({returnPath:'/complete'})});if(!r.ok){document.getElementById('status').textContent='Connection unavailable. Return to Frontbase and reconnect.';return;}location.assign((await r.json()).url);});",200,{'content-type':'text/javascript'}));
     app.get('/complete',async c=>{
         const value=await session(c.req.raw),ticket=new URL(c.req.url).searchParams.get('ticket');if(!value||!validToken(ticket))return c.text('Connection expired. Please reconnect.',409);
         const raw=await deps.vault.get('ticket:'+ticket);if(!raw)return c.text('Connection expired. Please reconnect.',409);
@@ -93,6 +93,9 @@ export function createProviderOAuthRelay(deps:OAuthRelayDeps){
     app.all('/api/provider-oauth/*',async c=>{
         const value=await session(c.req.raw),path=new URL(c.req.url).pathname;
         if(!value&&!/\/(callback|callback.js)$/.test(path))return c.json({error:'relay_refused'},403);
+        // A later connection tab can replace the shared relay cookie. Bind the
+        // displayed page challenge before starting consent for any receiver.
+        if(path.endsWith('/start')&&(!value||c.req.header('x-frontbase-relay-proof')!==value.proof||path!=='/api/provider-oauth/'+value.provider+'/start'))return c.json({error:'relay_page_replaced',message:'Another connection replaced this setup tab. Return to the intended installation and reconnect.'},409);
         const actor:OAuthActor=value?{tenant:value.tenant,subject:value.subject}:{tenant:'_relay',subject:'invalid'};
         const scoped:OAuthVault={get:key=>deps.vault.get(actor.subject+':'+key),insert:(key,text)=>deps.vault.insert(actor.subject+':'+key,text),entries:async prefix=>(await deps.vault.entries(actor.subject+':'+prefix)).map(row=>({key:row.key.slice(actor.subject.length+1),value:row.value}))};
         const existing=providerOAuthVault(scoped,deps.cipher,actor,now);

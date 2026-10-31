@@ -27,7 +27,7 @@ const cookie=r=>r.headers.get('set-cookie').split(';')[0];
 async function flow(clientFor=client,providerName='cloudflare'){
  const start=await clientFor('/api/provider-oauth/'+providerName+'/start',{body:{returnPath:'/frontbase-admin/settings?tab=accounts'}});assert.equal(start.status,200);const clientCookie=cookie(start),url=new URL((await start.json()).url);if(establishedKey)assert.ok(!url.href.includes(establishedKey),'registration secret never enters browser URL');
  const opened=await call(url.pathname+url.search);assert.equal(opened.status,200);const relayCookie=cookie(opened);assert.ok(!(await opened.text()).includes('fixture-sensitive'));
- const begin=await call('/api/provider-oauth/'+providerName+'/start',{cookie:relayCookie,body:{returnPath:'/complete'}});assert.equal(begin.status,200);const state=new URL((await begin.json()).url).searchParams.get('state'),stateCookie=cookie(begin);
+ const begin=await call('/api/provider-oauth/'+providerName+'/start',{cookie:relayCookie,headers:{'x-frontbase-relay-proof':url.searchParams.get('challenge')},body:{returnPath:'/complete'}});assert.equal(begin.status,200);const state=new URL((await begin.json()).url).searchParams.get('state'),stateCookie=cookie(begin);
  // Another isolate resumes the same durable encrypted transaction.
  relay=createProviderOAuthRelay({...deps,vault:await sqlOAuthRelayVault(db,()=>clock)});
  const finish=await call('/api/provider-oauth/'+providerName+'/finish',{cookie:relayCookie+'; '+stateCookie,body:{state,code:'test-code'}});assert.equal(finish.status,200);const text=await finish.text();assert.ok(!text.includes('fixture-sensitive'));const complete=await call(JSON.parse(text).returnPath,{cookie:relayCookie});assert.equal(complete.status,302);const ticket=new URL(complete.headers.get('location')).searchParams.get('ticket');return {ticket,clientCookie};
@@ -35,6 +35,18 @@ async function flow(clientFor=client,providerName='cloudflare'){
 assert.equal((await client('/api/provider-oauth/status',{owner:false})).status,403);
 assert.equal((await call('/connect?provider=cloudflare&challenge='+'a'.repeat(43)+'&target='+encodeURIComponent(JSON.stringify({...target,origin:'https://attacker.example'})))).status,409);
 assert.equal((await client('/api/provider-oauth/cloudflare/start',{body:{returnPath:'/ok'},requestOrigin:'https://attacker.example'})).status,403);
+// Two browser tabs share a relay cookie. A stale page must not authorize the
+// newer page's receiver merely because that cookie was replaced.
+const stalePage=await call('/connect?provider=cloudflare&challenge='+'a'.repeat(43)+'&target='+encodeURIComponent(JSON.stringify(target)));
+const newerPage=await call('/connect?provider=cloudflare&challenge='+'b'.repeat(43)+'&target='+encodeURIComponent(JSON.stringify(target)));
+assert.equal(stalePage.status,200);assert.equal(newerPage.status,200);
+for(const pageProof of [undefined,'a'.repeat(43)]){
+ const refused=await call('/api/provider-oauth/cloudflare/start',{cookie:cookie(newerPage),headers:pageProof?{'x-frontbase-relay-proof':pageProof}:{},body:{returnPath:'/complete'}});
+ assert.equal(refused.status,409,'stale or unbound consent page refused before provider dispatch');
+ assert.equal(exchanges,0);
+}
+assert.ok((await(await call('/connect.js')).text()).includes('x-frontbase-relay-proof'),'browser sends the displayed connection challenge');
+console.log('PASS concurrent relay tabs refuse a replaced page-to-session binding before consent');
 let f=await flow();assert.equal(exchanges,1);assert.equal(verified,1);
 const raw=await db.query('SELECT value FROM _frontbase_oauth_relay');assert.ok(raw.every(r=>String(r.value).startsWith('enc:')));assert.ok(!JSON.stringify(raw).includes('fixture-sensitive'));
 const ticketRequest=async payload=>relay.fetch(new Request(relayOrigin+'/ticket',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}));
