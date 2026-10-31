@@ -1,0 +1,45 @@
+# Hosted setup access renewal — October 31, 2026
+
+Status: **PLANNED, NOT IMPLEMENTED**. Owner accepted recording this recovery gap as the next onboarding repair, before declaring onboarding complete. This instruction records the plan; it does not claim implementation, live verification or authorize changes to an existing installation.
+
+## Confirmed current behavior
+
+- The native claim creates a private deployment-owner capability with a one-hour lifetime (`examples/cf-full/src/native-claim.ts`).
+- Redeeming it creates an origin/context-bound Secure, HttpOnly, SameSite=Strict bootstrap cookie for at most fifteen minutes, bounded by the capability expiry (`packages/backend/src/hosted-bootstrap.ts`). The session is not sliding on ordinary reads.
+- The hosted client removes the capability fragment from the address bar. A subsequently copied address is not the complete original private link. Reopening the original link can restore an expired browser session only while that capability remains valid and setup is still eligible.
+- The hosted client's opening catch currently shows “Open the private setup link provided by your deployment. If it has expired, ask the deployment owner to renew it.” for different failures. That text alone does not establish expiry: missing authorization, refusals, network failure or an invalid response can lead to it (`scripts/deployment-setup/hosted-app.js`).
+- There is no complete supported renewal flow for this native hosted bindings wizard. The managed Vercel `--setup-link` option concerns first-administrator setup; `deploy:recover` concerns existing administrator password recovery. Neither is this missing bindings-wizard renewal operation.
+- The bootstrap owner secret currently signs the owner cookie and is also used in bootstrap encryption/key derivation. Changing it manually is not a safe renewal recipe: encrypted grants/journal state and derived runtime credentials must remain readable and consistent.
+
+## Intended owner experience
+
+Show **Renew setup access** when authorization is missing or expired, with distinct explanations for expired browser session, expired owner link, denied ownership, temporary unavailability and an already installed application. A configured installation should direct the user to administrator login/recovery, not reopen first-install provisioning. Preserve any in-memory form entries while recovery is attempted; do not persist credentials to browser storage.
+
+Renewal uses the existing provider authorization and exact-target ownership verification patterns. Authenticate through the relevant provider and prove management access to the existing account/team, project/Worker, canonical origin and installation identity. A grant already present in the app does not prove that the visitor owns it. The public application URL alone is never sufficient. Do not require the user to create/paste management tokens or expose a manual setup-token field.
+
+After proof, inspect the existing durable operation before issuing access. Renew the access capability, not the installation, provider grant or provisioning operation. A reviewed operation can resume under its existing rules; applying/uncertain states remain fenced and expose only the existing supported status/reconciliation path. Installed state refuses bootstrap renewal. Recovery must not call the initial create-only native claim again.
+
+## Security and persistence contract
+
+1. Bind a short-lived, unguessable recovery transaction to provider, target, canonical origin and installation. Reuse server-side state/PKCE/CSRF and verified callback/receiver controls. Reject cross-account, wrong-project, wrong-origin, tampered or stale transactions. Never accept a caller-supplied arbitrary callback/receiver URL.
+2. Separate renewable access credentials/session generation from stable vault/journal encryption material. Preserve existing metadata, selected resources, encrypted Connected Accounts, operation identity and stable derived keys. If an adapter migration is necessary, define and test it before writing; do not rotate the current root secret blindly.
+3. Use the existing durable provider journal/metadata atomic primitives to issue a new capability generation and invalidate earlier links/sessions. Competing renewals must not create multiple valid generations. Unknown/lost write outcomes require inspection/reconciliation and must not trigger another provisioning or claim write.
+4. Keep secret capabilities out of public metadata, provider/referrer logs, query strings, analytics, status bodies, screenshots and Git. Deliver only to the verified owner through the established private fragment/cookie pattern; strip the fragment promptly and use no-store/no-referrer. No management credentials enter the browser handoff.
+5. Add bounded rate/abuse controls and token-safe audit events. Public responses must not disclose tenant/account inventories, secret values or provider error bodies. Use actionable fixed error codes and messages; distinguish expiry, ownership refusal, installed-state refusal, held operation and transport/service failures instead of `http_403` or a generic expiry diagnosis.
+6. Preserve zero-resource pre-Apply behavior. Renewal must not allocate a coordinator D1, new application bindings or another deployment installation. Retain legacy D1-journal compatibility and the independent local/direct self-hosted path.
+
+## Implementation and acceptance order
+
+1. Define the recovery state machine and reusable backend contract, including generation invalidation and provider-specific atomic updates. Reuse the existing OAuth receiver, exact-target verifier, owner session and journal interfaces; avoid a parallel authentication/provisioning system.
+2. Implement server-side verification/issuance, then the clean hosted-wizard recovery control and specific error mapping. Do not advertise the control as functional until its backend is ready.
+3. Add functional and existing-style mutation/conformance gates: missing/expired session; valid/expired/previous-generation owner link; attacker with only the URL; wrong account/project/origin; replay; simultaneous renewals; lost writes; denied/expired provider grant; active/uncertain operation; installed state; no-leak; no resource/claim/provisioning replay. Verify drafts and encrypted state survive.
+4. Verify a disposable native CF metadata installation and native Vercel installation through real provider/browser renewal, including expiry, old-session invalidation and post-renewal resume. Where the same wizard is advertised for Docker, qualify its actual owner proof separately; do not imply native-cloud provider consent certifies Docker.
+5. Run required workspace check/build and affected security/mutation suites. Record exact source, operation/resource identities and live results. Then execute the separate fresh uninterrupted main-README Vercel acceptance journey, including publication and normal Git upgrade.
+
+Exit: a deployment owner can regain setup access through a documented supported flow without secret pasting, bespoke recovery routes, state reset, grant loss or repeated provisioning. Anonymous visitors and previous capabilities remain refused. This closes a recovery defect, not the broader Developer Preview distribution or independent-account service qualification gates.
+
+## Recording evidence and next action
+
+This is a documentation-only record based on inspection of the three source files above and the managed command boundaries. No application tests, provider changes, setup renewal, deployment or token rotation were performed for this record. Implementation and live evidence remain open. Preserve the unrelated generated `examples/cf-full/api/cms.mjs` diff.
+
+Next executable task: claim the bounded renewal implementation in the audit and design its capability-generation/encryption separation against both existing hosted backends before editing either live installation. The [overall plan](frontbase-public-release-finalization-20261024.md#current-checkpoint--2026-10-31) and [Vercel acceptance checklist](vercel-native-browser-acceptance-20261031.md#next-run-checklist) track the follow-on gates.

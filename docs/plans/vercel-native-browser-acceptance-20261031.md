@@ -42,6 +42,8 @@ Next executable task: start from the updated main README in standard Chrome, com
 
 ### Next-run checklist
 
+Planning prerequisite added at owner request: implement and qualify [secure hosted setup renewal and distinct opening errors](hosted-setup-access-renewal-20261031.md) before closing onboarding. Its supported recovery drill is separate from the uninterrupted fresh-deployment proof below; do not replace that proof with bespoke recovery or silently restart an uncertain installation. This prerequisite is recorded, not yet implemented.
+
 1. Open the actual main README in standard Chrome and capture its selected public source. Use an isolated disposable project; preserve the existing populated acceptance apps and the incomplete browser test's claimed state.
 2. Complete the native initial integration for that project only. Record the private Git copy, imported commit, project/team, initial READY deployment and handoff READY deployment. A provider-generated clone commit may differ from the upstream SHA; record both identities rather than guessing equivalence.
 3. Follow the native return into the owned hosted bindings wizard. Cloudflare/Vercel management authorization must already be retained as appropriate. Do not manually refresh to make the stale-page regression disappear; bounded automatic routing must work without repeating consent or the native claim.
