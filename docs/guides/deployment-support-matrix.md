@@ -1,11 +1,14 @@
-# Deployment support matrix — 2026-10-22
+# Deployment support matrix
 
-## Current public-button source warning — 2026-10-26
+## Current native onboarding evidence — 2026-10-31
 
-The repository-default button is not the reviewed integrated source. A read-only GitHub check confirms `main` lacks root `wrangler.toml`, so successful local/native test receipts must not be read as certification of this public entry point. Before a native launch, run `node scripts/deployment-buttons.mjs --verify-source` (or add `--ref NAME` for an explicit slash-free reviewed ref). The preflight reads public GitHub source only and fails on missing configuration/network errors; it creates nothing. The local contract test remains useful but is insufficient by itself.
+The verified provider repairs are merged on main at 2b7b0725. The actual public main-source preflight passes for both README buttons, including root Wrangler configuration and Vercel's initial Frontbase integration parameters. Run `node scripts/deployment-buttons.mjs --verify-source` before a future launch to detect source drift; this read-only check creates nothing.
 
-Cloudflare's native provider form cannot embed Frontbase's shared adapter editor. The existing local browser setup has that editor, but its Cloudflare executor currently accepts new D1/KV/R2 only, not arbitrary adapter changes or existing-resource first installation. First-run setup already requires an operator-held capability and confirms passwords; it now adds accessible reveal and password-manager fields. Neither this UI improvement nor a new source link establishes the complete requested onboarding flow. Browser-launcher versus local-wizard entry is pending owner selection; broader onboarding remains in progress.
+Native Cloudflare retains its selected build credential through hosted setup and encrypted Connected Accounts. Live Supabase consent, account testing and project discovery pass on that installed fixture. Vercel's initial integration grant passes owner-bound completion, Turso activation, administrator setup, publication and encrypted account testing. The owner's real native import/build and the automated continuation/application checks are separate receipts: the automation browser's popup/opener return required a CLI source upload for the latter. An uninterrupted fresh standard-browser popup flow remains a distinct UI regression check. [Exact tests, identities and boundaries](../plans/native-provider-connect-20261031.md).
 
+The shared hosted wizard and local wizard provide the supported adapter choices; the provider-owned native form cannot embed the Frontbase editor. CF defaults to D1/KV; Vercel requires a compatible HTTP state database. Optional hosted OAuth does not replace the direct/local self-hosted path. These are bounded Developer Preview receipts, not general provider parity.
+
+## Earlier profile evidence
 
 This matrix retains dated deployment evidence at foundation5d9ca6f, vector fix375c078 and HTTP cold-start source81308ed, followed by the superseding receipts below. It distinguishes editable suggestions, executor support and actual provider evidence. It is not a general host-parity or public-release claim. Deno remains outside the current acceptance scope; CF-22 is a retired historical umbrella.
 

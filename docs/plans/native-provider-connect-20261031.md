@@ -29,7 +29,7 @@ Production relay version: `dd59f696-eaee-4db5-9bcc-db2b221dd160` (Vercel verifie
 | Fresh Vercel `frontbase-integration-261031c` | Native initial integration callback and encrypted continuation PASS; corrected owner-bound finish invokes native claim and retains the grant. Test project `prj_5k6Qdcl4hXXxM2doYpEbz1GDVJPE`, installation `2d2c1eef-a5d2-4b44-808e-80ad8f853387`. |
 | Vercel activation | Approved empty $0 Turso resource `store_6Sa1RX9zVpVWErnU` (`fb-native-oauth-261031b`) reused for c production. Standard protected owner setup/review/apply PASS; app reaches fresh administrator setup. |
 | Vercel application | Synthetic test administrator and login 200; fixture creation 201, publication 200 and public page 200. Anonymous pages API 401, repeat setup 410. Exactly one encrypted Vercel provider row. Installed-account API retest and UI Test connection PASS; browser shows Connected / Encrypted / Connection verified. |
-| Upgrade | PENDING main-source upgrade/readback. Vercel blocked the local Codex-authored upgrade under its Hobby team commit-author policy; working production remains intact. Merge through the authenticated repository owner, then test that main commit; do not spoof metadata or disable the policy. |
+| Upgrade | PASS: main merge `2b7b0725`, deployment `dpl_6xaB4eYMNicCZo6Dp12tfdZRweDo` READY with matching provider gitCommitSha. Existing session, page, public delivery, closed setup and encrypted Vercel account preserved; provider retest PASS. The earlier Codex-authored upgrade was blocked by Vercel’s Hobby author policy and left the working app intact. Merging through the authenticated GitHub owner resolved it; attribution and policy were not altered. |
 
 **Native browser boundary:** the owner proved a real native import/build on `frontbase-integration-2x61031b`. The automation browser does not expose Vercel's integration popup/opener return; c required a CLI source upload after its genuine native integration callback. The completion and activation handoff were not replaced with CLI credential injection. The three-minute activation timeout required retrieving only c's bootstrap owner capability privately and invoking that same app's standard protected claim API; no management grant was read. Thus corrected initial-authorization retention and the application lifecycle are live-qualified, but a fresh uninterrupted native popup → build → activation run in a standard browser is still a distinct UI regression check. Do not describe c as an uninterrupted one-click run.
 
@@ -42,10 +42,10 @@ The temporary public-metadata popup experiment was retired because it did not re
 - `test:provider-oauth`: PASS with its existing mutation gates.
 - Final native handoff/claim, six build-token faults, manifest, readiness and hosted handoff tests: PASS.
 - Native activation behavioral tests: PASS for build longer than three minutes, ten-minute deadline, bounded requests, missing capability, readiness-only retry and initialization refusal without replay.
-- Five hosted activation faults and native button contract: PASS. Actual remote main-source promotion check follows merge.
+- Five hosted activation faults and native button contract: PASS. Actual remote main-source preflight PASS (`source: main`, no failures), including the initial Vercel integration and CF credential handoff.
 
 ## Remaining boundaries
 
-1. Finish the final candidate upgrade/readback and merge/push; record the resulting main SHA and actual remote README-source preflight.
+1. Engineering delivery, main merge/push, exact-source upgrade and remote README preflight are complete. Protocol repair `92520541`, bounded readiness repair `b6a0bfdb`, acceptance docs `cfc5c31c`, authenticated-owner merge `2b7b0725`. Private diagnostic tail stopped. No uncommitted implementation is intentionally left.
 2. Standard-browser uninterrupted Vercel popup regression remains a manual-provider-UI check. Provider popup failure does not authorize replay of a claimed/uncertain operation.
 3. Independent customer accounts, general relay refresh/rotation/recovery operations, real Docker OAuth consent, paid/optional provider breadth and public package/release gates remain separate. Existing local/direct-client self-hosting stays available without the hosted relay.
