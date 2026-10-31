@@ -27,7 +27,7 @@ async function service(env:Env){
     if(mode==='public-native'&&(!clients.cloudflare||!clients.cloudflare.scopes.length||!clients.vercel||!clients.vercel.clientSecret||!clients.vercel.integrationSlug))throw Error('relay_clients_required');
     const cipher=await createSecretCipher(env.FRONTBASE_RELAY_SECRET),claimInstallation=await sqlOAuthNativeClaims(runner,Date.now,mode==='public-native'?100000:1024);
     const app=createProviderOAuthRelay({origin:env.FRONTBASE_PUBLIC_ORIGIN,clients,cipher,vault,...(notices?{notices:notices as {privacy:string;terms:string}}:{}),claimInstallation,...(mode==='public-native'?{registerReceiver:await sqlOAuthReceiverRegistration(runner)}:{}),fetch:transport,...policy});
-    const native=mode==='public-native'&&clients.vercel?createVercelNativeIntegration({origin:env.FRONTBASE_PUBLIC_ORIGIN,client:clients.vercel,cipher,vault,fetch:transport,verify:policy.verify,claimInstallation,establish:(context,authorization)=>claimNativeInstallation(context,authorization,transport)}):undefined;
+    const native=mode==='public-native'&&clients.vercel?createVercelNativeIntegration({origin:env.FRONTBASE_PUBLIC_ORIGIN,client:clients.vercel,cipher,vault,fetch:transport,verify:policy.verify,claimInstallation,onRefusal:reason=>console.warn('frontbase_native_vercel_refusal:'+reason),establish:(context,authorization)=>claimNativeInstallation(context,authorization,transport)}):undefined;
     return {app,vault,permit,native};
 }
 export default {
