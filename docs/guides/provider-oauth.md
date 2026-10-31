@@ -1,4 +1,4 @@
-> Current October 31 checkpoint: Cloudflare inherited build authorization is merged on main. Additional-provider receiver repair passes live Supabase consent, encrypted retention, Test connection and read-only project discovery on the native CF fixture. Vercel initial-integration continuation is implemented and locally qualified; its new native UI acceptance is pending. [Exact current receipt](../plans/native-provider-connect-20261031.md) supersedes historical snapshot/default-button statements below. No independent-account or automatic relay refresh claim.
+> October 31 acceptance: native Cloudflare retains its build authorization; live Supabase connect/test/discovery passes. Vercel initial integration authorization is retained through owner-bound completion, Turso activation, administrator setup and publication; no additional wizard connection is needed. [Exact acceptance and native-popup boundary](../plans/native-provider-connect-20261031.md). Independent-account and general operational qualification remain separate.
 
 # Provider OAuth connections
 
@@ -14,7 +14,7 @@ An inherited connection is used by D1 HTTP bindings and, when the server probe c
 
 Candidate implementation and verification status: [October 31 handoff record](../plans/cloudflare-build-credential-handoff-20261031.md). Earlier paragraphs describe the retained OAuth path and historical native tests.
 
-The shared hosted wizard and installed Connected Accounts support direct Cloudflare OAuth, Vercel Integration authorization and Supabase resource connections, or an explicitly configured optional callback relay. Fresh native Cloudflare and Vercel deployments have passed with the isolated relay, including real consent, activation, publication and upgrades. The main README buttons still use the earlier defaults; the isolated relay is not a general public service. See the [live acceptance evidence](../plans/provider-oauth-relay-20261027.md).
+The shared hosted wizard and installed Connected Accounts support direct Cloudflare OAuth, Vercel Integration authorization and Supabase resource connections, or an explicitly configured optional callback relay. Fresh native Cloudflare and Vercel deployments have passed with the isolated relay, including real consent, activation, publication and upgrades. The current README uses the production relay for optional hosted setup; the local wizard and direct self-hosted clients remain available. See the [live acceptance evidence](../plans/provider-oauth-relay-20261027.md).
 
 ## Configure the OAuth client
 
