@@ -1,3 +1,4 @@
+import {postgresPlaceholders} from './postgres-parameters.js';
 /**
  * DbRunner factories (M-DB.0, Decision B1/B9) — the single seam every host uses
  * to obtain a DbRunner, regardless of backend. The console store, migrations,
@@ -209,28 +210,30 @@ export function extractRpcResult(data: unknown): unknown {
  * numbers/booleans pass unquoted; null → NULL. Exported for unit testing.
  */
 export function inlinePgParams(sql: string, params: unknown[]): string {
-    if (!params.length) return sql;
-    return sql.replace(/\$(\d+)/g, (match, digits) => {
-        const idx = Number(digits) - 1;
-        if (idx < 0 || idx >= params.length) return match; // unknown placeholder — leave it
-        const v = params[idx];
-        if (v === undefined || v === null) return 'NULL';
-        if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
-        if (typeof v === 'number' && Number.isFinite(v)) return String(v);
-        return `'${String(v).replace(/'/g, "''")}'`;
+    if(!params.length)return sql;
+    return postgresPlaceholders(sql,(index,placeholder)=>{
+        if(index<1||index>params.length)return placeholder;
+        const value=params[index-1];
+        if(value===undefined||value===null)return 'NULL';
+        if(typeof value==='boolean')return value?'TRUE':'FALSE';
+        if(typeof value==='number'&&Number.isFinite(value))return String(value);
+        return "'"+String(value).replace(/'/g,"''")+"'";
     });
 }
 
 /** One shared HTTP client setup for the existing runner and typed domain RPC adapters. */
 
 export function supabaseRunner(opts: SupabaseOpts): DbRunner {
+    for(const name of [opts.queryFunction,opts.execFunction,opts.migrationFunction])if(name!==undefined&&!/^[a-z_][a-z0-9_]{0,62}$/.test(name))throw Error('invalid_state_rpc');
     const client = supabasePostgrestClient(opts);
     return {
+        dialect:'postgres',
+        ...(opts.migrationFunction?{applyMigrations:async(plan:ReadonlyArray<{version:number;name:string;statements:readonly string[]}>,appliedAt:string)=>{const{data,error}=await client.rpc(opts.migrationFunction!,{migration_plan:plan,applied_at:appliedAt});if(error)throw Error('state_migration_failed');if(!Array.isArray(data)||data.some(row=>!Number.isSafeInteger(row.version)))throw Error('state_migration_failed');return data.map(row=>row.version as number);}}:{}),
         async query(sql, params = []) {
             // For SELECT queries, use RPC to call execute_query if available
             // Otherwise, fall back to direct execution via the client
             try {
-                const { data, error } = await client.rpc('execute_query', {
+                const { data, error } = await client.rpc(opts.queryFunction??'execute_query', {
                     query_sql: inlinePgParams(sql, params as unknown[]),
                     query_params: '[]' as never,
                 });
@@ -260,7 +263,7 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
         async exec(sql, params = []) {
             // For INSERT/UPDATE/DELETE, use execute_sql to get affected rows
             try {
-                const { data, error } = await client.rpc('execute_sql', {
+                const { data, error } = await client.rpc(opts.execFunction??'execute_sql', {
                     query_sql: inlinePgParams(sql, params as unknown[]),
                     query_params: '[]' as never,
                 });

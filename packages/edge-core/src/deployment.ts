@@ -65,7 +65,7 @@ export const deploymentAdapters: readonly DeploymentAdapter[] = [
     {id:'supabase-postgres',role:'state-db',targets:both,selectable:true,modes:['connect','create','reuse'],configKeys:['url','schema','host','port','database','projectRef'],secretKeys:['token','username','password'],configKeysByMode:{connect:['url','schema'],create:['projectRef','schema'],reuse:['projectRef','schema']}},
     // Self-hosted Postgres behind PostgREST: a separate provider entry that reuses the existing
     // supabaseRunner HTTP transport lowering (APP_DB_POSTGREST_URL/_TOKEN) — no wire parts, no Management API.
-    {id:'postgrest-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url','schema'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
+    {id:'postgrest-http',role:'state-db',targets:both,selectable:true,modes:['connect','create','reuse'],configKeys:['url','schema','rpcSchema','rpcPrefix'],configKeysByMode:{connect:['url','schema'],create:['url','schema'],reuse:['url','schema']},secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
     {id:'upstash-http',role:'cache',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'cloudflare-r2',role:'storage',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
@@ -146,6 +146,10 @@ export function validateDeploymentManifest(input: unknown): DeploymentPlan | {re
         }
         // postgrest-http keeps the same plain-lowercase schema fence the probe quote-doubling relies on.
         if(adapter.id==='postgrest-http'&&binding.config.schema&&!/^[a-z_][a-z0-9_]{0,62}$/.test(binding.config.schema))issues.push({role,field:'schema',code:'invalid_schema'});
+        if(adapter.id==='postgrest-http'){
+            if(binding.mode!=='connect'&&(!/^[a-z_][a-z0-9_]{0,62}$/.test(binding.config.schema??'')||binding.config.schema.startsWith('pg_')||['public','information_schema'].includes(binding.config.schema)||binding.mode==='reuse'&&binding.resourceRef!==binding.config.schema))issues.push({role,field:'schema',code:'invalid_schema'});
+            if(binding.config.rpcPrefix||binding.config.rpcSchema){if(binding.mode!=='connect'||binding.config.rpcSchema!=='public'||!/^fb_state_[a-f0-9]{24}_$/.test(binding.config.rpcPrefix??''))issues.push({role,code:'invalid_state_rpc'});}
+        }
         if(adapter.id==='supabase-postgres'&&(binding.mode==='create'||binding.mode==='reuse')){
             // Provisioned selections carry only the Management-API project reference, a schema name and the
             // operator token reference; transport parts and role credentials belong to the transformed

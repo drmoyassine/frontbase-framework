@@ -2,6 +2,8 @@
 import { Hono } from 'hono';
 import { json, type OAuthActor, type OAuthAuthorization } from './provider-oauth.js';
 import { supabaseStateSchemaName } from '@frontbase/edge-core/deployment';
+import {supabaseRunner} from '@frontbase/edge-infra';
+import {checkedExternalUrl,guardedExternalFetch} from './compat/external-http.js';
 export interface ProviderOAuthResourcesDeps {
     origin: string; fetch: typeof fetch; now?: ()=>number;
     authorize(request: Request): Promise<OAuthActor | null>;
@@ -27,6 +29,17 @@ export function createProviderOAuthResources(deps:ProviderOAuthResourcesDeps){
         const result=await upstream(token.accessToken,'https://api.supabase.com/v1/projects',{headers:{authorization:'Bearer '+token.accessToken}});
         if(!Array.isArray(result))return c.json({error:'provider_request_failed'},502);
         return c.json({projects:result.map((p:any)=>({ref:String(p?.ref??p?.id??''),name:String(p?.name??'')})).filter(p=>projectRefPattern.test(p.ref)&&!!p.name&&p.name.length<=200).slice(0,50)});
+    });
+    app.post('/postgrest/schemas',async c=>{
+        const input=await body(c);
+        if(!input||Object.keys(input).length!==2||typeof input.url!=='string'||typeof input.token!=='string'||!input.token||input.token.length>8192)return c.json({error:'state_connection_invalid',message:'Enter the HTTPS PostgREST endpoint and its server credential.'},400);
+        try{
+            const url=checkedExternalUrl(input.url);if(url.search||url.hash)throw Error();
+            const runner=supabaseRunner({url:url.href,restUrl:url.href.replace(/\/$/,''),serviceKey:input.token,fetchImpl:(request,init)=>guardedExternalFetch(deps.fetch,request,init)});
+            const rows=await runner.query("SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema','pg_catalog','pg_toast') AND schema_name NOT LIKE 'pg_%' ORDER BY schema_name");
+            if(!Array.isArray(rows)||rows.length>1000)throw Error();
+            return c.json({success:true,message:'Connection and SQL query capability verified. Select a dedicated schema or create a new one during Apply.',schemas:rows.map(row=>({name:String(row.schema_name??'')})).filter(row=>/^[a-z_][a-z0-9_]{0,62}$/.test(row.name)&&row.name!=='public'&&!row.name.startsWith('pg_')).slice(0,100)});
+        }catch{return c.json({error:'state_connection_failed',message:'Cannot read schemas. Check the HTTPS endpoint, server credential and execute_query SQL helper permissions.'},502);}
     });
     app.post('/supabase/schemas',async c=>{
         const input=await body(c);if(!input||Object.keys(input).length!==1||typeof input.projectRef!=='string'||!projectRefPattern.test(input.projectRef))return c.json({error:'oauth_refused'},400);

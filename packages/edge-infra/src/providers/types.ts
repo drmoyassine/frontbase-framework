@@ -29,6 +29,8 @@ export interface DbRunner {
     exec(sql: string, params?: unknown[]): Promise<number>;
     /** Run work atomically when the driver supports transactions. */
     transaction?<T>(work: (runner: DbRunner) => Promise<T>): Promise<T>;
+    /** HTTP adapters may execute the portable migration plan in one locked RPC. */
+    applyMigrations?(plan:ReadonlyArray<{version:number;name:string;statements:readonly string[]}>,appliedAt:string):Promise<number[]>;
 }
 
 /** A DataProvider that also exposes its raw client for tests/seeding. */

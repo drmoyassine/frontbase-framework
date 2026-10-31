@@ -11,6 +11,10 @@ export interface SupabaseOpts {
     jwt?: string;
     /** Postgres schema to use (default: public) */
     schema?: string;
+    /** Optional installation-specific invoker RPC names; never a SQL expression. */
+    queryFunction?: string;
+    execFunction?: string;
+    migrationFunction?: string;
     /** Native PostgREST endpoint. Omit for the standard Supabase /rest/v1 endpoint. */
     restUrl?: string;
     /** Per-instance HTTP transport; native application-state callers are separate. */
