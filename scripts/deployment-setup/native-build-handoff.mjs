@@ -10,8 +10,6 @@ export function nativeBuildCredential(auth) {
 export const cloudflareBuildPermissions=Object.freeze([
   {path:'',permission:'Account Settings: Read'},
   {path:'/workers/scripts?per_page=1',permission:'Workers Scripts: Edit and Read'},
-  {path:'/d1/database?per_page=1',permission:'D1: Edit and Read'},
-  {path:'/storage/kv/namespaces?per_page=1',permission:'Workers KV Storage: Edit and Read'},
 ]);
 
 /** Upgrade only a recognized earlier build-token installation. Existing relay

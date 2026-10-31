@@ -15,6 +15,10 @@ export function preserveNativeCloudflareSettings(template, settings) {
   if (bindings.filter(b => b.type === 'assets' && b.name === 'ASSETS').length !== 1) throw Error('Existing assets binding missing');
   const config = structuredClone(template);
   config.vars = plain;
+  // Keep the latest immutable setup receipt rather than overwriting it with the
+  // older snapshot carried by the currently deployed version. Wrangler keep_vars
+  // inherits omitted metadata variables and all existing secrets.
+  if(plain.FRONTBASE_BOOTSTRAP_STORE==='versions-v1')for(const name of Object.keys(config.vars))if(/^FRONTBASE_SETUP_METADATA(?:_\d{2})?$/.test(name))delete config.vars[name];
   config.keep_vars = true;
   config.d1_databases = bindings.filter(b => b.type === 'd1').map(b => {
     if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(b.id)) throw Error('Invalid D1 identity');
