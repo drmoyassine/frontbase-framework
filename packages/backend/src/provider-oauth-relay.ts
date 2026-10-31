@@ -23,12 +23,13 @@ export interface OAuthRelayDeps {
     /** When configured, reconnect requires the previously enrolled receiver proof. */
     verifyReceiver?:(target:OAuthRelayTarget,receiverProof:string)=>Promise<boolean>;
     requireReceiverProof?:boolean;
+    registerReceiver?:(target:OAuthRelayTarget,receiverProof:string)=>Promise<boolean>;
     notices?:{privacy:string;terms:string};
 }
 const token=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const hash=async(value:string)=>btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const cookie='__Host-fb_oauth_relay',validToken=(v:unknown):v is string=>typeof v==='string'&&/^[\w-]{43}$/.test(v);
-async function readBody(request:Request){const reader=request.body?.getReader();if(!reader)throw Error('relay_refused');let length=0,text='';const decoder=new TextDecoder();try{for(;;){const part=await reader.read();if(part.done)break;length+=part.value.length;if(length>65536)throw Error('relay_refused');text+=decoder.decode(part.value,{stream:true});}}finally{await reader.cancel().catch(()=>{});}return JSON.parse(text+decoder.decode());}
+async function readBody(request:Request|Response,max=65536){const reader=request.body?.getReader();if(!reader)throw Error('relay_refused');let length=0,text='';const decoder=new TextDecoder();try{for(;;){const part=await reader.read();if(part.done)break;length+=part.value.length;if(length>max)throw Error('relay_refused');text+=decoder.decode(part.value,{stream:true});}}finally{await reader.cancel().catch(()=>{});}return JSON.parse(text+decoder.decode());}
 export function createProviderOAuthRelay(deps:OAuthRelayDeps){
     if(new URL(deps.origin).origin!==deps.origin||!deps.origin.startsWith('https://')||deps.requireReceiverProof&&(!deps.verifyReceiver||!deps.notices)||deps.notices&&(![deps.notices.privacy,deps.notices.terms].every(text=>typeof text==='string'&&text.length>=80&&text.length<=8192)))throw Error('invalid_relay_origin');
     const app=new Hono(),now=deps.now??Date.now;
@@ -44,6 +45,20 @@ export function createProviderOAuthRelay(deps:OAuthRelayDeps){
         await deps.vault.purge();return next();
     });
     app.get('/health',c=>c.json({status:'ok',providers:Object.keys(deps.clients)}));
+    app.post('/receivers',async c=>{
+        // No provider credential is accepted here. Registration binds a public
+        // digest read from the canonical runtime; it never grants installer ownership.
+        if(!deps.requireReceiverProof||!deps.registerReceiver||c.req.header('origin')||c.req.header('content-type')?.split(';')[0]!=='application/json')return c.json({error:'receiver_refused'},403);
+        const input=await readBody(c.req.raw),t=input.target as OAuthRelayTarget;
+        if(Object.keys(input).some(k=>!['target','proof'].includes(k))||!validToken(input.proof)||!t||t.purpose!=='connect'||!['cloudflare','vercel'].includes(t.host)||Object.keys(t).some(k=>!['origin','host','purpose'].includes(k))||!deps.admit(t,t.host as 'cloudflare'|'vercel'))return c.json({error:'receiver_refused'},403);
+        const host=new URL(t.origin).hostname;
+        if(!(t.host==='cloudflare'?/^[a-z0-9][a-z0-9-]{0,62}\.[a-z0-9][a-z0-9-]{0,62}\.workers\.dev$/:/^[a-z0-9][a-z0-9-]{0,62}\.vercel\.app$/).test(host))return c.json({error:'receiver_refused'},403);
+        const response=await deps.fetch(t.origin+'/api/provider-oauth/receiver-proof',{redirect:'manual',signal:AbortSignal.timeout(10000)});
+        if(!response.ok||!response.headers.get('content-type')?.includes('application/json'))return c.json({error:'receiver_refused'},403);
+        const proof=await readBody(response,4096);
+        if(proof.version!==1||proof.origin!==t.origin||proof.host!==t.host||proof.proof!==input.proof||!await deps.registerReceiver(t,input.proof))return c.json({error:'receiver_refused'},403);
+        return c.json({ok:true});
+    });
     app.get('/privacy',c=>c.text(deps.notices?.privacy??'Frontbase isolated OAuth relay — privacy notice\n\nThis private test integration handles provider authorization codes, account/team identifiers, requested permissions and access/refresh grants solely to connect an approved Frontbase test installation. Tokens are exchanged server-side. Pending relay records are encrypted and expire after at most ten minutes; handoff tickets expire after at most two minutes and their credential record is deleted on successful redemption. Expired rows are purged on requests and by the deployed scheduled cleanup. Native first-install claims retain nonsecret account/project, installation, recipient origin and receiver-proof metadata to prevent a second owner after credential cleanup; these claims require operator inspection and explicit reset for recovery and do not expire automatically. Provider and Cloudflare database backup/Time Travel retention are separate from active-row deletion.\n\nThe selected installation retains its connection in its existing encrypted Connected Accounts store until disconnected. Disconnecting attempts provider-side token revocation where the provider supports it and never erases historical deployment/database backups; revoking access at the provider remains the certain path. Stored grants refresh automatically at the receiving installation where the provider issues refresh tokens; this relay itself keeps no long-lived provider grants.\n\nThe relay has no analytics script. It uses a short-lived HttpOnly session cookie and stores a keyed hash of the request IP for a bounded rate-limit window. Hosting and authorization providers may independently process request metadata under their own policies. No passwords are requested by this relay. Test access is restricted by its operator-configured recipient policy.\n\nOperator and contact information are supplied in the private Vercel/Cloudflare integration registration. This notice describes the isolated test service, not a generally available hosted Frontbase service.'));
     app.get('/terms',c=>c.text(deps.notices?.terms??'Frontbase isolated OAuth relay — software license\n\nFrontbase framework software is licensed under Apache License 2.0, including its existing warranty and liability provisions. The license is available at https://github.com/drmoyassine/frontbase-framework/blob/main/LICENSE . This relay is an operator-managed private test deployment. No paid Frontbase service or service-level commitment is offered through this test integration. Cloudflare, Vercel and other selected providers remain subject to their respective terms. Only authorize installations and resources you control.'));
     app.get('/connect',async c=>{

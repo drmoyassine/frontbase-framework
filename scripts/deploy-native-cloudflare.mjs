@@ -7,7 +7,7 @@ import {build} from 'esbuild';
 import {nativeWrangler} from './deployment-setup/cloudflare.mjs';
 import {nativeCloudflarePlan} from './deployment-setup/native-cloudflare-plan.mjs';
 import {nativeSnapshotSettings} from './deployment-setup/native-snapshot-settings.mjs';
-import {nativeBuildCredential,verifyNativeBuildPermissions,handoffNativeBuildCredential} from './deployment-setup/native-build-handoff.mjs';
+import {nativeBuildCredential,verifyNativeBuildPermissions,handoffNativeBuildCredential,nativeBuildReceiverSecrets} from './deployment-setup/native-build-handoff.mjs';
 
 // Native CF setup retains the operator-authorized build API token in provider
 // secrets through the existing claim hook. It never enters generated config/code.
@@ -61,6 +61,9 @@ if (config.vars?.FRONTBASE_BOOTSTRAP !== 'native') {
         const fileArg=process.argv.indexOf('--setup-link-file');
         if(fileArg>=0){if(!process.argv[fileArg+1])throw Error('native_setup_link_file_required');await writeFile(resolve(process.argv[fileArg+1]),link+'\n',{mode:0o600,flag:'wx'});console.log('Owner setup link saved privately. Cloudflare is already connected.');}
         else console.log('Open this private owner setup link within one hour (do not share it):\n'+link);
+      }else{
+        const receiver=nativeBuildReceiverSecrets(plan,settings,config.vars.FRONTBASE_NATIVE_RELAY_URL);
+        if(receiver){const configured=await run(['secret','bulk','--config',path],{cwd:process.cwd(),stdin:JSON.stringify(receiver)});if(configured.code!==0)throw Error('native_receiver_upgrade_refused');}
       }
       console.log('Native deployment complete: '+project+'; '+(plan.vars.FRONTBASE_BOOTSTRAP==='0'?'existing installation preserved':'Cloudflare connected; owner setup ready'));
     }

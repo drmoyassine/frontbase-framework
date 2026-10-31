@@ -5,7 +5,7 @@ import type {OAuthRelayTarget} from './provider-oauth-relay.js';
 export interface ProviderRelayClientDeps {
     origin:string;relayOrigin:string;target:OAuthRelayTarget;fetch:typeof fetch;
     authorize(request:Request):Promise<OAuthActor|null>;store?:ProviderOAuthStore;cipher?:SecretCipher;
-    mode:'authenticated'|'native-install';now?:()=>number;registrationKey?:string;
+    mode:'authenticated'|'native-install';now?:()=>number;registrationKey?:string;enrollReceiver?:boolean;
     establish?:(authorization:OAuthAuthorization,request:Request,registrationKey:string)=>Promise<string>;
 }
 const base='/api/provider-oauth',random=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -25,6 +25,10 @@ export function createProviderRelayClient(deps:ProviderRelayClientDeps){
         if(!['cloudflare','vercel','supabase'].includes((c.req.param('provider')??''))||c.req.url.length>4096)return c.text('Not found',404);
         return c.html('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connect Frontbase</title></head><body><p id="status" role="status">Completing your connection…</p><script src="/api/provider-oauth/relay-callback.js"></script></body></html>');
     });
+    app.get(base+'/receiver-proof',async c=>{
+        if(deps.mode!=='authenticated'||!deps.enrollReceiver||!deps.registrationKey||!/^[\w-]{43}$/.test(deps.registrationKey))return c.text('Not found',404);
+        return c.json({version:1,origin:deps.origin,host:deps.target.host,proof:await hash(deps.registrationKey)});
+    });
     app.use(base+'/*',async(c,next)=>{if(!await deps.authorize(c.req.raw))return c.json({error:'oauth_operator_required'},403);if(c.req.method==='POST'&&(c.req.header('origin')!==deps.origin||c.req.header('content-type')?.split(';')[0]!=='application/json'))return c.json({error:'relay_refused'},403);return next();});
     app.get(base+'/status',async c=>{
         const response=await deps.fetch(deps.relayOrigin+'/health',{redirect:'manual',signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('relay_unavailable');const status=await json(response);const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');
@@ -34,6 +38,11 @@ export function createProviderRelayClient(deps:ProviderRelayClientDeps){
         const provider=c.req.param('provider')??'';if(!['cloudflare','vercel','supabase'].includes(provider))return c.json({error:'relay_refused'},400);
         const input=await json(c.req.raw,8192);if(typeof input.returnPath!=='string'||!input.returnPath.startsWith('/')||input.returnPath.startsWith('//')||/[\\\r\n#]/.test(input.returnPath)||Object.keys(input).some(k=>!['returnPath','accountId'].includes(k))||input.accountId!==undefined&&(typeof input.accountId!=='string'||input.accountId.length>256))throw Error('relay_refused');
         const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');const verifier=deps.mode==='authenticated'&&deps.registrationKey?deps.registrationKey:random();if(!/^[\w-]{43}$/.test(verifier))throw Error('relay_refused');
+        if(deps.enrollReceiver){
+            if(deps.mode!=='authenticated'||!deps.registrationKey)throw Error('relay_refused');
+            const enrolled=await deps.fetch(deps.relayOrigin+'/receivers',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({target:deps.target,proof:await hash(verifier)}),redirect:'manual',signal:AbortSignal.timeout(15000)});
+            if(!enrolled.ok)throw Error('relay_receiver_unavailable');await enrolled.body?.cancel().catch(()=>{});
+        }
         const value=await seal({...actor,verifier,provider,expires:now()+600000,target:deps.target,returnPath:input.returnPath,accountId:input.accountId});if(value.length>4096)throw Error('relay_refused');
         c.header('Set-Cookie','__Host-fb_relay_client_'+provider+'='+value+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600');
         const url=new URL('/connect',deps.relayOrigin);url.searchParams.set('provider',provider);url.searchParams.set('target',JSON.stringify(deps.target));url.searchParams.set('challenge',await hash(verifier));return c.json({url:url.href,relayOrigin:deps.relayOrigin});

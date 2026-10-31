@@ -1,9 +1,11 @@
 /** Provider-level first ownership claim. Called only by an explicit zero-state native entry. */
-import {createSecretCipher,relayTargetPolicy,type OAuthRelayTarget} from '@frontbase/backend';
+import {createSecretCipher} from '../../../packages/backend/src/db/secret-cipher.js';
+import {relayTargetPolicy} from '../../../packages/backend/src/provider-oauth-relay-target.js';
+import type {OAuthRelayTarget} from '../../../packages/backend/src/provider-oauth-relay.js';
 import type {OAuthAuthorization} from '../../../packages/backend/src/provider-oauth.js';
 import {d1RunnerFromRest} from '@frontbase/edge-infra';
 import {admitBootstrapState} from '@frontbase/edge-infra/bootstrap-journal';
-const fail=():never=>{throw Error('native_installation_refused');};
+function fail():never{throw Error('native_installation_refused');}
 const uuid=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/;
 const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
 const hash=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
@@ -34,10 +36,13 @@ export async function claimNativeInstallation(context:NativeClaimContext,grant:O
   return host==='cloudflare'?parsed.result:parsed;
  }
  const owner=context.buildOwner??random(),expires=new Date(Date.now()+3600000).toISOString(),environment:any={FRONTBASE_BOOTSTRAP:'1',FRONTBASE_INSTALLATION_ID:installationId,FRONTBASE_PUBLIC_ORIGIN:origin,FRONTBASE_BOOTSTRAP_TOKEN:owner,FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN:grant.accessToken,FRONTBASE_BOOTSTRAP_EXPIRES_AT:expires,FRONTBASE_BOOTSTRAP_ACCOUNT:account,FRONTBASE_BOOTSTRAP_PROJECT:project,FRONTBASE_BOOTSTRAP_ENVIRONMENT:'production'};
- // A build API token has no OAuth receiver registration. Keep the existing manual
- // reconnect path rather than configuring a relay that cannot authenticate this receiver.
- if(context.buildOwner===undefined){environment.FRONTBASE_OAUTH_RELAY_URL=context.relayOrigin;environment.FRONTBASE_OAUTH_RELAY_TARGET=JSON.stringify({origin,host,purpose:'connect'});}
- if(context.registrationKey!==undefined){if(!/^[\w-]{43}$/.test(context.registrationKey))fail();environment.FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY=context.registrationKey;}
+ // Build-token installs enroll their public receiver fingerprint only when an
+ // additional OAuth connection is requested. The private verifier stays here;
+ // the optional relay never receives the inherited build API token.
+ environment.FRONTBASE_OAUTH_RELAY_URL=context.relayOrigin;environment.FRONTBASE_OAUTH_RELAY_TARGET=JSON.stringify({origin,host,purpose:'connect'});
+ const registrationKey=context.registrationKey??(context.buildOwner?btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''):undefined);
+ if(registrationKey!==undefined){if(!/^[\w-]{43}$/.test(registrationKey))fail();environment.FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY=registrationKey;}
+ if(context.buildOwner)environment.FRONTBASE_OAUTH_RELAY_ENROLL='1';
  const selected=grant.accounts.find(a=>a.id===account);if(!selected)fail();
  environment.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS=await (await createSecretCipher(owner)).encrypt(JSON.stringify([{...grant,accounts:[selected,...grant.accounts.filter(a=>a.id!==account)]}]));
  if(environment.FRONTBASE_BOOTSTRAP_OAUTH_GRANTS.length>65536)fail();

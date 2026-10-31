@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict';
+import {sqliteRunner} from '@frontbase/edge-infra';
+import {createSecretCipher} from '../dist/db/secret-cipher.js';
+import {migrateUp} from '../dist/db/migrations.js';
+import {providerOAuthStore} from '../dist/provider-oauth-store.js';
+import {publicNativeRelayTargetPolicy} from '../dist/provider-oauth-relay-target.js';
+const {createProviderOAuthRelay}=await import(process.env.FRONTBASE_RECEIVER_RELAY_MODULE??'../dist/provider-oauth-relay.js');
+const {createProviderRelayClient}=await import(process.env.FRONTBASE_RECEIVER_CLIENT_MODULE??'../dist/provider-oauth-relay-client.js');
+const {sqlOAuthRelayVault,sqlOAuthNativeReceiver,sqlOAuthNativeClaims,sqlOAuthReceiverRegistration}=await import(process.env.FRONTBASE_RECEIVER_STORE_MODULE??'../dist/provider-oauth-relay-store.js');
+const origin='https://receiver.fixture.workers.dev',relayOrigin='https://relay.example',key='s'.repeat(43),target={origin,host:'cloudflare',purpose:'connect'};
+const digest=async v=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v))).toString('base64url');
+const proof=await digest(key),db=sqliteRunner(':memory:'),appDB=sqliteRunner(':memory:');await migrateUp(appDB);
+const cipher=await createSecretCipher('receiver-relay-fixture-secret'),appCipher=await createSecretCipher('receiver-app-fixture-secret');
+const store=providerOAuthStore(appDB,appCipher),registerReceiver=await sqlOAuthReceiverRegistration(db),verifyReceiver=await sqlOAuthNativeReceiver(db);
+let app,relay,badProof=false,badOrigin=false,badHost=false,redirect=false,oversize=false,registrationCalls=0,publicReads=0;
+const transport=async(input,init={})=>{
+ const url=new URL(String(input));assert.equal(init.redirect,'manual');
+ if(url.origin===relayOrigin){if(url.pathname==='/receivers'){registrationCalls++;assert(!init.body.includes(key));assert(!init.body.includes('accessToken'));assert(!init.headers.authorization);}return relay.fetch(new Request(input,init));}
+ if(url.origin===origin){publicReads++;assert.equal(url.pathname,'/api/provider-oauth/receiver-proof');assert(!init.headers?.authorization);if(redirect)return Response.json({version:1,origin,host:'cloudflare',proof},{status:302,headers:{location:'http://127.0.0.1/'}});if(oversize)return Response.json({version:1,origin,host:'cloudflare',proof,padding:'x'.repeat(5000)});if(badProof||badOrigin||badHost)return Response.json({version:1,origin:badOrigin?'https://other.fixture.workers.dev':origin,host:badHost?'vercel':'cloudflare',proof:badProof?'a'.repeat(43):proof});return app.fetch(new Request(input,init));}
+ assert.equal(url.origin,'https://api.supabase.com');
+ if(url.pathname==='/v1/oauth/token'){assert(new URLSearchParams(init.body).get('code_verifier'));return Response.json({access_token:'private-supabase-grant',refresh_token:'private-supabase-refresh',token_type:'bearer',expires_in:3600});}
+ assert.equal(url.pathname,'/v1/projects');return Response.json([{ref:'fixtureproject',name:'Fixture project'}]);
+};
+const notices={privacy:'Privacy '.repeat(15),terms:'Terms '.repeat(20)};
+relay=createProviderOAuthRelay({origin:relayOrigin,clients:{supabase:{provider:'supabase',clientId:'fixture',scopes:[],redirectUri:relayOrigin+'/api/provider-oauth/supabase/callback'}},cipher,vault:await sqlOAuthRelayVault(db),fetch:transport,...publicNativeRelayTargetPolicy(transport,verifyReceiver),registerReceiver,notices});
+app=createProviderRelayClient({origin,relayOrigin,target,registrationKey:key,enrollReceiver:true,mode:'authenticated',cipher:appCipher,store,fetch:transport,authorize:async r=>r.headers.get('x-owner')==='yes'?{tenant:'tenant',subject:'owner'}:null});
+const call=(service,host,path,body,headers={})=>service.fetch(new Request(host+path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'content-type':'application/json'}),...headers},...(body===undefined?{}:{body:JSON.stringify(body)})}));
+const own={origin,'x-owner':'yes'},cookie=r=>r.headers.get('set-cookie').split(';')[0];
+const fingerprint=await call(app,origin,'/api/provider-oauth/receiver-proof');assert.equal(fingerprint.status,200);assert.deepEqual(await fingerprint.json(),{version:1,origin,host:'cloudflare',proof});assert.notEqual(proof,key);
+assert.equal((await call(app,origin,'/api/provider-oauth/supabase/start',{returnPath:'/ok'})).status,403);assert.equal(registrationCalls,0);
+const register=body=>call(relay,relayOrigin,'/receivers',body);
+for(const invalid of [{...target,origin:'http://127.0.0.1'},{...target,origin:'https://private.example'},{...target,origin:origin+'.evil.example'},{...target,origin:origin+':8443'},{...target,purpose:'install'},{...target,host:'docker'},{...target,account:'injected'}])assert.equal((await register({target:invalid,proof})).status,403);
+assert.equal(publicReads,0,'invalid targets never trigger a fetch');
+assert.equal((await call(relay,relayOrigin,'/receivers',{target,proof},{origin})).status,403);
+assert.equal((await register({target,proof,accessToken:'must-not-be-accepted'})).status,403);
+badProof=true;assert.equal((await register({target,proof})).status,403);badProof=false;
+badOrigin=true;assert.equal((await register({target,proof})).status,403);badOrigin=false;
+badHost=true;assert.equal((await register({target,proof})).status,403);badHost=false;
+redirect=true;assert.equal((await register({target,proof})).status,403);redirect=false;
+oversize=true;assert.equal((await register({target,proof})).status,409);oversize=false;
+assert.equal(await verifyReceiver(target,proof),false);
+const start=await call(app,origin,'/api/provider-oauth/supabase/start',{returnPath:'/frontbase-admin/settings?tab=accounts'},own);assert.equal(start.status,200);const clientCookie=cookie(start),link=new URL((await start.json()).url);
+assert(!link.href.includes(key));assert.equal(await verifyReceiver(target,proof),true);assert.equal((await db.query('SELECT COUNT(*) AS n FROM _frontbase_native_claims'))[0].n,0,'receiver registration never claims installation ownership');
+const opened=await call(relay,relayOrigin,link.pathname+link.search);assert.equal(opened.status,200);const relayCookie=cookie(opened);
+const begin=await call(relay,relayOrigin,'/api/provider-oauth/supabase/start',{returnPath:'/complete'},{origin:relayOrigin,cookie:relayCookie});assert.equal(begin.status,200);const oauthCookie=cookie(begin),state=new URL((await begin.json()).url).searchParams.get('state');
+const exchanged=await call(relay,relayOrigin,'/api/provider-oauth/supabase/finish',{state,code:'fixture-code'},{origin:relayOrigin,cookie:relayCookie+'; '+oauthCookie});assert.equal(exchanged.status,200);
+const complete=await call(relay,relayOrigin,(await exchanged.json()).returnPath,undefined,{cookie:relayCookie});assert.equal(complete.status,302);const ticket=new URL(complete.headers.get('location')).searchParams.get('ticket');
+const saved=await call(app,origin,'/api/provider-oauth/supabase/relay-finish',{ticket},{...own,cookie:clientCookie});assert.equal(saved.status,200);assert(!(await saved.text()).includes('private-supabase'));
+const status=await call(app,origin,'/api/provider-oauth/status',undefined,own),connections=await status.json();assert.equal(connections.connections.length,1);assert.equal(connections.connections[0].provider,'supabase');assert(!JSON.stringify(connections).includes('private-supabase'));
+assert.equal(await registerReceiver(target,proof),true,'same proof is idempotent');assert.equal(await registerReceiver(target,'a'.repeat(43)),false,'proof cannot be replaced');assert.equal(await registerReceiver({...target,host:'vercel'},proof),false,'host cannot be replaced');
+assert.equal((await db.query('SELECT COUNT(*) AS n FROM _frontbase_oauth_receivers'))[0].n,1);
+const legacy={origin:'https://legacy.fixture.workers.dev',host:'cloudflare',purpose:'install',account:'a'.repeat(32),project:'legacy',installationId:'11111111-2222-4333-8444-555555555555'};
+assert.equal(await (await sqlOAuthNativeClaims(db))(legacy,proof),true);assert.equal(await registerReceiver({origin:legacy.origin,host:'cloudflare',purpose:'connect'},'a'.repeat(43)),false);assert.equal(await registerReceiver({origin:legacy.origin,host:'cloudflare',purpose:'connect'},proof),true);
+assert.equal(await verifyReceiver({...target,host:'vercel'},proof),false);assert.equal(await verifyReceiver(target,'a'.repeat(43)),false);
+const bounded=await sqlOAuthReceiverRegistration(sqliteRunner(':memory:'),Date.now,1);assert.equal(await bounded(target,proof),true);assert.equal(await bounded({...target,origin:'https://second.fixture.workers.dev'},proof),false);
+console.log('PASS receiver enrollment: canonical HTTPS fingerprint, no provider credential transfer, owner/SSRF/redirect/size fences, create-only bounded registry, legacy precedence and full Supabase encrypted handoff');
