@@ -6,6 +6,7 @@ import{reviewBootstrap,applyBootstrap,reconcileBootstrap}from'@frontbase/edge-co
 const folder=mkdtempSync(fileURLToPath(new URL('../.native-metadata-',import.meta.url)));
 try{
  const faults={number:['created.number!==tip.number+1','false'],stale:['if(d?.canonical){','if(d){'],context:['JSON.stringify(state.context)!==scope','false'],owner:[/if\(field\(tip\)\)refuse\(\);[\s\S]*?(?=\s+const env:Record)/,'const original=tip.env;'],history:["range.length!==tip.number-base+1||range.some((v:any,i:number)=>v.number!==base+i||!uuid.test(v.id??''))",'false'],revision:['(state.journal?.revision??null)!==revision','false'],replace:['if(!state.vault.some(r=>r.key===key&&r.value===expected))return false;',''],plaintext:["||!(await cipher).isEncrypted(value)",'']};
+ faults.activation=["if(!current||current.phase!=='applying'||current.revision!==record.revision||current.operationId!==record.operationId||current.fingerprint!==record.fingerprint)refuse();",''];
  const file=join(folder,'adapter.mjs');await build({entryPoints:[fileURLToPath(new URL('../src/cloudflare-setup-metadata.ts',import.meta.url))],outfile:file,bundle:true,platform:'node',format:'esm',packages:'external',plugins:[{name:'metadata-fault',setup(b){b.onLoad({filter:/cloudflare-setup-metadata\.ts$/},args=>{let contents=readFileSync(args.path,'utf8');if(process.env.FRONTBASE_METADATA_FAULT){const [from,to]=faults[process.env.FRONTBASE_METADATA_FAULT]??[];assert(from&&contents.split(from).length===2,'fault anchor must be unique');contents=contents.replace(from,to);}return{contents,loader:'ts'};});}}]});
  const{cloudflareSetupMetadata,setupMetadataBinding}=await import(process.env.FRONTBASE_METADATA_TEST_MODULE??pathToFileURL(file).href);
  const owner='private-owner-fixture-'.repeat(3),context={installationId:'11111111-2222-4333-8444-555555555555',target:'cloudflare',destination:'a'.repeat(32)+'/metadata-fixture/production'},cipher=await createSecretCipher(owner);
@@ -57,6 +58,12 @@ try{
   const f=await fixture(),a=f.open(),value=await cipher.encrypt('private-snapshot');await a.vault.insert('first',value);const stale=f.lastBody;await a.vault.insert('second',value);
   await f.api('/client/v4/accounts/'+context.destination.split('/')[0]+'/workers/workers/metadata-fixture/versions/latest','PATCH',stale,'application/merge-patch+json');
   assert.equal(await f.open().vault.get('second'),value,'late stale append cannot roll back a newer accepted snapshot');f.hide();await assert.rejects(()=>f.open().vault.get('second'),'incomplete history fails closed');
+ }
+ {
+  const f=await fixture(),a=f.open(),manifest=defaultDeploymentManifest('cloudflare','production'),bindings=[{name:'ASSETS',type:'assets'},{name:'FRONTBASE_BOOTSTRAP',type:'plain_text',text:'0'},{name:'DB',type:'d1',id:'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'},{name:'FRONTBASE_KV',type:'kv_namespace',namespace_id:'b'.repeat(32)}];
+  const executor={preflight:async()=>{},apply:async record=>a.activate(record,bindings,()=>true),inspect:async r=>({operationId:r.operationId,fingerprint:r.fingerprint,healthy:true,bootstrapDisabled:f.versions.find(v=>v.id===f.active)?.env.FRONTBASE_BOOTSTRAP?.text==='0'})};
+  const review=await reviewBootstrap(context,manifest,a.journal,executor);await assert.rejects(()=>a.activate(review,bindings,()=>true),'review alone cannot activate');
+  const result=await applyBootstrap(context,review.operationId,{},a.journal,executor);assert.equal(result.phase,'active');const runtime=f.versions.find(v=>v.id===f.active);assert.equal(runtime.env.DB.database_id,'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');assert.equal(runtime.env.FRONTBASE_KV.namespace_id,'b'.repeat(32));await assert.rejects(()=>a.activate(result,bindings,()=>true),'completed activation cannot replay');
  }
  {
   const f=await fixture(),a=f.open(),manifest=defaultDeploymentManifest('cloudflare','production');let sent=0;

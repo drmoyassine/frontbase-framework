@@ -61,6 +61,16 @@ export function cloudflareSetupMetadata(context:BootstrapContext,owner:string,ap
   async replace(key,expected,value){if(!(await cipher).isEncrypted(value))refuse();const {tip,state}=await read();if(!state.vault.some(r=>r.key===key&&r.value===expected))return false;return !!await append(tip,{...state,sequence:state.sequence+1,vault:state.vault.map(r=>r.key===key?{key,value}:r)});}
  };
  return {journal,vault,
+  async activate(record:BootstrapRecord,bindings:any[],allowed:(binding:any)=>boolean){
+   const {tip,state}=await read(),current=state.journal;
+   if(!current||current.phase!=='applying'||current.revision!==record.revision||current.operationId!==record.operationId||current.fingerprint!==record.fingerprint)refuse();
+   if(!tip.env||Object.entries(tip.env).some(([name,b]:[string,any])=>!allowed({...b,name}))||new Set(bindings.map(b=>b.name)).size!==bindings.length)refuse();
+   const env:Record<string,unknown>={};
+   for(const b of bindings){if(b.name==='ASSETS'||/^FRONTBASE_SETUP_METADATA(?:_\d{2})?$/.test(b.name))continue;if(b.type==='d1')env[b.name]={type:'d1',database_id:b.id};else if(b.type==='kv_namespace')env[b.name]={type:b.type,namespace_id:b.namespace_id};else if(['plain_text','secret_text'].includes(b.type)&&typeof b.text==='string')env[b.name]={type:b.type,text:b.text};else refuse();}
+   for(const name of Object.keys(tip.env))if(name!=='ASSETS'&&!/^FRONTBASE_SETUP_METADATA(?:_\d{2})?$/.test(name)&&!(name in env))env[name]=null;
+   const created=await append(tip,{...state,sequence:state.sequence+1},env);if(!created)refuse();
+   await api(root+'scripts/'+project+'/deployments','POST',{strategy:'percentage',versions:[{version_id:created.id,percentage:100}]});
+  },
   async claim(environmentValues:Record<string,string>){
    const tip=await latest();if(field(tip))refuse();
    const original=tip.env,allowed=new Set(['FRONTBASE_HOSTED_SETUP','FRONTBASE_BOOTSTRAP','FRONTBASE_INSTALLATION_ID','FRONTBASE_PUBLIC_ORIGIN','FRONTBASE_NATIVE_ACCOUNT','FRONTBASE_NATIVE_PROJECT','FRONTBASE_NATIVE_INSTALLATION_ID','FRONTBASE_NATIVE_PUBLIC_ORIGIN','FRONTBASE_NATIVE_RELAY_URL']);
