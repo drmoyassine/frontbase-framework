@@ -33,6 +33,14 @@ const discoveryText=await r.text();assert.equal(r.headers.get('cache-control'),'
 assert.deepEqual((await (await request('provider-resources/supabase/schemas',{body:{projectRef:'fixtureprojectref'},cookie,headers:{'x-actor':'_root/owner'}})).json()),{schemas:[{name:'frontbase_edge_demo',hasRole:true}]});
 const operatorRequired=await request('provider-resources/supabase/projects',{body:{},cookie});assert.equal(operatorRequired.status,403);assert.deepEqual(JSON.parse(await operatorRequired.text()),{error:'oauth_operator_required'});
 assert.equal((await request('provider-resources/supabase/projects',{body:{},cookie,otherOrigin:'https://attacker.example',headers:{'x-actor':'_root/owner'}})).status,403);
+// The lazy factory form must not even be constructed while the session gates refuse a request —
+// hosts pass a thunk so OAuth/vault initialization waits for a real discovery call.
+let built=0;
+app=createHostedBootstrap({...deps,providerResources:()=>{built++;return Promise.resolve(resources);}});
+assert.equal((await request('provider-resources/supabase/projects',{body:{},headers:{'x-actor':'_root/owner'}})).status,403);assert.equal(built,0);
+r=await request('provider-resources/supabase/projects',{body:{},cookie,headers:{'x-actor':'_root/owner'}});assert.equal(r.status,200);assert.equal(built,1);
+assert.deepEqual(JSON.parse(await r.text()),{projects:[{ref:'fixtureprojectref',name:'Fixture project'}]});
+assert.equal((await request('provider-resources/supabase/schemas',{body:{projectRef:'fixtureprojectref'},cookie,headers:{'x-actor':'_root/owner'}})).status,200);assert.equal(built,2);
 const manifest=defaultDeploymentManifest('docker');manifest.bindings['state-db']={adapterId:'libsql-http',mode:'connect',config:{url:'https://db.example'},secretRefs:{token:'db/token'}};
 assert.equal((await request('review',{cookie,body:{manifest},otherOrigin:'https://attacker.example'})).status,403);
 r=await request('review',{cookie,body:{manifest}});assert.equal(r.status,200);const review=await r.json();assert.equal(writes,0);

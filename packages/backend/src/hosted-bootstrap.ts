@@ -12,8 +12,10 @@ export interface HostedBootstrapDeps {
     configuration?: ()=>Promise<Record<string,unknown>>;
     pendingSetup?: boolean;
     resolveCredentials?: (manifest:import('@frontbase/edge-core/deployment').DeploymentManifest,input:Record<string,string>)=>Promise<Record<string,string>>;
-    /** Read-only provider discovery (e.g. createProviderOAuthResources); inherits every gate below. */
-    providerResources?: Hono;
+    /** Read-only provider discovery (e.g. createProviderOAuthResources); inherits every gate below.
+     *  A function defers construction until an authenticated request reaches the route, keeping
+     *  OAuth/vault initialization off the bootstrap's critical path. */
+    providerResources?: Hono | (()=>Promise<Hono>|Hono);
 }
 const base='/frontbase-bootstrap/api';
 const cookieName='__Host-fb_bootstrap';
@@ -74,6 +76,16 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
         const result=await applyBootstrap(deps.context,input.reviewId,credentials,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...((result.phase==='active'||deps.pendingSetup)&&deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
     app.post(base+'/reconcile',async c=>{const input=await body(c.req.raw);exact(input,[]);const result=await reconcileBootstrap(deps.context,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...(deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
     app.onError((error,c)=>{console.warn('bootstrap_operation_refused', error.message.includes('Illegal invocation')?'invalid_receiver':['TypeError','RangeError','DOMException'].includes(error.name)?error.name:'Error');return c.json({error:error.message==='setup_database_already_exists'?'setup_database_already_exists':'bootstrap_operation_refused'},409);});
-    if(deps.providerResources)app.route(base+'/provider-resources',deps.providerResources);
+    if(deps.providerResources){
+        const resources=deps.providerResources,deferred=new Hono(),prefix=base+'/provider-resources';
+        deferred.all('*',async c=>{
+            const target=typeof resources==='function'?await resources():resources;
+            const url=new URL(c.req.url);url.pathname=c.req.path.slice(prefix.length)||'/';
+            const init:RequestInit={method:c.req.method,headers:c.req.raw.headers,body:c.req.raw.body};
+            if(init.body)Object.assign(init,{duplex:'half'});
+            return target.fetch(new Request(url,init));
+        });
+        app.route(base+'/provider-resources',deferred);
+    }
     return app;
 }
