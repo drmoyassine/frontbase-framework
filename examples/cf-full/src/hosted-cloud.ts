@@ -148,6 +148,7 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
   // the following navigation to this old one. Keep /setup and its browser-only
   // claim fragment intact instead of redirecting it into the closed installer.
   if(url.pathname==='/setup'&&request.method==='GET')return new Response('<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="2"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Activating Frontbase</title></head><body><p role="status">Waiting for the activated application. Your setup link is preserved; no deployment will be repeated.</p></body></html>',{status:503,headers:{...headers,'content-type':'text/html; charset=utf-8','retry-after':'2'}});
+  if(url.pathname.startsWith('/api/console/setup'))return Response.json({error:'activation_in_progress'},{status:503,headers:{...headers,'retry-after':'2'}});
   const asset=assets[url.pathname];if(asset&&request.method==='GET')return new Response(asset.body,{headers:{...headers,'content-type':asset.type}});
   return new Response(null,{status:302,headers:{...headers,location:'/frontbase-bootstrap/'}});
  }};
