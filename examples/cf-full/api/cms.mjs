@@ -3326,8 +3326,32 @@ addEventListener('pagehide',()=>form?.clearCredentials());
 `,type:"text/javascript"},"/frontbase-bootstrap/activation":{body:`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Activating Frontbase setup</title><meta name="color-scheme" content="light dark"><meta name="robots" content="noindex"><link rel="stylesheet" href="/frontbase-bootstrap/style.css"></head><body><main>
 <header class="page-header"><div class="brand"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="6" fill="#2456e6"/><path d="M6 15.4l5-8.8 5 8.8" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Frontbase</span></div><p class="eyebrow">Deployment setup</p><h1>Verifying deployment ownership</h1><p class="lede">This page confirms this deployment accepts your setup. Keep it open.</p></header>
 <p id="status" role="status">Waiting for the authorized setup runtime. No provider operations will be repeated.</p>
-</main><script src="/frontbase-bootstrap/native-activation.js"></script></body></html>
-`,type:"text/html; charset=utf-8"},"/frontbase-bootstrap/native-activation.js":{body:`(async()=>{const token=new URLSearchParams(location.hash.slice(1)).get('claim');history.replaceState(null,'',location.pathname);if(!token||!/^[a-f0-9]{64}$/.test(token)){document.getElementById('status').textContent='The setup handoff is unavailable. Ask the operator to inspect this installation.';return;}for(let i=0;i<90;i++){try{const r=await fetch('/frontbase-bootstrap/api/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({token}),redirect:'error'});if(r.ok){const initialized=await fetch('/frontbase-bootstrap/api/initialize',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:'{}',redirect:'error'});if(initialized.ok){location.replace('/frontbase-bootstrap/');return;}break;}}catch{}await new Promise(r=>setTimeout(r,2000));}document.getElementById('status').textContent='Setup activation is unconfirmed. Ask the operator to inspect the deployment; no provider operation has been repeated.';})();
+<button id="retry" hidden>Check readiness again</button><a id="open" href="/frontbase-bootstrap/" hidden>Open setup</a></main><script src="/frontbase-bootstrap/native-activation.js"></script></body></html>
+`,type:"text/html; charset=utf-8"},"/frontbase-bootstrap/native-activation.js":{body:`(async()=>{
+ const token=new URLSearchParams(location.hash.slice(1)).get('claim');
+ history.replaceState(null,'',location.pathname);
+ const status=document.getElementById('status'),retry=document.getElementById('retry'),open=document.getElementById('open');
+ if(!token||!/^[a-f0-9]{64}$/.test(token)){status.textContent='The private setup handoff is unavailable. Reopen the secure setup link from your deployment.';return;}
+ // Provider builds may exceed three minutes. Keep the capability only in this
+ // page's memory, bound each readiness request, and never repeat provisioning.
+ async function check(){
+  retry.hidden=true;const deadline=Date.now()+600000;
+  status.textContent='Waiting for the authorized setup runtime. Provider builds can take several minutes. Keep this page open; no deployment will be repeated.';
+  while(Date.now()<deadline){
+   try{
+    const r=await fetch('/frontbase-bootstrap/api/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({token}),redirect:'error',signal:AbortSignal.timeout(15000)});
+    if(r.ok){
+     let initialized;try{initialized=await fetch('/frontbase-bootstrap/api/initialize',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:'{}',redirect:'error',signal:AbortSignal.timeout(15000)});}catch{/* An uncertain initialization must not be repeated. */}
+     if(initialized?.ok){location.replace('/frontbase-bootstrap/');return;}
+     status.textContent='Deployment ownership is confirmed, but setup initialization could not be confirmed. Open setup to inspect its current state; no provisioning operation has been repeated.';open.hidden=false;return;
+    }
+   }catch{/* The deployment may still be replacing the zero-state runtime. */}
+   await new Promise(r=>setTimeout(r,2000));
+  }
+  status.textContent='The authorized setup runtime is not ready yet. Check its deployment build, then check readiness again. Keep this page open to preserve your private handoff; no deployment will be repeated.';retry.hidden=false;
+ }
+ retry.addEventListener('click',check);await check();
+})();\r
 `,type:"text/javascript"},"/frontbase-bootstrap/":{body:`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Frontbase Setup</title><meta name="color-scheme" content="light dark"><meta name="robots" content="noindex"><link rel="stylesheet" href="/frontbase-bootstrap/style.css"></head><body><main>
 <header class="page-header"><div class="brand"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="20" height="20" rx="6" fill="#2456e6"/><path d="M6 15.4l5-8.8 5 8.8" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Frontbase</span></div><p class="eyebrow">Deployment setup</p><h1>Set up Frontbase</h1><p class="lede">Verify deployment ownership to configure this installation.</p></header>
 <ol class="steps"><li><b>1</b>Ownership</li><li><b>2</b>Services</li><li><b>3</b>Activation</li></ol>
@@ -3597,7 +3621,7 @@ a{color:var(--accent)}
     <meta name="twitter:title" content="Frontbase - Build Apps Visually" />
     <meta name="twitter:description" content="The no-code platform for designers and developers." />
     <meta name="twitter:image" content="/logo.png" />
-    <script type="module" crossorigin src="/frontbase-admin/assets/index-CqucSe-u-190632924322539.js"></script>
+    <script type="module" crossorigin src="/frontbase-admin/assets/index-BK46P5IV-190632924322539.js"></script>
     <link rel="stylesheet" crossorigin href="/frontbase-admin/assets/index-CYMg8bEf-190632924322539.css">
   </head>
 
