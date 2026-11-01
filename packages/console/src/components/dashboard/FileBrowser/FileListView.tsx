@@ -265,15 +265,15 @@ export function FileListView({
     };
 
     return (
-        <Card>
+        <Card className="min-w-0">
             <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex min-w-0 items-center gap-2">
                         <Button variant="ghost" size="sm" onClick={handleBack}>
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                         {/* Breadcrumb Navigation */}
-                        <nav className="flex items-center gap-1 text-sm">
+                        <nav className="flex min-w-0 flex-wrap items-center gap-1 break-all text-sm" aria-label="Storage path">
                             {breadcrumbSegments.map((segment, index) => (
                                 <React.Fragment key={index}>
                                     {index > 0 && <span className="text-muted-foreground mx-1">/</span>}
@@ -302,7 +302,7 @@ export function FileListView({
                             ))}
                         </nav>
                     </div>
-                    <div className="flex gap-2 items-center">
+                    <div className="flex min-w-0 flex-wrap gap-2 items-center">
                         {selectedFiles.size > 0 && (
                             <div className="flex items-center gap-2 mr-2 bg-muted/50 px-3 py-1 rounded-full border text-sm">
                                 <span className="font-medium text-muted-foreground">{selectedFiles.size} selected</span>
@@ -318,11 +318,11 @@ export function FileListView({
                                 </Button>
                             </div>
                         )}
-                        <div className="relative w-[200px]">
+                        <div className="relative w-full min-w-0 sm:w-[200px]">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input type="search" placeholder="Search files..." className="pl-8 h-9" value={fileSearch} onChange={(e) => setFileSearch(e.target.value)} />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}><RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} /></Button>
                             <Button variant="outline" size="sm" onClick={() => setIsFolderDialogOpen(true)}><FolderPlus className="h-4 w-4 mr-1" /> New Folder</Button>
                             <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadMutation.isPending}>
