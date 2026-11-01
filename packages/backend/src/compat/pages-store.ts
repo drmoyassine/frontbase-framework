@@ -173,7 +173,8 @@ export class PagesStore {
      * Seed a default homepage template if no homepage exists (fresh deploy). The
      * page is a normal compat_pages row — published (live at `/`) and fully
      * editable/deletable in the console. Idempotent: only creates when no
-     * is_homepage page exists.
+     * is_homepage page exists. A stable tenant seed identity arbitrates concurrent
+     * cold starts through the existing primary key; a deleted starter is not resurrected.
      */
     async ensureHomepage(now: string): Promise<void> {
         const existing = await this.runner.query(
@@ -190,9 +191,11 @@ export class PagesStore {
             ],
         });
         const ch = await hash(layout);
+        const seedHash = await hash('frontbase:default-homepage:v1:' + this.tenant);
+        const seedId = `${seedHash.slice(0, 8)}-${seedHash.slice(8, 12)}-5${seedHash.slice(13, 16)}-a${seedHash.slice(17, 20)}-${seedHash.slice(20, 32)}`;
         await this.runner.exec(
-            'INSERT INTO compat_pages (id, tenant_slug, name, slug, title, description, keywords, is_public, is_homepage, is_published, layout_data, seo_data, deleted_at, content_hash, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-            [crypto.randomUUID(), this.tenant, 'Home', 'home', 'Home', null, null, 1, 1, 1, layout, null, null, ch, now, now],
+            'INSERT INTO compat_pages (id, tenant_slug, name, slug, title, description, keywords, is_public, is_homepage, is_published, layout_data, seo_data, deleted_at, content_hash, created_at, updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM compat_pages WHERE tenant_slug = ? AND is_homepage = 1 AND deleted_at IS NULL) ON CONFLICT (id, tenant_slug) DO NOTHING',
+            [seedId, this.tenant, 'Home', 'home', 'Home', null, null, 1, 1, 1, layout, null, null, ch, now, now, this.tenant],
         );
     }
 

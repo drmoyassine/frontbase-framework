@@ -2,6 +2,8 @@
 
 ## Current checkpoint — 2026-10-31
 
+**November 1 binding task delivered:** [hosted Supabase/PostgREST HTTP state](hosted-postgres-state-20261031.md), source `87eebed9`, passes workspace/security/MVCC qualification and isolated CF/Vercel Supabase activation → administrator → visual save/publish → retained-account tests → Git-upgrade checks. Self-hosted PostgREST has actual local HTTP and both target-fixture evidence, not a separate remote-provider live receipt. Vercel's administrator link needed approved assisted recovery; secure hosted owner-link renewal and an uninterrupted public-main Vercel journey remain the next genuine onboarding gaps. Preserve the owner's unconfigured Study-in-USA installation. This does not close wider Developer Preview release gates.
+
 The verified main implementation checkpoint is `1ea8d2266e2528f0c7da35a2310c013f1b3338db`, containing the tested Vercel stale-page repair `033f496b` and the completed Cloudflare no-coordinator bootstrap. Both are normal authenticated-owner merges; no rebase or force-push. The README buttons select main, and the public deployment-source contract passes at that exact merge. Later documentation commits do not establish another live-build result. This is source promotion and local qualification, not a fresh live deployment of the repaired Vercel flow.
 
 | Surface | Current status | Evidence / remaining exit |

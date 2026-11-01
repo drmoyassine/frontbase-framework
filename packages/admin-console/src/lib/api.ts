@@ -9,6 +9,7 @@
 const SETUP_API_BASE = '/api/console/setup';
 
 const SETUP_ERRORS: Record<string, string> = {
+    activation_in_progress: 'The activated application is still replacing its setup service. Your secure link is preserved. Wait briefly and retry this link; no deployment or administrator creation has been repeated.',
     invalid_setup_token: 'This setup session is invalid or has expired. Your entries are preserved. Ask the deployment owner to renew the secure setup link for this installation, then try again.',
     setup_link_expired: 'The secure setup link has expired. Your entries are preserved. Ask the deployment owner to renew it for this installation.',
     setup_disabled: 'Browser setup is disabled for this installation. Ask the deployment owner to enable secure administrator setup.',
@@ -78,10 +79,21 @@ export async function getSetupStatus(): Promise<SetupStatus> {
 }
 
 export async function postSetupClaim(setupToken: string): Promise<{ ok: true }> {
-    return setupApi('/claim', {
-        method: 'POST',
-        body: JSON.stringify({ setupToken }),
-    });
+    // Exchanging an existing capability only issues a cookie. It is idempotent;
+    // provisioning and administrator creation are deliberately never retried.
+    for (let attempt = 0; ; attempt++) {
+        try {
+            return await setupApi('/claim', {
+                method: 'POST',
+                redirect: 'error',
+                cache: 'no-store',
+                body: JSON.stringify({ setupToken }),
+            });
+        } catch (error) {
+            if (!(error instanceof ApiError) || !['activation_in_progress', 'network_error'].includes(error.code) || attempt >= 14) throw error;
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+    }
 }
 
 export async function postSetup(email: string, password: string, setupToken?: string): Promise<{ ok: true }> {

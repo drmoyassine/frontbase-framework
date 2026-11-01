@@ -219,7 +219,8 @@ export function describeStateDb(input: {
                 url: postgrestUrl,
                 serviceKey: postgrestToken,
                 restUrl: postgrestUrl,
-                schema: postgresSchema,
+                schema: env.APP_DB_POSTGREST_RPC_SCHEMA??postgresSchema,
+                ...(env.APP_DB_POSTGREST_RPC_PREFIX?{queryFunction:env.APP_DB_POSTGREST_RPC_PREFIX+'query',execFunction:env.APP_DB_POSTGREST_RPC_PREFIX+'exec',migrationFunction:env.APP_DB_POSTGREST_RPC_PREFIX+'migrate'}:{}),
             }),
         };
     }

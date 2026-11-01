@@ -338,6 +338,7 @@ async function migrateUpUnlocked(runner: DbRunner, now: () => string, migrations
 }
 
 export async function migrateUp(runner: DbRunner, now: () => string = () => new Date().toISOString(), migrations: Migration[] = MIGRATIONS): Promise<number[]> {
+    if(runner.applyMigrations)return runner.applyMigrations(migrations.map(m=>({version:m.version,name:m.name,statements:m.up})),now());
     if (runner.dialect === 'postgres' && runner.transaction) {
         return runner.transaction(async (transaction) => {
             // Every Worker isolate can cold-start concurrently. Serialize schema

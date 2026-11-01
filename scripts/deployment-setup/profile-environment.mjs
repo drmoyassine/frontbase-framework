@@ -40,7 +40,7 @@ export function profileEnvironment(prepared,{nativeHyperdrive=false}={}) {
     // Self-hosted Postgres behind PostgREST lowers through the same supabaseRunner HTTP
     // transport pair as the supabase-postgres connect path (url is https-only and required
     // at manifest validation, so no wire branch exists here).
-    env.APP_DB_POSTGREST_URL=c.url;env.APP_DB_POSTGREST_TOKEN=get(b,'token');if(c.schema)env.APP_DB_POSTGRES_SCHEMA=c.schema;break;
+    env.APP_DB_POSTGREST_URL=c.url;env.APP_DB_POSTGREST_TOKEN=get(b,'token');if(c.schema)env.APP_DB_POSTGRES_SCHEMA=c.schema;if(c.rpcPrefix){env.APP_DB_POSTGREST_RPC_PREFIX=c.rpcPrefix;env.APP_DB_POSTGREST_RPC_SCHEMA=c.rpcSchema;}break;
    case 'upstash-http':json('FRONTBASE_CACHE',{provider:'upstash',url:c.url,token:get(b,'token')});break;
    case 'libsql-vector-http':json('FRONTBASE_VECTOR',{provider:'libsql',url:c.url,token:get(b,'token')});break;
    case 'cloudflare-vectorize-http':json('FRONTBASE_VECTOR',{provider:'vectorize',url:c.indexName,cfAccountId:c.accountId,cfApiToken:get(b,'token')});break;

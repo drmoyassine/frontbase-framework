@@ -39,6 +39,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     let currentStep=0, steps: readonly ConfigurableRole[]=[], destroyed=false;
     let projects: Discovery<ProjectOption>|undefined;
     const schemasByProject=new Map<string,Discovery<SchemaOption>>();
+    let postgresDiscovery:{generation:number;status:'loading'|'ready'|'failed';schemas:string[];message:string}|undefined,postgresGeneration=0;
     const node=<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string,className?:string)=>{
         const element=document.createElement(tag);
         if(text)element.textContent=text;
@@ -66,6 +67,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             if(binding.mode==='create')return supabaseStateSchemaName.test(binding.config.schema??'');
             return supabaseStateSchemaName.test(binding.resourceRef??'')&&binding.config.schema===binding.resourceRef;
         }
+        if(selected.id==='postgrest-http'&&options.discoveryBase&&entry){if(postgresDiscovery?.status!=='ready'||!['create','reuse'].includes(binding.mode)||!/^[a-z_][a-z0-9_]{0,62}$/.test(binding.config.schema??''))return false;}
         for(const key of selected.requiredConfig??[])if(!binding.config[key]?.trim())return false;
         for(const key of selected.requiredSecrets??[])if(!binding.secretRefs[key])return false;
         if(binding.mode==='reuse'&&!binding.resourceRef)return false;
@@ -182,6 +184,30 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
         });
         row.append(prefix,input);wrapper.append(title,row);card.append(wrapper);
     };
+    const renderPostgrestPicker=(card:HTMLElement,role:ConfigurableRole)=>{
+        const binding=manifest.bindings[role],reference=binding.secretRefs.token??role+'/token';
+        const invalidate=()=>{postgresGeneration++;postgresDiscovery=undefined;binding.mode='connect';delete binding.resourceRef;delete binding.config.rpcPrefix;delete binding.config.rpcSchema;};
+        field(card,'Service URL',binding.config.url,value=>{binding.config.url=value;invalidate();},false,true);
+        field(card,'Access token',secrets.get(reference),value=>{if(value){binding.secretRefs.token=reference;secrets.set(reference,value);}else{delete binding.secretRefs.token;secrets.delete(reference);}invalidate();},true,true);
+        const test=node('button','Test connection and fetch schemas');test.type='button';test.disabled=postgresDiscovery?.status==='loading';
+        test.addEventListener('click',async()=>{
+            const url=binding.config.url,token=secrets.get(reference);if(!url||!token){postgresDiscovery={generation:postgresGeneration,status:'failed',schemas:[],message:'Enter the endpoint and access token first.'};render();return;}
+            const generation=++postgresGeneration;postgresDiscovery={generation,status:'loading',schemas:[],message:'Testing connection…'};render();
+            let data:any;try{const r=await fetch((options.discoveryBase??'')+'/provider-resources/postgrest/schemas',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({url,token})});data=await r.json();if(!r.ok)throw Error();}catch{data={success:false};}
+            if(destroyed||generation!==postgresGeneration)return;
+            postgresDiscovery={generation,status:data.success===true?'ready':'failed',schemas:Array.isArray(data.schemas)?data.schemas.map((s:any)=>String(s.name)).filter((s:string)=>/^[a-z_][a-z0-9_]{0,62}$/.test(s)):[],message:data.success===true?'Connection verified. Select an empty schema or create a new one during Apply.':'Cannot read schemas. Check the HTTPS endpoint, credential and execute_query helper permissions.'};render();change();
+        });card.append(test);
+        if(postgresDiscovery){const message=node('p',postgresDiscovery.message,'fb-binding-note');message.setAttribute('role','status');card.append(message);}
+        if(postgresDiscovery?.status!=='ready')return;
+        const wrapper=node('div',undefined,'fb-binding-field'),label=node('label','Schema'),select=node('select');select.id='binding-postgrest-schema-'+role;label.htmlFor=select.id;
+        select.append(option('Select an existing schema…',''),option('Create new schema…','__create__'));
+        for(const name of postgresDiscovery.schemas)select.append(option(name,name));
+        select.value=binding.mode==='create'?'__create__':binding.mode==='reuse'?binding.resourceRef??'':'';
+        select.addEventListener('change',()=>{delete binding.resourceRef;delete binding.config.schema;if(select.value==='__create__'){binding.mode='create';binding.config.schema='frontbase_edge_state';}else if(select.value){binding.mode='reuse';binding.resourceRef=select.value;binding.config.schema=select.value;}else binding.mode='connect';render();change();});
+        wrapper.append(label,select);card.append(wrapper);
+        if(binding.mode==='create')field(card,'New schema name',binding.config.schema,value=>binding.config.schema=value,false,true);
+        card.append(node('p','Existing schemas must be empty. Schema creation and protected SQL helper installation happen only when you Apply. The credential must have the necessary DDL privileges.','fb-binding-note'));
+    };
     function render() {
         root.classList.add('fb-bindings-form');root.replaceChildren();
         if(options.providerConnections){
@@ -231,7 +257,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             select.value=binding.mode==='disabled'?'disabled':binding.adapterId;
             select.addEventListener('change',()=>{
                 for(const reference of Object.values(binding.secretRefs))secrets.delete(reference);
-                projects=undefined;schemasByProject.clear();
+                projects=undefined;schemasByProject.clear();postgresGeneration++;postgresDiscovery=undefined;
                 if(select.value==='disabled')manifest.bindings[role]={...binding,mode:'disabled',secretRefs:{}};
                 else {
                     const adapter=compatibleAdapters.find(a=>a.id===select.value)!;
@@ -247,6 +273,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                 if(selected.id==='supabase-postgres'){
                     if(!compatibleAdapters.includes(selected))card.append(node('p','This adapter is unavailable in this deployment flow.','fb-binding-note'));
                     else renderSupabasePicker(card,role);
+                }else if(selected.id==='postgrest-http'&&options.discoveryBase&&entry){renderPostgrestPicker(card,role);
                 }else{
                     const oauth=options.providerConnections?.cloudflare;
                     const useOAuth=oauth?.connected&&(selected.id==='d1-http'||selected.id==='cloudflare-vectorize-http'&&oauth.capabilities?.includes('vectorize'));
@@ -307,9 +334,10 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             root.append(nav);
         }
     }
-    function clearCredentials(){secrets.clear();for(const input of root.querySelectorAll<HTMLInputElement>('input[type=password]'))input.value='';}
+    function clearCredentials(){secrets.clear();postgresGeneration++;postgresDiscovery=undefined;for(const input of root.querySelectorAll<HTMLInputElement>('input[type=password]'))input.value='';}
     render();
     return {
+        ready(){return stepReady('state-db');},
         snapshot(){
             const references=new Set(Object.values(manifest.bindings).filter(b=>b.mode!=='disabled').flatMap(b=>Object.values(b.secretRefs)));
             return {manifest:structuredClone(manifest),credentials:Object.fromEntries([...references].filter(r=>secrets.has(r)).map(r=>[r,secrets.get(r)!]))};
