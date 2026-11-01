@@ -1,3 +1,4 @@
+import {canShowTemplateInstaller} from '@/lib/templateInstallerAccess';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBuilderStore } from '@/stores/builder';
@@ -402,7 +403,7 @@ export const PagesPanel: React.FC = () => {
             <Trash className="h-4 w-4" />
             {showTrash ? 'View Pages' : 'Trash'}
           </Button>
-          {!showTrash && ['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user?.role??'') && <Button variant="outline" onClick={()=>setShowInstallTemplate(true)}>Install Template</Button>}
+          {!showTrash && canShowTemplateInstaller(user?.role) && <Button variant="outline" onClick={()=>setShowInstallTemplate(true)}>Install Template</Button>}
           {!showTrash && (
             <Button onClick={() => setShowCreateDialog(true)}>
               <Plus className="mr-2 h-4 w-4" />

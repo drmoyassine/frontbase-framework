@@ -1,3 +1,4 @@
+import {canShowTemplateInstaller} from '@/lib/templateInstallerAccess';
 import {Button} from '@/components/ui/button'
 import {useAuthStore} from '@/stores/auth'
 import {InstallTemplateDialog} from '@/components/dashboard/InstallTemplateDialog'
@@ -137,7 +138,7 @@ export function Dashboard() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>{['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user?.role??'')&&<Button onClick={()=>setInstallTemplate(true)}>Install Template</Button>}</div><InstallTemplateDialog key={user?.id??'anonymous'} open={installTemplate} onOpenChange={setInstallTemplate} onOpenPages={()=>navigate('/pages')} onInstalled={()=>{void queryClient.invalidateQueries({queryKey:['pages']});}} />
+                <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>{canShowTemplateInstaller(user?.role)&&<Button onClick={()=>setInstallTemplate(true)}>Install Template</Button>}</div><InstallTemplateDialog key={user?.id??'anonymous'} open={installTemplate} onOpenChange={setInstallTemplate} onOpenPages={()=>navigate('/pages')} onInstalled={()=>{void queryClient.invalidateQueries({queryKey:['pages']});}} />
                 <p className="text-muted-foreground">Overview of your project</p>
             </div>
 
