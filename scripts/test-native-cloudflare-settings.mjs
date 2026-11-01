@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import {preserveNativeCloudflareSettings} from './deployment-setup/native-cloudflare-settings.mjs';
+import {readFileSync} from 'node:fs';
+let source=readFileSync(new URL('./deployment-setup/native-cloudflare-settings.mjs',import.meta.url),'utf8');
+const faults={r2:["bindings.filter(b => b.type === 'r2_bucket')","[].filter(b => b.type === 'r2_bucket')"],queue:["bindings.filter(b => b.type === 'queue')","[].filter(b => b.type === 'queue')"],unknown:["'r2_bucket', 'queue'","'r2_bucket', 'queue', 'service'"]};
+if(process.env.NATIVE_PRESERVE_FAULT){const item=faults[process.env.NATIVE_PRESERVE_FAULT];assert.ok(item);assert.equal(source.split(item[0]).length,2,'unique preservation mutation');source=source.replace(...item);}
+const {preserveNativeCloudflareSettings}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const uuid='11111111-2222-4333-8444-555555555555';
 const settings={bindings:[{name:'ASSETS',type:'assets'},{name:'FRONTBASE_BOOTSTRAP',type:'plain_text',text:'0'},{name:'FRONTBASE_INSTALLATION_ID',type:'plain_text',text:uuid},{name:'DB',type:'d1',id:uuid},{name:'FRONTBASE_SETUP_JOURNAL',type:'d1',id:uuid},{name:'FRONTBASE_KV',type:'kv_namespace',namespace_id:'a'.repeat(32)},{name:'SESSION_SECRET',type:'secret_text'}]};
 const template={name:'fixture',vars:{FRONTBASE_BOOTSTRAP:'1'},assets:{binding:'ASSETS',directory:'console-dist'}};
@@ -8,7 +12,11 @@ assert.equal(result.vars.FRONTBASE_BOOTSTRAP,'0');assert.equal(result.keep_vars,
 const metadataSettings={bindings:[...settings.bindings.filter(b=>b.name!=='FRONTBASE_SETUP_JOURNAL'),{name:'FRONTBASE_BOOTSTRAP_STORE',type:'plain_text',text:'versions-v1'},{name:'FRONTBASE_BOOTSTRAP_BASE_VERSION',type:'plain_text',text:'2'},{name:'FRONTBASE_SETUP_METADATA',type:'plain_text',text:'older deployed envelope'},{name:'FRONTBASE_SETUP_METADATA_00',type:'plain_text',text:'older encrypted receipt'},{name:'FRONTBASE_BOOTSTRAP_TOKEN',type:'secret_text'}]};
 const metadata=preserveNativeCloudflareSettings(template,metadataSettings);
 assert.equal(metadata.vars.FRONTBASE_BOOTSTRAP_STORE,'versions-v1');assert.equal(metadata.vars.FRONTBASE_BOOTSTRAP_BASE_VERSION,'2');assert.equal(metadata.keep_vars,true);assert.equal(metadata.d1_databases.length,1);assert.equal(metadata.vars.FRONTBASE_SETUP_METADATA,undefined);assert.equal(metadata.vars.FRONTBASE_SETUP_METADATA_00,undefined);assert(!JSON.stringify(metadata).includes('FRONTBASE_BOOTSTRAP_TOKEN'),'owner secret is inherited, never exported');
+const optional={bindings:[...metadataSettings.bindings,{name:'FRONTBASE_R2',type:'r2_bucket',bucket_name:'fixture-private-files',jurisdiction:'eu'},{name:'FRONTBASE_NATIVE_QUEUE',type:'queue',queue_name:'fixture-delivery',delivery_delay:5}]},optionalBefore=JSON.stringify(optional);
+const retained=preserveNativeCloudflareSettings(template,optional);
+assert.deepEqual(retained.r2_buckets,[{binding:'FRONTBASE_R2',bucket_name:'fixture-private-files',jurisdiction:'eu'}]);assert.deepEqual(retained.queues,{producers:[{binding:'FRONTBASE_NATIVE_QUEUE',queue:'fixture-delivery',delivery_delay:5}]});assert.equal(JSON.stringify(optional),optionalBefore);assert.equal(retained.d1_databases[0].database_id,uuid);assert.equal(retained.kv_namespaces[0].id,'a'.repeat(32));assert.ok(!JSON.stringify(retained).includes('SESSION_SECRET'));
+for(const binding of [{name:'R2_BAD',type:'r2_bucket',bucket_name:'invalid/name'},{name:'R2_BAD',type:'r2_bucket',bucket_name:'fixture-bucket',jurisdiction:'../other'},{name:'QUEUE_BAD',type:'queue',queue_name:'invalid/name'},{name:'QUEUE_BAD',type:'queue',queue_name:'fixture-queue',delivery_delay:-1}])assert.throws(()=>preserveNativeCloudflareSettings(template,{bindings:[...settings.bindings,binding]}));
 for(const binding of [{name:'SERVICE',type:'service'},{name:'DB',type:'d1',id:uuid}])assert.throws(()=>preserveNativeCloudflareSettings(template,{bindings:[...settings.bindings,binding]}));
 assert.throws(()=>preserveNativeCloudflareSettings(template,{bindings:settings.bindings.filter(b=>b.name!=='ASSETS')}));
 assert.throws(()=>preserveNativeCloudflareSettings(template,{bindings:settings.bindings.filter(b=>b.name!=='FRONTBASE_BOOTSTRAP')}));
-console.log('PASS native CF preservation: exact resource IDs, closed setup, retained secrets, unknown/duplicate binding refusal');
+console.log('PASS native CF preservation: exact D1/KV/R2/Queue identities, optional region/delay, unchanged consumer configuration, closed setup, retained secrets, unknown/duplicate/malformed binding refusal');

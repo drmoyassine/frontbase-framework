@@ -8,6 +8,7 @@ import {nativeWrangler} from './deployment-setup/cloudflare.mjs';
 import {nativeCloudflarePlan} from './deployment-setup/native-cloudflare-plan.mjs';
 import {nativeSnapshotSettings} from './deployment-setup/native-snapshot-settings.mjs';
 import {nativeBuildCredential,verifyNativeBuildPermissions,handoffNativeBuildCredential,nativeBuildReceiverSecrets} from './deployment-setup/native-build-handoff.mjs';
+import {nativeDeployErrorMessage} from './deployment-setup/native-deploy-errors.mjs';
 
 // Native CF setup retains the operator-authorized build API token in provider
 // secrets through the existing claim hook. It never enters generated config/code.
@@ -68,8 +69,7 @@ if (config.vars?.FRONTBASE_BOOTSTRAP !== 'native') {
       console.log('Native deployment complete: '+project+'; '+(plan.vars.FRONTBASE_BOOTSTRAP==='0'?'existing installation preserved':'Cloudflare connected; owner setup ready'));
     }
   }catch(error){
-    const message=String(error?.message??'');
-    console.error(message==='native_build_api_token_required'?'Use a persistent Cloudflare API token for native setup. Select a build token with Account Settings Read and Workers Scripts Edit. Add resource permissions for the bindings selected at Apply. Wrangler login access tokens are not copied into the app.':message.startsWith('native_build_permission_required: ')?message+' — select a build API token with that permission for this account, then retry.':message==='native_setup_database_rejected'?'Cloudflare refused the setup database. Check D1 Edit permission and the account database limit. Inspect the installation before retrying.':'Native deployment refused. Inspect the build account, token permissions and existing Worker state. Setup may have partially completed; no automatic resource retry was attempted.');process.exitCode=1;
+    console.error(nativeDeployErrorMessage(error));process.exitCode=1;
   }
   finally{
     if(folder && dirname(resolve(folder))===resolve(tmpdir()) && resolve(folder).startsWith(join(resolve(tmpdir()),'frontbase-native-')))await rm(folder,{recursive:true,force:true});
