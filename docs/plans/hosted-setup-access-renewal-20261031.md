@@ -1,6 +1,14 @@
 # Hosted setup access renewal — October 31, 2026
 
-Status (2026-11-01): **IMPLEMENTED; SOURCE QUALIFICATION COMPLETE; LIVE PROVIDER RENEWAL OPEN**. Owner now authorizes executing the renewal and CF/Vercel fresh-install acceptance, leaving consent/password-dependent steps until the end. The original baseline and intended requirements below are retained as history. Do not equate the implementation/security tests with completed live renewal. See [current acceptance receipt](onboarding-final-acceptance-20261101.md).
+Status (2026-11-01): **IMPLEMENTED; SOURCE QUALIFIED; VERCEL LIVE RENEWAL PASS; CF POSITIVE RENEWAL OPEN**. Owner now authorizes executing the renewal and CF/Vercel fresh-install acceptance, leaving consent/password-dependent steps until the end. The original baseline and intended requirements below are retained as history. Do not equate the implementation/security tests with completed live renewal. See [current acceptance receipt](onboarding-final-acceptance-20261101.md).
+
+## November 1 provider-contract amendment and live result
+
+This checkpoint supersedes the Vercel fresh-management-grant requirement below. The real external Integration install UI disables an already-installed team, and Marketplace SSO rejected this external configuration. The owner separately approved identity-only Sign in with Vercel. Implemented `f43323ef` verifies a fresh OIDC subject and currently confirmed OWNER membership of the exact team through the retained integration's existing Team Read permission, then exact project/origin/native-root proof before writing an access generation. PKCE, fixed RS256/JWKS issuer/audience/nonce/time verification, expiring one-use tickets and existing receiver/cookie/CSRF guards remain mandatory. Identity tokens never become deployment credentials. No viewer/member promotion; incomplete/over-100 member directories refuse. CF still requires a fresh management grant for its write.
+
+The operator registers the exact `<relay-origin>/setup-owner/vercel/callback` and sets `FRONTBASE_VERCEL_OWNER_CLIENT_ID` server-side. The current production registration uses `openid` only, public-client PKCE and no client secret. Confidential registrations may configure `FRONTBASE_VERCEL_OWNER_CLIENT_SECRET` in server secrets; never put it in Git or client configuration. The wizard advertises renewal only when the relay's bounded `/setup-owner/vercel/status` reports availability.
+
+Production relay version `945e82ab-ec39-47ff-b1c5-99204667aa64` is deployed. The owner consented to the identity-only login, and real renewal returned `frontbase-accept-vercel-261101a` to its existing owned Bindings wizard with claims/roots/grants preserved. Its later normal cookie expiry occurred before Apply; this is not fresh activation proof. CF positive pre-install renewal and remaining live invalidation/negative cases stay open. [Current receipts and exact continuation](onboarding-final-acceptance-20261101.md) are authoritative; source tests alone do not close those gates.
 
 ## November 1 implementation
 
