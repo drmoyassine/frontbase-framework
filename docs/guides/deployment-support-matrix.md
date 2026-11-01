@@ -1,5 +1,7 @@
 # Deployment support matrix
 
+The [shared binding provider guide](deployment-binding-providers.md) distinguishes hosted native R2/Queues, HTTP R2/Supabase Storage and conditional Upstash OAuth. Its [qualification record](../plans/binding-provider-discovery-20261101.md) is separate from native-button/state acceptance below; no new live-provider claim is implied.
+
 ## Hosted HTTP state candidate — 2026-11-01
 
 The hosted Supabase/PostgREST HTTP state implementation is qualified at `87eebed9`. Actual isolated CF/Vercel Supabase project/schema selection, Review → Apply, state migrations, administrator sign-in, visual save/publish, encrypted account tests and native Git upgrades pass. Self-hosted PostgREST connection/schema create/reuse passes actual local HTTP and both hosted lifecycle fixtures; a separate remote self-hosted server is not live-qualified. Apply alone claims an empty dedicated application schema and installs private invoker RPCs. Runtime Supabase server keys can have project-wide authority: a dedicated schema is not a scoped-login guarantee. Existing local/wire and legacy connect-only profiles retain their contracts. Vercel required approved recovery of its existing administrator link, so this does **not** close uninterrupted public-main native-button acceptance or secure owner-link renewal. [Exact receipts and limits](../plans/hosted-postgres-state-20261031.md), [setup guide](supabase-setup.md).
