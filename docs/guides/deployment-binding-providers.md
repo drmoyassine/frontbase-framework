@@ -12,9 +12,13 @@ The shared editor separates provider authorization from selected runtime resourc
 
 Availability is constrained by the executor. In particular Cloudflare's native Queue producer/consumer is supported by hosted Apply, not advertised by the local Wrangler executor. R2 discovery and native activation currently address the default jurisdiction. Generic S3 endpoints remain available for other operator-configured storage.
 
+The installed app's Bindings dialog reuses retained connections for the same read-only resource dropdowns. It still reviews/downloads proposals; it does not apply changes to a running installation or migrate state. Account discovery completes before mounting the editor so a late response cannot replace unsaved edits. If unavailable, manual reference proposals remain supported.
+
 ## Connections and resource lists
 
 Cloudflare's native build handoff retains the authorized provider account. A sufficient existing grant is reused; a second connection is not requested merely to populate a dropdown. D1, KV, R2, Queue and Vectorize inventories use bounded, fixed-origin calls with an account-membership check. Pagination follows the provider's page/cursor format. A failed list shows a retry and permission guidance; it does not silently become an empty inventory.
+
+Vectorize runtime requests support the current v2 API (NDJSON `values` writes and `returnMetadata: all`). A read-only v2 describe returning 404 permits a legacy-index describe; permission/transport failures do not downgrade the API, and writes are never automatically replayed. Vectorize Test connection describes the configured index without writing a fixed-dimension probe. This proves connectivity/read access, not write permission. LibSQL retains its own round-trip probe.
 
 Supabase Storage uses the existing Supabase connection, project discovery and REST storage adapter. Only private, supported bucket identifiers are offered. Apply resolves a server key privately through the Management API; it never puts that key in the browser or exported plan. Modern secret keys use `apikey` only; legacy JWT server keys retain their compatible headers. The server key can have project-wide authority. Installation/tenant path namespaces constrain application operations, not the provider key's underlying authority.
 
@@ -35,6 +39,18 @@ Supabase file operations reuse the existing Storage REST adapter. Deployment fil
 Connected provider authorization is encrypted and retained on the installation. Apply securely stores the chosen runtime configuration on the target host. Manually entered credentials before Apply live only in browser memory and require re-entry after reload. Exported plans and saved wizard drafts contain references, not credentials. The old blanket statement that every credential disappears after reload no longer describes connected-account bindings.
 
 ## Verification and remaining provider actions
+
+### Activate Connect Upstash
+
+Frontbase's source and production relay support Upstash, but the production partner client is not registered. An ordinary Redis REST token does not activate OAuth. The owner action is:
+
+1. Email `partnerships@upstash.com` requesting an OAuth partner client for **Frontbase**, covering Redis and QStash. Register this exact HTTPS callback: `https://oauth.frontbase.dev/api/provider-oauth/upstash/callback`. Request authorization-code flow with PKCE S256, audience `upstash-api`, and scopes `openid email offline_access`; have Upstash confirm the supported client type/scopes and Developer API key exchange. This is the registration route in [Upstash's partnership guide](https://upstash.com/docs/redis/help/integration). No email has been sent on your behalf.
+2. When Upstash supplies the client, open Cloudflare **Workers & Pages → frontbase-oauth-production → Settings → Variables and Secrets**. Add `FRONTBASE_UPSTASH_OAUTH_CLIENT_ID`; if Upstash issues a confidential-client secret, add `FRONTBASE_UPSTASH_OAUTH_CLIENT_SECRET` as **Secret**. Set `FRONTBASE_UPSTASH_OAUTH_SCOPES` only if their approved scope set differs from the default above. Deploy the configuration. Keep the secret out of Git, chat and browser-side configuration.
+3. Confirm `https://oauth.frontbase.dev/health` includes `upstash` in its provider list. Reload a current Frontbase setup wizard, choose Upstash Redis or QStash, and click **Connect Upstash**. Approve the intended account once, then select its Redis database or regional QStash account from the dropdown and continue Review → Apply.
+
+One relay registration serves the shared CF/Vercel/Docker connection flow; it is not repeated per installation. Each installation still requires its own account consent. A self-hosted direct client instead uses its own installation callback and server variables. After registration, the real OAuth consent, Redis round trip and signed QStash delivery remain live acceptance steps. The identity authorization creates a developer management key retained encrypted by the installation; revoke that generated key in Upstash when retiring the connection.
+
+Suggested request (send it yourself): “Please register Frontbase for your partner OAuth flow for Redis and QStash. Callback: https://oauth.frontbase.dev/api/provider-oauth/upstash/callback. We use server-side authorization-code exchange with PKCE S256, audience upstash-api, and request openid email offline_access. Please confirm client authentication, permitted scopes and the Developer API-key exchange contract.”
 
 See [the delivery record](../plans/binding-provider-discovery-20261101.md) for exact checks and live limits. Production Upstash client registration/consent, any additional Cloudflare OAuth scopes, and fresh native acceptance of these new optional resources remain separate authorization-dependent steps. Existing provider registrations are not silently widened.
 
