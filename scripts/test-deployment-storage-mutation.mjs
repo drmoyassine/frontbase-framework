@@ -19,7 +19,7 @@ const faults=[
  ['opaque provider errors',scope,"catch{throw Error('deployment_storage_failed');}",'catch(error){throw error;}',infraSuite,'FRONTBASE_STORAGE_SCOPE_MODULE'],
  ['private endpoint fence',backend,'checkedExternalUrl(c.endpoint as string)','new URL(c.endpoint as string)',backendSuite,'FRONTBASE_DEPLOYMENT_STORAGE_TEST_MODULE'],
  ['explicit disable precedence',backend,'if(env.FRONTBASE_STORAGE!==undefined)',`if(env.FRONTBASE_STORAGE!==undefined&&env.FRONTBASE_STORAGE!=='{"provider":"none"}')`,backendSuite,'FRONTBASE_DEPLOYMENT_STORAGE_TEST_MODULE'],
- ['selected bucket handoff',profile,'bucket:c.bucket',"bucket:'wrong-bucket'",profileSuite,'FRONTBASE_PROFILE_ENV_MODULE'],
+ ['selected bucket handoff',profile,"endpoint:c.endpoint,region:c.region||'auto',bucket:c.bucket","endpoint:c.endpoint,region:c.region||'auto',bucket:'wrong-bucket'",profileSuite,'FRONTBASE_PROFILE_ENV_MODULE'],
  ['exact Vercel namespace',vercel,"storage.namespace='vercel:'+context.scope+':'+context.project+':'+context.environment","storage.namespace='shared'",vercelSuite,'FRONTBASE_VERCEL_PROFILE_TEST_MODULE'],
 ];
 const run=(suite,env={})=>spawnSync(process.execPath,[suite],{encoding:'utf8',timeout:60000,env:{...process.env,...env}});

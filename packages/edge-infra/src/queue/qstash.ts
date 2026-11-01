@@ -27,6 +27,7 @@ const QSTASH_API = 'https://qstash.upstash.io';
 export interface QstashPublishOpts {
     /** QStash token (Bearer). */
     token: string;
+    endpoint?:string;
     /** The destination URL the message is delivered to (our receive endpoint). */
     url: string;
     /** Serialized job body. The signature is computed over exactly these bytes. */
@@ -41,8 +42,10 @@ export interface QstashPublishOpts {
 /** Publish one message. Throws on any transport/API failure — the queue
  *  resolver catches → false → the caller falls back to direct execution. */
 export async function qstashPublish(opts: QstashPublishOpts): Promise<{ messageId?: string }> {
+    const endpoint=opts.endpoint??QSTASH_API;
+    if(!['https://qstash.upstash.io','https://qstash-eu-central-1.upstash.io','https://qstash-us-east-1.upstash.io'].includes(endpoint))throw Error('qstash_endpoint_refused');
     const response = await opts.fetchImpl(
-        `${QSTASH_API}/v2/publish/${encodeURIComponent(opts.url)}`,
+        `${endpoint}/v2/publish/${encodeURIComponent(opts.url)}`,
         {
             method: 'POST',
             headers: {

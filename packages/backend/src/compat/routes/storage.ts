@@ -993,6 +993,7 @@ export function registerStorageRoutes(
         const body=await c.req.json().catch(()=>null) as {provider_id?:string;bucket?:string;path?:string;contentType?:string}|null;
         if(!body || typeof body.bucket!=='string' || typeof body.path!=='string' || body.contentType!==undefined && typeof body.contentType!=='string')return c.json({detail:'Invalid upload request'},400);
         const resolved=await resolveForOp(c.get('tenant'),body.provider_id,c.req.raw);if('status' in resolved)return resolutionError(c,resolved);
+        if(body.provider_id===boundProviderId&&storageProviderFor?.deploymentBinding?.supportsSignedUpload===false)return c.json({detail:'This deployment uses authenticated server uploads. Direct upload links are unavailable because the provider cannot enforce the deployment grant lifetime.'},409);
         try{const contentType=body.contentType??'application/octet-stream';const url=await resolved.client.signedUploadUrl(body.bucket,body.path,contentType);return c.json({success:true,url,method:'PUT',headers:{'content-type':contentType}});}
         catch{return c.json({detail:'Upload URL could not be created'},400);}
     });

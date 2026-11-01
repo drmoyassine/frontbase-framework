@@ -15,7 +15,7 @@ test('native defaults are editable recommendations and required state cannot be 
  expect([...provider.options].some(o=>o.value==='disabled')).toBe(false);
  expect(root.querySelector<HTMLSelectElement>('#binding-provider-storage')!.value).toBe('disabled');
  select(root,'binding-provider-storage','cloudflare-r2');expect(form!.snapshot().manifest.bindings.storage.mode).toBe('create');
- expect(root.textContent).toContain('Cloudflare R2 (private)');
+ expect(root.textContent).toContain('Cloudflare R2 Object Storage');
 });
 test('Connect is shown once per selected provider and disappears when no binding needs it',()=>{
  const onConnect=vi.fn(async()=>{}),root=mount('cloudflare',{providerConnections:{cloudflare:{available:true,connected:false}},onConnect});
@@ -253,4 +253,62 @@ test('connected discovery without an account id reports the honest reconnect not
  select(root,'binding-provider-state-db','supabase-postgres');
  await vi.waitFor(()=>expect(root.textContent).toContain('Could not load projects. Reconnect Supabase and try again.'));
  expect(root.querySelector('#binding-project-state-db')).toBeNull();
+});
+
+
+test('connected Cloudflare uses discovered account/index pickers and keeps legacy manual credentials separate',async()=>{
+ const accountId='a'.repeat(32),requests:string[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>{requests.push(url);return Response.json(url.endsWith('/accounts')?{accounts:[{id:accountId,name:'Connected account'}]}:{resources:[{id:'courses',name:'Courses index'}]});}));
+ const root=mount('cloudflare',{discoveryBase:'/frontbase-bootstrap/api',providerConnections:{cloudflare:{available:true,connected:true,accountId,capabilities:['vectorize']}}});
+ select(root,'binding-provider-vector','cloudflare-vectorize-http');
+ await vi.waitFor(()=>expect(root.querySelector('#binding-discovery-cf-'+accountId+'-cloudflare-vectorize-http')).not.toBeNull());
+ const index=root.querySelector<HTMLSelectElement>('#binding-discovery-cf-'+accountId+'-cloudflare-vectorize-http')!;
+ expect([...index.options].map(o=>o.textContent)).toContain('Courses index');fireEvent.change(index,{target:{value:'courses'}});
+ expect(form!.snapshot().manifest.bindings.vector.config).toEqual({accountId,indexName:'courses'});
+ expect(form!.snapshot().credentials).toEqual({});expect(root.textContent).not.toContain('Credentials stay in this setup session.');
+ expect(requests.every(r=>r.startsWith('/frontbase-bootstrap/api/provider-resources/cloudflare/'))).toBe(true);
+});
+
+test('Supabase Storage selects a discovered private bucket without exposing runtime or management credentials',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>Response.json(url.endsWith('/projects')?{projects:[{ref:'fixtureproj',name:'Project'}]}:{resources:[{id:'files-private',name:'Private files'}]})));
+ const root=mount('vercel',{discoveryBase:'/frontbase-bootstrap/api',providerConnections:{supabase:{available:true,connected:true,accountId:'fixtureproj'}}});
+ const stateCard=root.querySelector('#binding-provider-state-db')!.closest('section')!;
+ for(const [name,value] of [['Service URL','https://state.example'],['Access token','state-private']]){const label=[...stateCard.querySelectorAll('label')].find(l=>l.textContent===name)!;fireEvent.input(stateCard.querySelector('#'+label.htmlFor)!,{target:{value}});}
+ fireEvent.click(root.querySelector('.fb-step-next')!);
+ select(root,'binding-provider-storage','supabase-storage');
+ await vi.waitFor(()=>expect(root.querySelector('#binding-project-storage')).not.toBeNull());select(root,'binding-project-storage','fixtureproj');
+ await vi.waitFor(()=>expect(root.querySelector('#binding-discovery-sb-buckets-fixtureproj')).not.toBeNull());select(root,'binding-discovery-sb-buckets-fixtureproj','files-private');
+ expect(form!.snapshot().manifest.bindings.storage).toEqual({adapterId:'supabase-storage',mode:'connect',config:{projectRef:'fixtureproj',bucket:'files-private'},secretRefs:{token:'oauth/supabase/storage/token'}});
+ expect(form!.snapshot().credentials).toEqual({'state-db/token':'state-private'});expect(root.querySelector<HTMLButtonElement>('.fb-step-next')!.disabled).toBe(false);expect(root.querySelector('#binding-provider-storage')!.closest('section')!.querySelector('input[type=password]')).toBeNull();
+});
+
+test('Redis and QStash share Connect Upstash and select resources without manual runtime keys',async()=>{
+ const onConnect=vi.fn(async()=>{});
+ let root=mount('vercel',{providerConnections:{upstash:{available:true,connected:false}},onConnect});
+ select(root,'binding-provider-cache','upstash-http');select(root,'binding-provider-queue','qstash-http');
+ expect(root.querySelectorAll('[aria-label="Connect Upstash"]')).toHaveLength(1);fireEvent.click(root.querySelector('[aria-label="Connect Upstash"]')!);expect(onConnect).toHaveBeenCalledWith('upstash');form!.destroy();root.remove();
+ vi.stubGlobal('fetch',vi.fn(async(_url:string,init:RequestInit)=>{const b=JSON.parse(String(init.body));return Response.json({resources:b.adapterId==='upstash-http'?[{id:'redis-one',name:'Redis',url:'https://redis-one.upstash.io'}]:[{id:'queue-us',name:'QStash US',endpoint:'https://qstash-us-east-1.upstash.io'}]});}));
+ root=mount('vercel',{discoveryBase:'/frontbase-bootstrap/api',providerConnections:{upstash:{available:true,connected:true,accountId:'owner@example.com'}}});
+ select(root,'binding-provider-cache','upstash-http');select(root,'binding-provider-queue','qstash-http');
+ await vi.waitFor(()=>expect(root.querySelector('#binding-discovery-upstash-upstash-http')).not.toBeNull());select(root,'binding-discovery-upstash-upstash-http','redis-one');
+ await vi.waitFor(()=>expect(root.querySelector('#binding-discovery-upstash-qstash-http')).not.toBeNull());select(root,'binding-discovery-upstash-qstash-http','queue-us');
+ const b=form!.snapshot().manifest.bindings;expect(b.cache.config.url).toBe('https://redis-one.upstash.io');expect(b.queue.config.endpoint).toBe('https://qstash-us-east-1.upstash.io');expect(b.queue.secretRefs.signingKey).toBe('oauth/upstash/queue/signingKey');expect(form!.snapshot().credentials).toEqual({});
+});
+
+test('failed resource discovery shows a retry and never asks for the connected account ID',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json({error:'provider_resources_unavailable'},{status:502})));
+ const root=mount('cloudflare',{discoveryBase:'/frontbase-bootstrap/api',providerConnections:{cloudflare:{available:true,connected:true,accountId:'a'.repeat(32),capabilities:['vectorize']}}});select(root,'binding-provider-vector','cloudflare-vectorize-http');
+ await vi.waitFor(()=>expect(root.querySelector('[role="alert"]')).not.toBeNull());
+ expect(root.textContent).toContain('Retry resource discovery');expect(root.querySelector('#binding-provider-queue')!.textContent).toContain('Cloudflare Queues');
+ const vector=[...root.querySelectorAll('section')].find(c=>c.textContent?.includes('Vector Database'))!;expect(vector.querySelectorAll('input')).toHaveLength(0);
+});
+
+
+test('local manual Supabase Storage profiles remain usable without a hosted OAuth connection',()=>{
+ const root=mount('cloudflare');select(root,'binding-provider-storage','supabase-storage');
+ const card=root.querySelector('#binding-provider-storage')!.closest('section')!;
+ for(const [name,value] of [['Project reference','fixtureproj'],['Private bucket','files-private'],['Server Storage key','manual-server-private']]){
+  const label=[...card.querySelectorAll('label')].find(l=>l.textContent===name)!;fireEvent.input(card.querySelector('#'+label.htmlFor)!,{target:{value}});
+ }
+ const snapshot=form!.snapshot();expect(snapshot.manifest.bindings.storage.config).toEqual({projectRef:'fixtureproj',bucket:'files-private'});expect(snapshot.credentials['storage/token']).toBe('manual-server-private');expect(JSON.stringify(snapshot.manifest)).not.toContain('manual-server-private');expect(card.textContent).toContain('until Apply');
 });

@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync,mkdtempSync,copyFileSync,rmSync} from 'node:fs';
+import {join} from 'node:path';import {tmpdir} from 'node:os';import {fileURLToPath,pathToFileURL} from 'node:url';import {spawnSync} from 'node:child_process';
+const source=readFileSync(new URL('../examples/cf-full/dist/worker.mjs',import.meta.url),'utf8'),test=fileURLToPath(new URL('../examples/cf-full/test/native-queue-worker.mjs',import.meta.url)),temp=mkdtempSync(join(tmpdir(),'frontbase-queue-fault-'));
+try{copyFileSync(new URL('../examples/cf-full/dist/pg-worker.mjs',import.meta.url),join(temp,'pg-worker.mjs'));
+ const faults=[['private bridge',/"x-frontbase-callback-secret":(\w+)\.FRONTBASE_QUEUE_CALLBACK_SECRET/g,'"x-frontbase-callback-secret":"wrong"'],['ack only success',/\.ok\?(\w+)\.ack\(\):\1\.retry\(\)/g,'.ok?$1.ack():$1.ack()']];
+ for(const [name,pattern,replacement] of faults){assert.equal([...source.matchAll(pattern)].length,1,'unique native queue mutation '+name);const candidate=join(temp,'worker.mjs');writeFileSync(candidate,source.replace(pattern,replacement));const result=spawnSync(process.execPath,[test],{encoding:'utf8',windowsHide:true,timeout:120000,env:{...process.env,FRONTBASE_QUEUE_WORKER_MODULE:pathToFileURL(candidate).href}});assert.ok(result.status!==0&&result.status!==null,'escaped '+name);assert.match(result.stderr,/AssertionError/,'must fail assertions '+name+' '+result.stderr);console.log('PASS native queue fault: '+name);}
+}finally{assert.ok(temp.startsWith(join(tmpdir(),'frontbase-queue-fault-')));rmSync(temp,{recursive:true,force:true});}

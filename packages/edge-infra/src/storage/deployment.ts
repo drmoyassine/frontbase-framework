@@ -4,8 +4,8 @@ const encoder=new TextEncoder();
 const segment=(value:string):string=>{let binary='';for(const byte of encoder.encode(value))binary+=String.fromCharCode(byte);return btoa(binary).replaceAll('+','-').replaceAll('/','_').replaceAll('=','');};
 /** Trusted host wrapper: one existing physical bucket, private logical files per tenant.
  * The supplied HTTP adapter owns signing and transport; no raw adapter escapes this factory. */
-export function scopedDeploymentStorage(base:StorageProvider,physicalBucket:string,namespace:string):StorageProviderFactory {
- if(!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(physicalBucket)||physicalBucket.includes('..'))throw Error('invalid_deployment_storage');
+export function scopedDeploymentStorage(base:StorageProvider,physicalBucket:string,namespace:string,options:{bucketKind?:'supabase'}={}):StorageProviderFactory {
+ if(!(options.bucketKind==='supabase'?/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,99}$/:/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/).test(physicalBucket)||physicalBucket.includes('..'))throw Error('invalid_deployment_storage');
  if(!namespace||namespace.length>256||/[\x00-\x1f]/.test(namespace))throw Error('invalid_deployment_storage');
  const factory:StorageProviderFactory=(tenant:string)=>{
   if(!tenant||tenant.length>256||/[\x00-\x1f]/.test(tenant))throw Error('invalid_storage_scope');

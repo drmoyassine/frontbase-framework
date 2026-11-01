@@ -2,7 +2,7 @@
 import {existsSync,lstatSync,readFileSync,openSync,writeFileSync,fsyncSync,closeSync,mkdirSync,readdirSync,renameSync,unlinkSync} from 'node:fs';
 import {join,resolve,dirname,parse} from 'node:path';
 import {randomBytes,createHash} from 'node:crypto';
-import {resolveProviderOAuthCredentials,createSecretCipher,createProviderOAuth,createProviderRelayClient,providerOAuthRelay,providerOAuthClients,providerOAuthVault} from '../../packages/backend/dist/index.js';
+import {resolveProviderBindingCredentials,createProviderOAuthResources,createSecretCipher,createProviderOAuth,createProviderRelayClient,providerOAuthRelay,providerOAuthClients,providerOAuthVault} from '../../packages/backend/dist/index.js';
 import {createHostedBootstrap} from '../../packages/backend/dist/hosted-bootstrap.js';
 import {dockerBootstrapJournal} from './docker-bootstrap-journal.mjs';
 import {profileEnvironment} from './profile-environment.mjs';
@@ -38,7 +38,7 @@ export async function createDockerBootstrapHost({env,boot,assets,probeExternal=v
    if(record.manifest.bindings['state-db'].adapterId==='sqlite-file'){if(existsSync(database))throw Error('existing_state_refused');values.APP_DB_URL='file:'+database.replaceAll('\\','/');}else if(!provision)await probeExternal(live);
    if(values.FRONTBASE_STORAGE){const storage=JSON.parse(values.FRONTBASE_STORAGE);if(storage.provider!=='none'){storage.namespace='installation-'+context.installationId;values.FRONTBASE_STORAGE=JSON.stringify(storage);}}
    const environment={...values,FRONTBASE_PUBLIC_ORIGIN:origin,SESSION_SECRET:randomBytes(32).toString('hex'),SETUP_TOKEN:randomBytes(32).toString('hex'),SETUP_EXPIRES_AT:new Date(Date.now()+3600000).toISOString()};
-   for(const [name,value] of Object.entries(env))if(/^FRONTBASE_(CLOUDFLARE|VERCEL)_OAUTH_(CLIENT_ID|CLIENT_SECRET|SCOPES|INTEGRATION_SLUG|TEAM_SLUG)$/.test(name)||['FRONTBASE_OAUTH_RELAY_URL','FRONTBASE_OAUTH_RELAY_TARGET'].includes(name))environment[name]=value;
+   for(const [name,value] of Object.entries(env))if(/^FRONTBASE_(CLOUDFLARE|VERCEL|SUPABASE|UPSTASH)_OAUTH_(CLIENT_ID|CLIENT_SECRET|SCOPES|INTEGRATION_SLUG|TEAM_SLUG)$/.test(name)||['FRONTBASE_OAUTH_RELAY_URL','FRONTBASE_OAUTH_RELAY_TARGET'].includes(name))environment[name]=value;
    // Hand the installed application only grants that are usable now; expiring ones refresh and rotate first.
    const grants=await oauth.refresh(providerOAuthClients(env,origin),{fetch:(input,init)=>fetch(input,init)});if(grants.length){environment.FRONTBASE_OAUTH_CONNECTIONS=await (await createSecretCipher(environment.SESSION_SECRET)).encrypt(JSON.stringify({installationId:context.installationId,grants}));if(environment.FRONTBASE_OAUTH_CONNECTIONS.length>65536)throw Error('oauth_handoff_too_large');}
    const data={version:1,installationId:context.installationId,origin,operationId:record.operationId,fingerprint:record.fingerprint,environment};
@@ -50,7 +50,7 @@ export async function createDockerBootstrapHost({env,boot,assets,probeExternal=v
  };
  const nextSetup=()=>'/setup#/setup?claim='+encodeURIComponent(configured.environment.SETUP_TOKEN);
  // Configured restarts don't require an unexpired owner capability or re-enable the API.
- const api=runtime?null:createHostedBootstrap({enabled:true,origin,token:env.FRONTBASE_BOOTSTRAP_TOKEN??'',expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT??'',context,journal,executor,nextSetup,resolveCredentials:async(manifest,input)=>resolveProviderOAuthCredentials(manifest,input,await oauth.refresh(providerOAuthClients(env,origin),{fetch:(input,init)=>fetch(input,init)}))});
+ const api=runtime?null:createHostedBootstrap({enabled:true,origin,token:env.FRONTBASE_BOOTSTRAP_TOKEN??'',expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT??'',context,journal,executor,nextSetup,resolveCredentials:async(manifest,input)=>resolveProviderBindingCredentials(manifest,input,await oauth.refresh(providerOAuthClients(env,origin),{fetch:(input,init)=>fetch(input,init)}),fetch),providerResources:()=>resources});
  const oauthDirectory=join(directory,'oauth');
  const vault={
   entries:async prefix=>{
@@ -80,6 +80,7 @@ export async function createDockerBootstrapHost({env,boot,assets,probeExternal=v
  const oauthConfiguration={origin,clients:providerOAuthClients(env,origin),store:oauth.store,fetch:(input,init)=>fetch(input,init),authorize:async request=>{
   if(!api)return null;const probe=await api.fetch(new Request(origin+'/frontbase-bootstrap/api/configuration',{headers:{cookie:request.headers.get('cookie')??''}}));if(!probe.ok)return null;const state=await probe.json();return state.operation&&['applying','uncertain'].includes(state.operation.phase)?null:actor;
  }};const relay=providerOAuthRelay(env,origin);const oauthApp=relay?createProviderRelayClient({...oauthConfiguration,...relay,mode:'authenticated',cipher}):createProviderOAuth(oauthConfiguration);
+ const resources=createProviderOAuthResources({origin,authorize:oauthConfiguration.authorize,fetch,supabaseGrant:async()=>{const grants=await oauth.refresh(providerOAuthClients(env,origin),{fetch});return grants.find(g=>g.provider==='supabase')??null;},grant:async(_actor,provider)=>{const grants=await oauth.refresh(providerOAuthClients(env,origin),{fetch});return grants.find(g=>g.provider===provider)??null;}});
  const headers={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
  return {context,journal,executor,close:()=>runtime?.externalFetch?.close(),fetch:async request=>{
   const url=new URL(request.url);

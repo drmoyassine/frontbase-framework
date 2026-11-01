@@ -51,7 +51,7 @@ export const supabaseStateSchemaName = /^frontbase_edge_[a-z0-9_]+$/;
 /** Inventory-backed adapters. Native wiring not yet accepted remains a recommendation only. */
 export const deploymentAdapters: readonly DeploymentAdapter[] = [
     {id:'sqlite-file',role:'state-db',targets:['docker'],selectable:true,modes:['connect'],configKeys:[],secretKeys:[]},
-    {id:'cloudflare-d1',role:'state-db',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
+    {id:'cloudflare-d1',role:'state-db',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName','accountId'],secretKeys:[]},
     {id:'turso-marketplace',role:'state-db',targets:['vercel'],selectable:true,modes:['reuse'],configKeys:[],secretKeys:[]},
     {id:'libsql-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
     {id:'d1-http',role:'state-db',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','databaseId'],secretKeys:['token'],requiredConfig:['accountId','databaseId'],requiredSecrets:['token']},
@@ -66,13 +66,16 @@ export const deploymentAdapters: readonly DeploymentAdapter[] = [
     // Self-hosted Postgres behind PostgREST: a separate provider entry that reuses the existing
     // supabaseRunner HTTP transport lowering (APP_DB_POSTGREST_URL/_TOKEN) — no wire parts, no Management API.
     {id:'postgrest-http',role:'state-db',targets:both,selectable:true,modes:['connect','create','reuse'],configKeys:['url','schema','rpcSchema','rpcPrefix'],configKeysByMode:{connect:['url','schema'],create:['url','schema'],reuse:['url','schema']},secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
-    {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
-    {id:'upstash-http',role:'cache',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
-    {id:'cloudflare-r2',role:'storage',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName'],secretKeys:[]},
+    {id:'cloudflare-kv',role:'cache',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName','accountId'],secretKeys:[]},
+    {id:'upstash-http',role:'cache',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','resourceId','url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
+    {id:'cloudflare-r2',role:'storage',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName','accountId'],secretKeys:[]},
+    {id:'cloudflare-r2-http',role:'storage',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','bucket'],secretKeys:['accessKeyId','secretAccessKey'],requiredConfig:['accountId','bucket'],requiredSecrets:['accessKeyId','secretAccessKey']},
+    {id:'supabase-storage',role:'storage',targets:both,selectable:true,modes:['connect'],configKeys:['projectRef','bucket'],secretKeys:['token'],requiredConfig:['projectRef','bucket'],requiredSecrets:['token']},
+    {id:'cloudflare-queue',role:'queue',targets:['cloudflare'],selectable:true,modes:['create','reuse'],configKeys:['resourceName','accountId'],secretKeys:[]},
     {id:'s3-http',role:'storage',targets:both,selectable:true,modes:['connect'],configKeys:['endpoint','region','bucket'],secretKeys:['accessKeyId','secretAccessKey'],requiredConfig:['endpoint','bucket'],requiredSecrets:['accessKeyId','secretAccessKey']},
     {id:'cloudflare-vectorize-http',role:'vector',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','indexName'],secretKeys:['token'],requiredConfig:['accountId','indexName'],requiredSecrets:['token']},
     {id:'libsql-vector-http',role:'vector',targets:both,selectable:true,modes:['connect'],configKeys:['url'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']},
-    {id:'qstash-http',role:'queue',targets:both,selectable:true,modes:['connect'],configKeys:['destination'],secretKeys:['token','signingKey','nextSigningKey'],requiredConfig:['destination'],requiredSecrets:['token','signingKey','nextSigningKey']},
+    {id:'qstash-http',role:'queue',targets:both,selectable:true,modes:['connect'],configKeys:['accountId','resourceId','destination','endpoint'],secretKeys:['token','signingKey','nextSigningKey'],requiredConfig:['destination'],requiredSecrets:['token','signingKey','nextSigningKey']},
     {id:'cloudflare-email',role:'email-send',targets:['cloudflare'],selectable:false,modes:['reuse'],configKeys:['from'],secretKeys:[]},
 ];
 export function adaptersFor(target: DeploymentTarget, role: ConfigurableRole): readonly DeploymentAdapter[] {

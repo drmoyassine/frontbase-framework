@@ -340,7 +340,7 @@ export {providerOAuthStore} from './provider-oauth-store.js';
 export {providerOAuthVault,type OAuthVault} from './provider-oauth-vault.js';
 export {refreshOAuthAuthorization,revokeOAuthAuthorization,expiringAuthorization} from './provider-oauth-refresh.js';
 export {importProviderOAuth} from './provider-oauth-import.js';
-export {resolveProviderOAuthCredentials} from './provider-oauth-bindings.js';
+export {resolveProviderBindingCredentials,resolveProviderOAuthCredentials} from './provider-oauth-bindings.js';
 export {createProviderOAuthRelay,type OAuthRelayDeps,type OAuthRelayTarget} from './provider-oauth-relay.js';
 export {sqlOAuthRelayVault,sqlOAuthNativeClaims} from './provider-oauth-relay-store.js';
 export {relayTargetPolicy} from './provider-oauth-relay-target.js';

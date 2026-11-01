@@ -1,4 +1,6 @@
 /** Read-only provider discovery for setup surfaces; mounted beside provider-oauth on every host that stores grants. */
+import {cloudflareResources,privateSupabaseBuckets,upstashResources} from './provider-binding-resources.js';
+import type {OAuthProvider} from './provider-oauth.js';
 import { Hono } from 'hono';
 import { json, type OAuthActor, type OAuthAuthorization } from './provider-oauth.js';
 import { supabaseStateSchemaName } from '@frontbase/edge-core/deployment';
@@ -8,6 +10,7 @@ export interface ProviderOAuthResourcesDeps {
     origin: string; fetch: typeof fetch; now?: ()=>number;
     authorize(request: Request): Promise<OAuthActor | null>;
     /** Usable supabase grant for the actor from the same actor-scoped store the /status endpoint reads; null when unconnected. */
+    grant?(actor:OAuthActor,provider:OAuthProvider):Promise<OAuthAuthorization|null>;
     supabaseGrant(actor: OAuthActor): Promise<OAuthAuthorization | null>;
 }
 // Same project-ref fence as scripts/deployment-setup/supabase-state-provision.mjs.
@@ -23,6 +26,26 @@ export function createProviderOAuthResources(deps:ProviderOAuthResourcesDeps){
     // Upstream answers reuse the bounded reader; any refusal, oversize or non-2xx collapses to the opaque 502.
     const upstream=async(token:string,url:string,init:RequestInit)=>{try{return await json(await deps.fetch(url,{...init,redirect:'manual',signal:AbortSignal.timeout(15000)}));}catch{return null;}};
     const grant=async(c:any)=>{const actor=await deps.authorize(c.req.raw);return actor?await deps.supabaseGrant(actor):null;};
+    app.post('/upstash/resources',async c=>{
+        const input=await body(c);if(!input||Object.keys(input).join(',')!=='adapterId'||!['upstash-http','qstash-http'].includes(input.adapterId))return c.json({error:'oauth_refused'},400);
+        const actor=await deps.authorize(c.req.raw),grant=actor&&await deps.grant?.(actor,'upstash');if(!grant)return c.json({error:'oauth_unconfigured'},409);
+        try{return c.json({resources:(await upstashResources(deps.fetch,grant,input.adapterId)).map(({id,name,config})=>({id,name,...('url' in config&&config.url?{url:config.url}:{}),...('endpoint' in config&&config.endpoint?{endpoint:config.endpoint}:{})}))});}catch{return c.json({error:'provider_resources_unavailable',message:'Cannot load Upstash resources. Reconnect the native Upstash account and check its management permissions.'},502);}
+    });
+    app.post('/cloudflare/accounts',async c=>{
+        const input=await body(c);if(!input||Object.keys(input).length)return c.json({error:'oauth_refused'},400);
+        const actor=await deps.authorize(c.req.raw),grant=actor&&await deps.grant?.(actor,'cloudflare');if(!grant)return c.json({error:'oauth_unconfigured'},409);
+        return c.json({accounts:grant.accounts.map(a=>({id:a.id,name:a.name}))});
+    });
+    app.post('/cloudflare/resources',async c=>{
+        const input=await body(c);if(!input||Object.keys(input).sort().join(',')!=='accountId,adapterId'||typeof input.accountId!=='string'||typeof input.adapterId!=='string')return c.json({error:'oauth_refused'},400);
+        const actor=await deps.authorize(c.req.raw),grant=actor&&await deps.grant?.(actor,'cloudflare');if(!grant)return c.json({error:'oauth_unconfigured'},409);
+        try{return c.json({resources:await cloudflareResources(deps.fetch,grant,input.accountId,input.adapterId)});}catch{return c.json({error:'provider_resources_unavailable',message:'Cannot list these resources. Check the selected account and the connected authorization permissions, then retry.'},502);}
+    });
+    app.post('/supabase/buckets',async c=>{
+        const input=await body(c);if(!input||Object.keys(input).join(',')!=='projectRef'||typeof input.projectRef!=='string'||!projectRefPattern.test(input.projectRef))return c.json({error:'oauth_refused'},400);
+        const token=await grant(c);if(!token)return c.json({error:'oauth_unconfigured'},409);
+        try{return c.json({resources:await privateSupabaseBuckets(deps.fetch,token,input.projectRef)});}catch{return c.json({error:'provider_resources_unavailable',message:'Cannot list private buckets. Check project access and Storage permissions.'},502);}
+    });
     app.post('/supabase/projects',async c=>{
         const input=await body(c);if(!input||Object.keys(input).length)return c.json({error:'oauth_refused'},400);
         const token=await grant(c);if(!token)return c.json({error:'oauth_unconfigured'},409);

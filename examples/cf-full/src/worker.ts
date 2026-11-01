@@ -55,6 +55,7 @@ export interface CmsEnv {
     DB: D1Database;
     FRONTBASE_KV?: KVNamespaceBinding;
     FRONTBASE_R2?: R2BucketBinding;
+    FRONTBASE_NATIVE_QUEUE?: {send(body:unknown,options?:{contentType:'json'}):Promise<void>};
     FRONTBASE_DEPLOYMENT_MANIFEST?: string;
     /** Frontbase Cloud application-state PostgreSQL through Cloudflare Hyperdrive. */
     HYPERDRIVE?: { connectionString: string };
@@ -891,7 +892,7 @@ let enginePromise: Promise<Hono> | null = null;
 let currentCtx: ExecutionContext | null = null;
 let bootstrapHost:any;
 
-export default {
+const worker = {
     async fetch(req: Request, env: CmsEnv, ctx: ExecutionContext): Promise<Response> {
         try {
             if((env as any).FRONTBASE_BOOTSTRAP==='native'){bootstrapHost??=createNativeCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
@@ -945,7 +946,7 @@ export default {
                     if (e instanceof StateDbConfigError) return new Response(e.message, { status: 500 });
                     throw e;
                 }
-                const configuredServices = parseEnvServices(env as unknown as Record<string, string | undefined>);
+                const configuredServices = {...parseEnvServices(env as unknown as Record<string, string | undefined>),...(env.FRONTBASE_NATIVE_QUEUE?{nativeQueue:env.FRONTBASE_NATIVE_QUEUE}:{})};
                 // Explicit operator cache configuration retains precedence over native defaults.
                 const envServices = env.FRONTBASE_KV && !env.FRONTBASE_CACHE && !env.FRONTBASE_CACHE_URL
                     ? {...configuredServices, cache: {provider:'cloudflare_kv', url:'kv://FRONTBASE_KV'}}
@@ -1038,4 +1039,15 @@ export default {
             return new Response('internal_error', { status: 500 });
         }
     },
+    async queue(batch:{messages:Array<{body:unknown;ack():void;retry():void}>},env:CmsEnv,ctx:ExecutionContext){
+        if(!env.FRONTBASE_NATIVE_QUEUE||!env.FRONTBASE_PUBLIC_ORIGIN||!env.FRONTBASE_QUEUE_CALLBACK_SECRET)throw Error('queue_receiver_unconfigured');
+        for(const message of batch.messages){try{
+            const body=JSON.stringify(message.body);if(body.length>65536){message.ack();continue;}
+            const response=await worker.fetch(new Request(env.FRONTBASE_PUBLIC_ORIGIN+'/api/system/queue/receive',{method:'POST',headers:{'content-type':'application/json','x-frontbase-callback-secret':env.FRONTBASE_QUEUE_CALLBACK_SECRET},body}),env,ctx);
+            if(response.ok)message.ack();else message.retry();
+        }catch{message.retry();}}
+    },
+
 };
+
+export default worker;

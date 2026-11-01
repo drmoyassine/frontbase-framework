@@ -18,7 +18,7 @@ export function profileEnvironment(prepared,{nativeHyperdrive=false}={}) {
    continue;
   }
   if(b.adapterId==='turso-marketplace'&&b.mode==='reuse'&&/^store_[a-zA-Z0-9]+$/.test(b.resourceRef??''))continue;
-  if(plan.manifest.target==='cloudflare' && ['cloudflare-d1','cloudflare-kv','cloudflare-r2'].includes(b.adapterId) && ['create','reuse'].includes(b.mode))continue;
+  if(plan.manifest.target==='cloudflare' && ['cloudflare-d1','cloudflare-kv','cloudflare-r2','cloudflare-queue'].includes(b.adapterId) && ['create','reuse'].includes(b.mode))continue;
   if(b.mode!=='connect')throw Error('profile_requires_host_native_executor');
   const c=b.config;
   switch(b.adapterId) {
@@ -44,7 +44,9 @@ export function profileEnvironment(prepared,{nativeHyperdrive=false}={}) {
    case 'upstash-http':json('FRONTBASE_CACHE',{provider:'upstash',url:c.url,token:get(b,'token')});break;
    case 'libsql-vector-http':json('FRONTBASE_VECTOR',{provider:'libsql',url:c.url,token:get(b,'token')});break;
    case 'cloudflare-vectorize-http':json('FRONTBASE_VECTOR',{provider:'vectorize',url:c.indexName,cfAccountId:c.accountId,cfApiToken:get(b,'token')});break;
-   case 'qstash-http':{const callback=new URL(c.destination);if(callback.pathname!=='/api/system/queue/receive')throw Error('invalid_queue_callback');env.PUBLIC_URL=callback.origin;json('FRONTBASE_QUEUE',{provider:'qstash',token:get(b,'token'),signingKey:get(b,'signingKey'),nextSigningKey:get(b,'nextSigningKey')});break;}
+   case 'qstash-http':{const callback=new URL(c.destination);if(callback.pathname!=='/api/system/queue/receive')throw Error('invalid_queue_callback');env.PUBLIC_URL=callback.origin;json('FRONTBASE_QUEUE',{provider:'qstash',...(c.endpoint?{url:c.endpoint}:{}),token:get(b,'token'),signingKey:get(b,'signingKey'),nextSigningKey:get(b,'nextSigningKey')});break;}
+   case 'supabase-storage':{if(!/^[a-z0-9]{4,30}$/.test(c.projectRef))throw Error('invalid_storage_project');json('FRONTBASE_STORAGE',{provider:'supabase',url:'https://'+c.projectRef+'.supabase.co',bucket:c.bucket,token:get(b,'token')});break;}
+   case 'cloudflare-r2-http':{if(!/^[a-f0-9]{32}$/.test(c.accountId))throw Error('invalid_storage_account');const storage={provider:'s3',endpoint:'https://'+c.accountId+'.r2.cloudflarestorage.com',region:'auto',bucket:c.bucket,accessKeyId:get(b,'accessKeyId'),secretAccessKey:get(b,'secretAccessKey')};deploymentStorageFromEnv(JSON.stringify({...storage,namespace:'review-validation'}));json('FRONTBASE_STORAGE',storage);break;}
    case 's3-http':{const storage={provider:'s3',endpoint:c.endpoint,region:c.region||'auto',bucket:c.bucket,accessKeyId:get(b,'accessKeyId'),secretAccessKey:get(b,'secretAccessKey')};deploymentStorageFromEnv(JSON.stringify({...storage,namespace:'review-validation'}));json('FRONTBASE_STORAGE',storage);break;}
    default:throw Error('unsupported_profile_adapter');
   }

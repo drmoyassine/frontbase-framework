@@ -64,6 +64,9 @@ function selectApiKey(keys: ApiKeyRow[], type: 'secret' | 'publishable', legacyN
     return current?.api_key ?? candidates.find(k => (!k.type || k.type === 'legacy') && k.name === legacyName)?.api_key;
 }
 
+/** Shared server-only selection for Management discovery; anonymous keys are never elevated. */
+export function selectSupabaseServerKey(keys:unknown):string|undefined{return Array.isArray(keys)?selectApiKey(keys,'secret','service_role'):undefined;}
+
 /**
  * Connect-time enrichment. Fetches anon/service_role keys + jwt_secret and
  * merges them into the config. Defensive: any fetch/parse failure is swallowed

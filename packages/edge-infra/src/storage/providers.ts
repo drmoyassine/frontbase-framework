@@ -51,7 +51,7 @@ export interface StorageProvider {
 }
 
 /** Host-only per-tenant native binding factory; never accepted from client JSON. */
-export type StorageProviderFactory = ((tenant:string, request?:Request) => StorageProvider) & {deploymentBinding?:{id:string;name:string;provider:'s3'|'r2';maxSignedUrlExpiry?:number}};
+export type StorageProviderFactory = ((tenant:string, request?:Request) => StorageProvider) & {deploymentBinding?:{id:string;name:string;provider:'s3'|'r2'|'supabase';maxSignedUrlExpiry?:number;supportsSignedUpload?:boolean}};
 
 export interface BucketEntry {
     id: string;
@@ -509,7 +509,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
     const origin = opts.apiUrl.replace(/\/+$/, '');
     const doFetch = opts.fetchImpl ?? globalThis.fetch;
     const base = `${origin}/storage/v1`;
-    const headers = { authorization: `Bearer ${opts.serviceRoleKey}`, apikey: opts.serviceRoleKey };
+    const headers:Record<string,string>={apikey:opts.serviceRoleKey};if(!opts.serviceRoleKey.startsWith('sb_secret_'))headers.authorization=`Bearer ${opts.serviceRoleKey}`;
     // Per-segment encoding, slashes preserved (the product's quote(path, safe="/")).
     const safePath = (path: string) => path.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
     const assertOk = async (resp: Response, op: string): Promise<void> => {
@@ -520,7 +520,7 @@ export function supabaseStorageProvider(opts: SupabaseStorageOpts): StorageProvi
         async put({ bucket, key, bytes, contentType }: PutOpts): Promise<{ key: string }> {
             const resp = await doFetch(`${base}/object/${encodeURIComponent(bucket)}/${safePath(key)}`, {
                 method: 'POST',
-                headers: { ...headers, 'content-type': contentType ?? 'application/octet-stream' },
+                headers: { ...headers, 'content-type': contentType ?? 'application/octet-stream', 'x-upsert':'true' },
                 body: bytes as BufferSource,
             });
             await assertOk(resp, 'put');

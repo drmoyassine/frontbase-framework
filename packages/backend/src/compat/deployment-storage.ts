@@ -1,4 +1,4 @@
-import {scopedDeploymentStorage,sigv4StorageProvider,type StorageProviderFactory} from '@frontbase/edge-infra';
+import {scopedDeploymentStorage,sigv4StorageProvider,supabaseStorageProvider,type StorageProviderFactory} from '@frontbase/edge-infra';
 import {checkedExternalUrl,guardedExternalFetch,type CompatFetch} from './external-http.js';
 /** Parse private host configuration without logging values or falling back after an explicit disable. */
 export function deploymentStorageFromEnv(raw:string|undefined,externalFetch:CompatFetch=globalThis.fetch):StorageProviderFactory|undefined {
@@ -7,6 +7,17 @@ export function deploymentStorageFromEnv(raw:string|undefined,externalFetch:Comp
   if(raw.length>32768)throw Error();const c=JSON.parse(raw) as Record<string,unknown>;
   if(!c||typeof c!=='object'||Array.isArray(c))throw Error();
   if(c.provider==='none'){if(Object.keys(c).length!==1)throw Error();return undefined;}
+  if(c.provider==='supabase'){
+   if(Object.keys(c).some(key=>!['provider','url','token','bucket','namespace'].includes(key))||['url','token','bucket','namespace'].some(key=>typeof c[key]!=='string'||!c[key]||(c[key] as string).length>8192))throw Error();
+   const url=checkedExternalUrl(c.url as string);if(!/^https:\/\/[a-z0-9]{4,30}\.supabase\.co\/$/.test(url.href))throw Error();
+   const base=supabaseStorageProvider({apiUrl:url.origin,serviceRoleKey:c.token as string,fetchImpl:(input,init)=>guardedExternalFetch(externalFetch,input,init)});
+   const listFiles=base.listFiles!;base.listFiles=async(bucket,path,options)=>(await listFiles(bucket,path,options)).map(entry=>({...entry,id:path.replace(/\/$/,'')+'/'+entry.name}));
+   const scoped=scopedDeploymentStorage(base,c.bucket as string,c.namespace as string,{bucketKind:'supabase'});
+   // Supabase upload grants have a provider-fixed two-hour lifetime. Do not claim the
+   // deployment's one-hour grant cap for them; authenticated server uploads remain supported.
+   const factory:StorageProviderFactory=(tenant,request)=>({...scoped(tenant,request),async signedUploadUrl(){throw Error('signed_upload_unavailable');}});
+   factory.deploymentBinding={...scoped.deploymentBinding!,name:'Supabase Storage (deployment)',provider:'supabase',supportsSignedUpload:false};return factory;
+  }
   if(c.provider!=='s3'||Object.keys(c).some(key=>!['provider','endpoint','region','bucket','accessKeyId','secretAccessKey','namespace'].includes(key)))throw Error();
   for(const key of ['endpoint','bucket','accessKeyId','secretAccessKey','namespace'])if(typeof c[key]!=='string'||!c[key]||c[key].length>8192)throw Error();
   const endpoint=checkedExternalUrl(c.endpoint as string);if(endpoint.pathname!=='/'||endpoint.search||endpoint.hash)throw Error();
