@@ -204,9 +204,9 @@ function reg(
             return testResult(false, `Test not yet implemented for provider: ${provider}`);
         }
         if (!url) return testResult(false, `${kind} URL is required`);
-        // Vector real probe (Phase 4): supported providers exercise the full
-        // adapter round trip (DDL → upsert → search → delete) instead of a
-        // bare GET. Unsupported providers keep the legacy GET probe — their
+        // LibSQL probes the adapter round trip; fixed-dimension Vectorize
+        // indexes use their actual describe operation without modifying data.
+        // Unsupported providers keep the legacy GET probe — their
         // messages stay byte-identical.
         if (kind === 'vector' && ['libsql', 'turso', 'cloudflare', 'vectorize'].includes(provider)) {
             const adapter = vectorAdapterFromConfig(
@@ -216,15 +216,21 @@ function reg(
             );
             if (adapter) {
                 try {
-                    await adapter.ensureTable('frontbase_test');
-                    await adapter.upsert('frontbase_test', [{
-                        id: 'frontbase_probe',
-                        vector: [0.1, 0.2],
-                        text: 'frontbase connection probe',
-                        metadata: { probe: true },
-                    }]);
-                    await adapter.search('frontbase_test', [0.1, 0.2], 1);
-                    await adapter.delete('frontbase_test', ['frontbase_probe']);
+                    // Vectorize indexes have fixed dimensions (at least 32 for
+                    // current indexes). Describe is a read-only connection probe;
+                    // never write a hard-coded two-dimensional probe into one.
+                    if(['cloudflare','vectorize'].includes(provider))await adapter.ping();
+                    else {
+                        await adapter.ensureTable('frontbase_test');
+                        await adapter.upsert('frontbase_test', [{
+                            id: 'frontbase_probe',
+                            vector: [0.1, 0.2],
+                            text: 'frontbase connection probe',
+                            metadata: { probe: true },
+                        }]);
+                        await adapter.search('frontbase_test', [0.1, 0.2], 1);
+                        await adapter.delete('frontbase_test', ['frontbase_probe']);
+                    }
                     return testResult(true, 'vector connection test successful', Date.now() - started);
                 } catch (error) {
                     return testResult(false, `vector connection test failed: ${(error as Error).message}`, Date.now() - started);

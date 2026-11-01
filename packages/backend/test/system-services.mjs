@@ -242,7 +242,7 @@ test('vectorFor: registry adoption + env floor + empty → null (resolution chai
     assert.equal(await bare.resolver.vectorFor('tenant-a'), null);
 });
 
-test('vector test-connection: supported provider runs the real probe through the route', async () => {
+test('Vectorize test-connection: describes the fixed-dimension index without writing probe data', async () => {
     const runner = sqliteRunner(':memory:');
     await migrateUp(runner);
     const calls = [];
@@ -274,7 +274,8 @@ test('vector test-connection: supported provider runs the real probe through the
     assert.equal(body.success, true);
     assert.equal(body.message, 'vector connection test successful');
     assert.ok(typeof body.latency_ms === 'number');
-    assert.deepEqual(calls.map((c) => c.url.split('/').at(-1)), ['idx_9', 'upsert', 'query', 'delete_by_ids']);
+    assert.deepEqual(calls.map((c) => c.url.split('/').at(-1)), ['idx_9','idx_9']);
+    assert.ok(calls.every(c=>c.init.method==='GET'),'connection testing must not write a fixed-size probe into an existing index');
     assert.ok(calls.every((c) => c.url.includes('/accounts/acct_9/vectorize/v2/indexes/idx_9')));
     assert.equal(calls[0].init.headers.Authorization, 'Bearer tok_9');
 });
@@ -302,7 +303,7 @@ test('vector test-connection: probe failure surfaces the adapter error; legacy G
         provider_config: { cf_account_id: 'a', cf_api_token: 't', index_name: 'i' },
     })).json();
     assert.equal(failed.success, false);
-    assert.match(failed.message, /vector connection test failed: Vectorize upsert failed: 403/);
+    assert.match(failed.message, /vector connection test failed: Vectorize describe failed: 403/);
     // Unknown provider keeps the legacy single GET probe (byte-identical path).
     calls.length = 0;
     const legacy = await (await post({ provider: 'pgvector', vector_url: 'https://db.example/x' })).json();
