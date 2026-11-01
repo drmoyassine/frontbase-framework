@@ -8,7 +8,8 @@ import { strict as assert } from 'node:assert';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { libsqlVectorAdapter, vectorizeAdapter, vectorTableName } from '../dist/index.js';
+import { libsqlVectorAdapter, vectorTableName } from '../dist/index.js';
+const {vectorizeAdapter}=await import(process.env.FRONTBASE_VECTORIZE_MODULE??'../dist/vector/vectorize.js');
 
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
@@ -129,7 +130,6 @@ function double() {
     const calls = [];
     const fetchImpl = async (input, init) => {
         calls.push({ url: String(input), init });
-        const body = init?.body ? JSON.parse(init.body) : {};
         if (String(input).endsWith('/upsert')) return new Response('{"result":{}}', { status: 200 });
         if (String(input).endsWith('/query')) {
             return new Response(JSON.stringify({
@@ -148,23 +148,24 @@ function double() {
 test('vectorize: upsert/query/delete wire shapes + Bearer', async () => {
     const { calls, fetchImpl } = double();
     const adapter = vectorizeAdapter({ accountId: 'acct_1', apiToken: 'cf-tok', indexName: 'rag_documents', fetchImpl });
-    const base = 'https://api.cloudflare.com/client/v4/accounts/acct_1/vectorize/indexes/rag_documents';
+    const base = 'https://api.cloudflare.com/client/v4/accounts/acct_1/vectorize/v2/indexes/rag_documents';
     await adapter.upsert('ignored-table', [{ id: 'd1', vector: [0.1, 0.2], text: 'hi', metadata: { tenant_id: 't' } }]);
-    assert.equal(calls[0].url, `${base}/upsert`);
-    assert.equal(calls[0].init.headers.Authorization, 'Bearer cf-tok');
-    assert.deepEqual(JSON.parse(calls[0].init.body), {
-        vectors: [{ id: 'd1', vector: [0.1, 0.2], metadata: { text: 'hi', tenant_id: 't' } }],
-    });
+    assert.equal(calls[0].url,base);
+    assert.equal(calls[0].init.method,'GET');
+    assert.equal(calls[1].url, `${base}/upsert`);
+    assert.equal(calls[1].init.headers.Authorization, 'Bearer cf-tok');
+    assert.equal(calls[1].init.headers['content-type'],'application/x-ndjson');
+    assert.deepEqual(calls[1].init.body.trim().split('\n').map(JSON.parse), [{id:'d1',values:[0.1,0.2],metadata:{text:'hi',tenant_id:'t'}}]);
 
     await adapter.search('ignored', [0.1, 0.2], 5, { tenant_id: 't' });
-    assert.equal(calls[1].url, `${base}/query`);
-    assert.deepEqual(JSON.parse(calls[1].init.body), {
-        vector: [0.1, 0.2], topK: 5, filter: { tenant_id: 't' }, returnValues: false, returnMetadata: true,
+    assert.equal(calls[2].url, `${base}/query`);
+    assert.deepEqual(JSON.parse(calls[2].init.body), {
+        vector: [0.1, 0.2], topK: 5, filter: { tenant_id: 't' }, returnValues: false, returnMetadata: 'all',
     });
 
     await adapter.delete('ignored', ['d1']);
-    assert.equal(calls[2].url, `${base}/delete_by_ids`);
-    assert.deepEqual(JSON.parse(calls[2].init.body), { ids: ['d1'] });
+    assert.equal(calls[3].url, `${base}/delete_by_ids`);
+    assert.deepEqual(JSON.parse(calls[3].init.body), { ids: ['d1'] });
 });
 
 test('vectorize: query maps matches; text moves out of metadata; ping describes', async () => {
@@ -184,6 +185,32 @@ test('vectorize: non-2xx throws with the operation + status (probe surface)', as
     const adapter = vectorizeAdapter({ accountId: 'a', apiToken: 'bad', indexName: 'i', fetchImpl });
     await assert.rejects(() => adapter.search('ignored', [1], 1), /Vectorize query failed: 403/);
     await assert.rejects(() => adapter.ping(), /Vectorize describe failed: 403/);
+});
+
+test('vectorize: existing legacy indexes are selected by read-only 404 detection',async()=>{
+ const calls=[];
+ const adapter=vectorizeAdapter({accountId:'a',apiToken:'t',indexName:'legacy',fetchImpl:async(url,init)=>{calls.push({url:String(url),init});return new Response(JSON.stringify({result:{}}),{status:String(url).includes('/v2/')?404:200});}});
+ await adapter.upsert('ignored',[{id:'legacy-doc',vector:[1,2],text:'legacy'}]);
+ assert.deepEqual(calls.map(c=>c.init.method),['GET','GET','POST']);
+ assert.ok(calls[0].url.endsWith('/vectorize/v2/indexes/legacy'));
+ assert.ok(calls[1].url.endsWith('/vectorize/indexes/legacy'));
+ assert.deepEqual(JSON.parse(calls[2].init.body),{vectors:[{id:'legacy-doc',vector:[1,2],metadata:{text:'legacy'}}]});
+});
+
+test('vectorize: uncertain writes and permission failures are not replayed or downgraded',async()=>{
+ for(const status of [403,429,503]){
+  const calls=[];const adapter=vectorizeAdapter({accountId:'a',apiToken:'private',indexName:'i',fetchImpl:async(url,init)=>{calls.push({url:String(url),init});return new Response('{}',{status});}});
+  await assert.rejects(()=>adapter.upsert('ignored',[{id:'doc',vector:[1],text:'x'}]),new RegExp('Vectorize upsert failed: '+status));
+  assert.equal(calls.length,1);assert.equal(calls[0].init.method,'GET');assert.ok(calls[0].url.includes('/v2/'));
+ }
+ const calls=[];const adapter=vectorizeAdapter({accountId:'a',apiToken:'private',indexName:'i',fetchImpl:async(url,init)=>{calls.push({url:String(url),init});if(init.method==='POST')throw Error('uncertain transport');return Response.json({result:{}});}});
+ await assert.rejects(()=>adapter.upsert('ignored',[{id:'doc',vector:[1],text:'x'}]),/uncertain transport/);
+ assert.deepEqual(calls.map(c=>c.init.method),['GET','POST']);assert.ok(calls.every(c=>c.url.includes('/v2/')));
+});
+
+test('vectorize: HTTP-success provider refusals are not accepted as writes',async()=>{
+ const adapter=vectorizeAdapter({accountId:'a',apiToken:'private',indexName:'i',fetchImpl:async(_url,init)=>Response.json(init.method==='GET'?{result:{}}:{success:false,errors:[{message:'PRIVATE PROVIDER DETAIL'}]})});
+ await assert.rejects(()=>adapter.upsert('ignored',[{id:'doc',vector:[1],text:'x'}]),/^Error: Vectorize upsert failed: provider refused operation$/);
 });
 
 let failures = 0;

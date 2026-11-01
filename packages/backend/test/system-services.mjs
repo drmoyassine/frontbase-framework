@@ -229,7 +229,7 @@ test('vectorFor: registry adoption + env floor + empty → null (resolution chai
     const adopted = await resolver.vectorFor('tenant-a');
     assert.ok(adopted);
     await adopted.search('docs', [0.1], 1).catch(() => {});
-    assert.ok(fetchCalls.at(-1).url.includes('/accounts/row-acct/vectorize/indexes/row_idx'), fetchCalls.at(-1).url);
+    assert.ok(fetchCalls.at(-1).url.includes('/accounts/row-acct/vectorize/v2/indexes/row_idx'), fetchCalls.at(-1).url);
 
     // tenant-b has no rows → the env adapter (different account).
     const envAdapter = await resolver.vectorFor('tenant-b');
@@ -274,8 +274,8 @@ test('vector test-connection: supported provider runs the real probe through the
     assert.equal(body.success, true);
     assert.equal(body.message, 'vector connection test successful');
     assert.ok(typeof body.latency_ms === 'number');
-    assert.deepEqual(calls.map((c) => c.url.split('/').at(-1)), ['upsert', 'query', 'delete_by_ids']);
-    assert.ok(calls.every((c) => c.url.includes('/accounts/acct_9/vectorize/indexes/idx_9')));
+    assert.deepEqual(calls.map((c) => c.url.split('/').at(-1)), ['idx_9', 'upsert', 'query', 'delete_by_ids']);
+    assert.ok(calls.every((c) => c.url.includes('/accounts/acct_9/vectorize/v2/indexes/idx_9')));
     assert.equal(calls[0].init.headers.Authorization, 'Bearer tok_9');
 });
 
