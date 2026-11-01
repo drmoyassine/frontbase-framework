@@ -230,9 +230,7 @@ export class SuperTokensAuthClient implements AuthClient {
       try {
         // SuperTokens handles refresh automatically
         // Just verify the session is still valid
-        const isValid = await Session.doesSessionExist({
-          overrideGlobalClaimValidators: () => undefined,
-        });
+        const isValid = await Session.doesSessionExist();
 
         if (isValid) {
           const token = await this.getToken();
@@ -265,9 +263,7 @@ export class SuperTokensAuthClient implements AuthClient {
         // A master admin logging into cloud mode will not have a SuperTokens session,
         // but will have a master admin cookie. We must fall through and check
         // the backend /api/auth/me to verify if ANY valid session exists.
-        await Session.doesSessionExist({
-          overrideGlobalClaimValidators: () => undefined,
-        });
+        await Session.doesSessionExist();
       }
 
       // Verify with backend
