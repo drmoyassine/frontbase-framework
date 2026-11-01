@@ -1,3 +1,5 @@
+Current follow-up: [Connected-provider roadmap](connected-provider-roadmap-20261101.md) records the owner action to contact Upstash partnerships, the missing hosted Turso Connect/discovery/create flow, and proposed CF/Vercel/Supabase extensions. Those proposals are not delivered binding acceptance or new release gates.
+
 # Shared binding provider discovery — 2026-11-01
 
 Owner request: add R2/Supabase Storage, Cloudflare Queues, Upstash authorization for Redis/QStash, authenticated resource dropdowns, and accurate credential guidance. Preserve configured installations and manual HTTP adapters.

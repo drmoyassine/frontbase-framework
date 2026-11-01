@@ -1,3 +1,5 @@
+Current status override (2026-11-01): this document's original P0/P1 status and source findings below are historical planning context. Use the [current binding delivery/live receipt](binding-provider-discovery-20261101.md) for shipped claims and limits, and the [connected-provider roadmap](connected-provider-roadmap-20261101.md) for the ordered proposed expansion. Its capability catalogue remains a logical surface, not proof every provider adapter is implemented.
+
 # Configurable deployment profiles — 2026-10-20
 
 Status: P0/P1 implementation in progress. Shared data contracts and local host corrections are verified; a disposable Cloudflare D1 install passes setup, publication and redeployment. A local pre-deployment Bindings review now runs without a database; a bounded new Worker/new D1 execution now passes on Cloudflare. Generic adapter provisioning, reuse/redeploy, shared post-deploy integration and live Vercel acceptance remain open. See the [implementation receipt](frontbase-deployment-profiles-p0-p1-20261020.md). Priority: Cloudflare Workers first, Vercel second. Deno remains documented/deferred; do not remove existing support or imply fresh acceptance.

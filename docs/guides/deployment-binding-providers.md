@@ -1,3 +1,5 @@
+Planning follow-up: [Connected-provider roadmap and owner-action register](../plans/connected-provider-roadmap-20261101.md). Contacting Upstash partnerships remains an open owner action; Turso browser authorization/resource creation and the additional provider services are proposed, not currently complete hosted wizard options.
+
 # Provider bindings in setup
 
 The shared editor separates provider authorization from selected runtime resources. Discovery and Review are read-only. Apply owns resource creation and activation through the existing durable journal; an unknown outcome requires inspection, never another automatic create.
