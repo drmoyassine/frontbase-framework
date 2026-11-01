@@ -54,7 +54,14 @@ export function libsqlRunner(client: Client): DbRunner {
             // The web client keeps all statements on the same HTTP transaction.
             const transaction = await client.transaction('write');
             try {
-                const value = await work(libsqlStatements(transaction));
+                const value = await work({
+                    ...libsqlStatements(transaction), dialect: 'sqlite',
+                    // Already inside the write-locked transaction: one HTTP batch,
+                    // without opening a nested transaction or releasing its lock.
+                    atomicWrite: async statements => {
+                        await transaction.batch(statements.map(s => ({sql:s.sql,args:(s.params??[]) as never[]})));
+                    },
+                });
                 await transaction.commit();
                 return value;
             } catch (error) {

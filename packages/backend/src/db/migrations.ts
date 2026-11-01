@@ -328,8 +328,19 @@ export async function appliedVersions(runner: DbRunner): Promise<number[]> {
 async function migrateUpUnlocked(runner: DbRunner, now: () => string, migrations: Migration[]): Promise<number[]> {
     await ensureTable(runner);
     const done = new Set(await appliedVersions(runner));
+    const pending = [...migrations].sort((a,b)=>a.version-b.version).filter(m=>!done.has(m.version));
+    // HTTP SQLite transactions retain their write lock across discovery and this
+    // batch. Avoid one external Worker subrequest per migration statement.
+    if (runner.dialect === 'sqlite' && runner.atomicWrite) {
+        const statements = pending.flatMap(m => [
+            ...m.up.map(sql => ({sql, params: [] as unknown[]})),
+            {sql:'INSERT INTO _migrations (version, name, applied_at) VALUES (?,?,?)', params:[m.version,m.name,now()]},
+        ]);
+        if(statements.length) await runner.atomicWrite(statements);
+        return pending.map(m=>m.version);
+    }
     const applied: number[] = [];
-    for (const m of [...migrations].sort((a, b) => a.version - b.version)) {
+    for (const m of pending) {
         if (done.has(m.version)) continue;
         for (const sql of m.up) await runner.exec(sql);
         await runner.exec('INSERT INTO _migrations (version, name, applied_at) VALUES (?,?,?)', [m.version, m.name, now()]);
