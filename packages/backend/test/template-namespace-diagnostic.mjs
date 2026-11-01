@@ -39,7 +39,7 @@ await test('soft-deleted alias can be reused and restored into a collision', asy
     await pages.restore('trashed', now);
     assert.equal((await active(db, 'directory')).length, 2);
 });
-await test('two boot seeders can both pass homepage absence', async (db) => {
+await test('two boot seeders share one default homepage identity', async (db) => {
     let arrived = 0;
     let release;
     const barrier = new Promise(resolve => { release = resolve; });
@@ -56,7 +56,7 @@ await test('two boot seeders can both pass homepage absence', async (db) => {
         exec: (...args) => db.exec(...args),
     };
     await Promise.all([new PagesStore(runner, 'alpha').ensureHomepage(now), new PagesStore(runner, 'alpha').ensureHomepage(now)]);
-    assert.equal((await db.query('SELECT id FROM compat_pages WHERE tenant_slug=? AND is_homepage=1', ['alpha'])).length, 2);
+    assert.equal((await db.query('SELECT id FROM compat_pages WHERE tenant_slug=? AND is_homepage=1', ['alpha'])).length, 1);
 });
 await test('different owners may intentionally share a slug and cannot rename each other', async (db, pages) => {
     const other = new PagesStore(db, 'beta');
@@ -75,4 +75,4 @@ await test('separate framework and compat stores allow the same public path iden
     assert.equal((await active(db, 'directory')).length, 1);
     // This establishes two persistence namespaces, not which a specific host serves first.
 });
-console.log(`${count}/6 synthetic diagnostic groups observed; unsafe cases remain deliberately reproducible.`);
+console.log(`${count}/6 synthetic diagnostic groups checked; homepage seeding is guarded, other namespace counterexamples remain reproducible.`);
