@@ -1,6 +1,6 @@
 # Booking for X installer — November 1, 2026
 
-Source implementation is qualified for the owner-requested main integration. Live acceptance is partial. Booking for X is the public name of the same template used for Studygram education sites, not a second product.
+The bounded first-start, draft-installation, browser/mobile-preview and post-install upgrade repair is qualified on both managed fixtures. This is not a general-availability or uninterrupted native-button claim. Booking for X is the public name of the same template used for Studygram education sites, not a second product.
 
 ## Delivered scope
 
@@ -41,24 +41,29 @@ The optional atomicWrite adapter seam uses native D1 batch, libSQL write batch, 
 - Homepage seed, compat-wave1b, site-configuration and session recovery regressions PASS. Historical v22 migration fixture now seeds historical columns before upgrading through v26.
 - Local English/Arabic renderer and shared-menu projections PASS. This is not mobile/desktop browser acceptance.
 
+## November 1 follow-up: diagnosed and repaired
+
+- `c5433114`: Cloudflare first-start failed with **Too many subrequests by single Worker invocation**. HTTP libSQL migrations made one request per statement. The transaction-scoped runner now batches the pending SQLite migration plan under the existing write lock, including version records; failure rolls back and concurrent discovery stays serialized. No D1 provisioning, reset, longer timeout or permission change was needed.
+- `f0433b55`: a newly installed unconnected template tried to fetch published directory data and showed Canvas failed to render. The canvas now projects authored starter nodes before datasource connection, without changing their saved bindings or bypassing publication checks.
+- `1fdab3a0`: auth-compat exposes master_admin as master to the console. Dashboard/Pages now recognize that existing role alias for installer visibility. API authorization is unchanged.
+
+Final workspace check/build PASS. Migration and migration-concurrency, atomic-write and template-install functional gates PASS. The concurrent HTTP-shaped migration test proves one pending-plan batch, bounded transport calls, rollback and lock/retry behavior. Nineteen focused UI regressions PASS (four installer, fourteen canvas, one role compatibility). The existing installer/page/configuration mutation qualification above remains applicable; the follow-up does not weaken those boundaries. Explicit host --refresh-console staging was required before deployment so the live artifact contained the rebuilt console. Generated cms.mjs remains excluded from source commits.
+
 ## Live deployment receipts
 
-| Isolated fixture | Result |
+| Isolated fixture | Verified outcome |
 | --- | --- |
-| [Vercel](https://frontbase-booking-vercel-261101.vercel.app) | Node 22 deployment and regular-API clean installation PASS at 13:10:01 UTC, November 1. Synthetic test administrator created through ordinary private-link exchange/setup API. One reviewed install creates six drafts/three layouts; all six authored edits read back; shared menus, same-operation no-op, anonymous refusal and closed setup PASS. No publication. |
-| [Cloudflare](https://frontbase-booking-cf-261101.studygram-inc.workers.dev) | Final Worker `26de46fa-792f-4a46-aeae-00617eaa0c3d` deployed. Setup-status still times out/previously returned 500 before application migrations. Cause unconfirmed. No administrator or template install request dispatched. Artifact deployment only; clean installation NOT accepted. |
+| [Cloudflare](https://frontbase-booking-cf-261101.studygram-inc.workers.dev) | Fresh HTTP state migrations and ordinary administrator setup PASS. Chrome Pages / Install Template / Configure / Review / explicit checkbox / Install succeeds, producing six drafts/three layouts. Review/completion is usable at 544-pixel window width. Desktop Pages and Homepage builder plus 390-pixel mobile canvas PASS. All six standard-node Unicode edits/readbacks and anonymous refusal PASS. Post-install Worker version `921656d0-a4d1-472b-8fd2-baca66212b72` preserves exact pages, shared menus, installed receipt and original API/browser session. No publication. |
+| [Vercel](https://frontbase-booking-vercel-261101.vercel.app) | Existing regular-API clean install, six authored edits/readbacks, same-operation no-op and closed setup PASS. Updated Chrome desktop/mobile Homepage builder renders without a datasource; the existing browser session survives. Final deployment `frontbase-booking-vercel-261101-9uqfnqilj.vercel.app` preserves the exact six drafts, three layouts, menus, receipt and original API cookie. No publication. |
 
-These are managed CLI fixture deployments, not uninterrupted README-button/browser receipts. Each has its own $0 Turso Starter state (`fb-booking-cf-261101`, `fb-booking-vercel-261101`). Cloudflare D1 inventory was full; no old D1 or Worker was deleted. The new Vercel project temporarily carried only the new CF database credentials and was disconnected from that resource before deployment. No existing site, acceptance app, source record or private provider grant was changed.
+Exact original-cookie upgrade comparisons completed November 1 at **14:00:20 UTC (CF)** and **14:01:43 UTC (Vercel)**. Pre/post snapshot SHA-256: CF `15907321567ab718a03840f775f7b2e11fc36f5ac2afc226355d40f32d98d407`; Vercel `53ad030a02978fa4879bf3d308c9b6a0704bea3282b0fed178a7835db2ac2f5e`. CF subsequent authored-edit checks occur after that comparison. Private snapshots, credentials and raw logs remain ignored.
 
-The Vercel fixture required explicit `FRONTBASE_BOOTSTRAP=0` to override the native README default inherited by this configured CLI profile. That fixture correction is verified; general managed-profile mode-selection repair remains open.
+These are managed CLI fixture deployments, not fresh README-button receipts. CF installation itself was exercised through the browser; Vercel's initial install used the ordinary API and its installed builder was verified in Chrome. Desktop/mobile means responsive Chrome and builder viewport verification, not physical-device certification. Local English/Arabic renderer coverage and live Unicode storage are qualified; a published bilingual connected-data site was not installed in these intentionally unconnected draft fixtures. Each fixture retains its own $0 Turso state. Existing applications, Study-in-USA and source records remain untouched. No provider grant, D1 cleanup or production cutover occurred.
 
-Windows browser automation stopped because it could not establish the active URL. No browser acceptance is claimed. Owner links, synthetic credentials and raw deployment logs remain ignored/private. Preserve unrelated generated examples/cf-full/api/cms.mjs outside commits.
+## Remaining release work (separate from the repaired first-start/upgrade task)
 
-## Ordered remaining work
+1. Qualify a configured, published bilingual site with its real mappings/data and language publication flow. Draft installation does not import translations or source records. Native deployment onboarding and the full Vercel browser install journey retain their own evidence boundaries.
+2. Repair and qualify general managed-Vercel configured-mode selection: this fixture explicitly uses FRONTBASE_BOOTSTRAP=0 rather than inheriting the native README bootstrap default. Complete optional-resource/recovery receipts in their linked plans.
+3. Freeze and qualify the release candidate, then reconcile package consumability, security/support, clean-room documentation and versioned distribution. Developer Preview remains the edition; no GA or CF-22 reactivation.
 
-1. Diagnose the CF/libSQL fixture first-start timeout before migration; isolate runtime/transport/migration evidence rather than assuming a cause. Preserve its state and ownership.
-2. Verify uninterrupted Install Template UI on CF and Vercel in an operable standard browser: all six editable entries, menus, English/Arabic desktop/mobile, reload and post-install upgrade persistence. Vercel API acceptance is complete; browser/upgrade acceptance remains OPEN.
-3. Repair and qualify general managed-Vercel configured-mode selection. Complete the existing onboarding/native-button, optional-resource and recovery receipts in their linked plans; this installer does not close those gates.
-4. Reconcile package consumability, release automation, security/support and distribution gates before public release. Developer Preview remains the recommended edition. CF-22 is not reactivated.
-
-See [installer guide](../guides/installing-booking-for-x.md) for the supported user flow. Main integration does not imply public-release completion.
+See [installer guide](../guides/installing-booking-for-x.md) for the supported flow. The user can install six editable drafts before connecting data; publication remains a separate reviewed action.

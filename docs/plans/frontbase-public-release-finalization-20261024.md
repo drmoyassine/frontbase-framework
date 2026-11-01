@@ -1,4 +1,4 @@
-2026-11-01 current addition: Booking for X installer source is qualified for integration; Vercel regular-API installation passes; CF first-start, post-install upgrade and uninterrupted UI installation remain pending in the [installer acceptance record](booking-for-x-installer-20261101.md). Existing release blockers remain open unless supported by newer linked receipts.
+2026-11-01 current addition: Booking for X first-start and unconnected-draft repairs are verified on managed CF/Vercel fixtures, including responsive browser canvases and exact post-install upgrade/session preservation. [Installer receipts, scope and remaining release gates](booking-for-x-installer-20261101.md). This does not claim a new uninterrupted native-button run or published bilingual data site.
 
 # Frontbase Developer Preview: current release plan
 
