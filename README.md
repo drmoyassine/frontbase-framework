@@ -31,6 +31,8 @@ Most stacks split building from serving: a builder app here, an API server there
 - **One shared engine** — server rendering and the builder canvas share the renderer and component contracts, with client hydration for interactions. Current service-worker navigation stays on the server; offline public navigation is not a release claim. Shared rendering is checked by the [golden corpus](golden-corpus/README.md).
 - **Security is the architecture, not a plugin** — every console route is default-deny authenticated, API keys are stored hashed with a one-time encrypted reveal, password capabilities are expiring and single-use, cloud tenants are host-scoped (a session from tenant A is anonymous on tenant B), and cloud auth endpoints are rate limited. The isolation and failure paths are pinned by a mutation harness that proves every gate goes red when broken.
 
+Administrators can [install Booking for X](docs/guides/installing-booking-for-x.md) from Dashboard or Pages on a clean installation. It creates six visually editable drafts and shared menus; configure existing datasources before reviewed publication. Cloud/browser acceptance remains tracked separately in the [installer delivery record](docs/plans/booking-for-x-installer-20261101.md).
+
 ## What's in the admin console
 
 The console exposes the following areas. Availability depends on the supported

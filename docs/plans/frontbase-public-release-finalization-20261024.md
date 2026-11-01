@@ -1,3 +1,5 @@
+2026-11-01 current addition: Booking for X installer source is qualified for integration; cloud first-start and uninterrupted UI installation remain pending in the [installer acceptance record](booking-for-x-installer-20261101.md). Existing release blockers remain open unless supported by newer linked receipts.
+
 # Frontbase Developer Preview: current release plan
 
 ## Current checkpoint — 2026-11-01
