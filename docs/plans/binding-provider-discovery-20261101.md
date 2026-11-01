@@ -45,7 +45,7 @@ All provider calls in the new acceptance/mutation tests use bounded synthetic tr
 ### Authorization-dependent work, deliberately left until the end
 
 1. Obtain/register the Frontbase Upstash partner client as described in its official integration guide. Register `https://oauth.frontbase.dev/api/provider-oauth/upstash/callback`, confirm the permitted client/scopes and developer-key response contract, and add its client ID/secret privately to the relay. No partnership email, agreement or registration has been sent/accepted. Self-hosted operators may instead register their own direct client.
-2. Review the production notices for the generated developer-key lifecycle, then deploy the relay with the registered client. Consent must explicitly cover the actual Upstash account and generated management authorization; no key belongs in chat, Git or the browser.
+2. Review the production notices for the generated developer-key lifecycle, then configure the registered client on the already updated production relay. Consent must explicitly cover the actual Upstash account and generated management authorization; no key belongs in chat, Git or the browser.
 3. Where an existing CF OAuth grant lacks R2/Queues/Vectorize permissions, approve the necessary registration scope change and provider consent. The already authorized native build token may already have these permissions; do not reconnect or widen it unnecessarily.
 4. Complete fresh live optional-resource acceptance on disposable CF/Vercel installations: discover/reuse resources, Review → Apply, administrator handoff, authenticated upload/download/list/delete, Redis round trip, QStash signed job and native Queue job/redelivery, Vectorize read/write, reload/upgrade and missing-permission refusal. Use existing eligible free resources or explicitly approved new test resources only; do not touch real Study-in-USA configuration. New recipient grants and browser password/consent steps require the owner.
 
@@ -54,3 +54,10 @@ The next executable action is Upstash partner registration plus consent preparat
 ### Git and handoff
 
 Only the pre-existing/generated `examples/cf-full/api/cms.mjs` is intentionally excluded from these commits. Build staging and private local proof files remain untracked/ignored. No reset, rebase, force push or unrelated cleanup was performed.
+
+
+### Promotion and production relay receipt
+
+The three commits were pushed to `codex/binding-provider-discovery-20261101` and fast-forwarded into `main` through `aa312631`. `node scripts/deployment-buttons.mjs --verify-source` returned `ok: true`, source `main`, both CF/Vercel buttons valid and no failures. This verifies button source wiring, not fresh deployment acceptance.
+
+The existing `frontbase-oauth-production` Worker received a code-only update using its existing D1 (`f8c81e62-7fdd-4b95-a5e5-08148e0112bc`) and `keep_vars: true`. Deployed version: `837d209c-74ed-409b-af34-57571be7b0aa`. Public `/health` returned HTTP 200 with Cloudflare, Vercel and Supabase configured. Upstash remains unconfigured/unavailable, as required until partner registration and consent. No provider registrations, scopes, grants, paid products or application bindings were created or changed. Private deployment output is ignored under `.frontbase/`; no secret output was emitted. This receipt does not replace the pending fresh optional-provider matrix.
