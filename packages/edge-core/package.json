@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
+    "./directory/starter": {"types":"./dist/directory/starter.d.ts","import":"./dist/directory/starter.js"},
     "./deployment-bootstrap": {"types":"./dist/deployment-bootstrap.d.ts","import":"./dist/deployment-bootstrap.js"},
     "./template-policy": {"types":"./dist/template-policy.d.ts","import":"./dist/template-policy.js"},
     "./browser/images": {"types":"./dist/image-fallback.d.ts","import":"./dist/image-fallback.js"},

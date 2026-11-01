@@ -2,6 +2,7 @@ import type { DbRunner } from '@frontbase/edge-infra';
 import { siteConfigurationDraftSchema, type SiteConfigurationDraft, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 
 const KEY = 'site_configuration:v1';
+const unlocked=`NOT EXISTS(SELECT 1 FROM settings lock WHERE lock.tenant_slug=? AND lock.key='template_install:booking-for-x:v1' AND lock.value LIKE '%"phase":"applying"%')`;
 /** Conditional authoring writes; never a live publication pointer. */
 export class SiteConfigurationStore {
     constructor(private runner: DbRunner, private tenant: string) {}
@@ -24,8 +25,8 @@ export class SiteConfigurationStore {
         const next = siteConfigurationDraftSchema.parse({ schemaVersion: 1, revision: expectedRevision + 1, configuration });
         const raw = JSON.stringify(next);
         const changed = prior
-            ? await this.runner.exec('UPDATE settings SET value = ?, updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ?', [raw, now, this.tenant, KEY, prior.raw])
-            : await this.runner.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO NOTHING', [this.tenant, KEY, raw, now]);
+            ? await this.runner.exec('UPDATE settings SET value = ?, updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ? AND '+unlocked, [raw,now,this.tenant,KEY,prior.raw,this.tenant])
+            : await this.runner.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) SELECT ?,?,?,? WHERE '+unlocked+' ON CONFLICT(tenant_slug,key) DO NOTHING', [this.tenant,KEY,raw,now,this.tenant]);
         return changed === 1 ? next : null;
     }
 }

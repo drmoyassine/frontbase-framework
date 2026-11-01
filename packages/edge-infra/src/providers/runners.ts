@@ -28,6 +28,7 @@ export interface D1PreparedStatementBinding {
 }
 export interface D1DatabaseBinding {
     prepare(sql: string): D1PreparedStatementBinding;
+    batch?(statements:D1PreparedStatementBinding[]):Promise<unknown>;
 }
 
 /** A libsql client as a DbRunner (:memory:, file:, libsql://). */
@@ -41,9 +42,12 @@ export function libsqlRunner(client: Client): DbRunner {
     // The HTTP client pins transactions to one server connection. Native file/
     // memory clients retain their existing lifecycle (a new :memory: connection
     // would otherwise create a different database after a transaction).
-    if (client.protocol !== 'http') return libsqlStatements(client);
+    const atomicWrite = async (statements:ReadonlyArray<{sql:string;params?:unknown[]}>) => {
+        await client.batch(statements.map(s=>({sql:s.sql,args:(s.params??[]) as never[]})), 'write');
+    };
+    if (client.protocol !== 'http') return {...libsqlStatements(client),atomicWrite};
     return {
-        ...libsqlStatements(client),
+        ...libsqlStatements(client),atomicWrite,
         dialect: 'sqlite',
         async transaction(work) {
             // Write intent acquires the database lock before migration discovery.
@@ -79,6 +83,7 @@ function libsqlStatements(client: Pick<Client, 'execute'>): DbRunner {
 /** A Cloudflare D1 binding (env.DB) as a DbRunner — the CF default (B2/B3). */
 export function d1RunnerFromBinding(binding: D1DatabaseBinding): DbRunner {
     return {
+        ...(binding.batch?{atomicWrite:async(statements:ReadonlyArray<{sql:string;params?:unknown[]}>)=>{await binding.batch!(statements.map(s=>{const statement=binding.prepare(s.sql);return s.params?.length?statement.bind(...s.params):statement;}));}}:{}),
         async query(sql, params = []) {
             const ps = binding.prepare(sql);
             const stmt = params.length ? ps.bind(...params) : ps;
@@ -228,6 +233,12 @@ export function supabaseRunner(opts: SupabaseOpts): DbRunner {
     const client = supabasePostgrestClient(opts);
     return {
         dialect:'postgres',
+        ...(opts.migrationFunction?{atomicWrite:async(statements:ReadonlyArray<{sql:string;params?:unknown[]}>)=>{
+            const body=statements.map(s=>inlinePgParams(s.sql,s.params??[]).replace(/;\s*$/,'')+';').join('\n');
+            let delimiter='$frontbase_atomic$';while(body.includes(delimiter))delimiter=delimiter.slice(0,-1)+'x$';
+            const{error}=await client.rpc(opts.execFunction??'execute_sql',{query_sql:'DO '+delimiter+' BEGIN\n'+body+'\nEND; '+delimiter,query_params:[] as never});
+            if(error)throw Error('state_atomic_write_failed');
+        }}:{}),
         ...(opts.migrationFunction?{applyMigrations:async(plan:ReadonlyArray<{version:number;name:string;statements:readonly string[]}>,appliedAt:string)=>{const{data,error}=await client.rpc(opts.migrationFunction!,{migration_plan:plan,applied_at:appliedAt});if(error)throw Error('state_migration_failed');if(!Array.isArray(data)||data.some(row=>!Number.isSafeInteger(row.version)))throw Error('state_migration_failed');return data.map(row=>row.version as number);}}:{}),
         async query(sql, params = []) {
             // For SELECT queries, use RPC to call execute_query if available

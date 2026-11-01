@@ -1,3 +1,8 @@
+import {Button} from '@/components/ui/button'
+import {useAuthStore} from '@/stores/auth'
+import {InstallTemplateDialog} from '@/components/dashboard/InstallTemplateDialog'
+import {useNavigate} from 'react-router-dom'
+import {useQueryClient} from '@tanstack/react-query'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FileText, Database, Zap, Users } from 'lucide-react'
@@ -49,6 +54,8 @@ function StatCard({ icon: Icon, label, value, color, isActive, onClick }: StatCa
 }
 
 export function Dashboard() {
+    const [installTemplate,setInstallTemplate]=useState(false);
+    const user=useAuthStore(s=>s.user),queryClient=useQueryClient(),navigate=useNavigate();
     const [activeSection, setActiveSection] = useState<DashboardSection>('pages');
 
     // Fetch data for stats
@@ -130,7 +137,7 @@ export function Dashboard() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+                <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>{['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user?.role??'')&&<Button onClick={()=>setInstallTemplate(true)}>Install Template</Button>}</div><InstallTemplateDialog key={user?.id??'anonymous'} open={installTemplate} onOpenChange={setInstallTemplate} onOpenPages={()=>navigate('/pages')} onInstalled={()=>{void queryClient.invalidateQueries({queryKey:['pages']});}} />
                 <p className="text-muted-foreground">Overview of your project</p>
             </div>
 

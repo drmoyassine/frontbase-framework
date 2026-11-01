@@ -31,6 +31,7 @@ import { Plus, Search, MoreHorizontal, Eye, Edit, Copy, Trash2, FileText, Rotate
 import { PageExportEnvelope } from '@/types/page-export';
 import { toast } from 'sonner';
 import { resolvePreviewUrl } from '@/lib/edgeUtils';
+import {InstallTemplateDialog} from './InstallTemplateDialog';
 import { CreatePageDialog } from './CreatePageDialog';
 import { EdgePublishDialog } from './settings/shared/EdgePublishDialog';
 import { PageRouteAudit } from './PageRouteAudit';
@@ -59,6 +60,7 @@ export const PagesPanel: React.FC = () => {
   const [isLoadingPages, setIsLoadingPages] = useState(true);
   const [showTrash, setShowTrash] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showInstallTemplate,setShowInstallTemplate]=useState(false);
   const [selectedPages, setSelectedPages] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [isBulkPublishing, setIsBulkPublishing] = useState(false);
@@ -382,6 +384,7 @@ export const PagesPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <InstallTemplateDialog key={`${tenantSlug??'_root'}:${user?.id??'anonymous'}`} open={showInstallTemplate} onOpenChange={setShowInstallTemplate} onInstalled={()=>{void loadPagesFromDatabase(false,true);}} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{showTrash ? 'Trashed Pages' : 'Pages'}</h1>
@@ -399,6 +402,7 @@ export const PagesPanel: React.FC = () => {
             <Trash className="h-4 w-4" />
             {showTrash ? 'View Pages' : 'Trash'}
           </Button>
+          {!showTrash && ['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user?.role??'') && <Button variant="outline" onClick={()=>setShowInstallTemplate(true)}>Install Template</Button>}
           {!showTrash && (
             <Button onClick={() => setShowCreateDialog(true)}>
               <Plus className="mr-2 h-4 w-4" />

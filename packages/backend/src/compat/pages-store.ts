@@ -40,6 +40,9 @@ export function serializePage(r: CompatPageRow): Record<string, unknown> {
     };
 }
 
+const installFree = `NOT EXISTS (SELECT 1 FROM settings WHERE tenant_slug=? AND key='template_install:booking-for-x:v1' AND value LIKE '%"phase":"applying"%')`;
+const routeKey=(slug:string)=>slug.replace(/^\/+|\/+$/g,'').toLowerCase();
+export class PageNamespaceConflict extends Error {}
 export class PagesStore {
     constructor(private runner: DbRunner, private tenant: string) {}
 
@@ -77,10 +80,11 @@ export class PagesStore {
         // where a stale queryConfig could shadow later binding edits).
         const layout = JSON.stringify(stripLayoutEnrichment(input.layout_data ?? { content: [], root: {} }));
         const ch = await hash(layout);
-        await this.runner.exec(
-            'INSERT INTO compat_pages (id, tenant_slug, name, slug, title, description, keywords, is_public, is_homepage, layout_data, seo_data, deleted_at, content_hash, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-            [id, this.tenant, input.name, input.slug, input.title ?? null, input.description ?? null, null, 1, 0, layout, null, null, ch, now, now],
+        const changed=await this.runner.exec(
+            `INSERT INTO compat_pages (id,tenant_slug,name,slug,title,description,keywords,is_public,is_homepage,layout_data,seo_data,deleted_at,content_hash,created_at,updated_at,namespace_key) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${installFree} AND NOT EXISTS(SELECT 1 FROM compat_pages WHERE tenant_slug=? AND LOWER(RTRIM(LTRIM(slug,'/'),'/'))=?)`,
+            [id,this.tenant,input.name,input.slug,input.title??null,input.description??null,null,1,0,layout,null,null,ch,now,now,routeKey(input.slug),this.tenant,this.tenant,routeKey(input.slug)],
         );
+        if(changed!==1)throw new PageNamespaceConflict('Page route is reserved or template installation is in progress.');
         return { id, name: input.name, slug: input.slug, title: input.title ?? null, description: input.description ?? null, keywords: null, is_public: 1, is_homepage: 0, is_published: 0, layout_data: layout, seo_data: null, deleted_at: null, content_hash: ch, created_at: now, updated_at: now };
     }
 
@@ -110,8 +114,8 @@ export class PagesStore {
             content_hash = await hash(layout_data);
         }
         const changed = await this.runner.exec(
-            'UPDATE compat_pages SET name=?, slug=?, title=?, description=?, keywords=?, is_public=?, is_homepage=?, layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0)',
-            [merged.name, merged.slug, merged.title, merged.description, merged.keywords, merged.is_public, merged.is_homepage, layout_data, content_hash, now, this.tenant, id, hasSitePageReference(layout_data) ? 1 : 0],
+            'UPDATE compat_pages SET name=?, slug=?, title=?, description=?, keywords=?, is_public=?, is_homepage=?, layout_data=?, content_hash=?, updated_at=?,namespace_key=CASE WHEN slug=? THEN namespace_key ELSE ? END WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0) AND '+installFree+" AND (slug=? OR NOT EXISTS(SELECT 1 FROM compat_pages other WHERE other.tenant_slug=? AND other.id<>? AND LOWER(RTRIM(LTRIM(other.slug,'/'),'/'))=?))",
+            [merged.name, merged.slug, merged.title, merged.description, merged.keywords, merged.is_public, merged.is_homepage, layout_data,content_hash,now,merged.slug,routeKey(merged.slug),this.tenant,id,hasSitePageReference(layout_data)?1:0,this.tenant,merged.slug,this.tenant,id,routeKey(merged.slug)],
         );
         if (changed !== 1) return null;
         return { ...existing, ...merged, layout_data, content_hash, updated_at: now } as CompatPageRow;
@@ -125,22 +129,22 @@ export class PagesStore {
             ? stripLayoutEnrichment(layoutData) as string
             : JSON.stringify(stripLayoutEnrichment(layoutData));
         const ch = await hash(layout);
-        const changed = await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0)', [layout, ch, now, this.tenant, id, hasSitePageReference(layout) ? 1 : 0]);
+        const changed = await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0) AND '+installFree, [layout,ch,now,this.tenant,id,hasSitePageReference(layout)?1:0,this.tenant]);
         if (changed !== 1) return null;
         return { ...existing, layout_data: layout, content_hash: ch, updated_at: now };
     }
 
     async softDelete(id: string, now: string): Promise<boolean> {
-        await this.runner.exec('UPDATE compat_pages SET deleted_at=?, updated_at=? WHERE tenant_slug=? AND id=? AND deleted_at IS NULL', [now, now, this.tenant, id]);
+        await this.runner.exec('UPDATE compat_pages SET deleted_at=?, updated_at=? WHERE tenant_slug=? AND id=? AND deleted_at IS NULL AND '+installFree, [now,now,this.tenant,id,this.tenant]);
         return true;
     }
     async restore(id: string, now: string): Promise<CompatPageRow | null> {
-        await this.runner.exec('UPDATE compat_pages SET deleted_at=NULL, updated_at=? WHERE tenant_slug=? AND id=?', [now, this.tenant, id]);
+        await this.runner.exec('UPDATE compat_pages SET deleted_at=NULL, updated_at=? WHERE tenant_slug=? AND id=? AND '+installFree, [now,this.tenant,id,this.tenant]);
         return this.get(id);
     }
     async permanentDelete(id: string): Promise<boolean> {
-        await this.runner.exec('DELETE FROM compat_pages WHERE tenant_slug=? AND id=?', [this.tenant, id]);
-        await this.runner.exec('DELETE FROM compat_page_versions WHERE tenant_slug=? AND page_id=?', [this.tenant, id]);
+        await this.runner.exec('DELETE FROM compat_pages WHERE tenant_slug=? AND id=? AND '+installFree, [this.tenant,id,this.tenant]);
+        await this.runner.exec('DELETE FROM compat_page_versions WHERE tenant_slug=? AND page_id=? AND '+installFree, [this.tenant,id,this.tenant]);
         return true;
     }
 
@@ -151,8 +155,8 @@ export class PagesStore {
         // Mark the page live — the eSSR serves rows with is_published = 1.
         if (hasSitePageReference(p.layout_data)) return { success: false, error: 'Shared site publication is unavailable' };
         const activated = await this.runner.exec(
-            'UPDATE compat_pages SET is_published = 1, updated_at = ? WHERE tenant_slug = ? AND id = ? AND layout_data = ?',
-            [now, this.tenant, id, p.layout_data],
+            'UPDATE compat_pages SET is_published = 1, updated_at = ? WHERE tenant_slug = ? AND id = ? AND layout_data = ? AND '+installFree,
+            [now,this.tenant,id,p.layout_data,this.tenant],
         );
         if (activated !== 1) return { success: false, error: 'Page changed before publication' };
         // snapshot a version on publish
@@ -163,8 +167,8 @@ export class PagesStore {
     /** Take a page offline (unpublish). The eSSR stops serving it. */
     async unpublish(id: string, now: string): Promise<boolean> {
         await this.runner.exec(
-            'UPDATE compat_pages SET is_published = 0, updated_at = ? WHERE tenant_slug = ? AND id = ?',
-            [now, this.tenant, id],
+            'UPDATE compat_pages SET is_published = 0, updated_at = ? WHERE tenant_slug = ? AND id = ? AND '+installFree,
+            [now,this.tenant,id,this.tenant],
         );
         return true;
     }
@@ -176,26 +180,28 @@ export class PagesStore {
      * is_homepage page exists. A stable tenant seed identity arbitrates concurrent
      * cold starts through the existing primary key; a deleted starter is not resurrected.
      */
-    async ensureHomepage(now: string): Promise<void> {
-        const existing = await this.runner.query(
-            'SELECT id FROM compat_pages WHERE tenant_slug = ? AND is_homepage = 1 AND deleted_at IS NULL LIMIT 1',
-            [this.tenant],
-        );
-        if (existing.length > 0) return;
-        const layout = JSON.stringify({
+    static welcomeLayout() { return {
             root: {},
             content: [
                 { id: 'seed-h', type: 'Heading', props: { content: 'Welcome to your new site', level: 'h1' } },
                 { id: 'seed-t', type: 'Text', props: { content: 'This is your homepage. Edit it in the admin console, then publish to make changes live.' } },
                 { id: 'seed-l', type: 'Link', props: { text: 'Open the admin console →', href: '/frontbase-admin', color: '#4338ca', underline: true } },
             ],
-        });
-        const ch = await hash(layout);
-        const seedHash = await hash('frontbase:default-homepage:v1:' + this.tenant);
-        const seedId = `${seedHash.slice(0, 8)}-${seedHash.slice(8, 12)}-5${seedHash.slice(13, 16)}-a${seedHash.slice(17, 20)}-${seedHash.slice(20, 32)}`;
+        }; }
+    static async welcomeId(tenant:string) { const seedHash=await hash('frontbase:default-homepage:v1:'+tenant);return `${seedHash.slice(0,8)}-${seedHash.slice(8,12)}-5${seedHash.slice(13,16)}-a${seedHash.slice(17,20)}-${seedHash.slice(20,32)}`; }
+
+    async ensureHomepage(now: string): Promise<void> {
+        const existing = await this.runner.query(
+            'SELECT id FROM compat_pages WHERE tenant_slug = ? AND is_homepage = 1 AND deleted_at IS NULL LIMIT 1',
+            [this.tenant],
+        );
+        if (existing.length > 0) return;
+        const layout=JSON.stringify(PagesStore.welcomeLayout());
+        const ch=await hash(layout);
+        const seedId=await PagesStore.welcomeId(this.tenant);
         await this.runner.exec(
-            'INSERT INTO compat_pages (id, tenant_slug, name, slug, title, description, keywords, is_public, is_homepage, is_published, layout_data, seo_data, deleted_at, content_hash, created_at, updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM compat_pages WHERE tenant_slug = ? AND is_homepage = 1 AND deleted_at IS NULL) ON CONFLICT (id, tenant_slug) DO NOTHING',
-            [seedId, this.tenant, 'Home', 'home', 'Home', null, null, 1, 1, 1, layout, null, null, ch, now, now, this.tenant],
+            'INSERT INTO compat_pages (id, tenant_slug, name, slug, title, description, keywords, is_public, is_homepage, is_published, layout_data, seo_data, deleted_at, content_hash, created_at, updated_at,namespace_key) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE '+installFree+' AND NOT EXISTS (SELECT 1 FROM compat_pages WHERE tenant_slug = ? AND is_homepage = 1 AND deleted_at IS NULL) ON CONFLICT DO NOTHING',
+            [seedId, this.tenant, 'Home', 'home', 'Home', null, null, 1, 1, 1, layout, null, null, ch,now,now,'home',this.tenant,this.tenant],
         );
     }
 
@@ -238,7 +244,8 @@ export class PagesStore {
         const max = await this.runner.query('SELECT MAX(version_number) AS m FROM compat_page_versions WHERE tenant_slug=? AND page_id=?', [this.tenant, pageId]);
         const next = (Number((max[0] as Record<string, unknown>)?.m ?? 0)) + 1;
         const id = crypto.randomUUID();
-        await this.runner.exec('INSERT INTO compat_page_versions (id, page_id, tenant_slug, version_number, layout_data, content_hash, label, created_at) VALUES (?,?,?,?,?,?,?,?)', [id, pageId, this.tenant, next, layout, contentHash, label, now]);
+        const changed=await this.runner.exec('INSERT INTO compat_page_versions (id,page_id,tenant_slug,version_number,layout_data,content_hash,label,created_at) SELECT ?,?,?,?,?,?,?,? WHERE '+installFree,[id,pageId,this.tenant,next,layout,contentHash,label,now,this.tenant]);
+        if(changed!==1)throw new PageNamespaceConflict('Template installation is in progress.');
         return { id, page_id: pageId, version_number: next, layout_data: layout, content_hash: contentHash, label, created_at: now };
     }
     async rollback(pageId: string, versionId: string, now: string): Promise<{ page: CompatPageRow; version: CompatVersionRow; preRollbackVersion: CompatVersionRow } | null> {
@@ -247,7 +254,7 @@ export class PagesStore {
         if (!v || !page) return null;
         // snapshot current before rolling back, then restore the target layout
         const preRollbackVersion = await this.snapshot(pageId, page.layout_data, page.content_hash, `Pre-rollback`, now);
-        const changed = await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0)', [v.layout_data, v.content_hash, now, this.tenant, pageId, hasSitePageReference(v.layout_data) ? 1 : 0]);
+        const changed = await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0) AND '+installFree, [v.layout_data,v.content_hash,now,this.tenant,pageId,hasSitePageReference(v.layout_data)?1:0,this.tenant]);
         if (changed !== 1) return null;
         return {
             page: { ...page, layout_data: v.layout_data, content_hash: v.content_hash, updated_at: now },

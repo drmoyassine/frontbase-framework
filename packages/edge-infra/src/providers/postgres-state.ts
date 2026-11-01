@@ -89,5 +89,6 @@ export function postgresStateRunner(options: PostgresStateOptions): DbRunner {
             });
         },
     };
+    runner.atomicWrite=async statements=>{await runner.transaction!(async transaction=>{for(const statement of statements)await transaction.exec(statement.sql,statement.params);});};
     return runner;
 }

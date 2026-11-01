@@ -42,6 +42,13 @@ if(process.env.FRONTBASE_TEST_POSTGRES_URL){
   assert.deepEqual(await runner.query('DELETE FROM sample WHERE id=? RETURNING id',['returning']),[{id:'returning'}],'query must preserve backend DELETE RETURNING');
   },'all backend RETURNING queries must work through the actual generated RPC');
   const {migrateUp}=await import('../packages/backend/dist/db/migrations.js');let concurrent;await assert.doesNotReject(async()=>{concurrent=await Promise.all([migrateUp(runner),migrateUp(runner)]);},'concurrent HTTP migrations must share a transaction lock');assert.equal(concurrent.filter(v=>v.length>0).length,1,'one locked migration winner across HTTP requests');assert.equal((await migrateUp(runner)).length,0,'HTTP migration restart preserves applied versions');
+  await runner.atomicWrite([{sql:'INSERT INTO sample VALUES(?,?)',params:['atomic-one',"Quoted ' and $frontbase_atomic$ delimiter"]},{sql:'INSERT INTO sample VALUES(?,?)',params:['atomic-two','العربية']}]);
+  await assert.rejects(()=>runner.atomicWrite([{sql:'UPDATE sample SET title=? WHERE id=?',params:['must roll back','atomic-one']},{sql:'INSERT INTO sample VALUES(?,?)',params:['atomic-two','duplicate']} ]));
+  assert.equal((await runner.query('SELECT title FROM sample WHERE id=?',['atomic-one']))[0].title,"Quoted ' and $frontbase_atomic$ delimiter",'actual invoker RPC batch rolls back and quotes delimiters safely');
+  const {TemplateInstallStore}=await import('../packages/backend/dist/compat/template-install-store.js');const {emptyDirectoryConfiguration}=await import('../packages/edge-core/dist/directory/configuration.js');
+  const install=new TemplateInstallStore(runner,'http-template-fixture'),installInput={templateId:'booking-for-x',configuration:emptyDirectoryConfiguration()},review=await install.review(installInput);assert.equal((await install.install(installInput,review.reviewHash,crypto.randomUUID(),new Date().toISOString())).status,'installed');
+  assert.equal((await runner.query('SELECT id FROM compat_pages WHERE tenant_slug=?',['http-template-fixture'])).length,6,'real PostgREST state creates six drafts in one atomic operation');
+  console.log('PASS real HTTP state: atomic template install, full rollback and parameter/dollar-delimiter safety');
   await db.query('CREATE TABLE IF NOT EXISTS public._http_state_private(secret text)');
   await assert.rejects(runner.query('SELECT * FROM public._http_state_private'),/SQL refused|permission denied for table _http_state_private/,'invoker RPC cannot borrow the function owner privileges');
   assert.equal((await db.query("SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public' AND tablename='sample'")).rows[0].n,0,'runtime writes stay in selected schema');

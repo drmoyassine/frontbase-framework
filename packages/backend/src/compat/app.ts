@@ -1,3 +1,4 @@
+import {PageNamespaceConflict} from './pages-store.js';
 import { registerDeploymentBindingsRoutes } from './routes/deployment-bindings.js';
 import {createProviderOAuth,type ProviderOAuthClient,type OAuthProvider} from '../provider-oauth.js';
 import {createProviderOAuthResources} from '../provider-oauth-resources.js';
@@ -45,6 +46,7 @@ import { registerPageRouteAudit } from './routes/page-route-audit.js';
 import { registerPagesWorkspaceRoutes } from './routes/pages-workspace.js';
 import { registerPagesOrganizationRoutes } from './routes/pages-organization.js';
 import { pagesWorkspace } from './pages-workspace.js';
+import {registerTemplateInstallRoutes} from './routes/template-install.js';
 import { registerTemplateArtifactRoutes } from './routes/template-artifact.js';
 import { datasourceRunner } from '../db/datasource-runner.js';
 import { mergeAccountConfig, datasourceAccountConfigFor } from './providers/merge-account.js';
@@ -253,7 +255,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         : deps.resolvePrincipal;
 
     const app = new Hono<{ Variables: ConsoleAuthVars }>();
-    app.onError(opaqueErrors);
+    app.onError((error,c)=>error instanceof PageNamespaceConflict?c.json({detail:'The page route is reserved or a template installation is in progress. Reload before saving.',code:'page_namespace_conflict'},409):opaqueErrors(error,c));
     app.use('*', fastApiErrorEnvelope);
     const isConsolePath = (path: string) =>
         path === '/api/console' || path.startsWith('/api/console/');
@@ -479,6 +481,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerTranslationBatchRoutes(app, runner, { pagesFor, syncFor: syncStoreFor, accountsFor: phase2For, externalFetch,
         accountConfigFor: accountConfigFor }, now, deps.translationExecutionEnabled === true);
     registerTemplateArtifactRoutes(app);
+    registerTemplateInstallRoutes(app,runner,now);
     registerPageRouteAudit(app, runner);
     registerPagesWorkspaceRoutes(app, runner);
     registerPagesOrganizationRoutes(app, runner, now, async tenant => new Set((await pagesWorkspace(runner, tenant)).entries.map(entry => entry.id)));
