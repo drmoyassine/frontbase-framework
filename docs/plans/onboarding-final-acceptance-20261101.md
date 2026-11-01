@@ -8,7 +8,7 @@ Owner scope: fresh optional-binding Review → Apply, secure setup access renewa
 | --- | --- | --- |
 | Fresh optional-binding Review → Apply | Existing provider/storage/queue runtime qualification and activation tests retained; no credential or journal relaxation | OPEN: disposable fresh deployments, verify Review creates nothing, Apply once, exact selected resources, administrator, storage bytes, queue delivery and vector reads/writes where a suitable grant exists. Earlier installed pickers/CLI runtime fixtures do not close this gate. |
 | Secure native setup renewal | IMPLEMENTED and qualified; [design and invariants](hosted-setup-access-renewal-20261031.md#november-1-implementation) | OPEN: real provider consent on pre-install CF/Vercel fixtures, old-session/link invalidation, encrypted grant/journal preservation and resume. Installed apps must stay closed. No claim replay, secret extraction or bespoke recovery route counts as acceptance. |
-| Fresh main README, CF and Vercel | Actual main button URLs inspected in standard Chrome; Vercel native form reached with isolated proposed name `frontbase-accept-vercel-261101a` | OPEN: final provider grants, native import/build/return, UI Apply, user-submitted administrator setup, publish/public response and ordinary Git upgrade. No CLI source upload or environment injection substitutes for this journey. |
+| Fresh main README, CF and Vercel | Both native imports/builds PASS; Vercel normal completion → owned wizard PASS in standard Chrome, without CLI recovery | PARTIAL: fresh UI Apply, user-submitted administrator, public publication and upgrade remain OPEN. CF build-generated owner link is preserved; Windows browser safety stopped before opening it. No CLI source upload or environment injection substituted for the native journey. |
 
 ## Source changes and verification
 
@@ -24,7 +24,29 @@ No real provider renewal, new resource activation, fresh administrator or public
 
 ## Authorization-dependent actions and exact continuation
 
-1. Complete native project creation/provider access grants only for the prepared disposable test apps; use free eligible plans, accept no new paid upgrade. Record selected team/account, source/import SHA, build/deployment IDs and canonical origin.
+### Verified source and ordinary Git upgrade receipt
+
+Repair source `75ab8b9b93339296bbd6cd516f139130d9311000` is committed and pushed by normal fast-forward to main and `codex/binding-provider-discovery-20261101`. Both existing disposable HTTP-state apps were upgraded through their connected Git repositories, not CLI source upload:
+
+- CF clone commit `00c7b8448845fe552ecf819255d1588e585cb3b9`; successful Workers build `74e8c501-d544-47ae-a344-13cb453b84f0`; deployed version `be1fc52e-e230-4a11-885d-5e22a8ba4cd4`.
+- Vercel clone commit `ff41cd5f24cf9b1868162766aaaebcac14375a8a`; READY production deployment `dpl_8wHJujDBz9YMA4DKiwHMRSMN7cCU`, canonical alias `frontbase-state-vercel-261101b.vercel.app` confirmed by CLI inspection and native Git check.
+- Both saved acceptance pages return 200 and retain Arabic text. Anonymous administrative page APIs return 401; bootstrap configuration returns 410; administrator setup reports initialized/closed. Production relay health is 200 with CF/Vercel/Supabase; Upstash stays unconfigured. No source records, provider grants or binding configuration were changed by these upgrades. Authenticated session/account testing for the new fresh runs remains pending; public checks do not substitute for it.
+
+### Fresh native deployment receipts
+
+- **CF:** owner approved Deploy and reuse of `frontbase-native-handoff-261031 build token` for `frontbase-accept-cf-261101a`; the real Study-in-USA build credential was not used. Native public Git clone `8005a9813da37cbbbbd2535511e87f3ab0ae9974`, successful build `4a00f6b9-eee0-4c2f-bd2f-5debc733e7d2`, setup metadata version `93946348-99b7-4822-b656-6c0261a0b485`. Exact D1 IDs/count remain unchanged at nine before Apply; initial KV baseline is 25, not yet rechecked after native deployment. A setup-link read via the existing CLI was refused with provider 403; no wider credential was obtained. The dashboard's ordinary Download log succeeded, and its one exact-origin private link was preserved without displaying it. No D1/KV was provisioned by this build.
+- **Vercel:** owner completed native Create/integration authorization for `frontbase-accept-vercel-261101a`. Native clone `9ffe85f81ac63684368a13f0b84d53ffef0e8e0e`; READY activation `dpl_FCHcKhhg7RcchVBwa5CimcqbRaDL`; stable alias `frontbase-accept-vercel-261101a.vercel.app`. Normal completion → Open setup → automatic activation wait → owned Bindings wizard worked without manual refresh, token injection or CLI source upload. Both clones' renewable-access source blob matches main `75ab8b9b` (`a2819b710809863e6c458e1602a9a85d995e7254`).
+- **Real expiry encountered:** the Vercel owner cookie expired while Supabase consent was open. The owner approved the specific new-app Supabase grant for Studygram Inc.; Authorize was submitted, but the receiving callback refused after owner-session expiry. Do not claim the Supabase grant was retained in the app. Its public wizard then displayed the specific missing/expired-session message and **Renew setup access**. Renewal started through Connect Vercel → Continue to provider; issuance/old-generation invalidation are not live-proven yet. No state schema or application binding was applied, and no administrator was created.
+
+### Browser safety stop and exact recovery
+
+Windows computer use stopped this turn because it could not determine the active browser URL confidently when opening the dashboard-downloaded CF build log as a local file. No further UI actions were attempted after that stop. The native projects, claims, encrypted grants and deployment identities above remain intact. This is a browser-control blocker, not a provider-build failure or authority to reset an installation.
+
+Resume on known HTTPS pages in standard Chrome. Open the CF build-provided private setup link for this same app (from its downloaded/dashboard log); never publish the link or read unrelated project credentials. The copy saved under ignored `.frontbase/accept-cf-261101a-owner-link.secret` is only that provided native output, not an injected replacement token. Continue Vercel's supported renewal at `/frontbase-bootstrap/`, inspecting the existing project's provider access without broadening it. Reconnect Supabase only after owner access is restored; consent approval for this exact recipient is recorded above. Preserve actual current phases; do not rerun native claims, create replacement deployments or substitute CLI source uploads.
+
+### Remaining live sequence
+
+1. Resume the existing two native deployments above; do not create replacements. Any genuinely new provider recipient/scope still needs its applicable confirmation. Use eligible free resources and accept no paid upgrade or new terms automatically.
 2. Exercise **Renew setup access** after genuine private-link/session expiry on each new pre-install fixture. The fresh consent must be limited as the provider permits; test a denied/insufficient grant separately. Record generation invalidation without storing capability values in evidence.
 3. In each owned wizard, choose empty disposable state plus eligible optional resources. Compare inventory before/after Review, then Apply once. Preserve operation identity; held/unknown outcomes only use supported status/reconciliation.
 4. Have the owner enter/submit each administrator password in its actual form. Verify session after refresh, retained encrypted provider account and anonymous setup/admin refusal. New passwords cannot be submitted by browser automation.
