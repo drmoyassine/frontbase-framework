@@ -13,7 +13,7 @@ export async function refreshOAuthAuthorization(client:ProviderOAuthClient,autho
     if(client.clientSecret)params.set('client_secret',client.clientSecret);
     const token=await json(await deps.fetch(endpoints[client.provider].token,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:params.toString(),redirect:'manual',signal:AbortSignal.timeout(20000)}));
     if(typeof token.access_token!=='string'||!token.access_token||token.access_token.length>16384||(token.token_type&&token.token_type.toLowerCase()!=='bearer'))throw Error('oauth_refresh_refused');
-    const rotated:OAuthAuthorization={provider:client.provider,accessToken:token.access_token,scopes:authorization.scopes,accounts:authorization.accounts};
+    const rotated:OAuthAuthorization={provider:client.provider,accessToken:token.access_token,scopes:authorization.scopes,accounts:authorization.accounts,...(authorization.management?{management:authorization.management}:{}),...(authorization.capabilities?{capabilities:authorization.capabilities}:{})};
     rotated.refreshToken=typeof token.refresh_token==='string'&&token.refresh_token&&token.refresh_token.length<=16384?token.refresh_token:authorization.refreshToken;
     if(Number.isFinite(token.expires_in)&&token.expires_in>0)rotated.expiresAt=now()+token.expires_in*1000;
     if(typeof token.scope==='string')rotated.scopes=token.scope.split(' ').filter(Boolean);

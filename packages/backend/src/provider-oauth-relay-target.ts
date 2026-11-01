@@ -8,7 +8,7 @@ export function relayTargetPolicy(policy:RelayTargetPolicy,transport:typeof fetc
     function admit(t:OAuthRelayTarget,p:OAuthProvider){
         try{
             // Supabase is a connect-only provider: it grants resources, never hosts a deployment.
-            if(!t||Object.keys(t).some(key=>!['origin','host','purpose','account','project','installationId','deploymentId'].includes(key))||!['cloudflare','vercel','docker'].includes(t.host)||!(p==='supabase'?t.purpose==='connect':['cloudflare','vercel'].includes(p)))return false;
+            if(!t||Object.keys(t).some(key=>!['origin','host','purpose','account','project','installationId','deploymentId'].includes(key))||!['cloudflare','vercel','docker'].includes(t.host)||!(['supabase','upstash'].includes(p)?t.purpose==='connect':['cloudflare','vercel'].includes(p)))return false;
             const url=new URL(t.origin);if(url.protocol!=='https:'||url.origin!==t.origin||url.username||url.password||url.port)return false;
             if(t.purpose==='connect')return policy.connectedOrigins.includes(t.origin);
             if(t.purpose!=='install'||t.host!==p||!uuid.test(t.installationId??''))return false;
@@ -48,7 +48,7 @@ export function publicNativeRelayTargetPolicy(transport:typeof fetch,receiver?:(
     const account=/^[a-f0-9]{32}$/, team=/^team_[A-Za-z0-9]+$/, project=/^[a-z0-9][a-z0-9-]{0,62}$/;
     function admit(t:OAuthRelayTarget,p:OAuthProvider){
         try {
-            if(!t||!(p==='supabase'?t.purpose==='connect':['cloudflare','vercel'].includes(p)))return false;
+            if(!t||!(['supabase','upstash'].includes(p)?t.purpose==='connect':['cloudflare','vercel'].includes(p)))return false;
             const url=new URL(t.origin);if(url.protocol!=='https:'||url.origin!==t.origin||url.username||url.password||url.port)return false;
             if(t.purpose==='connect')return !!receiver&&['cloudflare','vercel'].includes(t.host)&&Object.keys(t).every(key=>['origin','host','purpose'].includes(key));
             if(t.purpose!=='install'||t.host!==p||!uuid.test(t.installationId??'')||Object.keys(t).some(key=>!['origin','host','purpose','account','project','installationId','deploymentId'].includes(key)))return false;

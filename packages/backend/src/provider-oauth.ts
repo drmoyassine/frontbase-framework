@@ -1,7 +1,7 @@
 /** Server-only provider connection protocol shared by setup and installed hosts. */
 import { Hono } from 'hono';
 import { timingSafeEqual } from '@frontbase/edge-infra';
-export type OAuthProvider = 'cloudflare' | 'vercel' | 'supabase';
+export type OAuthProvider = 'cloudflare' | 'vercel' | 'supabase' | 'upstash';
 export interface ProviderOAuthClient {
     provider: OAuthProvider; clientId: string; clientSecret?: string; integrationSlug?:string; integrationTeamSlug?:string;
     /** Exact registered callback; derived from the trusted host origin, never request headers. */
@@ -14,6 +14,7 @@ export interface OAuthPending extends OAuthActor {
 export interface OAuthAuthorization {
     provider: OAuthProvider; accessToken: string; refreshToken?: string; expiresAt?: number;
     /** Server-probed optional capabilities; never accepted from a wizard snapshot. */
+    management?: {email:string;apiKey:string};
     capabilities?: Array<'vectorize'>;
     scopes: string[]; accounts: Array<{id:string;name:string}>;
 }
@@ -29,12 +30,12 @@ export interface ProviderOAuthDeps {
     authorize(request: Request): Promise<OAuthActor | null>;
     store: ProviderOAuthStore; fetch: typeof fetch; now?: ()=>number;
 }
-const providers: OAuthProvider[] = ['cloudflare','vercel','supabase'];
+const providers: OAuthProvider[] = ['cloudflare','vercel','supabase','upstash'];
 const encode=(bytes:Uint8Array)=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const random=()=>encode(crypto.getRandomValues(new Uint8Array(32)));
 const digest=async(raw:string)=>encode(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw))));
 const same=(a:string,b:string)=>timingSafeEqual(new TextEncoder().encode(a),new TextEncoder().encode(b));
-export const endpoints={cloudflare:{authorize:'https://dash.cloudflare.com/oauth2/auth',token:'https://dash.cloudflare.com/oauth2/token'},vercel:{authorize:'https://vercel.com/integrations/',token:'https://api.vercel.com/v2/oauth/access_token'},supabase:{authorize:'https://api.supabase.com/v1/oauth/authorize',token:'https://api.supabase.com/v1/oauth/token'}};
+export const endpoints={upstash:{authorize:'https://auth.upstash.com/authorize',token:'https://auth.upstash.com/oauth/token'},cloudflare:{authorize:'https://dash.cloudflare.com/oauth2/auth',token:'https://dash.cloudflare.com/oauth2/token'},vercel:{authorize:'https://vercel.com/integrations/',token:'https://api.vercel.com/v2/oauth/access_token'},supabase:{authorize:'https://api.supabase.com/v1/oauth/authorize',token:'https://api.supabase.com/v1/oauth/token'}};
 const base='/api/provider-oauth';
 const safePath=(value:unknown):value is string=>typeof value==='string'&&value.startsWith('/')&&!value.startsWith('//')&&!/[\\\r\n#]/.test(value)&&new URL(value,'https://frontbase.invalid').origin==='https://frontbase.invalid';
 /** Body and provider responses are bounded; provider errors/tokens never enter responses or logs. */
@@ -76,7 +77,8 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
         await deps.store.put(await digest(state),{...actor,provider,verifier,expires,returnPath:input.returnPath,accountId:input.accountId});
         const cookie=(origin.protocol==='https:'?'__Host-':'')+'fb_oauth_'+provider;
         c.header('Set-Cookie',cookie+'='+state+'; Path=/; HttpOnly; '+(origin.protocol==='https:'?'Secure; ':'')+'SameSite=Lax; Max-Age=600');
-        const url=new URL(provider==='cloudflare'?endpoints.cloudflare.authorize:provider==='supabase'?endpoints.supabase.authorize:client.integrationTeamSlug?'https://vercel.com/'+client.integrationTeamSlug+'/~/integrations/'+client.integrationSlug:endpoints.vercel.authorize+client.integrationSlug+'/new');
+        const url=new URL(provider==='cloudflare'?endpoints.cloudflare.authorize:provider==='supabase'?endpoints.supabase.authorize:provider==='upstash'?endpoints.upstash.authorize:client.integrationTeamSlug?'https://vercel.com/'+client.integrationTeamSlug+'/~/integrations/'+client.integrationSlug:endpoints.vercel.authorize+client.integrationSlug+'/new');
+        if(provider==='upstash')url.searchParams.set('audience','upstash-api');
         url.searchParams.set('state',state);url.searchParams.set('redirect_uri',client.redirectUri);
         if(provider!=='vercel'){url.searchParams.set('client_id',client.clientId);url.searchParams.set('response_type','code');/* Supabase scopes are fixed at app registration; the authorize-time scope parameter is deprecated there. */if(client.scopes.length)url.searchParams.set('scope',client.scopes.join(' '));url.searchParams.set('code_challenge',await digest(verifier));url.searchParams.set('code_challenge_method','S256');}
         return c.json({url:url.href});
@@ -95,7 +97,7 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
         if(client.clientSecret)params.set('client_secret',client.clientSecret);
         const token=await json(await deps.fetch(endpoints[provider].token,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:params.toString(),redirect:'manual',signal:AbortSignal.timeout(20000)}));
         if(typeof token.access_token!=='string'||!token.access_token||token.access_token.length>16384||(token.token_type&&token.token_type.toLowerCase()!=='bearer'))throw Error('oauth_refused');
-        const headers={authorization:'Bearer '+token.access_token};let accounts:Array<{id:string;name:string}>;
+        const headers={authorization:'Bearer '+token.access_token};let management:OAuthAuthorization['management'];let accounts:Array<{id:string;name:string}>;
         if(provider==='cloudflare'){
             const result=await json(await deps.fetch('https://api.cloudflare.com/client/v4/accounts?per_page=50',{headers,redirect:'manual',signal:AbortSignal.timeout(15000)}));
             if(result.success!==true||!Array.isArray(result.result))throw Error('oauth_refused');accounts=result.result.map((a:any)=>({id:a.id,name:a.name}));
@@ -104,6 +106,13 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
             // Projects carry both an id and the ref used by every other Management API path.
             const result=await json(await deps.fetch('https://api.supabase.com/v1/projects',{headers,redirect:'manual',signal:AbortSignal.timeout(15000)}));
             if(!Array.isArray(result))throw Error('oauth_refused');accounts=result.map((p:any)=>({id:String(p.ref??p.id),name:String(p.name)}));
+        }else if(provider==='upstash'){
+            const identity=await json(await deps.fetch('https://auth.upstash.com/userinfo',{headers,redirect:'manual',signal:AbortSignal.timeout(15000)}));
+            if(typeof identity.email!=='string'||identity.email_verified!==true||identity.email.length>254||!/^\S+@\S+\.\S+$/.test(identity.email))throw Error('oauth_account_required');
+            const key=await json(await deps.fetch('https://api.upstash.com/apikey',{method:'POST',headers:{...headers,'content-type':'application/json'},body:JSON.stringify({name:'Frontbase-'+crypto.randomUUID()}),redirect:'manual',signal:AbortSignal.timeout(15000)}));
+            const apiKey=key.api_key??key.apikey;if(typeof apiKey!=='string'||!apiKey||apiKey.length>8192)throw Error('oauth_management_key_required');
+            const bytes=new TextEncoder().encode(identity.email+':'+apiKey);let basic='';for(const byte of bytes)basic+=String.fromCharCode(byte);const verified=await json(await deps.fetch('https://api.upstash.com/v2/redis/databases',{headers:{authorization:'Basic '+btoa(basic)},redirect:'manual',signal:AbortSignal.timeout(15000)}));if(!Array.isArray(verified))throw Error('oauth_management_key_required');
+            management={email:identity.email,apiKey};accounts=[{id:identity.email,name:identity.email}];
         }else{
             // A management API call, not an identity-only userinfo response, proves usable authorization.
             if(typeof token.team_id!=='string'||!/^team_[a-zA-Z0-9]+$/.test(token.team_id))throw Error('oauth_team_required');
@@ -112,9 +121,14 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
         }
         if(!accounts.length||accounts.length>50||accounts.some(a=>typeof a.id!=='string'||!a.id||typeof a.name!=='string'))throw Error('oauth_refused');
         const scopes=typeof token.scope==='string'?token.scope.split(' ').filter(Boolean):[];
-        const authorization:OAuthAuthorization={provider,accessToken:token.access_token,scopes,accounts};
-        if(typeof token.refresh_token==='string'&&token.refresh_token.length<=16384)authorization.refreshToken=token.refresh_token;
-        if(Number.isFinite(token.expires_in)&&token.expires_in>0)authorization.expiresAt=now()+token.expires_in*1000;
+        const authorization:OAuthAuthorization={provider,accessToken:management?.apiKey??token.access_token,scopes,accounts,...(management?{management}:{})};
+        if(provider!=='upstash'&&typeof token.refresh_token==='string'&&token.refresh_token.length<=16384)authorization.refreshToken=token.refresh_token;
+        if(provider!=='upstash'&&Number.isFinite(token.expires_in)&&token.expires_in>0)authorization.expiresAt=now()+token.expires_in*1000;
+        if(provider==='cloudflare'){
+            // Same optional read probe as native build handoff. This is capability metadata,
+            // never a substitute for provider enforcement of account/index mutation rights.
+            try{const result=await json(await deps.fetch('https://api.cloudflare.com/client/v4/accounts/'+encodeURIComponent(accounts[0]!.id)+'/vectorize/v2/indexes?per_page=1',{headers,redirect:'manual',signal:AbortSignal.timeout(15000)}));if(result.success===true&&Array.isArray(result.result))authorization.capabilities=['vectorize'];}catch{/* optional permission is absent; other bindings remain usable */}
+        }
         const accountId=await deps.store.save(actor,authorization,pending.accountId);
         return c.json({accountId,returnPath:pending.returnPath});
     });

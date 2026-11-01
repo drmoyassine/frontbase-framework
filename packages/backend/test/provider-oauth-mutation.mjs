@@ -13,7 +13,7 @@ const cases=[
  ['provider-oauth-store.js','FRONTBASE_OAUTH_STORE_TEST_MODULE','encrypted reconnect',"await encrypted(config)",'JSON.stringify(config)'],
  ['provider-oauth.js','FRONTBASE_OAUTH_TEST_MODULE','supabase PKCE verifier',"if (provider !== 'vercel')\n            params.set('code_verifier', pending.verifier);","if (provider === 'cloudflare')\n            params.set('code_verifier', pending.verifier);"],
  ['provider-oauth.js','FRONTBASE_OAUTH_TEST_MODULE','supabase project ref id',"String(p.ref ?? p.id)","String(p.id)"],
- ['provider-oauth-store.js','FRONTBASE_OAUTH_STORE_TEST_MODULE','supabase connection listing',"if (!['cloudflare', 'vercel', 'supabase'].includes(String(row.provider)))","if (!['cloudflare', 'vercel'].includes(String(row.provider)))"],
+ ['provider-oauth-store.js','FRONTBASE_OAUTH_STORE_TEST_MODULE','supabase connection listing',"if (!['cloudflare', 'vercel', 'supabase', 'upstash'].includes(String(row.provider)))","if (!['cloudflare', 'vercel', 'upstash'].includes(String(row.provider)))"],
  ['provider-oauth-refresh.js','FRONTBASE_OAUTH_REFRESH_TEST_MODULE','refresh client secret',"if (client.clientSecret)\n        params.set('client_secret', client.clientSecret);","if (false)\n        params.set('client_secret', client.clientSecret);"],
  ['provider-oauth-refresh.js','FRONTBASE_OAUTH_REFRESH_TEST_MODULE','refresh token type',"(token.token_type && token.token_type.toLowerCase() !== 'bearer')",'(false)'],
  ['provider-oauth-refresh.js','FRONTBASE_OAUTH_REFRESH_TEST_MODULE','revoke client secret','{ client_id: client.clientId, client_secret: client.clientSecret, refresh_token: authorization.refreshToken }','{ client_id: client.clientId, refresh_token: authorization.refreshToken }'],
