@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import {mkdirSync,rmSync,readFileSync} from 'node:fs';
+import {pathToFileURL,fileURLToPath} from 'node:url';
+import {generateKeyPair,exportJWK,SignJWT} from 'jose';
+const out=new URL('../../../.frontbase/setup-owner-identity-test.mjs',import.meta.url);mkdirSync(new URL('.',out),{recursive:true});
+const faults={issuer:["issuer:'https://vercel.com'",'issuer:undefined'],audience:['audience:deps.clientId','audience:undefined'],nonce:['payload.nonce!==pending.nonce','false'],receiver:['await deps.verifyReceiver(target,proof)','true'],consume:['!await deps.vault.take(key,raw!)','false']};
+await build({entryPoints:[fileURLToPath(new URL('../src/setup-owner-identity.ts',import.meta.url))],outfile:fileURLToPath(out),bundle:true,platform:'node',format:'esm',plugins:[{name:'identity-faults',setup(b){b.onLoad({filter:/setup-owner-identity\.ts$/},args=>{let source=readFileSync(args.path,'utf8');const fault=process.env.SETUP_IDENTITY_FAULT;if(fault){const item=faults[fault];assert.ok(item);assert.equal(source.split(item[0]).length,fault==='consume'?3:2,'mutation anchor');source=source.replaceAll(...item);}return {contents:source,loader:'ts'};});}}]});
+try{
+const {createSetupOwnerIdentityRelay,createSetupOwnerIdentityClient}=await import(out.href+'?'+Date.now());
+const {createSecretCipher}=await import('../dist/db/secret-cipher.js');const cipher=await createSecretCipher('fixture-owner-identity-root-'.repeat(3));
+const relayOrigin='https://relay.example',origin='https://fixture.vercel.app',target={origin,host:'vercel',purpose:'connect'},registration='a'.repeat(43),hash=async s=>Buffer.from(await crypto.subtle.digest('SHA-256',Buffer.from(s))).toString('base64url');
+const {privateKey,publicKey}=await generateKeyPair('RS256'),jwk={...await exportJWK(publicKey),kid:'fixture',alg:'RS256',use:'sig'};
+let now=Date.now(),generation=0,established=0,validReceiver=true,badClaim='',lastAuthorize;
+const data=new Map(),vault={get:async key=>data.get(key)??null,entries:async prefix=>[...data].filter(([key])=>key.startsWith(prefix)).map(([key,value])=>({key,value})),insert:async(key,value)=>{if(data.has(key))return false;assert.ok(cipher.isEncrypted(value));data.set(key,value);return true;},take:async(key,expected)=>{if(data.get(key)!==expected)return false;return data.delete(key);},purge:async()=>{}};
+const transport=async(input,init={})=>{
+ const u=new URL(String(input));assert.equal(init.redirect,'manual');assert.ok(init.signal);
+ if(u.origin===relayOrigin)return relay.fetch(new Request(u,{...init}));
+ if(u.href==='https://vercel.com/.well-known/jwks')return Response.json({keys:[jwk]});
+ assert.equal(u.href,'https://api.vercel.com/login/oauth/token');const p=new URLSearchParams(init.body);assert.equal(p.get('client_id'),'cl_fixture');assert.equal(p.get('client_secret'),null);assert.equal(p.get('grant_type'),'authorization_code');assert.equal(p.get('redirect_uri'),relayOrigin+'/setup-owner/vercel/callback');assert.equal(await hash(p.get('code_verifier')),lastAuthorize.searchParams.get('code_challenge'));
+ const claims={nonce:lastAuthorize.searchParams.get('nonce'),...(badClaim==='nonce'?{nonce:'wrong'}:{})};let jwt=new SignJWT(claims).setProtectedHeader({alg:'RS256',kid:'fixture'}).setIssuer(badClaim==='issuer'?'https://attacker.example':'https://vercel.com').setAudience(badClaim==='audience'?'cl_other':'cl_fixture').setSubject('fixtureOwner').setIssuedAt(Math.floor(now/1000)-(badClaim==='old'?600:0)).setExpirationTime(Math.floor(now/1000)+(badClaim==='expired'?-60:300));
+ const id=await jwt.sign(privateKey);return Response.json({id_token:badClaim==='signature'?id.slice(0,-10)+'aaaaaaaaaa':id,access_token:'identity-access-fixture',token_type:'Bearer'});
+};
+const relay=createSetupOwnerIdentityRelay({origin:relayOrigin,clientId:'cl_fixture',cipher,vault,fetch:transport,now:()=>now,admit:t=>JSON.stringify(t)===JSON.stringify(target),verifyReceiver:async(t,p)=>validReceiver&&JSON.stringify(t)===JSON.stringify(target)&&p===await hash(registration)});
+const client=createSetupOwnerIdentityClient({origin,relayOrigin,target,registrationKey:registration,cipher,fetch:transport,now:()=>now,authorize:async()=>({tenant:'_root',subject:'fixture:renew:'+generation}),establish:async(identity,actor)=>{assert.equal(identity.provider,'vercel');assert.equal(identity.subject,'fixtureOwner');assert.equal(actor.subject,'fixture:renew:'+generation);assert.ok(identity.expiresAt>now);assert.ok(!('accessToken'in identity));established++;generation++;return '/frontbase-bootstrap/#claim='+('c'.repeat(64));}});
+const cookie=r=>r.headers.get('set-cookie')?.split(';')[0];
+const call=(app,url,body,c,requestOrigin=new URL(url).origin)=>app.fetch(new Request(url,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{origin:requestOrigin,'content-type':'application/json'}),...(c?{cookie:c}:{})},body:body===undefined?undefined:JSON.stringify(body)}));
+async function start(){const a=await call(client,origin+'/api/provider-oauth/vercel/owner-start',{});assert.equal(a.status,200);const localCookie=cookie(a);const b=await call(relay,(await a.json()).url);assert.equal(b.status,200);let relayCookie=cookie(b);const c=await call(relay,relayOrigin+'/setup-owner/vercel/start',{},relayCookie);assert.equal(c.status,200);relayCookie=cookie(c);lastAuthorize=new URL((await c.json()).url);assert.equal(lastAuthorize.origin,'https://vercel.com');assert.equal(lastAuthorize.pathname,'/oauth/authorize');assert.equal(lastAuthorize.searchParams.get('scope'),'openid');assert.equal(lastAuthorize.searchParams.get('code_challenge_method'),'S256');return {localCookie,relayCookie,state:lastAuthorize.searchParams.get('state')};}
+const finish=f=>call(relay,relayOrigin+'/setup-owner/vercel/finish',{state:f.state,code:'fixture-code'},f.relayCookie);
+assert.equal((await call(client,origin+'/api/provider-oauth/vercel/owner-start',{},undefined,'https://attacker.example')).status,409);
+let f=await start();assert.equal((await call(relay,relayOrigin+'/setup-owner/vercel/finish',{state:f.state,code:'fixture-code'})).status,409);
+assert.equal((await call(relay,relayOrigin+'/setup-owner/vercel/finish',{state:'z'.repeat(43),code:'fixture-code'},f.relayCookie)).status,409);
+for(const claim of ['nonce','issuer','audience','old','expired','signature']){f=await start();badClaim=claim;const result=await finish(f);assert.equal(result.status,409,claim);assert.ok(!(await result.text()).includes('identity-access-fixture'));}badClaim='';
+f=await start();validReceiver=false;assert.equal((await finish(f)).status,409);validReceiver=true;
+f=await start();const completed=await finish(f);assert.equal(completed.status,200);const link=new URL((await completed.json()).returnPath);assert.equal(link.origin,origin);assert.equal(link.pathname,'/api/provider-oauth/vercel/owner-callback');const ticket=link.searchParams.get('ticket');assert.equal((await finish(f)).status,409,'OIDC code consumed exactly once');
+assert.equal((await call(client,origin+'/api/provider-oauth/vercel/owner-finish',{ticket})).status,409,'ticket alone is not owner access');
+const pendingTicket=[...data].find(([k])=>k==='ticket:owner:'+ticket);assert.ok(pendingTicket);const payload=await cipher.decrypt(pendingTicket[1]);assert.ok(!/identity-access-fixture|id_token|refresh_token|accessToken/.test(payload),'identity ticket contains no provider credentials');
+const recovered=await call(client,origin+'/api/provider-oauth/vercel/owner-finish',{ticket},f.localCookie);assert.equal(recovered.status,200);assert.equal(established,1);assert.ok((await recovered.json()).returnPath.startsWith('/frontbase-bootstrap/#claim='));assert.equal((await call(client,origin+'/api/provider-oauth/vercel/owner-finish',{ticket},f.localCookie)).status,409);assert.equal(established,1,'no replay');
+f=await start();now+=600001;assert.equal((await finish(f)).status,409,'expired sign-in refused');
+const js=await relay.fetch(new Request(relayOrigin+'/setup-owner/vercel/callback.js'));assert.equal(js.headers.get('referrer-policy'),'no-referrer');assert.match(await js.text(),/history.replaceState/);
+console.log('PASS Vercel setup owner identity: real RS256/JWKS verification, issuer/audience/nonce/time/signature refusal, PKCE, cookie/CSRF, enrolled receiver, minimal identity-only one-use ticket, replay/expiry and no credential handoff');
+}finally{rmSync(out,{force:true});}

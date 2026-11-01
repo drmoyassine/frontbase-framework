@@ -1,6 +1,7 @@
 import {createHostedBootstrap} from '@frontbase/backend';
 import {hostedSetupAccess} from '@frontbase/backend';
-import {verifySetupRenewalOwner} from './setup-renewal-owner.js';
+import {verifySetupRenewalOwner,verifyVercelSetupOwnerIdentity} from './setup-renewal-owner.js';
+import {createSetupOwnerIdentityClient} from '@frontbase/backend';
 import {resolveProviderBindingCredentials,createSecretCipher,createProviderOAuth,createProviderOAuthResources,createProviderRelayClient,providerOAuthRelay,providerOAuthClients,providerOAuthVault,type OAuthVault} from '@frontbase/backend';
 import {guardedExternalFetch} from '../../../packages/backend/src/compat/external-http';
 import {reconcileBootstrap} from '@frontbase/edge-core/deployment-bootstrap';
@@ -143,11 +144,23 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
  const actor={tenant:'_root',subject:installationId};
  const accessPromise=createSecretCipher(owner).then(cipher=>hostedSetupAccess(vault,cipher,context,owner,env.FRONTBASE_BOOTSTRAP_EXPIRES_AT));
  async function recoveryEligible(){const phase=(await journal.read(context))?.phase;if(phase&&phase!=='reviewed')throw Error(phase==='active'?'setup_already_installed':'setup_operation_held');}
+ async function recoveryAvailable(){
+  const relay=providerOAuthRelay(env,origin);if(!relay?.registrationKey)return false;if(target==='cloudflare')return !!metadata;
+  try{const response=await transport(relay.relayOrigin+'/setup-owner/vercel/status',{redirect:'manual',signal:AbortSignal.timeout(10000)});if(!response.ok||!response.body)return false;const reader=response.body.getReader();let size=0,text='';const decoder=new TextDecoder();try{for(;;){const p=await reader.read();if(p.done)break;size+=p.value.length;if(size>4096)return false;text+=decoder.decode(p.value,{stream:true});}}finally{await reader.cancel().catch(()=>{});}return JSON.parse(text+decoder.decode()).available===true;}catch{return false;}
+ }
  let recoveryPromise:Promise<any>|undefined;
  async function recovery(){
   if(target==='cloudflare'&&!metadata)throw Error('setup_renewal_unavailable');
   if(!recoveryPromise)recoveryPromise=createSecretCipher(owner).then(cipher=>{
    const relay=providerOAuthRelay(env,origin);if(!relay?.registrationKey)throw Error('setup_renewal_unavailable');
+   if(target==='vercel')return createSetupOwnerIdentityClient({...relay,registrationKey:relay.registrationKey,cipher,fetch:transport,authorize:async request=>{
+    if(new URL(request.url).origin!==origin)return null;await recoveryEligible();const access=await(await accessPromise).read();return {tenant:actor.tenant,subject:actor.subject+':renew:'+access.generation};
+   },establish:async(identity,pendingActor)=>{
+    await recoveryEligible();const access=await(await accessPromise).read();if(pendingActor.subject!==actor.subject+':renew:'+access.generation)throw Error('setup_renewal_conflict');
+    const grant=(await(await oauth()).refresh(providerOAuthClients(env,origin),{fetch:transport})).find(g=>g.provider==='vercel');if(!grant)throw Error('setup_ownership_refused');
+    await verifyVercelSetupOwnerIdentity(context,identity,grant,transport);await verifySetupRenewalOwner(context,origin,owner,grant,transport);
+    await recoveryEligible();const renewed=await(await accessPromise).renew(access.generation);await recoveryEligible();console.info('bootstrap_access_renewed');return '/frontbase-bootstrap/#claim='+renewed.token;
+   }});
    return createProviderRelayClient({...relay,mode:'setup-renewal',cipher,fetch:transport,authorize:async request=>{
     if(new URL(request.url).origin!==origin)return null;
     await recoveryEligible();const access=await(await accessPromise).read();return {tenant:actor.tenant,subject:actor.subject+':renew:'+access.generation};
@@ -193,15 +206,17 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
  };
  return {journal,executor,initialize,configuration,context,fetch:async(request:Request)=>{
   if(new URL(request.url).origin!==origin)return new Response('Invalid origin',{status:403});
-  if(!appPromise)appPromise=nextSetup().then(async link=>createHostedBootstrap({enabled:true,origin,token:owner,expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT,renewalAvailable:!!env.FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY&&(!!metadata||target==='vercel'),access:metadata||target==='vercel'?async()=>(await accessPromise).read():undefined,context,journal,executor,initialize,configuration,resolveCredentials:async(manifest,input)=>resolveProviderBindingCredentials(manifest,input,await (await oauth()).refresh(providerOAuthClients(env,origin),{fetch:transport}),transport),pendingSetup:true,nextSetup:()=>link,providerResources:()=>oauth().then(app=>app.resources)}));
+  if(!appPromise)appPromise=nextSetup().then(async link=>createHostedBootstrap({enabled:true,origin,token:owner,expiresAt:env.FRONTBASE_BOOTSTRAP_EXPIRES_AT,renewalAvailable:await recoveryAvailable(),access:metadata||target==='vercel'?async()=>(await accessPromise).read():undefined,context,journal,executor,initialize,configuration,resolveCredentials:async(manifest,input)=>resolveProviderBindingCredentials(manifest,input,await (await oauth()).refresh(providerOAuthClients(env,origin),{fetch:transport}),transport),pendingSetup:true,nextSetup:()=>link,providerResources:()=>oauth().then(app=>app.resources)}));
   const url=new URL(request.url);
-  if(url.pathname==='/frontbase-bootstrap/recovery-status'&&request.method==='GET'&&!url.search)return Response.json({available:!!(metadata||target==='vercel')&&!!providerOAuthRelay(env,origin)?.registrationKey},{headers:{'cache-control':'no-store','referrer-policy':'no-referrer'}});
+  if(url.pathname==='/frontbase-bootstrap/recovery-status'&&request.method==='GET'&&!url.search)return Response.json({available:await recoveryAvailable()},{headers:{'cache-control':'no-store','referrer-policy':'no-referrer'}});
   if(url.pathname==='/frontbase-bootstrap/api/renew'){
    if(request.method!=='POST'||request.headers.get('origin')!==origin||request.headers.get('content-type')?.split(';')[0]!=='application/json'||url.search)return Response.json({error:'setup_renewal_refused',message:'Renew setup access from this installation.'},{status:403});
-   const rewritten=new Request(origin+'/api/provider-oauth/'+target+'/start',{method:'POST',headers:request.headers,body:JSON.stringify({returnPath:'/frontbase-bootstrap/'})});
+   if(!await recoveryAvailable())return Response.json({error:'setup_renewal_unavailable',message:'Owner sign-in is not configured or cannot be reached. Ask the deployment owner to check the recovery service; no installation changes were repeated.'},{status:409,headers:{'cache-control':'no-store'}});
+   const rewritten=new Request(origin+'/api/provider-oauth/'+target+(target==='vercel'?'/owner-start':'/start'),{method:'POST',headers:request.headers,body:JSON.stringify(target==='vercel'?{}:{returnPath:'/frontbase-bootstrap/'})});
    try{return await(await recovery()).fetch(rewritten);}catch{return Response.json({error:'setup_renewal_unavailable',message:'Renewal is unavailable or an installation operation is held. Inspect its status; no changes were repeated.'},{status:409,headers:{'cache-control':'no-store'}});}
   }
   if(url.pathname.startsWith('/api/provider-oauth/')){
+   if(target==='vercel'&&['/owner-callback','/owner-callback.js','/owner-finish'].some(path=>url.pathname.endsWith(path)))return (await recovery()).fetch(request);
    if(['/relay-finish','/relay-callback','/relay-callback.js'].some(path=>url.pathname.endsWith(path))&&(request.headers.get('cookie')??'').split(';').some(c=>c.trim().startsWith('__Host-fb_relay_recovery_'+target+'=')))return (await recovery()).fetch(request);
    return (await oauth()).app.fetch(request);
   }
