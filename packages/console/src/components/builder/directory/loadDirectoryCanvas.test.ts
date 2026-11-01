@@ -88,3 +88,12 @@ it('previews retained-record notice settings without persisting runtime context'
  vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,json:async()=>({revision:saved.revision,queryId:'directory.program.detail',rows:[{id:7,title:'Program',institutionId:4,originalPath:'/old-program/',_templateRoute:{attached:true}}],configuration:saved.configuration})})));
  const projected=await loadDirectoryCanvas(layout,saved,new AbortController().signal);expect(projected.root?.publicationRecordContext.settings.notice).toBe('Contact our advisers');expect(layout.root.publicationRecordContext).toBeUndefined();
 });
+
+it('keeps an unconnected installed template visually editable without a published-data request',async()=>{
+ const layout=addDirectoryTemplate(page,binding);layout.root={...layout.root,bookingForX:{version:1,role:'directory'}};
+ const before=JSON.stringify(layout),fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ const preview=await loadDirectoryCanvas(layout,saved,new AbortController().signal);
+ expect(fetcher).not.toHaveBeenCalled();expect(preview.content.length).toBe(layout.content.length);
+ const index=layout.content.findIndex(n=>n.props.directoryQuery);expect(index).toBeGreaterThanOrEqual(0);expect(preview.content[index].children).toEqual(layout.content[index].children?.map(n=>expect.objectContaining({id:n.id,type:n.type})));
+ expect(JSON.stringify(layout)).toBe(before);expect(layout.content[index].props.directoryQuery).toBeDefined();
+});

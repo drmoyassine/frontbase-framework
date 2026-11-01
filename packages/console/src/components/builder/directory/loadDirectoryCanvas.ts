@@ -5,6 +5,15 @@ import type { PageLayoutLike } from '@/lib/builder/iframeTypes';
 
 /** Resolve registered authoring requests before the shared SW/network renderer. */
 export async function loadDirectoryCanvas(layout: PageLayoutLike, saved: SiteConfigurationDraft, signal: AbortSignal, previewCollection?: 'institution'|'program'): Promise<PageLayoutLike> {
+    // A newly installed draft must remain designable before its data is connected.
+    // Keep authored nodes and bindings intact; this projection is canvas-only.
+    if (layout.root?.bookingForX && !saved.configuration.datasourceId) {
+        const strip = (nodes:PageLayoutLike['content']):PageLayoutLike['content'] => nodes.map(node => {
+            const {directoryQuery,recordBindings,directoryControls,...props}=node.props;
+            return {...node,props,...(node.children?{children:strip(node.children)}:{})};
+        });
+        return projectTemplatePresentation({...layout,content:strip(layout.content)},saved.configuration);
+    }
     const rows = new Map<string, Record<string, unknown>[]>();
     let recordContext:Record<string,unknown>={};
     let currentRecord:Record<string,unknown>={};
