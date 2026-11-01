@@ -8,7 +8,7 @@ const testPath=fileURLToPath(new URL('./hosted-bootstrap.mjs',import.meta.url));
 const faults=[
  ['configured origin','url.origin !== deps.origin','false'],
  ['POST origin',"c.req.header('origin') !== deps.origin",'false'],
- ['setup expiry','now() >= expiry','false'],
+ ['setup expiry','now() >= Date.parse(access.expiresAt)','false'],
  ['cookie audience','payload.aud === audience','true'],
  ['cookie expiry','payload.exp > now()','true'],
  ['body bounds','length > 65536','false'],

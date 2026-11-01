@@ -5,8 +5,8 @@ import type {OAuthRelayTarget} from './provider-oauth-relay.js';
 export interface ProviderRelayClientDeps {
     origin:string;relayOrigin:string;target:OAuthRelayTarget;fetch:typeof fetch;
     authorize(request:Request):Promise<OAuthActor|null>;store?:ProviderOAuthStore;cipher?:SecretCipher;
-    mode:'authenticated'|'native-install';now?:()=>number;registrationKey?:string;enrollReceiver?:boolean;
-    establish?:(authorization:OAuthAuthorization,request:Request,registrationKey:string)=>Promise<string>;
+    mode:'authenticated'|'native-install'|'setup-renewal';now?:()=>number;registrationKey?:string;enrollReceiver?:boolean;
+    establish?:(authorization:OAuthAuthorization,request:Request,registrationKey:string,actor?:OAuthActor)=>Promise<string>;
 }
 const base='/api/provider-oauth',random=()=>btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const hash=async(value:string)=>btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -15,11 +15,13 @@ async function json(request:Request|Response,max=65536){const reader=request.bod
 export function createProviderRelayClient(deps:ProviderRelayClientDeps){
     if(new URL(deps.origin).origin!==deps.origin||!deps.origin.startsWith('https://')||new URL(deps.relayOrigin).origin!==deps.relayOrigin||!deps.relayOrigin.startsWith('https://')||deps.target.origin!==deps.origin||deps.mode==='authenticated'&&(!deps.cipher||!deps.store)||deps.mode==='native-install'&&(!deps.establish||deps.target.purpose!=='install'))throw Error('invalid_relay_client');
     const app=new Hono(),now=deps.now??Date.now;
+    if(deps.mode==='setup-renewal'&&(!deps.establish||!deps.cipher||!deps.registrationKey||deps.target.purpose!=='connect'||!['cloudflare','vercel'].includes(deps.target.host)))throw Error('invalid_relay_client');
+    const cookiePrefix=deps.mode==='setup-renewal'?'__Host-fb_relay_recovery_':'__Host-fb_relay_client_';
     const seal=async(value:unknown)=>{const encoded=JSON.stringify(value);if(!deps.cipher)return encodeURIComponent(encoded);const encrypted=await deps.cipher.encrypt(encoded);if(!deps.cipher.isEncrypted(encrypted))throw Error('relay_cipher_required');return encodeURIComponent(encrypted);};
     const read=async(raw:string)=>{const value=decodeURIComponent(raw);if(deps.cipher&&!deps.cipher.isEncrypted(value))throw Error('relay_refused');return JSON.parse(deps.cipher?await deps.cipher.decrypt(value):value);};
     app.use('*',async(c,next)=>{c.header('Cache-Control','no-store');c.header('Referrer-Policy','no-referrer');c.header('X-Content-Type-Options','nosniff');c.header('X-Frame-Options','DENY');c.header('Content-Security-Policy',"default-src 'none'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'");if(new URL(c.req.url).origin!==deps.origin)return c.json({error:'relay_refused'},403);return next();});
     const callbackFailure=deps.mode==='native-install'?'Setup could not be confirmed. Ask the operator to inspect this installation before trying again.':'Connection could not be completed. Return to Frontbase and reconnect.';
-    const callbackErrors:Record<string,string>=deps.mode==='native-install'?{native_setup_database_rejected:'Cloudflare could not create the setup database. Check D1 capacity and database permissions. Ask the operator to recover this installation before trying again.'}:{};
+    const callbackErrors:Record<string,string>=deps.mode==='native-install'?{native_setup_database_rejected:'Cloudflare could not create the setup database. Check D1 capacity and database permissions. Ask the operator to recover this installation before trying again.'}:deps.mode==='setup-renewal'?{setup_ownership_refused:'The authorized account does not prove management access to this exact deployment. Choose its deployment owner account.',setup_renewal_conflict:'Setup access changed while you were authorizing. No operation was repeated. Return to the wizard and verify its current status.',setup_operation_held:'An installation operation is pending or uncertain. Inspect its status; renewal cannot restart provisioning.',setup_already_installed:'This installation is configured. Sign in to Frontbase instead of renewing setup.',setup_renewal_limit:'This installation has reached its setup-renewal limit. Ask the deployment owner to inspect it.',setup_access_unconfirmed:'The access update could not be confirmed. Ask the deployment owner to inspect it before another attempt.'}:{};
     app.get(base+'/relay-callback.js',c=>c.body("const messages="+JSON.stringify(callbackErrors)+",u=new URL(location.href),p=u.pathname.split('/').at(-2),ticket=u.searchParams.get('ticket');history.replaceState(null,'',u.pathname);fetch('/api/provider-oauth/'+p+'/relay-finish',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({ticket})}).then(async r=>{const result=await r.json();if(!r.ok){document.getElementById('status').textContent=Object.hasOwn(messages,result.error)?messages[result.error]:"+JSON.stringify(callbackFailure)+";return;}location.replace(result.returnPath);}).catch(()=>{document.getElementById('status').textContent="+JSON.stringify(callbackFailure)+";});",200,{'content-type':'text/javascript'}));
     app.get(base+'/:provider/relay-callback',c=>{
         if(!['cloudflare','vercel','supabase','upstash'].includes((c.req.param('provider')??''))||c.req.url.length>4096)return c.text('Not found',404);
@@ -31,36 +33,43 @@ export function createProviderRelayClient(deps:ProviderRelayClientDeps){
     });
     app.use(base+'/*',async(c,next)=>{if(!await deps.authorize(c.req.raw))return c.json({error:'oauth_operator_required'},403);if(c.req.method==='POST'&&(c.req.header('origin')!==deps.origin||c.req.header('content-type')?.split(';')[0]!=='application/json'))return c.json({error:'relay_refused'},403);return next();});
     app.get(base+'/status',async c=>{
+        if(deps.mode==='setup-renewal')return c.json({error:'setup_recovery_only'},404);
         const response=await deps.fetch(deps.relayOrigin+'/health',{redirect:'manual',signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('relay_unavailable');const status=await json(response);const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');
         return c.json({providers:['cloudflare','vercel','supabase','upstash'].map(provider=>({provider,available:Array.isArray(status.providers)&&status.providers.includes(provider)})),connections:deps.store?await deps.store.connections(actor):[]});
     });
     app.post(base+'/:provider/start',async c=>{
         const provider=c.req.param('provider')??'';if(!['cloudflare','vercel','supabase','upstash'].includes(provider))return c.json({error:'relay_refused'},400);
+        if(deps.mode==='setup-renewal'&&provider!==deps.target.host)return c.json({error:'relay_refused'},403);
         const input=await json(c.req.raw,8192);if(typeof input.returnPath!=='string'||!input.returnPath.startsWith('/')||input.returnPath.startsWith('//')||/[\\\r\n#]/.test(input.returnPath)||Object.keys(input).some(k=>!['returnPath','accountId'].includes(k))||input.accountId!==undefined&&(typeof input.accountId!=='string'||input.accountId.length>256))throw Error('relay_refused');
-        const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');const verifier=deps.mode==='authenticated'&&deps.registrationKey?deps.registrationKey:random();if(!/^[\w-]{43}$/.test(verifier))throw Error('relay_refused');
+        if(deps.mode==='setup-renewal'&&(input.returnPath!=='/frontbase-bootstrap/'||input.accountId!==undefined))throw Error('relay_refused');
+        const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');const verifier=deps.mode!=='native-install'&&deps.registrationKey?deps.registrationKey:random();if(!/^[\w-]{43}$/.test(verifier))throw Error('relay_refused');
         if(deps.enrollReceiver){
-            if(deps.mode!=='authenticated'||!deps.registrationKey)throw Error('relay_refused');
+            if(!['authenticated','setup-renewal'].includes(deps.mode)||!deps.registrationKey)throw Error('relay_refused');
             const enrolled=await deps.fetch(deps.relayOrigin+'/receivers',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({target:deps.target,proof:await hash(verifier)}),redirect:'manual',signal:AbortSignal.timeout(15000)});
             if(!enrolled.ok)throw Error('relay_receiver_unavailable');await enrolled.body?.cancel().catch(()=>{});
         }
         const value=await seal({...actor,verifier,provider,expires:now()+600000,target:deps.target,returnPath:input.returnPath,accountId:input.accountId});if(value.length>4096)throw Error('relay_refused');
-        c.header('Set-Cookie','__Host-fb_relay_client_'+provider+'='+value+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600');
+        c.header('Set-Cookie',cookiePrefix+provider+'='+value+'; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600');
+        // One browser flow per provider. A stale recovery cookie must not divert
+        // an ordinary reconnect callback (or the reverse).
+        c.header('Set-Cookie',(deps.mode==='setup-renewal'?'__Host-fb_relay_client_':'__Host-fb_relay_recovery_')+provider+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',{append:true});
         const url=new URL('/connect',deps.relayOrigin);url.searchParams.set('provider',provider);url.searchParams.set('target',JSON.stringify(deps.target));url.searchParams.set('challenge',await hash(verifier));return c.json({url:url.href,relayOrigin:deps.relayOrigin});
     });
     app.post(base+'/:provider/relay-finish',async c=>{
         const provider=c.req.param('provider') as OAuthProvider;if(!['cloudflare','vercel','supabase','upstash'].includes(provider))throw Error('relay_refused');
+        if(deps.mode==='setup-renewal'&&provider!==deps.target.host)throw Error('relay_refused');
         const input=await json(c.req.raw,8192);if(Object.keys(input).length!==1||typeof input.ticket!=='string'||!/^[\w-]{43}$/.test(input.ticket))throw Error('relay_refused');
-        const name='__Host-fb_relay_client_'+provider,values=(c.req.header('cookie')??'').split(';').map(s=>s.trim()).filter(s=>s.startsWith(name+'='));if(values.length!==1)throw Error('relay_refused');
+        const name=cookiePrefix+provider,values=(c.req.header('cookie')??'').split(';').map(s=>s.trim()).filter(s=>s.startsWith(name+'='));if(values.length!==1)throw Error('relay_refused');
         const pending=await read(values[0]!.slice(name.length+1)),actor=await deps.authorize(c.req.raw);
         if(!actor||actor.tenant!==pending.tenant||actor.subject!==pending.subject||pending.provider!==provider||pending.expires<=now()||pending.expires>now()+600000||canonical(pending.target)!==canonical(deps.target)||typeof pending.verifier!=='string'||!/^[\w-]{43}$/.test(pending.verifier))throw Error('relay_refused');
         const response=await deps.fetch(deps.relayOrigin+'/ticket',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ticket:input.ticket,verifier:pending.verifier,origin:deps.origin}),redirect:'manual',signal:AbortSignal.timeout(20000)});
         if(!response.ok)throw Error('relay_refused');const result=await json(response);
         if(canonical(result.target)!==canonical(deps.target)||result.authorization?.provider!==provider||typeof result.authorization?.accessToken!=='string'||!result.authorization.accessToken||!Array.isArray(result.authorization.accounts)||!result.authorization.accounts.length||result.authorization.expiresAt!==undefined&&result.authorization.expiresAt<=now())throw Error('relay_refused');
         let returnPath=pending.returnPath;
-        if(deps.mode==='native-install')returnPath=await deps.establish!(result.authorization,c.req.raw,pending.verifier);
+        if(deps.mode==='native-install'||deps.mode==='setup-renewal')returnPath=await deps.establish!(result.authorization,c.req.raw,pending.verifier,actor);
         else await deps.store!.save(actor,result.authorization,pending.accountId);
         if(typeof returnPath!=='string'||!returnPath.startsWith('/')||returnPath.startsWith('//')||/[\\\r\n]/.test(returnPath))throw Error('relay_refused');
         c.header('Set-Cookie',name+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');return c.json({returnPath});
     });
-    app.onError((error,c)=>c.json({error:deps.mode==='native-install'&&Object.hasOwn(callbackErrors,error.message)?error.message:'relay_connection_failed'},409));return app;
+    app.onError((error,c)=>c.json(Object.hasOwn(callbackErrors,error.message)?{error:error.message,message:callbackErrors[error.message]}:{error:'relay_connection_failed',message:deps.mode==='setup-renewal'?'Ownership verification could not be completed. Check the provider connection and installation status; no provisioning was repeated.':callbackFailure},409));return app;
 }

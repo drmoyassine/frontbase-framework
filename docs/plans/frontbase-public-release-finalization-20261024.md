@@ -1,5 +1,9 @@
 # Frontbase Developer Preview: current release plan
 
+## Current checkpoint — 2026-11-01
+
+The [bounded onboarding acceptance stream](onboarding-final-acceptance-20261101.md) now repairs secure native setup renewal at source, with generation/encryption separation, fresh provider edit-authority proof, actionable errors and existing/new security gates passing. Live CF/Vercel renewal consent and fresh optional-binding/native-README → administrator → publication → Git-upgrade evidence remain OPEN. The source repair reduces the engineering backlog; it does not close those live gates or wider public-release requirements. Preserve the original October 31 checkpoint below as historical evidence, not the current verified source tip.
+
 ## Current checkpoint — 2026-10-31
 
 **November 1 binding task delivered:** [hosted Supabase/PostgREST HTTP state](hosted-postgres-state-20261031.md), source `87eebed9`, passes workspace/security/MVCC qualification and isolated CF/Vercel Supabase activation → administrator → visual save/publish → retained-account tests → Git-upgrade checks. Self-hosted PostgREST has actual local HTTP and both target-fixture evidence, not a separate remote-provider live receipt. Vercel's administrator link needed approved assisted recovery; secure hosted owner-link renewal and an uninterrupted public-main Vercel journey remain the next genuine onboarding gaps. Preserve the owner's unconfigured Study-in-USA installation. This does not close wider Developer Preview release gates.

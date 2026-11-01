@@ -57,7 +57,7 @@ export function cloudflareSetupMetadata(context:BootstrapContext,owner:string,ap
  const vault:OAuthVault={
   async get(key){return(await read()).state.vault.find(r=>r.key===key)?.value??null;},
   async entries(prefix){return structuredClone((await read()).state.vault.filter(r=>r.key.startsWith(prefix)));},
-  async insert(key,value){if(!key||key.length>256||!(await cipher).isEncrypted(value))refuse();const {tip,state}=await read();if(state.vault.some(r=>r.key===key))return false;return !!await append(tip,{...state,sequence:state.sequence+1,vault:[...state.vault,{key,value}]});},
+  async insert(key,value){if(!key||key.length>256||!(await cipher).isEncrypted(value))refuse();const {tip,state}=await read();if(key.startsWith('setup-access:')&&state.journal&&state.journal.phase!=='reviewed')refuse();if(state.vault.some(r=>r.key===key))return false;return !!await append(tip,{...state,sequence:state.sequence+1,vault:[...state.vault,{key,value}]});},
   async replace(key,expected,value){if(!(await cipher).isEncrypted(value))refuse();const {tip,state}=await read();if(!state.vault.some(r=>r.key===key&&r.value===expected))return false;return !!await append(tip,{...state,sequence:state.sequence+1,vault:state.vault.map(r=>r.key===key?{key,value}:r)});}
  };
  return {journal,vault,

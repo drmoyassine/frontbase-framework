@@ -334,6 +334,7 @@ export type { AuthRateLimitBucket } from './compat/rate-limit-store.js';
 export {deploymentStorageFromEnv,deploymentStorageOptions} from './compat/deployment-storage.js';
 
 export { createHostedBootstrap, type HostedBootstrapDeps } from './hosted-bootstrap.js';
+export {hostedSetupAccess,type HostedSetupAccess} from './hosted-setup-access.js';
 export {createProviderOAuth,type ProviderOAuthDeps,type ProviderOAuthClient,type OAuthProvider} from './provider-oauth.js';
 export {providerOAuthClients,providerOAuthRelay} from './provider-oauth-config.js';
 export {providerOAuthStore} from './provider-oauth-store.js';

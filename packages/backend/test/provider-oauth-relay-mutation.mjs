@@ -20,7 +20,7 @@ const cases=[
  ['provider-oauth-relay.js','FRONTBASE_RELAY_TEST_MODULE','provider-oauth-relay.mjs','required receiver verifier','!deps.verifyReceiver || !deps.notices','false || !deps.notices'],
  ['provider-oauth-relay.js','FRONTBASE_RELAY_TEST_MODULE','provider-oauth-relay.mjs','receiver proof before consent',"target.purpose === 'connect' && deps.verifyReceiver && !await deps.verifyReceiver(target, proof)",'false'],
  ['provider-oauth-relay.js','FRONTBASE_RELAY_TEST_MODULE','provider-oauth-relay.mjs','receiver proof at redemption',"record.target.purpose === 'connect' && deps.verifyReceiver && !await deps.verifyReceiver(record.target, record.proof)",'false'],
- ['provider-oauth-relay-client.js','FRONTBASE_RELAY_CLIENT_TEST_MODULE','provider-oauth-relay.mjs','registered receiver key',"deps.mode === 'authenticated' && deps.registrationKey ? deps.registrationKey : random()",'random()'],
+ ['provider-oauth-relay-client.js','FRONTBASE_RELAY_CLIENT_TEST_MODULE','provider-oauth-relay.mjs','registered receiver key',"deps.mode !== 'native-install' && deps.registrationKey ? deps.registrationKey : random()",'random()'],
  ['provider-oauth-relay-store.js','FRONTBASE_RELAY_STORE_TEST_MODULE','provider-oauth-relay.mjs','registered proof binding',"WHERE origin = ? AND receiver_proof = ? LIMIT 2","WHERE origin = ? AND (receiver_proof = ? OR 1=1) LIMIT 2"],
  ['provider-oauth-relay-store.js','FRONTBASE_RELAY_STORE_TEST_MODULE','provider-oauth-relay.mjs','registered host binding','resource.length === 4 && resource[0] === target.host','resource.length === 4 && true'],
  ['provider-oauth-relay-target.js','FRONTBASE_RELAY_TARGET_TEST_MODULE','provider-oauth-relay-target.mjs','connect enrolled origins',"return policy.connectedOrigins.includes(t.origin);","return true;"],

@@ -11,6 +11,9 @@ export interface HostedBootstrapDeps {
     initialize?: ()=>Promise<void>;
     configuration?: ()=>Promise<Record<string,unknown>>;
     pendingSetup?: boolean;
+    /** Separate expiring access from the stable encryption/signing root. */
+    access?: ()=>Promise<import('./hosted-setup-access.js').HostedSetupAccess>;
+    renewalAvailable?: boolean;
     resolveCredentials?: (manifest:import('@frontbase/edge-core/deployment').DeploymentManifest,input:Record<string,string>)=>Promise<Record<string,string>>;
     /** Read-only provider discovery (e.g. createProviderOAuthResources); inherits every gate below.
      *  A function defers construction until an authenticated request reaches the route, keeping
@@ -25,11 +28,10 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
     const app=new Hono(),now=deps.now??Date.now;
     const origin=new URL(deps.origin);
     if(origin.protocol!=='https:'||origin.origin!==deps.origin||deps.token.length<32||deps.token.length>256||!Number.isFinite(Date.parse(deps.expiresAt)))throw Error('invalid_bootstrap_configuration');
-    const expiry=Date.parse(deps.expiresAt);
     const key=()=>crypto.subtle.importKey('raw',new TextEncoder().encode(deps.token),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
     const audience=JSON.stringify(deps.context);
     const sign=async(payload:string)=>encode(new Uint8Array(await crypto.subtle.sign('HMAC',await key(),new TextEncoder().encode(payload))));
-    const authenticated=async(request:Request)=>{
+    const authenticated=async(request:Request,access:import('./hosted-setup-access.js').HostedSetupAccess)=>{
         try {
             const cookies=(request.headers.get('cookie')??'').split(';').map(x=>x.trim()).filter(x=>x.startsWith(cookieName+'='));
             if(cookies.length!==1)return false;
@@ -37,19 +39,21 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
             const parts=raw.split('.');if(parts.length!==2)return false;
             if(!await crypto.subtle.verify('HMAC',await key(),decode(parts[1]!),new TextEncoder().encode(parts[0]!)))return false;
             const payload=JSON.parse(new TextDecoder().decode(decode(parts[0]!)));
-            return payload.aud===audience&&Number.isSafeInteger(payload.exp)&&payload.exp>now()&&payload.exp<=expiry&&payload.exp<=now()+900000;
+            return payload.aud===audience&&(payload.generation??0)===access.generation&&Number.isSafeInteger(payload.exp)&&payload.exp>now()&&payload.exp<=Date.parse(access.expiresAt)&&payload.exp<=now()+900000;
         }catch{return false;}
     };
     const active=async()=> (await deps.journal.read(deps.context))?.phase==='active';
     app.use('*',async(c,next)=>{
         c.header('Cache-Control','no-store');c.header('Referrer-Policy','no-referrer');c.header('X-Content-Type-Options','nosniff');c.header('X-Frame-Options','DENY');c.header('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'");
-        if(!deps.enabled||now()>=expiry)return c.json({error:'bootstrap_unavailable'},410);
+        const access=deps.access?await deps.access():{generation:0,token:deps.token,expiresAt:deps.expiresAt};
+        if(!deps.enabled)return c.json({error:'bootstrap_unavailable',message:'This installation is configured. Sign in to Frontbase to manage it.'},410);
+        if(now()>=Date.parse(access.expiresAt))return c.json({error:'bootstrap_access_expired',message:deps.renewalAvailable?'Your private setup link has expired. Renew setup access by verifying deployment ownership.':'Your private setup link has expired. Ask the deployment owner to inspect this installation; this deployment does not support browser renewal.'},410);
         const url=new URL(c.req.url);
         if(url.origin!==deps.origin||url.search)return c.json({error:'bootstrap_refused'},403);
         if(c.req.method==='POST'){
             if(c.req.header('origin')!==deps.origin||c.req.header('content-type')?.split(';')[0]!=='application/json')return c.json({error:'bootstrap_refused'},403);
         }
-        if(c.req.path!==base+'/claim'&&!await authenticated(c.req.raw))return c.json({error:'bootstrap_refused'},403);
+        if(c.req.path!==base+'/claim'&&!await authenticated(c.req.raw,access))return c.json({error:'bootstrap_session_required',message:'Setup access is missing or expired. Reopen your current private link or renew setup access.'},403);
         if(c.req.path!==base+'/claim'&&await active())return c.json({error:'bootstrap_unavailable'},410);
         await next();
     });
@@ -61,10 +65,11 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
     const exact=(input:Record<string,unknown>,keys:string[])=>{if(Object.keys(input).length!==keys.length||Object.keys(input).some(k=>!keys.includes(k)))throw Error('invalid');};
     app.post(base+'/claim',async c=>{
         const input=await body(c.req.raw);exact(input,['token']);if(typeof input.token!=='string'||input.token.length>256)return c.json({error:'bootstrap_refused'},403);
+        const access=deps.access?await deps.access():{generation:0,token:deps.token,expiresAt:deps.expiresAt};
         const digest=async(value:string)=>new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
-        if(!timingSafeEqual(await digest(input.token),await digest(deps.token)))return c.json({error:'bootstrap_refused'},403);
+        if(!timingSafeEqual(await digest(input.token),await digest(access.token)))return c.json({error:'bootstrap_refused',message:'This setup link is invalid or has been replaced. Use the latest private link or renew setup access.'},403);
         if(await active())return c.json({error:'bootstrap_unavailable'},410);
-        const exp=Math.min(expiry,now()+900000),payload=encode(new TextEncoder().encode(JSON.stringify({aud:audience,exp})));
+        const exp=Math.min(Date.parse(access.expiresAt),now()+900000),payload=encode(new TextEncoder().encode(JSON.stringify({aud:audience,exp,generation:access.generation})));
         c.header('Set-Cookie',cookieName+'='+payload+'.'+await sign(payload)+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age='+Math.floor((exp-now())/1000));
         return c.json({ok:true,expiresAt:new Date(exp).toISOString()});
     });

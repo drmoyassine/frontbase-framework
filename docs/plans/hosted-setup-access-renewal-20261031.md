@@ -1,8 +1,20 @@
 # Hosted setup access renewal — October 31, 2026
 
-Status: **PLANNED, NOT IMPLEMENTED**. Owner accepted recording this recovery gap as the next onboarding repair, before declaring onboarding complete. This instruction records the plan; it does not claim implementation, live verification or authorize changes to an existing installation.
+Status (2026-11-01): **IMPLEMENTED; SOURCE QUALIFICATION COMPLETE; LIVE PROVIDER RENEWAL OPEN**. Owner now authorizes executing the renewal and CF/Vercel fresh-install acceptance, leaving consent/password-dependent steps until the end. The original baseline and intended requirements below are retained as history. Do not equate the implementation/security tests with completed live renewal. See [current acceptance receipt](onboarding-final-acceptance-20261101.md).
 
-## Confirmed current behavior
+## November 1 implementation
+
+The stable native root continues to encrypt grants/journal state and derive runtime keys. Renewable one-hour capabilities and fifteen-minute cookies carry a separate generation. Encrypted, context-bound, create-only numbered records in the existing vault invalidate all earlier links/cookies without rotating that root. Simultaneous writes have one winner; uncertain/lost writes do not repeat. Renewal is capped at 24 generations and retains existing relay abuse controls.
+
+The shared native-cloud wizard offers **Renew setup access** only when its host advertises support. Fresh provider OAuth uses the existing enrolled receiver, PKCE/ticket/cookie protocol and exact configured target. Ownership checks bind account/team, Worker/project, canonical origin, installation identity and native claim/root. Crucially the access-record write uses the visitor's fresh grant, not the app's retained management grant: read-only viewers cannot inherit provisioning authority. No new provider scope or parallel credential vault is introduced.
+
+Only empty/reviewed operations qualify; applying, uncertain and active installations refuse renewal. CF uses its immutable metadata primitive and guards phase within the append; Vercel uses a unique integration-owned environment-variable create, with phase reinspection before/after. Neither path invokes native claim, resource creation, Apply or deployment activation. Old legacy-D1 and Docker setup paths are preserved but do not advertise this native-cloud renewal. A provider failure or raced state stops without replay.
+
+The UI distinguishes access expiry, missing session, network failure and unexpected responses, preserves its form while displaying recovery, and carries only nonsecret selection references through OAuth. Private capabilities remain fragments, removed promptly; credentials never enter the saved draft. Recovery/ordinary connection cookies are distinct and clear each other's stale browser flow.
+
+Qualification: workspace check/build and client no-leak passed; existing hosted-bootstrap, native-cloud and OAuth relay/receiver functional/mutation gates passed. `pnpm test:setup-renewal` adds expired/current/previous capabilities and cookies, encrypted/context-bound storage, simultaneous/lost writes, fresh provider edit authority, exact owner/alias/claim checks, held/installed refusal, nonsecret UI drafts and eleven behavioral mutations. Exact live gaps and later receipts belong in the linked acceptance record.
+
+## Baseline before the November 1 implementation (historical)
 
 - The native claim creates a private deployment-owner capability with a one-hour lifetime (`examples/cf-full/src/native-claim.ts`).
 - Redeeming it creates an origin/context-bound Secure, HttpOnly, SameSite=Strict bootstrap cookie for at most fifteen minutes, bounded by the capability expiry (`packages/backend/src/hosted-bootstrap.ts`). The session is not sliding on ordinary reads.
@@ -38,8 +50,8 @@ After proof, inspect the existing durable operation before issuing access. Renew
 
 Exit: a deployment owner can regain setup access through a documented supported flow without secret pasting, bespoke recovery routes, state reset, grant loss or repeated provisioning. Anonymous visitors and previous capabilities remain refused. This closes a recovery defect, not the broader Developer Preview distribution or independent-account service qualification gates.
 
-## Recording evidence and next action
+## Original recording evidence (historical)
 
 This is a documentation-only record based on inspection of the three source files above and the managed command boundaries. No application tests, provider changes, setup renewal, deployment or token rotation were performed for this record. Implementation and live evidence remain open. Preserve the unrelated generated `examples/cf-full/api/cms.mjs` diff.
 
-Next executable task: claim the bounded renewal implementation in the audit and design its capability-generation/encryption separation against both existing hosted backends before editing either live installation. The [overall plan](frontbase-public-release-finalization-20261024.md#current-checkpoint--2026-10-31) and [Vercel acceptance checklist](vercel-native-browser-acceptance-20261031.md#next-run-checklist) track the follow-on gates.
+Current next task: complete real provider-consent renewal on disposable native CF/Vercel apps, then fresh optional-binding Apply and uninterrupted README-to-publication/upgrade acceptance. Keep assisted and uninterrupted evidence separate. The [current acceptance receipt](onboarding-final-acceptance-20261101.md), [overall plan](frontbase-public-release-finalization-20261024.md#current-checkpoint--2026-10-31) and [Vercel acceptance checklist](vercel-native-browser-acceptance-20261031.md#next-run-checklist) track these gates.

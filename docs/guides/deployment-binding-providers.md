@@ -38,6 +38,12 @@ Supabase file operations reuse the existing Storage REST adapter. Deployment fil
 
 ## What survives a reload
 
+### Renewing native-cloud setup access
+
+On updated native CF/Vercel installations, an expired/missing owner session can show **Renew setup access**. Follow hosting-provider authorization using the account that can manage this exact deployment. Frontbase verifies the target and writes only a new encrypted access generation with that fresh grant; it preserves the stable encryption key, connections, selections and installation operation. Earlier links and sessions then stop working. Complete setup through the returned private link; do not paste keys into the wizard.
+
+Pending/uncertain operations require status inspection, and configured installations require administrator login. Unsupported legacy/Docker paths do not advertise browser renewal. The [renewal implementation and live-acceptance status](../plans/hosted-setup-access-renewal-20261031.md) distinguish tested source from outstanding real-provider proof.
+
 Connected provider authorization is encrypted and retained on the installation. Apply securely stores the chosen runtime configuration on the target host. Manually entered credentials before Apply live only in browser memory and require re-entry after reload. Exported plans and saved wizard drafts contain references, not credentials. The old blanket statement that every credential disappears after reload no longer describes connected-account bindings.
 
 ## Verification and remaining provider actions
