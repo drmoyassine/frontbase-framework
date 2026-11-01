@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { DeploymentManifest } from '@frontbase/edge-core/deployment';
 import { mountBindingsForm } from '@/components/deployment/bindings-form';
+import { connectionOptions, type ProviderConnectionStatus } from '@/components/deployment/provider-connect';
 import '@/components/deployment/bindings-form.css';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -17,11 +18,28 @@ function BindingProposal({manifest,client}:{manifest:DeploymentManifest;client:D
     const [reviewed,setReviewed]=useState<DeploymentManifest>();
     const [busy,setBusy]=useState(false);
     const [error,setError]=useState('');
+    const [discoveryUnavailable,setDiscoveryUnavailable]=useState(false);
+    const [editorReady,setEditorReady]=useState(false);
     useEffect(()=>{
         if(!container.current)return;
-        editor.current=mountBindingsForm(container.current,{manifest,credentials:'references',onChange:()=>{revision.current++;setReview(undefined);setReviewed(undefined);setError('');}});
-        return ()=>{revision.current++;editor.current?.destroy();editor.current=undefined;};
-    },[manifest]);
+        let cancelled=false;
+        setDiscoveryUnavailable(false);
+        setEditorReady(false);
+        // Resolve before mounting: a late inventory response must not replace an
+        // already edited proposal. Failed discovery preserves manual references.
+        void (async()=>{
+            let connections:ProviderConnectionStatus|undefined;
+            try{
+                const result=await client.get<ProviderConnectionStatus>('/api/provider-oauth/status');
+                if(!Array.isArray(result.data.providers)||!Array.isArray(result.data.connections))throw Error('unavailable');
+                connections=result.data;
+            }catch{if(!cancelled)setDiscoveryUnavailable(true);}
+            if(cancelled||!container.current)return;
+            editor.current=mountBindingsForm(container.current,{manifest,credentials:'references',discoveryBase:'/api',...(connections?{providerConnections:connectionOptions(connections)}:{}),onChange:()=>{revision.current++;setReview(undefined);setReviewed(undefined);setError('');}});
+            setEditorReady(true);
+        })();
+        return ()=>{cancelled=true;revision.current++;editor.current?.destroy();editor.current=undefined;};
+    },[manifest,client]);
     const validate=async()=>{
         const proposal=editor.current?.snapshot().manifest;if(!proposal)return;
         const currentRevision=revision.current;
@@ -41,10 +59,12 @@ function BindingProposal({manifest,client}:{manifest:DeploymentManifest;client:D
     };
     return <div className="space-y-4">
         <p className="text-sm text-muted-foreground">These are the settings recorded for this deployment. Edit a proposal and review it before downloading. Nothing here changes the running app.</p>
+        {discoveryUnavailable&&<p role="status">Connected-account discovery is unavailable. Manual reference proposals remain available; reopen this dialog to retry discovery.</p>}
+        {!editorReady&&<p role="status">Loading connected accounts…</p>}
         <fieldset disabled={busy} aria-busy={busy}><div ref={container}/></fieldset>
         {error&&<p role="alert">{error}</p>}
         {review?.ready&&<p role="status">{review.status==='unchanged'?'This proposal matches the deployed settings.':review.migrationRequired?'The state database would change. A separate data migration is required.':'This proposal needs a separate reviewed deployment.'} No changes have been applied.</p>}
-        <div className="flex gap-2"><Button disabled={busy} onClick={()=>void validate()}>{busy?'Reviewing…':'Review proposal'}</Button><Button variant="outline" disabled={!reviewed||busy} onClick={download}>Download plan</Button></div>
+        <div className="flex gap-2"><Button disabled={busy||!editorReady} onClick={()=>void validate()}>{busy?'Reviewing…':'Review proposal'}</Button><Button variant="outline" disabled={!reviewed||busy} onClick={download}>Download plan</Button></div>
         <p className="text-xs text-muted-foreground">Plans contain configuration and credential references only. Enter new keys privately in the local deployment setup. Provider changes are proposals; automatic reconfiguration and state migration are not available here.</p>
     </div>;
 }
