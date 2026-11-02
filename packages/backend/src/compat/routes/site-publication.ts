@@ -1,3 +1,5 @@
+import {publicationBindingDiagnostics} from '../publication-binding-diagnostics.js';
+import {PagesStore} from '../pages-store.js';
 import {rewritePublicationPreviewLinks} from '../site-publication-preview-links.js';
 import { z } from 'zod';
 import type { Hono } from 'hono';
@@ -123,6 +125,14 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
         if(!draft || draft.revision!==request.data.expectedConfigurationRevision)return c.json({detail:'Shared settings changed; reload first'},409);
         const bindingIssues=directoryConfigurationDiagnostics(draft.configuration);
         if(bindingIssues.length)return c.json({detail:'Resolve the listed template data and URL settings before preparing publication.',code:'publication_bindings_incomplete',bindingIssues},422);
+        const selectedIds=[...request.data.pageIds,...('staticPageIds' in request.data?request.data.staticPageIds:[]),...('templateBase' in request.data&&request.data.templateBase?[request.data.templateBase.pageId]:[]),...('homepageBase' in request.data&&request.data.homepageBase?[request.data.homepageBase.homepageId]:[])];
+        const selected=[];
+        for(const id of new Set(selectedIds)){const page=await new PagesStore(control,tenant).get(id);if(!page||page.deleted_at)return c.json({detail:'Selected page is unavailable'},422);try{const layout=JSON.parse(page.layout_data);if(!Array.isArray(layout?.content))throw Error('layout');selected.push({pageId:id,layout});}catch{return c.json({detail:'Selected page layout is invalid'},422);}}
+        const elementIssues=await publicationBindingDiagnostics(selected,async path=>{
+            const headers=new Headers();if(c.req.header('cookie'))headers.set('cookie',c.req.header('cookie')!);if(c.req.header('authorization'))headers.set('authorization',c.req.header('authorization')!);
+            const response=await app.fetch(new Request(new URL(path,c.req.url),{headers}));if(!response.ok)throw Error('binding_resource_unavailable');return response.json();
+        });
+        if(elementIssues.length)return c.json({detail:'Resolve the listed element bindings before preparing publication.',code:'publication_elements_incomplete',elementIssues},422);
         const source=await storeFor(tenant).getDatasource(draft.configuration.datasourceId);
         if(!source)return c.json({detail:'Directory datasource is unavailable'},403);
         if(!['supabase','postgres','neon','sqlite','turso','d1'].includes(source.kind))return c.json({detail:'Preparation requires a supported SQL datasource'},422);

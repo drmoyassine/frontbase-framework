@@ -11,6 +11,13 @@ const institution={id:512,title:'Muhlenberg',originalPath:'/muhlenberg/'},progra
 const ok=(value:unknown)=>({ok:true,json:async()=>value});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 describe('site preparation',()=>{
+ it('shows page, element and version diagnostics returned by preparation',async()=>{
+  const fetcher=vi.fn(async(path:string)=>path.endsWith('/read/')?{ok:false,json:async()=>({code:'publication_elements_incomplete',elementIssues:[{pageId:'page',elementId:'card-title',versionId:'mobile',message:'Field title is unavailable.'}]})}:ok({}));
+  vi.stubGlobal('fetch',fetcher);render(<SitePreparationPanel draft={draft}/>);
+  fireEvent.change(screen.getByLabelText('Prepared version ID'),{target:{value:'a'.repeat(64)}});fireEvent.click(screen.getByText('Reopen private version'));
+  const list=await screen.findByRole('list',{name:'Element binding problems'});expect(list).toHaveTextContent('card-title');expect(list).toHaveTextContent('mobile');expect(list).toHaveTextContent('Field title is unavailable.');
+  expect(screen.getByRole('link',{name:'Open page'})).toHaveAttribute('href','/frontbase-admin/builder/page');
+ });
  it('shows captured redirects when reopening and previews them within the same version',async()=>{
   const hash='e'.repeat(64);vi.stubGlobal('fetch',vi.fn(async()=>ok({hash,configurationRevision:1,publicationAvailable:false,routes:{directory:'/explore/',blog:'/blog/'},records:{institutions:[],programs:[],articles:[],pages:[]},redirects:[{from:'/blog/old-news/',to:'/old-news/'}]})));
   render(<SitePreparationPanel draft={draft}/>);fireEvent.change(screen.getByLabelText('Prepared version ID'),{target:{value:hash}});fireEvent.click(screen.getByText('Reopen private version'));

@@ -15,6 +15,7 @@ type Role=typeof roles[number];
 type Approval={id:string;revision:number;fingerprint:string};
 /** Existing Page Settings owns preparation; saved layouts and draft editing stay separate. */
 export function SitePreparationPanel({draft,disabled=false,currentPageId}:{draft:SiteConfigurationDraft;disabled?:boolean;currentPageId?:string}) {
+    const [elementIssues,setElementIssues]=useState<{pageId:string;elementId:string;versionId:string;message:string}[]>([]);
     const [open,setOpen]=useState(false), [busy,setBusy]=useState(false), [message,setMessage]=useState('');
     const [redirectText,setRedirectText]=useState('');
     const [allCatalog,setAllCatalog]=useState(false),[allEditorial,setAllEditorial]=useState(false),[savedPages,setSavedPages]=useState<{id:string;name:string;landing:boolean}[]>([]),[staticIds,setStaticIds]=useState<string[]>([]),[pathSearch,setPathSearch]=useState('');
@@ -25,19 +26,19 @@ export function SitePreparationPanel({draft,disabled=false,currentPageId}:{draft
     const [prepared,setPrepared]=useState<{hash:string;revision:number;paths:Row[];directory?:string;blog?:string;review?:string|null}>(), [preview,setPreview]=useState(''), [recoveryHash,setRecoveryHash]=useState('');
     const [reviewChecks,setReviewChecks]=useState<Record<string,boolean>>({}),[reviewNote,setReviewNote]=useState(''),[reviewAttempted,setReviewAttempted]=useState(false);
     const generation=useRef(0);
-    useEffect(()=>setRedirectText(''),[draft.revision]);
+    useEffect(()=>{setRedirectText('');setElementIssues([]);},[draft.revision,currentPageId]);
     useEffect(()=>{generation.current++;setOpen(false);setBusy(false);setTemplates([]);setPages({});setSavedPages([]);setStaticIds([]);setAllCatalog(false);setAllEditorial(false);setInstitutions([]);setPrograms([]);setArticles([]);setShown({role:'institution',rows:[]});setPrepared(undefined);setPreview('');setMessage('');return()=>{generation.current++;};},[draft.revision,currentPageId]);
     const changed=()=>{setPrepared(undefined);setPreview('');};
     useEffect(()=>{setReviewChecks({});setReviewNote('');setReviewAttempted(false);},[prepared?.hash,draft.revision]);
     async function operation(work:()=>Promise<void>) {
-        const current=generation.current;setBusy(true);setMessage('');
-        try {await work();}catch(error) {if(current===generation.current)setMessage(error instanceof Error&&error.message==='publication_route_serialization'?'A source URL cannot be captured without changing its spelling or origin. Review the source URLs, or update only the saved template from the reviewed site.':error instanceof Error&&error.message==='publication_bindings_incomplete'?'Resolve the listed template data and URL settings before preparing publication.':'Operation unavailable. Reload saved settings and check the connection.');}
+        const current=generation.current;setBusy(true);setMessage('');setElementIssues([]);
+        try {await work();}catch(error) {if(current===generation.current)setMessage(error instanceof Error&&error.message==='publication_elements_incomplete'?'Resolve the element bindings listed below.':error instanceof Error&&error.message==='publication_route_serialization'?'A source URL cannot be captured without changing its spelling or origin. Review the source URLs, or update only the saved template from the reviewed site.':error instanceof Error&&error.message==='publication_bindings_incomplete'?'Resolve the listed template data and URL settings before preparing publication.':'Operation unavailable. Reload saved settings and check the connection.');}
         finally {if(current===generation.current)setBusy(false);}
     }
     async function post(path:string,input:unknown) {
         const current=generation.current,response=await fetch(`/api/project/site-configuration/${path}/`,{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
         if(current!==generation.current)throw new Error('stale');
-        if(!response.ok){const value=await response.json().catch(()=>({}));throw new Error(value.code==='publication_route_serialization'?value.code:value.code==='publication_bindings_incomplete'?'publication_bindings_incomplete':'unavailable');}const value=await response.json();if(current!==generation.current)throw new Error('stale');return value;
+        if(!response.ok){const value=await response.json().catch(()=>({}));if(value.code==='publication_elements_incomplete'&&Array.isArray(value.elementIssues)){setElementIssues(value.elementIssues);throw new Error('publication_elements_incomplete');}throw new Error(value.code==='publication_route_serialization'?value.code:value.code==='publication_bindings_incomplete'?'publication_bindings_incomplete':'unavailable');}const value=await response.json();if(current!==generation.current)throw new Error('stale');return value;
     }
     async function prepareTemplate(){
         if(!currentPageId)return;changed();const current=generation.current;
@@ -123,5 +124,6 @@ const result=await post('publication/prepare',{format:'chunked',expectedConfigur
         {prepared && <fieldset disabled={locked||!!prepared.review||reviewAttempted} className="space-y-2 rounded border p-3"><legend className="px-1 font-medium">Review this captured version</legend><p className="text-sm text-muted-foreground">Confirm only after checking every included page. This records review; publishing is a separate step.</p>{(['content','media','layout','urls','ctas'] as const).map(check=><label key={check} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reviewChecks[check]??false} onChange={event=>setReviewChecks(prior=>({...prior,[check]:event.target.checked}))}/>{{content:'Content and relationships are accurate',media:'Images are suitable, or missing images are intentional',layout:'Layouts work on small and large screens',urls:'Original URLs and page links are correct',ctas:'Contact actions lead to the intended destination'}[check]}</label>)}<label className="block text-sm">Version review note<textarea aria-label="Version review note" className="mt-1 block w-full rounded border bg-background p-2" maxLength={4000} value={reviewNote} onChange={event=>setReviewNote(event.target.value)}/></label><Button disabled={locked||!!prepared.review||reviewAttempted||!reviewNote.trim()||!sitePublicationReviewChecksSchema.safeParse(reviewChecks).success} onClick={()=>void operation(review)}>Approve this private version</Button>{prepared.review?<p className="text-sm">Reviewed {prepared.review}. Reviewing does not publish.</p>:reviewAttempted && <p className="text-sm">Reopen this version to check the review result before trying again.</p>}</fieldset>}
         {prepared && <SitePublicationPanel candidate={prepared} revision={draft.revision} disabled={locked}/>}
         {message && <p role="status">{message}</p>}
+        {!!elementIssues.length&&<ul className="space-y-2 text-sm" aria-label="Element binding problems">{elementIssues.map((issue,index)=><li key={index} className="break-words"><a className="underline" href={'/frontbase-admin/builder/'+encodeURIComponent(issue.pageId)}>Open page</a> · Element {issue.elementId} · Version {issue.versionId}: {issue.message}</li>)}</ul>}
     </section>;
 }
