@@ -1,5 +1,7 @@
 # Template binding consolidation — November 2, 2026
 
+Current status: source-contract retirement is implemented and locally qualified. The historical open items below describe earlier checkpoints and are superseded by the canonical retirement receipt at the end. Legacy serialized formats and the v1 API view remain supported compatibility interfaces; they are not independent runtime mapping authorities. Live provider deployment and wider release acceptance remain separate gates.
+
 Owner authorized implementation after the dependency review. This is not permission to weaken publication scopes, replace published sites or declare public release.
 
 ## Dependency findings
@@ -62,3 +64,25 @@ See [updating a deployed installation](../guides/updating-deployed-frontbase.md)
 Qualification: workspace check/build, focused TypeScript, 10 preparation UI tests and the new standalone metadata diagnostics suite pass. The diagnostics suite covers Default/alternative versions, nested record scopes, deleted fields, deeper relations, view ownership/mismatch, cached reads and redacted provider failures. Existing publication functional suite passes. Publication mutation rerun: PASS, 30/30 faults detected and restored baselines green. The actual prepare API also proves viewer denial, tenant-bound lookup, no-store error responses and no capture writes. Saved-view schema inheritance and malformed layouts have explicit regression coverage. No cloud/browser deployment was performed in this follow-up.
 
 Integration receipt: remote `main` and `codex/native-template-publication-20261102` were both verified at `4c0c733ef63ed2cd4500dd55efd962fd23f4b219` after a non-force atomic fast-forward push. Final workspace build PASS: full CF worker 804.9 KB gzip, Vercel artifact 1055.4 KB gzip; client prohibited-symbol exclusion PASS. This integrates the qualified initial authoring and diagnostics changes only. Legacy contract retirement, fresh cloud/browser acceptance and the overall task remain OPEN. Existing deployments were not upgraded. Only pre-existing `.gitignore` and generated `api/cms.mjs` drift remain uncommitted.
+
+
+## Canonical source-contract retirement — implementation follow-up
+
+The original inventory correctly identified the coupling; subsequent implementation found a smaller compatible replacement than a new public routing format. The shared source contract is in `packages/edge-core/src/directory/source-contract.ts`. It uses the existing binding concepts (`dataSourceId`, `tableName`, `fieldMapping`, a typed equality selection predicate). This does not add a new datasource system, a second editor, arbitrary SQL or a new credential store.
+
+- New authoring writes and atomic template installation persist a strict v2 envelope containing site metadata and exactly one source-binding copy. The existing tenant-owned settings slot, revision sequence, raw-value CAS and installer locks remain unchanged.
+- The public v1 API DTO and its editable controls remain compatibility projections. Existing v1 records decode without writes; the next explicit save writes v2. There is no bulk rewrite or implicit revision bump.
+- Scoped compiler queries, completeness checks, route inventory, editorial adapters, workspace content actions, live-view planning, related-field lineage, listing policies and frontend source writes all resolve bindings through the common contract. Direct legacy `.collections` reads are forbidden outside the adapter by a regression scan.
+- New chunked captures carry an immutable source-binding snapshot. Admission rejects any mismatch with the compatibility metadata. Active source writes use the captured snapshot; later authoring changes cannot redirect an old page's edit. Older compact/chunked captures retain their bytes, hashes, indexes, approvals and records. Their absent snapshot is resolved by the compatibility adapter; no capture is rewritten on read.
+- Translation resources/keys, record IDs, aliases and original paths are unchanged. English/Arabic source and translated record routing remain distinct. Legacy compact publication and API formats remain supported readers/interfaces, not independent mapping authorities.
+- Existing Booking for X profile completeness/parent-scope requirements remain intentional template admission rules. This change does not invent unsupported per-template source selection, multi-source joins or new filter operators.
+
+Verification PASS: lossless round-trip and zero-valued predicates; strict malformed/secret rejection; tenant/CAS and canonical persistence; old manifest byte/hash preservation; source edits from both capture formats with identical write identities despite changed authoring targets; actual English/Arabic save/public reload with old/new captures; shared translation units; route/list/publication integration; workspace check/build; 51 UI tests.
+
+Fault checks PASS: source contract 3, installer 5, live-view policy 4, shared configuration 3, editorial approval 7, source writes 4, manifest 8, template artifact 8, related fields 3 and publication 30 — **75 total**. Every source-mutating suite restored its baseline; template artifact additionally checked restored source hashes. Source contract/compatibility tests are in the ordinary backend test chain and have named scripts (`test:source-contract`, `test:source-contract-mutation`).
+
+The frontend-record test initially completed its assertions but hit a transient Windows EBUSY during fixture cleanup. Bounded cleanup retries plus explicit temporary-directory checks were added; the rerun passed. No product authorization or data checks were weakened.
+
+This closes the bounded legacy source dependency retirement at source. It does not claim a new generic multi-source publication format, arbitrary filter operators, new provider grants, a live cloud rollout or public release.
+
+Migration guidance is in [updating deployed installations](../guides/updating-deployed-frontbase.md). No live cloud data, existing site configuration or deployed application was changed by local qualification.

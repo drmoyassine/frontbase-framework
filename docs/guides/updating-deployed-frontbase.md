@@ -21,3 +21,10 @@ Build a versioned image from the reviewed source (or select a published supporte
 Existing startup migration mechanisms apply pending state migrations. Read the release-specific migration notes before updating; arbitrary downgrades are not guaranteed safe. Capture a restorable backup of real state before a migration-bearing production upgrade. Reverting application code does not reverse database migrations. Recover through the release's verified rollback/restore procedure while preserving encryption keys and resource identity.
 
 Template installation is for a clean app. Re-running it is not the framework upgrade mechanism. Existing builder layouts and translations remain persisted application data, and changing an installed template's design is a separate reviewed content change.
+
+
+## Source-binding contract upgrade (November 2, 2026)
+
+Updated runtimes read both existing v1 authoring records and canonical v2 records. Reading an old installation does not rewrite its configuration or increment its revision. Its next explicit settings save (or a clean template installation) writes the v2 source-binding envelope. Existing API clients keep their v1-compatible configuration view. Existing published captures, public URLs and translation IDs are preserved; new chunked captures pin the source binding used for later record edits.
+
+After a v2 authoring save, an older binary that only reads v1 authoring records cannot safely serve that state. Keep the upgraded runtime, or use a verified pre-upgrade state restoration when rolling back the binary. Publication rollback between compatible reviewed captures is a separate operation and remains supported. Do not reset setup, reinstall the template or replace the connected content database to deliver this update.
