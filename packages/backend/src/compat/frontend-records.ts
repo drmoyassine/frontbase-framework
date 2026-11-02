@@ -1,3 +1,4 @@
+import {publicationSource} from '@frontbase/edge-core/directory/configuration';
 /** Frontend record writes reuse the owned datasource runners and PostgREST transport.
  * The browser supplies an inventory id and a value, never a destination or SQL. */
 import {supabasePostgrestClient} from '@frontbase/edge-infra/supabase-http';
@@ -38,8 +39,8 @@ export async function prepareFrontendRecordEdit(host:TranslationStorageHost,db:D
     if(connectionId==='frontbase:publication'){
         const active=await new SitePublicationStore(db,owner).activeVersion();if(active?.artifact.schemaVersion!==2)throw Error('record_lineage_unavailable');
         const role=table==='programs'?'program':table==='institutions'?'institution':table==='articles'?'article':null;if(!role)throw Error('record_lineage_unavailable');
-        const source=active.artifact.configuration.collections[role],column=(source.fields as Record<string,string>)[path];if(!column)throw Error('record_field_read_only');
-        connectionId=active.artifact.configuration.datasourceId;table=source.table;key={column:source.fields.id,value:key.value};path=column;
+        const source=publicationSource(active.artifact,role),column=(source.fieldMapping as Record<string,string>)[path];if(!column)throw Error('record_field_read_only');
+        connectionId=source.dataSourceId;table=source.tableName;key={column:source.fieldMapping.id,value:key.value};path=column;
     }
     const ds=await host.syncFor(owner).getDatasource(connectionId);if(!ds)throw Error('record_datasource_unavailable');
     const config=scopedDatasourceConfig(ds.kind,await mergeAccountConfig(host.accountConfigFor,host.externalFetch,owner,ds.kind,ds.config),sourceSchema);
@@ -56,8 +57,8 @@ export async function prepareFrontendRecordEdit(host:TranslationStorageHost,db:D
     if(extra.length&&!path.includes('.')){
         const active=await new SitePublicationStore(db,owner).activeVersion();if(active?.artifact.schemaVersion!==2)throw Error('record_lineage_unavailable');
         const role=table.endsWith('_programs')?'program':table.endsWith('_institutions')?'institution':'article';
-        const source=active.artifact.configuration.collections[role],column=(source.fields as Record<string,string>)[path];if(!column)throw Error('record_field_read_only');
-        table=source.table;key={column:source.fields.id,value:key.value};path=column;
+        const source=publicationSource(active.artifact,role),column=(source.fieldMapping as Record<string,string>)[path];if(!column)throw Error('record_field_read_only');
+        table=source.tableName;key={column:source.fieldMapping.id,value:key.value};path=column;
     }
     const parts=path.split('.');if(parts.length>4)throw Error('record_path_invalid');
     while(parts.length>1){
@@ -76,7 +77,8 @@ export async function prepareFrontendRecordEdit(host:TranslationStorageHost,db:D
     // Managed editorial documents retain their existing revision/archive contract.
     // Their approved public snapshot remains pinned until the ordinary review/publication flow.
     const active=await new SitePublicationStore(db,owner).activeVersion(),publication=active?.artifact.schemaVersion===2?active.artifact.configuration:null;
-    const managed=publication?.datasourceId===ds.id&&publication.collections.article.table===table;
+    const editorialSource=active?.artifact.schemaVersion===2?publicationSource(active.artifact,'article'):null;
+    const managed=editorialSource?.dataSourceId===ds.id&&editorialSource.tableName===table;
     if(managed||table==='editorial_documents'){
         const columns:Record<string,'title'|'excerpt'|'byline'|'coverAlt'>={title:'title',excerpt:'excerpt',public_byline:'byline',cover_alt:'coverAlt'},property=columns[column];
         if(!managed||!property||typeof after!=='string'||String(sourceSchema??'public')!=='public')throw Error('record_editorial_contract_required');

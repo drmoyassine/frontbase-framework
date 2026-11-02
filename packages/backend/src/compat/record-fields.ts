@@ -1,3 +1,4 @@
+import {publicationSource} from '@frontbase/edge-core/directory/configuration';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {inspectTable,listRelationships} from './routes/sync.js';
 import {SitePublicationStore} from './site-publication-store.js';
@@ -35,11 +36,11 @@ export async function projectionRelations(db:DbRunner,owner:string,datasourceId:
     const active=await new SitePublicationStore(db,owner).activeVersion();
     if(!active||active.artifact.schemaVersion!==2||active.artifact.configuration.datasourceId!==datasourceId||![...active.artifact.templates,...(active.artifact.staticPages??[])].some(page=>liveViewBindings(page.layout as any).some(binding=>binding.dataSourceId===datasourceId&&binding.tableName===table)))return [];
     const collection=table.endsWith('_institutions')?'institution':table.endsWith('_programs')?'program':'article';
-    const config=active.artifact.configuration.collections,source=config[collection];
-    const result:RecordRelation[]=[{virtual:true,source_table:table,source_column:'id',target_table:source.table,target_column:source.fields.id}];
+    const source=publicationSource(active.artifact,collection);
+    const result:RecordRelation[]=[{virtual:true,source_table:table,source_column:'id',target_table:source.tableName,target_column:source.fieldMapping.id}];
     if(collection!=='article'){
-        const parent=collection==='institution'?config.city:config.institution;
-        result.push({virtual:true,source_table:table,source_column:collection==='institution'?'cityId':'institutionId',target_table:parent.table,target_column:parent.fields.id});
+        const parent=publicationSource(active.artifact,collection==='institution'?'city':'institution');
+        result.push({virtual:true,source_table:table,source_column:collection==='institution'?'cityId':'institutionId',target_table:parent.tableName,target_column:parent.fieldMapping.id});
     }
     return result;
 }

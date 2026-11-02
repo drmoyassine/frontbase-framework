@@ -1,3 +1,4 @@
+import {directorySource} from '@frontbase/edge-core/directory/configuration';
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { createDirectoryQueries, directoryOriginalPath } from '@frontbase/compiler/queries/directory';
@@ -51,12 +52,12 @@ export async function prepareChunkPublication(control:DbRunner,canonical:DbRunne
     async function capture(role:'institution'|'program',paths:string[]){
         const found:Record<string,unknown>[]=[];
         if(request.includeMappedCatalog){
-            const mapping=draft.configuration.collections[role],bind=dialect==='postgres'?'$1':'?';
-            const selected=Object.entries(mapping.fields).filter(([key,value])=>value && !['gallery','contentRole','sourceOrigin'].includes(key));
-            const rows=await canonical.query(`SELECT ${selected.map(([key,value])=>`${quote(value)} AS ${quote(key)}`).join(', ')}, ${quote(mapping.scope.field)} AS "scopeValue" FROM ${quote(mapping.table)} WHERE ${quote(mapping.scope.field)} = ${bind} ORDER BY ${quote(mapping.fields.id)} LIMIT 20001`,[mapping.scope.value]);
+            const mapping=directorySource(draft.configuration,role),bind=dialect==='postgres'?'$1':'?';
+            const selected=Object.entries(mapping.fieldMapping).filter(([key,value])=>value && !['gallery','contentRole','sourceOrigin'].includes(key));
+            const rows=await canonical.query(`SELECT ${selected.map(([key,value])=>`${quote(value)} AS ${quote(key)}`).join(', ')}, ${quote(mapping.filter.column)} AS "scopeValue" FROM ${quote(mapping.tableName)} WHERE ${quote(mapping.filter.column)} = ${bind} ORDER BY ${quote(mapping.fieldMapping.id)} LIMIT 20001`,[mapping.filter.value]);
             if(rows.length>20000)throw new Error('publication_catalog_overflow');
             for(const source of rows){
-                if(source.scopeValue!==mapping.scope.value)throw new Error('publication_scope_mismatch');
+                if(source.scopeValue!==mapping.filter.value)throw new Error('publication_scope_mismatch');
                 if(source.originalPath===null || source.originalPath===undefined || source.originalPath===''){skipped[role==='institution'?'institutions':'programs']++;continue;}
                 const originalPath=directoryOriginalPath(source.originalPath,draft.configuration.site.origin);
                 if(!originalPath || source.originalPath!==originalPath && source.originalPath!==draft.configuration.site.origin+originalPath)throw new Error('publication_route_serialization');
@@ -68,11 +69,11 @@ export async function prepareChunkPublication(control:DbRunner,canonical:DbRunne
             cover:media(row.cover),coverAlt:row.coverAlt??'',logo:media(row.logo),...(role==='institution'?{cityId:row.cityId}:{institutionId:row.institutionId})}));
     }
     const institutions=await capture('institution',request.institutionPaths),programs=await capture('program',request.programPaths);
-    const city=draft.configuration.collections.city,cities:Record<string,unknown>[]=[];
-    const cityRows=await canonical.query(`SELECT ${quote(city.fields.id)} AS "id", ${quote(city.fields.title)} AS "title", ${quote(city.scope.field)} AS "scopeValue" FROM ${quote(city.table)} WHERE ${quote(city.scope.field)} = ${dialect==='postgres'?'$1':'?'} ORDER BY ${quote(city.fields.id)} LIMIT 20001`,[city.scope.value]);
+    const city=directorySource(draft.configuration,'city'),cities:Record<string,unknown>[]=[];
+    const cityRows=await canonical.query(`SELECT ${quote(city.fieldMapping.id)} AS "id", ${quote(city.fieldMapping.title)} AS "title", ${quote(city.filter.column)} AS "scopeValue" FROM ${quote(city.tableName)} WHERE ${quote(city.filter.column)} = ${dialect==='postgres'?'$1':'?'} ORDER BY ${quote(city.fieldMapping.id)} LIMIT 20001`,[city.filter.value]);
     if(cityRows.length>20000)throw new Error('publication_catalog_overflow');
     const requiredCities=new Set(institutions.map(row=>String((row as {cityId:unknown}).cityId)));
-    for(const row of cityRows){if(row.scopeValue!==city.scope.value)throw new Error('publication_scope_mismatch');if(requiredCities.has(String(row.id)))cities.push({id:row.id,title:row.title});}
+    for(const row of cityRows){if(row.scopeValue!==city.filter.value)throw new Error('publication_scope_mismatch');if(requiredCities.has(String(row.id)))cities.push({id:row.id,title:row.title});}
     let refs=request.articles;
     if(request.includeApprovedEditorial){
         const rows=await control.query('SELECT key, value FROM settings WHERE tenant_slug = ? AND key LIKE ? LIMIT 40001',[tenant,'editorial_approval:v1:%']);

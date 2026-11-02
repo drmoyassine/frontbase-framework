@@ -1,3 +1,4 @@
+import {directorySource} from '@frontbase/edge-core/directory/configuration';
 import {templateRoute} from './template-route.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
@@ -46,7 +47,7 @@ export async function pagesWorkspace(db: DbRunner, owner: string) {
         const captured = templates.find(t => t.pageId === page.id) ?? statics.find(t => t.pageId === page.id);
         const paths = role ? rolePaths[role] ?? [] : [];
         const collection = role === 'institution' ? 'institution' : role === 'program' ? 'program' : role === 'article' || role === 'article-index' || role === 'editorial' ? 'article' : undefined;
-        const mapping = collection && configuration?.collections[collection];
+        const mapping = collection && configuration ? directorySource(configuration,collection) : undefined;
         const unchanged = captured && !!page.is_public && stableStringify(layout) === stableStringify(captured.layout)
             && (page.title ?? page.name) === captured.title && (page.description ?? '') === captured.description
             && (!('originalPath' in captured) || captured.originalPath === (page.is_homepage ? '/' : page.slug.startsWith('/') ? page.slug : '/' + page.slug));
@@ -56,17 +57,17 @@ export async function pagesWorkspace(db: DbRunner, owner: string) {
                 ...(paths.length === 1 ? { path: paths[0] } : {}) } : { path: page.is_homepage ? '/' : page.slug.startsWith('/') ? page.slug : '/' + page.slug }),
             publicationStatus: captured ? unchanged && (!(role || layout.root?.directoryLanding) || !sharedChanged) ? 'published' : 'changes-pending' : page.is_published ? 'published' : 'draft',
             developmentOnly: !captured && /^(Editorial migration review|Shared settings proof)/i.test(page.name), source: 'saved',
-            ...(mapping?.table && configuration?.datasourceId ? { contentAction: { datasourceId: configuration.datasourceId, table: mapping.table, keyColumn:mapping.fields.id, ...(role === 'editorial' ? { contentRole: 'page' as const } : {}) } } : {}),
+            ...(mapping?.tableName && configuration?.datasourceId ? { contentAction: { datasourceId: configuration.datasourceId, table: mapping.tableName, keyColumn:mapping.fieldMapping.id, ...(role === 'editorial' ? { contentRole: 'page' as const } : {}) } } : {}),
         });
     }
     // Ordinary captured pages are individually discoverable; article/program catalogs remain collection views.
     for (const row of rows?.pages ?? []) {
         if(active?.artifact.schemaVersion===2&&row.originalPath&&templateRoute(active.artifact,row.originalPath)?.attached)continue;
         if (entries.some(entry => entry.source === 'saved' && entry.kind === 'page' && entry.path === row.originalPath && statics.some(page => page.pageId === entry.id))) continue;
-        const mapping = configuration?.collections.article;
+        const mapping = configuration?directorySource(configuration,'article'):undefined;
         entries.push({ id: `record:page:${row.id}`, name: row.title, kind: 'page', role: 'editorial', path: row.originalPath,
             publicationStatus: 'published', developmentOnly: false, source: 'derived',
-            ...(mapping?.table && configuration?.datasourceId ? { contentAction: { datasourceId: configuration.datasourceId, table: mapping.table, recordId: String(row.id), contentRole: 'page' as const } } : {}),
+            ...(mapping?.tableName && configuration?.datasourceId ? { contentAction: { datasourceId: configuration.datasourceId, table: mapping.tableName, recordId: String(row.id), contentRole: 'page' as const } } : {}),
         });
     }
     const directory = entries.find(e => e.role === 'directory');

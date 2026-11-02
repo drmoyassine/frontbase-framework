@@ -1,3 +1,4 @@
+import {sourceBindings} from '@frontbase/edge-core/directory/configuration';
 import { z } from 'zod';
 import { directoryConfigurationSchema, directoryConfigurationReadiness, directoryLayoutQueries, directoryQueryBindingSchema, directoryRecordBindingSchema,
     siteBindingsSchema, sitePageReferenceSchema } from '@frontbase/edge-core/directory/configuration';
@@ -48,7 +49,7 @@ export function validateEducationArtifact(input: unknown) {
     }
     if(new TextEncoder().encode(JSON.stringify(input)).byteLength>1024*1024)throw new Error('template_artifact_invalid');
     const artifact=artifactSchema.parse(input), c=artifact.configuration;
-    if(c.datasourceId||c.site.origin||c.site.name||c.site.destination||c.contacts.email||c.contacts.whatsapp||Object.values(c.collections).some(m=>m.scope.value!==''))throw new Error('template_artifact_destination_bound');
+    if(c.datasourceId||c.site.origin||c.site.name||c.site.destination||c.contacts.email||c.contacts.whatsapp||Object.values(sourceBindings(c).bindings).some(m=>m.filter.value!==''))throw new Error('template_artifact_destination_bound');
     const declared=new Set(artifact.destinationBindings);
     if(directoryConfigurationReadiness(c).some(gap=>!declared.has(gap)&&!declared.has('configuration.'+gap)))throw new Error('template_artifact_bindings');
     const capabilities=artifact.requiredCapabilities;

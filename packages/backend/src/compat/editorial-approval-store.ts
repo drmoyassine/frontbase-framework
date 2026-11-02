@@ -1,5 +1,6 @@
+import {readSourceConfiguration} from '@frontbase/edge-core/directory/configuration';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { editorialDocumentSchema, editorialReviewChecksSchema, siteConfigurationDraftSchema, type EditorialDocument, type SiteConfigurationDraft } from '@frontbase/edge-core/directory/configuration';
+import { editorialDocumentSchema, editorialReviewChecksSchema, type EditorialDocument, type SiteConfigurationDraft } from '@frontbase/edge-core/directory/configuration';
 
 /** Private owner-scoped approval; no route activation and no mutable draft serving. */
 export class EditorialApprovalStore {
@@ -52,7 +53,7 @@ export class EditorialApprovalStore {
         const current = await this.db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?', [this.tenant,'site_configuration:v1']);
         if (!current.length) return null;
         const captured = String(current[0]!.value);
-        if (JSON.stringify(siteConfigurationDraftSchema.parse(JSON.parse(captured))) !== JSON.stringify(draft)) return null;
+        if (JSON.stringify(readSourceConfiguration(JSON.parse(captured))) !== JSON.stringify(draft)) return null;
         const record = { schemaVersion: 1, documentId: document.id, documentRevision: document.revision,
             configurationRevision: draft.revision, configuration: draft.configuration, fingerprint, snapshot,
             reviewer, reviewedAt: now, note, checks: reviewed };

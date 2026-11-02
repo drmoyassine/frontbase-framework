@@ -1,3 +1,5 @@
+import {publicationHash} from '../dist/compat/publication-hash.js';
+import {publicationSource} from '@frontbase/edge-core/directory/configuration';
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -34,6 +36,12 @@ const store = new SitePublicationManifestStore(db, 'alpha'), foreign = new SiteP
 const now = '2026-10-11T00:00:00Z';
 const hash = await store.prepare(header, records, now), manifest = await store.get(hash);
 assert.equal(manifest.index.length, 124);
+assert.equal(manifest.sourceBindings.schemaVersion,2);assert.equal(publicationSource(manifest,'program').tableName,'program');
+const mismatched=structuredClone(manifest);mismatched.sourceBindings.bindings.program.tableName='foreign_programs';assert.equal(sitePublicationManifestSchema.safeParse(mismatched).success,false);
+const legacy=structuredClone(manifest);delete legacy.sourceBindings;const legacyBytes=stableStringify(legacy),legacyHash=await publicationHash(legacy);
+await db.exec('INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?)',['alpha','site_publication:manifest:v2:'+legacyHash,legacyBytes,now]);
+assert.deepEqual(await store.get(legacyHash),legacy);assert.equal(await publicationHash(await store.get(legacyHash)),legacyHash);assert.equal((await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',['alpha','site_publication:manifest:v2:'+legacyHash]))[0].value,legacyBytes);assert.equal(publicationSource(legacy,'program').tableName,'program');
+
 assert.ok(manifest.chunks.reduce((n,c) => n + c.bytes, 0) > 1024 * 1024);
 await store.verify(manifest);
 const redirected=await store.get(await store.prepare({...header,redirects:[{from:'/blog/old-news/',to:'/old-news/'}]},records,now));

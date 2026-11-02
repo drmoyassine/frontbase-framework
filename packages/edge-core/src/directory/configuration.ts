@@ -1,3 +1,4 @@
+import {directorySource} from './source-contract.js';
 import { z } from 'zod';
 export {liveViewBindingSchema,liveViewBindings} from './live-list.js';
 export { projectRelativeSiteLinks } from './navigation.js';
@@ -131,19 +132,19 @@ export function directoryConfigurationReadiness(value: unknown): string[] {
     if (!c.datasourceId) missing.push('datasourceId');
     if (!c.routes.directory) missing.push('routes.directory');
     for (const role of ['institution', 'program', 'city'] as const) {
-        const r = c.collections[role];
-        for (const key of ['id', 'title'] as const) if (!r.fields[key]) missing.push(`collections.${role}.fields.${key}`);
-        if (role !== 'city' && !r.fields.originalPath) missing.push(`collections.${role}.fields.originalPath`);
-        if (!r.table) missing.push(`collections.${role}.table`);
-        if (!r.scope.field || r.scope.value === '') missing.push(`collections.${role}.scope`);
+        const r = directorySource(c,role);
+        for (const key of ['id', 'title'] as const) if (!r.fieldMapping[key]) missing.push(`collections.${role}.fields.${key}`);
+        if (role !== 'city' && !r.fieldMapping.originalPath) missing.push(`collections.${role}.fields.originalPath`);
+        if (!r.tableName) missing.push(`collections.${role}.table`);
+        if (!r.filter.column || r.filter.value === '') missing.push(`collections.${role}.scope`);
     }
-    if (!c.collections.program.fields.institutionId) missing.push('collections.program.fields.institutionId');
-    if (!c.collections.institution.fields.cityId) missing.push('collections.institution.fields.cityId');
-    for (const role of ['article', 'pathway'] as const) if (c.collections[role].table) {
-        const r = c.collections[role];
-        if (!r.fields.id || !r.fields.title || !r.fields.originalPath || !r.scope.field || r.scope.value === '') missing.push(`collections.${role}`);
+    if (!directorySource(c,'program').fieldMapping.institutionId) missing.push('collections.program.fields.institutionId');
+    if (!directorySource(c,'institution').fieldMapping.cityId) missing.push('collections.institution.fields.cityId');
+    for (const role of ['article', 'pathway'] as const) if (directorySource(c,role).tableName) {
+        const r = directorySource(c,role);
+        if (!r.fieldMapping.id || !r.fieldMapping.title || !r.fieldMapping.originalPath || !r.filter.column || r.filter.value === '') missing.push(`collections.${role}`);
     }
-    if (c.collections.article.table && (!c.collections.article.fields.contentRole || !c.collections.article.fields.sourceOrigin || !c.collections.article.fields.body)) missing.push('collections.article.editorial');
+    if (directorySource(c,'article').tableName && (!directorySource(c,'article').fieldMapping.contentRole || !directorySource(c,'article').fieldMapping.sourceOrigin || !directorySource(c,'article').fieldMapping.body)) missing.push('collections.article.editorial');
     return missing;
 }
 /** Actionable authoring diagnostics over the existing publication admission checks.
@@ -176,3 +177,5 @@ export function directoryConfigurationDiagnostics(value: unknown): DirectoryConf
 export { editorialCoverUrlSchema, editorialEditSchema, editorialReadRequestSchema, editorialSaveRequestSchema, editorialDocumentSchema, editorialApprovalRequestSchema, editorialReviewChecksSchema, type EditorialDocument, type EditorialEdit } from './editorial.js';
 
 export {templateRecordFields,bindingWithTemplateFields} from './live-list.js';
+
+export {sourceBindingsSchema,sourceBindings,directorySource,publicationSource,sourceBindingsMatch,storedSourceConfigurationSchema,encodeSourceConfiguration,readSourceConfiguration,type SourceBindings} from './source-contract.js';

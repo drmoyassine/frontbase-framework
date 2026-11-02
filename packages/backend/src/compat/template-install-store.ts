@@ -1,5 +1,5 @@
 import type {DbRunner} from '@frontbase/edge-infra';
-import {directoryConfigurationSchema,directoryConfigurationReadiness} from '@frontbase/edge-core/directory/configuration';
+import {directoryConfigurationSchema,directoryConfigurationReadiness,encodeSourceConfiguration} from '@frontbase/edge-core/directory/configuration';
 import {bookingPages,bookingMenus,bookingTemplate,digest} from './booking-template.js';
 import {z} from 'zod';
 import {publicationHash} from './publication-hash.js';
@@ -56,7 +56,7 @@ export class TemplateInstallStore{
   const guard=`EXISTS(SELECT 1 FROM settings WHERE tenant_slug=? AND key=? AND value=?) AND (SELECT COUNT(*) FROM compat_pages WHERE tenant_slug=?)=${seed?1:0} AND NOT EXISTS(SELECT 1 FROM settings WHERE tenant_slug=? AND (key=? OR key=?)) AND NOT EXISTS(SELECT 1 FROM compat_page_versions WHERE tenant_slug=?)${seed?' AND EXISTS(SELECT 1 FROM compat_pages WHERE tenant_slug=? AND '+expected+')':''}`;
   statements.push({sql:`INSERT INTO settings(tenant_slug,key,value,updated_at) SELECT ?,?,?,? WHERE NOT (${guard})`,params:[this.owner,SLOT,'guard',now,this.owner,SLOT,pending,this.owner,this.owner,CONFIG,'app_menus:v1',this.owner,...(seed?[this.owner,...seedValues]:[])]});
   if(seed)statements.push({sql:'DELETE FROM compat_pages WHERE tenant_slug=? AND id=?',params:[this.owner,seed.id]});
-  statements.push({sql:'INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?)',params:[this.owner,CONFIG,JSON.stringify({schemaVersion:1,revision:1,configuration:input.configuration}),now]});
+  statements.push({sql:'INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?)',params:[this.owner,CONFIG,JSON.stringify(encodeSourceConfiguration(input.configuration,1)),now]});
   const menus=bookingMenus(),menuHash=await publicationHash(menus);
   statements.push({sql:'INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?)',params:[this.owner,'app_menus:v1',JSON.stringify(menus),now]});
   statements.push({sql:'INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?)',params:[this.owner,'app_menus:publication:v1:'+menuHash,stableStringify(menus),now]});

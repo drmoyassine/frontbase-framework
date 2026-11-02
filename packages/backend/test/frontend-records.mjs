@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,dirname,basename} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {sqliteRunner} from '@frontbase/edge-infra';
 import {migrateUp} from '../dist/db/migrations.js';
@@ -59,4 +59,4 @@ try{
  let resolveFirst;const selections=[];raceDom.window.fetch=async path=>{if(String(path).includes('capability'))return Response.json({enabled:true});const selection=new URL(path,'https://site.example').searchParams.get('selection');if(!selection)return Response.json({token:'initial',fields:[raceField(1)]});const id=Number(JSON.parse(selection)[0].ids[0]);selections.push(id);if(id===1)await new Promise(resolve=>resolveFirst=resolve);return Response.json({token:'selection'+id,fields:[raceField(id)]});};
  const boot=raceDom.window.eval(FRONTEND_EDITOR_SCRIPT);await new Promise(resolve=>raceDom.window.setTimeout(resolve,0));assert.ok(resolveFirst);raceDom.window.document.querySelector('[data-fb-record-key]').dataset.fbRecordKey='2';raceDom.window.document.querySelector('p').textContent='Two';await new Promise(resolve=>raceDom.window.setTimeout(resolve,0));resolveFirst();await boot;await new Promise(resolve=>raceDom.window.setTimeout(resolve,15));assert.deepEqual(selections,[1,2],'selection changed during inventory refresh is re-read without polling');assert.ok(raceDom.window.document.querySelector('p[data-fb-copy]'));for(let i=0;i<20;i++){const child=raceDom.window.document.createElement('aside');child.textContent=String(i);raceDom.window.document.body.append(child);await new Promise(resolve=>raceDom.window.setTimeout(resolve,0));child.remove();}assert.deepEqual(selections,[1,2],'stable selection and unrelated DOM changes never repeat inventory reads');raceDom.window.close();
  console.log('PASS owned source writes, related-record routing, typed values, stale CAS, unbound/key/tenant refusals and staged detail editor');
-}finally{await db.close?.();await rm(dir,{recursive:true,force:true});}
+}finally{await db.close?.();assert.equal(dirname(dir),tmpdir());assert.ok(basename(dir).startsWith('frontbase-records-'));await rm(dir,{recursive:true,force:true,maxRetries:10,retryDelay:100});}

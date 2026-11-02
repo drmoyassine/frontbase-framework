@@ -1,3 +1,4 @@
+import {directorySource} from '@frontbase/edge-core/directory/configuration';
 import { z } from 'zod';
 import { directoryConfigurationSchema, directoryConfigurationReadiness, parseEditorialBody, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { defineQueries, type QueryRegistry } from './defineQueries.js';
@@ -33,8 +34,8 @@ export function createDirectoryQueries(input: DirectoryConfiguration, owner: str
     const registry: QueryRegistry = {};
     for (const role of roles) for (const mode of ['list', 'detail'] as const) {
         if (role === 'city' && mode === 'detail') continue; // cities have no preserved-path mapping yet
-        const mapping = c.collections[role === 'page' ? 'article' : role];
-        if ((role === 'article' || role === 'page') && !mapping.table) continue;
+        const mapping = directorySource(c,role === 'page' ? 'article' : role);
+        if ((role === 'article' || role === 'page') && !mapping.tableName) continue;
         const paramsSchema = directoryPreviewSchema.shape.params.refine(p => mode === 'detail'
             ? !!p.path && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined && p.sort === undefined && p.match === undefined
             : p.path === undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);
@@ -44,19 +45,19 @@ export function createDirectoryQueries(input: DirectoryConfiguration, owner: str
                 const p = paramsSchema.parse(raw);
                 const values: unknown[] = []; const bind = (v: unknown) => { values.push(v); return dialect === 'postgres' ? `$${values.length}` : '?'; };
                 const field = (alias: string, name: string) => `${alias}.${quote(name)}`;
-                const scoped = (alias: string, m: typeof mapping) => `${field(alias, m.scope.field)} = ${bind(m.scope.value)}`;
-                const city = c.collections.city, institution = c.collections.institution;
-                const cityExists = (alias: string) => `EXISTS (SELECT 1 FROM ${quote(city.table)} dc WHERE ${field('dc', city.fields.id)} = ${field(alias, institution.fields.cityId)} AND ${scoped('dc', city)})`;
+                const scoped = (alias: string, m: typeof mapping) => `${field(alias, m.filter.column)} = ${bind(m.filter.value)}`;
+                const city = directorySource(c,'city'), institution = directorySource(c,'institution');
+                const cityExists = (alias: string) => `EXISTS (SELECT 1 FROM ${quote(city.tableName)} dc WHERE ${field('dc', city.fieldMapping.id)} = ${field(alias, institution.fieldMapping.cityId)} AND ${scoped('dc', city)})`;
                 const where = [scoped('d', mapping)];
-                if (role === 'article' || role === 'page') where.push(`${field('d', mapping.fields.contentRole)} = ${bind(role)}`, `${field('d', mapping.fields.sourceOrigin)} = ${bind(c.site.origin)}`);
+                if (role === 'article' || role === 'page') where.push(`${field('d', mapping.fieldMapping.contentRole)} = ${bind(role)}`, `${field('d', mapping.fieldMapping.sourceOrigin)} = ${bind(c.site.origin)}`);
                 if (role === 'institution') where.push(cityExists('d'));
-                if (role === 'program') where.push(`EXISTS (SELECT 1 FROM ${quote(institution.table)} di WHERE ${field('di', institution.fields.id)} = ${field('d', mapping.fields.institutionId)} AND ${scoped('di', institution)} AND ${cityExists('di')})`);
-                if (p.institutionId !== undefined) where.push(`${field('d', mapping.fields.institutionId)} = ${bind(p.institutionId)}`);
-                if (p.q) where.push(`LOWER(CAST(${field('d', mapping.fields.title)} AS TEXT)) LIKE ${bind((p.match === 'contains' || !p.match ? '%' : '') + p.q.toLowerCase().replace(/[!%_]/g, v => '!' + v) + (p.match === 'equals' ? '' : '%'))} ESCAPE '!'`);
-                if (p.path) where.push(`(${field('d', mapping.fields.originalPath)} = ${bind(p.path)} OR ${field('d', mapping.fields.originalPath)} = ${bind(c.site.origin + p.path)})`);
-                const selected = Object.entries(mapping.fields).filter(([key, value]) => value && !['contentRole','sourceOrigin'].includes(key) && (mode === 'detail' || !['body', 'gallery'].includes(key)));
+                if (role === 'program') where.push(`EXISTS (SELECT 1 FROM ${quote(institution.tableName)} di WHERE ${field('di', institution.fieldMapping.id)} = ${field('d', mapping.fieldMapping.institutionId)} AND ${scoped('di', institution)} AND ${cityExists('di')})`);
+                if (p.institutionId !== undefined) where.push(`${field('d', mapping.fieldMapping.institutionId)} = ${bind(p.institutionId)}`);
+                if (p.q) where.push(`LOWER(CAST(${field('d', mapping.fieldMapping.title)} AS TEXT)) LIKE ${bind((p.match === 'contains' || !p.match ? '%' : '') + p.q.toLowerCase().replace(/[!%_]/g, v => '!' + v) + (p.match === 'equals' ? '' : '%'))} ESCAPE '!'`);
+                if (p.path) where.push(`(${field('d', mapping.fieldMapping.originalPath)} = ${bind(p.path)} OR ${field('d', mapping.fieldMapping.originalPath)} = ${bind(c.site.origin + p.path)})`);
+                const selected = Object.entries(mapping.fieldMapping).filter(([key, value]) => value && !['contentRole','sourceOrigin'].includes(key) && (mode === 'detail' || !['body', 'gallery'].includes(key)));
                 const projection = selected.map(([key, value]) => `${field('d', value)} AS ${quote(key)}`).join(', ');
-                const rows = await query(`SELECT ${projection} FROM ${quote(mapping.table)} d WHERE ${where.join(' AND ')} ORDER BY ${field('d', mapping.fields.title)} ${p.sort === 'title-desc' ? 'DESC' : 'ASC'}, ${field('d', mapping.fields.id)} LIMIT ${bind(mode === 'detail' ? 2 : (p.limit ?? c.browsing.pageSize) + 1)} OFFSET ${bind(p.offset ?? 0)}`, values);
+                const rows = await query(`SELECT ${projection} FROM ${quote(mapping.tableName)} d WHERE ${where.join(' AND ')} ORDER BY ${field('d', mapping.fieldMapping.title)} ${p.sort === 'title-desc' ? 'DESC' : 'ASC'}, ${field('d', mapping.fieldMapping.id)} LIMIT ${bind(mode === 'detail' ? 2 : (p.limit ?? c.browsing.pageSize) + 1)} OFFSET ${bind(p.offset ?? 0)}`, values);
                 if (mode === 'detail' && rows.length > 1) throw new Error('directory_path_ambiguous');
                 // Enforce a narrow bounded projection even if a driver returns extra columns.
                 return rows.slice(0, mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1).map(row => Object.fromEntries(selected.map(([key]) => {

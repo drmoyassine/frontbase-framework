@@ -1,3 +1,4 @@
+import {publicationSource} from '@frontbase/edge-core/directory/configuration';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {PageLayoutData,PageComponent} from '@frontbase/edge-core';
 import {applyBlockVersion} from '@frontbase/edge-core/block-versions';
@@ -12,34 +13,34 @@ const quote=(name:string)=>{if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))throw Erro
 export async function pilotLiveViewPlan(base:SitePublicationManifest,owner:string,baseHash:string,targets?:Partial<Record<keyof typeof roles,string>>){
     const namespace=(await publicationHash({owner})).slice(0,8),origin=base.configuration.site.origin;
     return (Object.keys(roles) as (keyof typeof roles)[]).map(collection=>{
-        const mapping=base.configuration.collections[roles[collection]],entries=base.index.filter(row=>row.collection===collection);
+        const mapping=publicationSource(base,roles[collection]),entries=base.index.filter(row=>row.collection===collection);
         if(!entries.length)throw Error('live_view_population_missing');
         const table=targets?.[collection]??`fb_live_${namespace}_${baseHash.slice(0,8)}_${collection}`;
         const fields=['id','title','summary','cover','coverAlt','logo',...(collection==='programs'?['institutionId']:collection==='institutions'?['cityId']:['byline','publishedAt'])];
         const projection=fields.map(key=>{
-            const field=mapping.fields[key as keyof typeof mapping.fields];
+            const field=mapping.fieldMapping[key as keyof typeof mapping.fieldMapping];
             return `${field?['cover','logo'].includes(key)?`NULLIF(BTRIM(d.${quote(field)}::text),'')`:key==='summary'?`LEFT(d.${quote(field)}::text,${collection==='articles'?10000:1000})`:`d.${quote(field)}`:key==='summary'||key==='coverAlt'?"''":'NULL'} AS ${quote(key)}`;
         });
-        const path=`d.${quote(mapping.fields.originalPath)}::text`;
-        projection.push(`CASE WHEN LEFT(${path},${origin.length})=${literal(origin)} THEN SUBSTRING(${path} FROM ${origin.length+1}) ELSE ${path} END AS "originalPath"`,`d.${quote(mapping.scope.field)} AS "country_id"`);
-        const filters:any[]=[{field:'country_id',operator:'eq',value:mapping.scope.value,label:'Destination country'}];
+        const path=`d.${quote(mapping.fieldMapping.originalPath)}::text`;
+        projection.push(`CASE WHEN LEFT(${path},${origin.length})=${literal(origin)} THEN SUBSTRING(${path} FROM ${origin.length+1}) ELSE ${path} END AS "originalPath"`,`d.${quote(mapping.filter.column)} AS "country_id"`);
+        const filters:any[]=[{field:'country_id',operator:'eq',value:mapping.filter.value,label:'Destination country'}];
         let join='',extraColumns:string[]=[];
         if(collection==='articles'){
-            projection.push('d."revision" AS "revision"',`d.${quote(mapping.fields.contentRole)}::text AS "contentRole"`,`d.${quote(mapping.fields.sourceOrigin)}::text AS "sourceOrigin"`);
+            projection.push('d."revision" AS "revision"',`d.${quote(mapping.fieldMapping.contentRole)}::text AS "contentRole"`,`d.${quote(mapping.fieldMapping.sourceOrigin)}::text AS "sourceOrigin"`);
             filters.push({field:'contentRole',operator:'eq',value:'article'},{field:'sourceOrigin',operator:'eq',value:origin});extraColumns=['contentRole','sourceOrigin'];
         }else{
-            const parent=base.configuration.collections[collection==='institutions'?'city':'institution'];
-            const fk=collection==='institutions'?mapping.fields.cityId:mapping.fields.institutionId;
-            join=` LEFT JOIN public.${quote(parent.table)} parent ON parent.${quote(parent.fields.id)}::text=d.${quote(fk)}::text`;
-            projection.push(`parent.${quote(parent.scope.field)}::text AS "parent_country_id"`);extraColumns=['parent_country_id'];
-            filters.push({field:'parent_country_id',operator:'eq',value:String(parent.scope.value),label:'Parent destination country'});
+            const parent=publicationSource(base,collection==='institutions'?'city':'institution');
+            const fk=collection==='institutions'?mapping.fieldMapping.cityId:mapping.fieldMapping.institutionId;
+            join=` LEFT JOIN public.${quote(parent.tableName)} parent ON parent.${quote(parent.fieldMapping.id)}::text=d.${quote(fk)}::text`;
+            projection.push(`parent.${quote(parent.filter.column)}::text AS "parent_country_id"`);extraColumns=['parent_country_id'];
+            filters.push({field:'parent_country_id',operator:'eq',value:String(parent.filter.value),label:'Parent destination country'});
             if(collection==='programs')filters.push({field:'institutionId',operator:'in',value:base.index.filter(row=>row.collection==='institutions').map(row=>row.id),label:'Selected parent institutions'});
         }
         filters.push({logic:'or',label:'Migrated selection — edit or remove to change membership',conditions:entries.map(row=>({logic:'and',label:String(row.id),conditions:[
             {field:'id',operator:'eq',value:row.id},{field:'originalPath',operator:'eq',value:row.originalPath},
             ...(collection==='articles'?[{field:'revision',operator:'eq',value:row.revision}]:[{field:collection==='institutions'?'cityId':'institutionId',operator:'eq',value:row.parentId}])
         ]}))});
-        const select=`SELECT ${projection.join(',')} FROM public.${quote(mapping.table)} d${join}`;
+        const select=`SELECT ${projection.join(',')} FROM public.${quote(mapping.tableName)} d${join}`;
         const sql=`CREATE OR REPLACE VIEW public.${quote(table)} WITH (security_invoker=true) AS ${select}; REVOKE ALL ON public.${quote(table)} FROM PUBLIC,anon,authenticated; GRANT SELECT ON public.${quote(table)} TO service_role;`;
         return {collection,table,sql,filters,extraColumns,expected:entries.length,columns:[...fields,'originalPath','country_id',...(collection==='articles'?['revision']:[]),...extraColumns]};
     });

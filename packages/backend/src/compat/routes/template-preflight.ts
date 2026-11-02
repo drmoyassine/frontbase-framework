@@ -1,3 +1,4 @@
+import {sourceBindings,directorySource} from '@frontbase/edge-core/directory/configuration';
 import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { z } from 'zod';
@@ -41,7 +42,7 @@ export function registerTemplatePreflightRoutes(app: Hono<{ Variables: ConsoleAu
             return c.json({ detail: 'Invalid or duplicate template page routes' }, 422);
         const directory = pages.find(p => p.role === 'directory');
         if (!directory || pathKey(directory.slug) !== pathKey(configuration.routes.directory) || directoryConfigurationReadiness(configuration).length
-            || pages.some(p => ['article', 'article-index'].includes(p.role) && !configuration.collections.article.table))
+            || pages.some(p => ['article', 'article-index'].includes(p.role) && !directorySource(configuration,'article').tableName))
             return c.json({ detail: 'Template destination bindings are incomplete' }, 422);
         const owner = c.get('tenant');
         try {
@@ -60,11 +61,11 @@ export function registerTemplatePreflightRoutes(app: Hono<{ Variables: ConsoleAu
             const db = await resolve(owner, configuration.datasourceId);
             if (!db) return c.json({ detail: 'Template datasource is unavailable' }, 403);
             const checked = [];
-            for (const [role, mapping] of Object.entries(configuration.collections)) {
-                if (!mapping.table) continue;
-                const columns = [...new Set([...Object.values(mapping.fields), mapping.scope.field].filter(Boolean))];
+            for (const [role, mapping] of Object.entries(sourceBindings(configuration).bindings)) {
+                if (!mapping.tableName) continue;
+                const columns = [...new Set([...Object.values(mapping.fieldMapping), mapping.filter.column].filter(Boolean))];
                 // All identifiers were parsed by the shared strict schema; no SQL or scope values from the body are executed.
-                await db.query(`SELECT ${columns.map(col => `d."${col}"`).join(', ')} FROM "${mapping.table}" d WHERE 1 = 0`, []);
+                await db.query(`SELECT ${columns.map(col => `d."${col}"`).join(', ')} FROM "${mapping.tableName}" d WHERE 1 = 0`, []);
                 checked.push(role);
             }
             if (await settings.get() || JSON.stringify(await namespace()) !== JSON.stringify(before) || JSON.stringify(await source()) !== JSON.stringify(datasource))

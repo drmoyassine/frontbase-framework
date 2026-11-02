@@ -7,7 +7,7 @@ const validator='packages/backend/src/compat/template-artifact.ts',route='packag
 const originals=new Map([validator,route].map(p=>[p,readFileSync(repoRoot+p,'utf8')]));
 const faults=[
  ['secret exclusion',validator,"if(typeof value==='string'&&secret.test(value))","if(false)"],
- ['destination exclusion',validator,'if(c.datasourceId||c.site.origin||c.site.name||c.site.destination||c.contacts.email||c.contacts.whatsapp||Object.values(c.collections).some(m=>m.scope.value!==\'\'))','if(false)'],
+ ['destination exclusion',validator,'if(c.datasourceId||c.site.origin||c.site.name||c.site.destination||c.contacts.email||c.contacts.whatsapp||Object.values(sourceBindings(c).bindings).some(m=>m.filter.value!==\'\'))','if(false)'],
  ['binding declarations',validator,"if(directoryConfigurationReadiness(c).some(gap=>!declared.has(gap)&&!declared.has('configuration.'+gap)))",'if(false)'],
  ['node identities',validator,'if(ids.has(n.id))','if(false)'],
  ['CSS safety',validator,'!/["\'<>;{}\\\\\\x00-\\x1f]|url\\s*\\(|expression\\s*\\(|@import/i.test(v)','true'],

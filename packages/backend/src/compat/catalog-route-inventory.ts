@@ -1,3 +1,4 @@
+import {directorySource} from '@frontbase/edge-core/directory/configuration';
 import { directoryConfigurationSchema, directoryConfigurationReadiness, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { directoryOriginalPath } from '@frontbase/compiler/queries/directory';
 
@@ -23,30 +24,30 @@ export async function catalogRouteInventory(input: DirectoryConfiguration, owner
     const records: CatalogRouteRecord[] = [];
     const configuredRoles: typeof roles[number][] = [];
     for (const role of roles) {
-        const m = c.collections[role];
-        if (role === 'article' && !m.table) continue;
+        const m = directorySource(c,role);
+        if (role === 'article' && !m.tableName) continue;
         configuredRoles.push(role);
         const values: unknown[] = [];
         const bind = (v: unknown) => { values.push(v); return dialect === 'postgres' ? `$${values.length}` : '?'; };
         const field = (alias: string, name: string) => `${alias}.${quote(name)}`;
-        const scoped = (alias: string, mapping: typeof m) => `${field(alias, mapping.scope.field)} = ${bind(mapping.scope.value)}`;
-        const city = c.collections.city, institution = c.collections.institution;
-        const cityExists = (alias: string) => `EXISTS (SELECT 1 FROM ${quote(city.table)} dc WHERE ${field('dc', city.fields.id)} = ${field(alias, institution.fields.cityId)} AND ${scoped('dc', city)})`;
+        const scoped = (alias: string, mapping: typeof m) => `${field(alias, mapping.filter.column)} = ${bind(mapping.filter.value)}`;
+        const city = directorySource(c,'city'), institution = directorySource(c,'institution');
+        const cityExists = (alias: string) => `EXISTS (SELECT 1 FROM ${quote(city.tableName)} dc WHERE ${field('dc', city.fieldMapping.id)} = ${field(alias, institution.fieldMapping.cityId)} AND ${scoped('dc', city)})`;
         // Relationship failures are selected evidence, never WHERE exclusions.
         const parent = role === 'institution' ? cityExists('d') : role === 'program'
-            ? `EXISTS (SELECT 1 FROM ${quote(institution.table)} di WHERE ${field('di', institution.fields.id)} = ${field('d', m.fields.institutionId)} AND ${scoped('di', institution)} AND ${cityExists('di')})` : '1';
-        const projection = [`${field('d', m.fields.id)} AS "id"`, `${field('d', m.fields.originalPath)} AS "originalPath"`,
-            `${field('d', m.scope.field)} AS "scopeValue"`, `${parent} AS "scopedParent"`];
+            ? `EXISTS (SELECT 1 FROM ${quote(institution.tableName)} di WHERE ${field('di', institution.fieldMapping.id)} = ${field('d', m.fieldMapping.institutionId)} AND ${scoped('di', institution)} AND ${cityExists('di')})` : '1';
+        const projection = [`${field('d', m.fieldMapping.id)} AS "id"`, `${field('d', m.fieldMapping.originalPath)} AS "originalPath"`,
+            `${field('d', m.filter.column)} AS "scopeValue"`, `${parent} AS "scopedParent"`];
         const where = [scoped('d', m)];
         if (role === 'article') {
-            projection.push(`${field('d', m.fields.contentRole)} AS "contentRole"`, `${field('d', m.fields.sourceOrigin)} AS "sourceOrigin"`);
-            where.push(`${field('d', m.fields.contentRole)} = ${bind('article')}`, `${field('d', m.fields.sourceOrigin)} = ${bind(c.site.origin)}`);
+            projection.push(`${field('d', m.fieldMapping.contentRole)} AS "contentRole"`, `${field('d', m.fieldMapping.sourceOrigin)} AS "sourceOrigin"`);
+            where.push(`${field('d', m.fieldMapping.contentRole)} = ${bind('article')}`, `${field('d', m.fieldMapping.sourceOrigin)} = ${bind(c.site.origin)}`);
         }
-        const rows = await query(`SELECT ${projection.join(', ')} FROM ${quote(m.table)} d WHERE ${where.join(' AND ')} ORDER BY ${field('d', m.fields.id)} LIMIT ${bind(1001)}`, values);
+        const rows = await query(`SELECT ${projection.join(', ')} FROM ${quote(m.tableName)} d WHERE ${where.join(' AND ')} ORDER BY ${field('d', m.fieldMapping.id)} LIMIT ${bind(1001)}`, values);
         if (records.length + rows.length > 1000) throw new Error('catalog_inventory_overflow');
         const ids = new Set<string>();
         for (const row of rows) {
-            if (row.scopeValue !== m.scope.value || role === 'article' && (row.contentRole !== 'article' || row.sourceOrigin !== c.site.origin))
+            if (row.scopeValue !== m.filter.value || role === 'article' && (row.contentRole !== 'article' || row.sourceOrigin !== c.site.origin))
                 throw new Error('catalog_inventory_scope_mismatch');
             const validId = typeof row.id === 'number' ? Number.isSafeInteger(row.id) && row.id > 0
                 : typeof row.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$/.test(row.id);

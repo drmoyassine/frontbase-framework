@@ -1,3 +1,4 @@
+import {publicationSource} from '@frontbase/edge-core/directory/configuration';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {readTemplatePolicy,resolveTemplatePolicy} from '@frontbase/edge-core/template-policy';
 import {SitePublicationManifestStore,type SitePublicationManifest} from './site-publication-manifest.js';
@@ -24,11 +25,11 @@ export async function templateLiveListingFilter(db:DbRunner,owner:string,artifac
     if(binding.dataSourceId!==artifact.configuration.datasourceId)return [];
     if(!artifact.templates.some(template=>{const policy=readTemplatePolicy(template.layout.root as Record<string,unknown>);return [policy.defaults,...policy.rules.map(rule=>rule.settings),...Object.values(policy.overrides)].some(settings=>settings.values.listed!==undefined||Object.values(settings.locales??{}).some(values=>values.listed!==undefined));}))return [];
     const lineage=await projectionRelations(db,owner,binding.dataSourceId,binding.tableName,binding.sourceSchema);
-    for(const role of ['institution','program','article'] as const){const mapping=artifact.configuration.collections[role];
-        const projection=lineage.find(edge=>edge.source_table===binding.tableName&&edge.target_table===mapping.table&&edge.target_column===mapping.fields.id&&edge.source_column==='id');
-        if(mapping.table!==binding.tableName&&!projection)continue;
+    for(const role of ['institution','program','article'] as const){const mapping=publicationSource(artifact,role);
+        const projection=lineage.find(edge=>edge.source_table===binding.tableName&&edge.target_table===mapping.tableName&&edge.target_column===mapping.fieldMapping.id&&edge.source_column==='id');
+        if(mapping.tableName!==binding.tableName&&!projection)continue;
         const ids=await templateListingIds(db,owner,artifact,role==='institution'?'institutions':role==='program'?'programs':'articles',locale);
-        if(ids)return [{column:projection?.source_column??mapping.fields.id,op:'in',value:ids.length?ids:[null]}];
+        if(ids)return [{column:projection?.source_column??mapping.fieldMapping.id,op:'in',value:ids.length?ids:[null]}];
     }
     return [];
 }

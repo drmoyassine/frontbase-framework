@@ -1,3 +1,4 @@
+import {sourceBindingsSchema,sourceBindings,sourceBindingsMatch} from '@frontbase/edge-core/directory/configuration';
 import {validateTemplateRoutes} from './template-route.js';
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
@@ -23,13 +24,14 @@ export const publicationRedirectSchema = z.object({from:publicationPathSchema,to
 
 /** Internal candidate contract; admission is not content approval or public activation. */
 export const sitePublicationManifestSchema = z.object({ schemaVersion: z.literal(2), runtimeVersion: z.literal('directory-chunks-v1'),
-    configurationRevision: z.number().int().positive(), configuration: directoryConfigurationSchema,
+    configurationRevision: z.number().int().positive(), configuration: directoryConfigurationSchema,sourceBindings:sourceBindingsSchema.optional(),
     templates: z.array(publicationTemplateSchema).max(7),
     chunks: z.array(publicationChunkReferenceSchema).max(2048), index: z.array(indexEntry).max(100000),
     staticPages: z.array(staticPage).max(1000).optional(), approvals:z.array(approval).max(40000).optional(),
     redirects:z.array(publicationRedirectSchema).max(5000).optional(),
 }).strict().superRefine((manifest, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+    if(manifest.sourceBindings&&!sourceBindingsMatch(manifest.configuration,manifest.sourceBindings))fail('source_lineage_mismatch');
     try{validateTemplateRoutes(manifest);}catch{fail('template_route_invalid');}
     for(const page of [...manifest.templates,...(manifest.staticPages??[])]){const menus=(page.layout.root as Record<string,unknown>|undefined)?.appMenus;if(menus!==undefined){const reference=menuReferenceSchema.safeParse(menus);if(!reference.success||reference.data.pageId!==page.pageId)fail('menu_reference_invalid');}}
     if (byteSize(manifest) > MAX_MANIFEST_BYTES) fail('publication_manifest_too_large');
@@ -142,7 +144,7 @@ export class SitePublicationManifestStore {
         const references = await Promise.all(packed.map(async chunk => publicationChunkReferenceSchema.parse({ hash: await publicationHash(chunk),
             collection: chunk.collection, count: chunk.records.length, bytes: byteSize(chunk) })));
         // Global admission precedes any persistence, including chunks.
-        const manifest = sitePublicationManifestSchema.parse({ ...header, schemaVersion: 2, runtimeVersion: 'directory-chunks-v1',
+        const manifest = sitePublicationManifestSchema.parse({ ...header,sourceBindings:sourceBindings(header.configuration), schemaVersion: 2, runtimeVersion: 'directory-chunks-v1',
             chunks: references, index: packed.flatMap((chunk, i) => indexChunk(chunk, references[i]!)) });
         await assertOutsidePublishedLocaleRoutes(this.db, this.tenant, manifestLocaleRouteExposures(manifest));
         for (const chunk of packed) await this.chunks.put(chunk, now);

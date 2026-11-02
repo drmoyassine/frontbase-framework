@@ -1,3 +1,4 @@
+import {directorySource} from '@frontbase/edge-core/directory/configuration';
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { createDirectoryQueries } from '@frontbase/compiler/queries/directory';
@@ -39,11 +40,11 @@ export async function prepareSitePublication(control:DbRunner, canonical:DbRunne
         }return rows;
     };
     const institutions=await capture('institution',request.institutionPaths), programs=await capture('program',request.programPaths);
-    const city=draft.configuration.collections.city, cities:Record<string,unknown>[]=[];
+    const city=directorySource(draft.configuration,'city'), cities:Record<string,unknown>[]=[];
     const quote=(name:string)=>{if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))throw new Error('invalid_mapping');return `"${name}"`;};
     for(const id of new Set(institutions.map(row=>row.cityId))){
         const scopeBind=dialect==='postgres'?'$1':'?', idBind=dialect==='postgres'?'$2':'?';
-        const rows=await canonical.query(`SELECT ${quote(city.fields.id)} AS "id", ${quote(city.fields.title)} AS "title" FROM ${quote(city.table)} WHERE ${quote(city.scope.field)} = ${scopeBind} AND ${quote(city.fields.id)} = ${idBind} LIMIT 2`,[city.scope.value,id]);
+        const rows=await canonical.query(`SELECT ${quote(city.fieldMapping.id)} AS "id", ${quote(city.fieldMapping.title)} AS "title" FROM ${quote(city.tableName)} WHERE ${quote(city.filter.column)} = ${scopeBind} AND ${quote(city.fieldMapping.id)} = ${idBind} LIMIT 2`,[city.filter.value,id]);
         if(rows.length!==1)throw new Error('publication_city_unavailable');
         cities.push({id:rows[0]!.id,title:rows[0]!.title});
     }
