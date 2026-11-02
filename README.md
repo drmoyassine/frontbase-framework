@@ -33,6 +33,8 @@ Most stacks split building from serving: a builder app here, an API server there
 
 Administrators can [install Booking for X](docs/guides/installing-booking-for-x.md) from Dashboard or Pages on a clean installation. It creates six visually editable drafts and shared menus; configure existing datasources before reviewed publication. Cloud/browser acceptance remains tracked separately in the [installer delivery record](docs/plans/booking-for-x-installer-20261101.md).
 
+[Updating deployed installations](docs/guides/updating-deployed-frontbase.md) explains Git-copy synchronization, provider rebuilds and Docker/EasyPanel updates while preserving state and secrets.
+
 ## What's in the admin console
 
 The console exposes the following areas. Availability depends on the supported
