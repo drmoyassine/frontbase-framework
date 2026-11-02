@@ -11,7 +11,7 @@ Owner authorized implementation after the dependency review. This is not permiss
 - Translation and published-record identities must remain stable; visual bindings alone do not replace record identity and URL policy.
 - Existing ordinary Bind/@, saved views, relationships and template URL policy are reusable surfaces. No new independent collection system is approved or needed.
 
-Source commits: `a3e85f4b` (relationship editor repairs), `08a5a2fa` (installer, diagnostics and identity/URL ownership), on `codex/native-template-publication-20261102`. These are not merged/deployed acceptance receipts.
+Source commits: `a3e85f4b` (relationship editor repairs), `08a5a2fa` (installer, diagnostics and identity/URL ownership), on `codex/native-template-publication-20261102`. These are source qualification receipts, not deployed acceptance receipts. Follow-up source `112c8b51` adds element diagnostics; `2bfe2861` documents deployed upgrades.
 
 ## Initial changes in this branch
 
@@ -27,7 +27,7 @@ Source commits: `a3e85f4b` (relationship editor repairs), `08a5a2fa` (installer,
 1. Replace legacy semantic query dependencies with explicit authoritative source/identity/filter references using existing datasource and saved-view contracts. Keep the legacy reader until equivalence is demonstrated. Do not infer arbitrary title/URL fields or loosen parent filters.
 2. Complete live qualification of the moved identity/path controls and eventual per-template source ownership. Current persisted ownership remains shared by semantic role; moving the controls does not create independent per-template data contracts. The URL panel GET works with zero published records; record-specific overrides naturally require record inventory.
 3. Derive publication requirements from selected layouts, bindings and referenced relationships. The legacy validator still requires the complete institution/program/city bundle. Do not merely remove those checks while compiler queries continue to depend on them.
-4. Add per-element/schema/view availability diagnostics, including Block Versions, relation fields and deleted fields. Current diagnostics describe shared configuration, not arbitrary element schema validity.
+4. Selected-page ordinary binding diagnostics are implemented in `112c8b51`, including Block Versions, related fields, schema discovery and saved-view checks. Extend qualification to the replacement source/capture contract and unselected captured pages during the legacy migration.
 5. Prove compatibility of existing routes, translation identities and source/translated record edits, plus atomic failure/retry behavior.
 6. Verify UI-driven clean CF/Vercel installs and English/Arabic publication on desktop/mobile; native-button evidence cannot be replaced by managed CLI fixtures.
 
@@ -46,4 +46,17 @@ No full-consolidation or cloud acceptance claim is made by the initial patch. Ke
 
 ## Next executable task
 
-Inventory each legacy semantic query use in the six installed layouts and record-edit/publication paths. Design a versioned compatibility reader that maps existing saved configuration into existing source/view contracts without changing record identity, original URLs or scope predicates. Add equivalence tests before retiring any old controls or relaxing the fixed-role readiness checks. Then add element/schema diagnostics and perform the fresh UI acceptance matrix. This patch is an initial authoring consolidation, not completion of the entire migration.
+Inventory each legacy semantic query use in the six installed layouts and record-edit/publication paths. Design a versioned compatibility reader that maps existing saved configuration into existing source/view contracts without changing record identity, original URLs or scope predicates. Add equivalence tests before retiring any old controls or relaxing the fixed-role readiness checks. Reuse the delivered element/schema diagnostics in the replacement writer and perform the fresh UI acceptance matrix. This patch is an initial authoring consolidation, not completion of the entire migration.
+
+
+## Follow-up: per-element diagnostics and deployed updates
+
+Publication preparation now checks ordinary bound data elements on the selected owned pages. Each issue identifies page, binding-owner element and Default/Block Version. It checks the existing binding schema, owned saved view, datasource/table/schema agreement and fields through the same `fields/` catalog as the @ picker, including explicit expansion of deeper relationship paths. Metadata reads are cached within the request; raw provider errors/credentials are never returned. Existing configuration validation keeps its original precedence. Failed checks do not prepare or publish a version.
+
+The UI lists these issues with links to the owning builder page. Nested bound components retain their own record scope; their fields do not become requirements of the parent. The report is bounded to 100 issues. It covers selected authored ordinary bindings, not a certification of legacy directory queries, every unselected captured layout, or provider availability after publication.
+
+The legacy dependency inventory is conclusive: the v1/v2 captured artifact stores semantic aliases and role-bound record sets. Its compiler, route admission, active source-write lineage and translation identity all read that contract. It cannot be retired by deleting configuration checks or replacing aliases in a query alone. A replacement must version the artifact and route/source lineage contracts, keep v1/v2 readers for existing captures and prove scope, URL, translation and write equivalence before enabling new writers. That work remains OPEN; no retirement or task-close claim is justified by the diagnostics change.
+
+See [updating a deployed installation](../guides/updating-deployed-frontbase.md). Framework main promotion does not synchronize deployment-button Git copies. Update the installation's linked repository to reviewed source, preserve configuration/secrets/state, then use its existing CF/Vercel Git rebuild. Docker/EasyPanel image deployments need a versioned image rebuild/pull and redeploy. Content/template updates remain separate from framework updates.
+
+Qualification: workspace check/build, focused TypeScript, 10 preparation UI tests and the new standalone metadata diagnostics suite pass. The diagnostics suite covers Default/alternative versions, nested record scopes, deleted fields, deeper relations, view ownership/mismatch, cached reads and redacted provider failures. Existing publication functional suite passes. Publication mutation rerun: PASS, 30/30 faults detected and restored baselines green. The actual prepare API also proves viewer denial, tenant-bound lookup, no-store error responses and no capture writes. Saved-view schema inheritance and malformed layouts have explicit regression coverage. No cloud/browser deployment was performed in this follow-up.
