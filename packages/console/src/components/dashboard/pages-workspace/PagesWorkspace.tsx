@@ -1,6 +1,6 @@
 import {TemplateUrls} from './TemplateUrls';
 import React, {useEffect, useRef, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useNavigate,useLocation} from 'react-router-dom';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Badge} from '@/components/ui/badge';
@@ -18,7 +18,8 @@ interface Props {
 }
 interface Inventory {schemaVersion: 1; publication: {hash: string; generation: number} | null; entries: WorkspaceEntry[]}
 export function PagesWorkspace({scope, pages, search, filterStatus, edit, actions}: Props) {
-  const navigate = useNavigate();
+  const navigate = useNavigate(), location=useLocation();
+  const sourceRequest=useRef<string>();
   const [inventory, setInventory] = useState<Inventory | null>(null), [organization, setOrganization] = useState<Organization>(emptyOrganization);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [saving, setSaving] = useState(false), [ready, setReady] = useState(false);
   const [view, setView] = useState<'cards'|'list'>('cards'), [folderId, setFolderId] = useState<string | null | 'all'>('all');
@@ -48,6 +49,14 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
     } catch (e) {if(ticket===generation.current)setError(e instanceof Error ? e.message : 'Site inventory unavailable');} finally {if(ticket===generation.current)setLoading(false);}
   }
   useEffect(() => {setInventory(null); setOrganization(emptyOrganization()); setSelection([]);setFolderSelection([]); setFolderId('all');setDialog(null);setContent(null);setRoutes(null);void load();return()=>{generation.current++;};}, [scope, pages]);
+  useEffect(()=>{
+    const role=new URLSearchParams(location.search).get('recordSource');
+    if(!inventory||!role||!['institution','program','article'].includes(role)||sourceRequest.current===location.key)return;
+    const matches=inventory.entries.filter(entry=>entry.kind==='layout'&&entry.role===role&&entry.pageId);
+    sourceRequest.current=location.key;
+    if(matches.length===1)setRoutes(matches[0]);
+    else setError(matches.length?'Multiple templates match. Open the intended template’s URLs panel.':'No matching template exists. Install or create the template first.');
+  },[inventory,location.key,location.search]);
   async function save(next: Organization): Promise<boolean> {
     if (!ready || saving) return false;
     setSaving(true);
@@ -177,7 +186,7 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
       {dialog&&['new','move-entries','move-folder','move-folders'].includes(dialog.kind)&&<label className="space-y-2 text-sm">Destination folder<select className="block w-full rounded-md border bg-background p-2" value={destination} onChange={e=>setDestination(e.target.value)}><option value="">Unfiled / root</option>{organization.folders.filter(f=>(dialog.kind!=='move-folder'||!folderDescendants(organization,dialog.id!).has(f.id))&&(dialog.kind!=='move-folders'||!folderSelection.some(id=>folderDescendants(organization,id).has(f.id)))).map(f=><option value={f.id} key={f.id}>{folderTrail(organization,f.id)}</option>)}</select></label>}
       <DialogFooter><Button variant="outline" disabled={saving} onClick={()=>setDialog(null)}>Cancel</Button><Button disabled={!ready||saving||((dialog?.kind==='new'||dialog?.kind==='rename')&&!name.trim())} onClick={()=>void confirmDialog()}>{saving?'Saving…':dialog?.kind==='remove'?'Delete folder':dialog?.kind==='remove-folders'?'Delete folders':'Save'}</Button></DialogFooter>
     </DialogContent></Dialog>
-    {routes?.kind==='layout'&&routes.pageId?<TemplateUrls key={routes.pageId} pageId={routes.pageId} name={routes.name} onClose={()=>setRoutes(null)} onSaved={()=>void load()} onContent={routes.contentAction?record=>{const entry={...routes,name:record.title,contentAction:{...routes.contentAction!,...(['article','editorial'].includes(routes.role??'')?{recordId:String(record.id),contentRole:(routes.role==='article'?'article':'page') as 'article'|'page'}:{recordKey:{column:routes.contentAction!.keyColumn??'id',value:String(record.id)}})}};setRoutes(null);void openContent(entry);}:undefined} design={()=>{const id=routes.pageId!;setRoutes(null);edit(id);}}/>:<Dialog open={!!routes} onOpenChange={open=>{if(!open)setRoutes(null);}}><DialogContent><DialogHeader><DialogTitle>Public URLs · {routes?.name}</DialogTitle><DialogDescription>{routes?.kind==='layout'?'This layout is reused across these published records.':'Public route for this site entry.'}</DialogDescription></DialogHeader><div className="max-h-80 space-y-2 overflow-auto">{(routes?.paths?.length?routes.paths:routes?.path?[routes.path]:[]).map(path=><a key={path} href={path} target="_blank" rel="noopener noreferrer" className="block break-all text-sm text-primary underline">{path}</a>)}</div></DialogContent></Dialog>}
+    {routes?.kind==='layout'&&routes.pageId?<TemplateUrls initialSection={new URLSearchParams(location.search).get('recordSource')===routes.role?'source':'urls'} key={routes.pageId} pageId={routes.pageId} name={routes.name} onClose={()=>setRoutes(null)} onSaved={()=>void load()} onContent={routes.contentAction?record=>{const entry={...routes,name:record.title,contentAction:{...routes.contentAction!,...(['article','editorial'].includes(routes.role??'')?{recordId:String(record.id),contentRole:(routes.role==='article'?'article':'page') as 'article'|'page'}:{recordKey:{column:routes.contentAction!.keyColumn??'id',value:String(record.id)}})}};setRoutes(null);void openContent(entry);}:undefined} design={()=>{const id=routes.pageId!;setRoutes(null);edit(id);}}/>:<Dialog open={!!routes} onOpenChange={open=>{if(!open)setRoutes(null);}}><DialogContent><DialogHeader><DialogTitle>Public URLs · {routes?.name}</DialogTitle><DialogDescription>{routes?.kind==='layout'?'This layout is reused across these published records.':'Public route for this site entry.'}</DialogDescription></DialogHeader><div className="max-h-80 space-y-2 overflow-auto">{(routes?.paths?.length?routes.paths:routes?.path?[routes.path]:[]).map(path=><a key={path} href={path} target="_blank" rel="noopener noreferrer" className="block break-all text-sm text-primary underline">{path}</a>)}</div></DialogContent></Dialog>}
     {content?.contentAction?.recordId && configurationRevision !== null ? <Dialog open onOpenChange={open=>{if(!open)setContent(null);}}><DialogContent className="max-h-[90vh] max-w-4xl overflow-auto"><DialogHeader><DialogTitle>Edit content · {content.name}</DialogTitle><DialogDescription>Editing this record creates a draft. Publication is a separate step.</DialogDescription></DialogHeader><EditorialDraftEditor id={content.contentAction.recordId} contentRole={content.contentAction.contentRole??'page'} configurationRevision={configurationRevision} onClose={()=>setContent(null)}/></DialogContent></Dialog>
       : content?.contentAction && <DataPreviewModal isOpen onClose={()=>setContent(null)} datasourceId={content.contentAction.datasourceId} datasourceName="Connected content" table={content.contentAction.table} initialFilters={content.contentAction.recordKey?[{field:content.contentAction.recordKey.column,operator:'eq',value:content.contentAction.recordKey.value}]:undefined}/>}
   </div>;

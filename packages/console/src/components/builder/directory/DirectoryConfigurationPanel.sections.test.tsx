@@ -15,11 +15,20 @@ describe('shared configuration ownership',()=>{
   fireEvent.change(screen.getByLabelText('Directory path'),{target:{value:'/browse'}});
   expect(changed.mock.calls[0][0]).toEqual({...config,routes:{...config.routes,directory:'/browse'}});
  });
- it('datasources own mappings without exposing route or appearance controls',()=>{
+ it('keeps legacy identity controls accessible when no reusable template owns the role',()=>{
   render(<DirectoryConfigurationPanel section="data" value={emptyDirectoryConfiguration()} onChange={()=>{}}/>);
+  expect(screen.getByLabelText('program Record ID')).toBeInTheDocument();
+  expect(screen.getByLabelText('program Original URL/path')).toBeInTheDocument();
+  expect(screen.queryByText(/Configure record ID and original URL/)).toBeNull();
+ });
+ it('datasources own mappings without exposing route or appearance controls',()=>{
+  render(<DirectoryConfigurationPanel section="data" identityRolesInUrls={["institution","program","article"]} value={emptyDirectoryConfiguration()} onChange={()=>{}}/>);
   expect(screen.getByText('Datasource picker')).toBeInTheDocument();
   expect(screen.queryByLabelText('Directory path')).toBeNull();
   expect(screen.queryByLabelText('Counselor email')).toBeNull();
   expect(screen.queryByLabelText('Cards per page')).toBeNull();
+  expect(screen.queryByLabelText('program Record ID')).toBeNull();
+  expect(screen.queryByLabelText('program Original URL/path')).toBeNull();
+  expect(screen.getAllByText(/Configure record ID and original URL/)).toHaveLength(3);
  });
 });

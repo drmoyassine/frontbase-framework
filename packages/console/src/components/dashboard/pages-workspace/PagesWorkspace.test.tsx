@@ -4,6 +4,7 @@ import {render,screen,waitFor,fireEvent,within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {MemoryRouter} from 'react-router-dom';
 import {PagesWorkspace} from './PagesWorkspace';
+vi.mock('./TemplateUrls',()=>({TemplateUrls:({pageId,initialSection}:any)=><div role="dialog">Template {pageId}: {initialSection}</div>}));
 vi.mock('@/modules/dbsync/components/DataPreviewModal',()=>({default:()=>null}));
 vi.mock('@/components/builder/directory/EditorialDraftEditor',()=>({EditorialDraftEditor:()=>null}));
 const entries=[{id:'home',pageId:'home',name:'Homepage',kind:'page',path:'/',publicationStatus:'published',developmentOnly:false,source:'saved'},
@@ -14,6 +15,14 @@ const org={schemaVersion:1,revision:2,folders:[{id:'dir',name:'Directory',parent
 function mount(){return render(<MemoryRouter><PagesWorkspace scope="owner:1" pages={pages} search="" filterStatus="all" edit={vi.fn()} actions={()=>null}/></MemoryRouter>);}
 beforeEach(()=>{localStorage.clear();vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:{hash:'capture',generation:12},entries}:options?.method==='PUT'?{...org,revision:3,...JSON.parse(String(options.body))}:org),{status:200})));});
 describe('site pages workspace',()=>{
+  it.each([1,2])('opens only an unambiguous template from the diagnostic link (%i matches)',async(count)=>{
+    const layouts=Array.from({length:count},(_,i)=>({id:'template'+i,pageId:'template'+i,name:'Programs '+i,kind:'layout',role:'program',publicationStatus:'draft',paths:[],source:'saved'}));
+    vi.stubGlobal('fetch',vi.fn(async(url:string)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:null,entries:layouts}:org))));
+    render(<MemoryRouter initialEntries={['/frontbase-admin/pages?recordSource=program']}><PagesWorkspace scope="owner:1" pages={pages} search="" filterStatus="all" edit={vi.fn()} actions={()=>null}/></MemoryRouter>);
+    if(count===1)expect(await screen.findByRole('dialog')).toHaveTextContent('Template template0: source');
+    else {await screen.findByText('Multiple templates match. Open the intended template’s URLs panel.');expect(screen.queryByRole('dialog')).not.toBeInTheDocument();}
+    expect(vi.mocked(fetch).mock.calls.every(([,options])=>!options?.method)).toBe(true);
+  });
   it('shows actual routes/status, persists list preference, and keeps test documents optional',async()=>{
     mount();await screen.findByText('Explore');expect(screen.getByText('/explore/')).toBeInTheDocument();expect(screen.getAllByText('Published')).toHaveLength(2);
     expect(screen.queryByRole('complementary',{name:'Page folders'})).not.toBeInTheDocument();expect(screen.queryByText('Migration review')).not.toBeInTheDocument();await userEvent.click(screen.getByRole('button',{name:'Filters'}));fireEvent.click(screen.getByLabelText('Show migration/test documents'));await userEvent.keyboard('{Escape}');expect(screen.getByText('Migration review')).toBeInTheDocument();

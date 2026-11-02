@@ -4,11 +4,22 @@ import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import {vi,describe,it,expect,beforeEach} from 'vitest';
 import {TemplateUrls} from './TemplateUrls';
 import {emptyTemplatePolicy} from '@frontbase/edge-core/template-policy';
+vi.mock('@/components/dashboard/settings/shared/SiteConfigurationForm',()=>({SiteConfigurationForm:({identityRole,onDirtyChange}:any)=><div><span>Source role: {identityRole}</span><button onClick={()=>onDirtyChange(true)}>Change URL field</button></div>}));
 vi.mock('@/hooks/data/useRecordFields',()=>({useRecordFields:()=>({fields:[{name:'tuition'},{name:'institutions.title'}]})}));
 vi.mock('@/components/builder/VariableInput',()=>({VariableInput:({value,onChange,ariaLabel}:any)=><input aria-label={ariaLabel} value={value} onChange={e=>onChange(e.target.value)}/>}));
 const data={pageId:'program',name:'Program detail',role:'program',revision:'a'.repeat(64),policy:emptyTemplatePolicy(),locale:'en',records:[{identity:'programs:1',id:1,title:'Psychology',path:'/psychology/'}],columns:['id','title']};
 beforeEach(()=>{vi.stubGlobal('fetch',vi.fn(async(url:string,options?:any)=>new Response(JSON.stringify(options?.method==='POST'?{title:'Resolved title',description:'Resolved description',canonical:'https://public.test/psychology/'}:url.includes('translation-generation')?{configuration:{targetLocales:['ar']}}:options?.method==='PUT'?{...data,revision:'b'.repeat(64),policy:JSON.parse(options.body).policy}:data))));});
 describe('clean template URLs editor',()=>{
+    it('opens record setup before publication and guards unsaved fields on exit',async()=>{
+        vi.stubGlobal('fetch',vi.fn(async(url:string)=>new Response(JSON.stringify(url.includes('translation-generation')?{}:{...data,records:[]}))));
+        const onClose=vi.fn(),confirm=vi.fn(()=>false);vi.stubGlobal('confirm',confirm);
+        render(<TemplateUrls pageId="program" name="Program detail" initialSection="source" onClose={onClose} onSaved={()=>{}} design={()=>{}}/>);
+        await screen.findByText('Source role: program');fireEvent.click(screen.getByRole('button',{name:'Change URL field'}));
+        fireEvent.click(screen.getByRole('button',{name:'Record source & URLs'}));expect(confirm).toHaveBeenCalled();expect(screen.getByText('Source role: program')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button',{name:'Close',exact:true}));expect(onClose).not.toHaveBeenCalled();
+        confirm.mockReturnValue(true);fireEvent.click(screen.getByRole('button',{name:'Close',exact:true}));expect(onClose).toHaveBeenCalledOnce();
+        expect(vi.mocked(fetch).mock.calls.every(([,options])=>!options?.method)).toBe(true);
+    });
     it('opens focused record sections, saves Arabic overrides separately and preserves defaults',async()=>{
         render(<TemplateUrls pageId="program" name="Program detail" onClose={()=>{}} onSaved={()=>{}} design={()=>{}}/>);
         fireEvent.click(await screen.findByRole('button',{name:/Psychology/}));

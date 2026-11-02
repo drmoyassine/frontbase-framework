@@ -2,6 +2,11 @@
   "extends": "./tsconfig.app.json",
   "include": [
     "src/vite-env.d.ts",
-    "src/components/dashboard/InstallTemplateDialog.tsx"
+    "src/components/dashboard/InstallTemplateDialog.tsx",
+    "src/components/builder/directory/BindingReadiness.tsx",
+    "src/components/builder/directory/DirectoryConfigurationPanel.tsx",
+    "src/components/builder/directory/SitePreparationPanel.tsx",
+    "src/components/builder/directory/RecordIdentityFields.tsx",
+    "src/components/dashboard/settings/shared/SiteConfigurationForm.tsx"
   ]
 }

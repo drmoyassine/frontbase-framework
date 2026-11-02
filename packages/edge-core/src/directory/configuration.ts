@@ -146,6 +146,33 @@ export function directoryConfigurationReadiness(value: unknown): string[] {
     if (c.collections.article.table && (!c.collections.article.fields.contentRole || !c.collections.article.fields.sourceOrigin || !c.collections.article.fields.body)) missing.push('collections.article.editorial');
     return missing;
 }
+/** Actionable authoring diagnostics over the existing publication admission checks.
+ * Keep compatibility keys stable: persisted captures and scope checks are unchanged. */
+export interface DirectoryConfigurationDiagnostic {
+    key: string;
+    area: 'general' | 'data' | 'routes';
+    message: string;
+    collection?: DirectoryRole;
+}
+export function directoryConfigurationDiagnostics(value: unknown): DirectoryConfigurationDiagnostic[] {
+    const roles: Record<string,string> = {institution:'Institutions',program:'Programs',city:'Cities',article:'Articles',pathway:'Pathways'};
+    const labels: Record<string,string> = {id:'record ID',title:'title',originalPath:'original URL',institutionId:'institution relationship',cityId:'city relationship'};
+    return directoryConfigurationReadiness(value).map(key => {
+        if(key==='site.name')return {key,area:'general',message:'Site identity: enter the public site name.'};
+        if(key==='site.origin')return {key,area:'general',message:'Site identity: enter the canonical site URL.'};
+        if(key==='datasourceId')return {key,area:'data',message:'Shared template data: select a datasource.'};
+        if(key.startsWith('routes.'))return {key,area:'routes',message:'Index URLs: configure the '+(key.endsWith('blog')?'blog':'directory')+' path.'};
+        const [,role,part,field] = key.split('.');
+        if(key.startsWith('collections.') && role && roles[role]) {
+            const problem = part==='table'?'select the source table.' : part==='scope'?'select the publication filter field and value.'
+                : part==='fields'?'select the '+(labels[field??'']??field)+' field.'
+                : part==='editorial'?'select the content type, source site and body fields.'
+                : 'complete the record identity, title, original URL and publication filter.';
+            return {key,area:'data',collection:role as DirectoryRole,message:roles[role]+': '+problem};
+        }
+        return {key,area:'data',message:'Correct the saved setting: '+key+'.'};
+    });
+}
 export { editorialCoverUrlSchema, editorialEditSchema, editorialReadRequestSchema, editorialSaveRequestSchema, editorialDocumentSchema, editorialApprovalRequestSchema, editorialReviewChecksSchema, type EditorialDocument, type EditorialEdit } from './editorial.js';
 
 export {templateRecordFields,bindingWithTemplateFields} from './live-list.js';

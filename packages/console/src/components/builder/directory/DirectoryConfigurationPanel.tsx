@@ -1,5 +1,6 @@
-import React from 'react';
-import { directoryConfigurationIssues, directoryConfigurationReadiness, directoryFieldNames, directoryEditorialFields, directoryRoles, emptyDirectoryConfiguration, type DirectoryConfiguration, type DirectoryRole } from '@frontbase/edge-core/directory/configuration';
+import React,{useEffect} from 'react';
+import {BindingReadiness,focusBindingSetting} from './BindingReadiness';
+import { directoryConfigurationIssues, directoryFieldNames, directoryEditorialFields, directoryRoles, emptyDirectoryConfiguration, type DirectoryConfiguration, type DirectoryRole } from '@frontbase/edge-core/directory/configuration';
 import { DataSourceSelector } from '@/components/data-binding/DataSourceSelector';
 import { TableSelector } from '@/components/data-binding/TableSelector';
 import { useBindingColumns } from '@/hooks/data/useBindingColumns';
@@ -13,25 +14,28 @@ interface Props {
     initialSite?: Partial<DirectoryConfiguration['site']>;
     elementBrowsing?:boolean;
     section?: 'all' | 'data' | 'site';
+    identityRolesInUrls?:readonly string[];
 }
 const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
 const fieldLabels: Record<typeof directoryFieldNames[number], string> = {
     id: 'Record ID', title: 'Title', originalPath: 'Original URL/path', summary: 'Summary', body: 'Content', cover: 'Cover image', logo: 'Logo', gallery: 'Gallery', cityId: 'City relationship', institutionId: 'Institution relationship',
 };
 
-function CollectionMapping({ role, config, onChange }: { role: DirectoryRole; config: DirectoryConfiguration; onChange: Props['onChange'] }) {
+function CollectionMapping({ role, config, onChange,identityInUrls=false }: { role: DirectoryRole; config: DirectoryConfiguration; onChange: Props['onChange'];identityInUrls?:boolean }) {
     const mapping = config.collections[role];
+    const prefix='binding-collections-'+role+'-';
     const columns = useBindingColumns(mapping.table || undefined, config.datasourceId || undefined);
     const update = (patch: Partial<typeof mapping>) => onChange({ ...config, collections: { ...config.collections, [role]: { ...mapping, ...patch } } });
     // Retain configured fields when schema lookup is temporarily unavailable; never guess replacements.
     const options = [...new Set([...columns.map(c => c.name), ...Object.values(mapping.fields), mapping.scope.field].filter(Boolean))];
-    const picker = (label: string, value: string, change: (value: string) => void) => <label className="block space-y-1 text-sm">{label}<select aria-label={`${role} ${label}`} className={inputClass} value={value} onChange={e => change(e.target.value)}><option value="">Not mapped</option>{options.map(name => <option key={name} value={name}>{name}</option>)}</select></label>;
+    const picker = (label: string, value: string, change: (value: string) => void, field?:string) => <label className="block space-y-1 text-sm">{label}<select id={field?prefix+field:undefined} aria-label={`${role} ${label}`} className={inputClass} value={value} onChange={e => change(e.target.value)}><option value="">Not mapped</option>{options.map(name => <option key={name} value={name}>{name}</option>)}</select></label>;
     return <details className="rounded-md border p-3"><summary className="cursor-pointer font-medium capitalize">{role} collection{mapping.table ? ` · ${mapping.table}` : ''}</summary><div className="mt-3 space-y-3">
-        <TableSelector label={`${role} table`} value={mapping.table} dataSourceId={config.datasourceId} disabled={!config.datasourceId} onValueChange={table => update({ table, fields: emptyDirectoryConfiguration().collections[role].fields, scope: { field: '', value: '' } })} />
+        <div id={prefix+'table'} tabIndex={-1}><TableSelector label={`${role} table`} value={mapping.table} dataSourceId={config.datasourceId} disabled={!config.datasourceId} onValueChange={table => update({ table, fields: emptyDirectoryConfiguration().collections[role].fields, scope: { field: '', value: '' } })} /></div>
         {!columns.length && mapping.table && <p className="text-xs text-muted-foreground">Connect the datasource and load its schema to select fields. Existing mappings are retained.</p>}
-        {directoryFieldNames.filter(name => name !== 'gallery').filter(name => name !== 'institutionId' || role === 'program' || role === 'pathway').filter(name => name !== 'cityId' || role === 'institution' || role === 'program').map(name => <React.Fragment key={name}>{picker(fieldLabels[name], mapping.fields[name], field => update({ fields: { ...mapping.fields, [name]: field } }))}</React.Fragment>)}
-        {role === 'article' && <><p className="text-xs text-muted-foreground">Article content uses semantic blocks. Source site and content type constrain this deployment's article preview.</p>{directoryEditorialFields.map(name => <React.Fragment key={name}>{picker({contentRole:'Content type',sourceOrigin:'Source site',byline:'Byline',publishedAt:'Original publication date',coverAlt:'Cover alt text'}[name], mapping.fields[name], field => update({ fields: { ...mapping.fields, [name]: field } }))}</React.Fragment>)}</>}
-        {picker('Scope field', mapping.scope.field, field => update({ scope: { ...mapping.scope, field } }))}
+        {directoryFieldNames.filter(name => name !== 'gallery').filter(name=>!identityInUrls||!['id','originalPath'].includes(name)).filter(name => name !== 'institutionId' || role === 'program' || role === 'pathway').filter(name => name !== 'cityId' || role === 'institution' || role === 'program').map(name => <React.Fragment key={name}>{picker(fieldLabels[name], mapping.fields[name], field => update({ fields: { ...mapping.fields, [name]: field } }),'fields-'+name)}</React.Fragment>)}
+        {identityInUrls&&<a className="block text-sm underline" href={'/frontbase-admin/pages?recordSource='+role}>Configure record ID and original URL in the template’s URLs panel</a>}
+        {role === 'article' && <div id={prefix+'editorial'} tabIndex={-1}><p className="text-xs text-muted-foreground">Article content uses semantic blocks. Source site and content type constrain this deployment's article preview.</p>{directoryEditorialFields.map(name => <React.Fragment key={name}>{picker({contentRole:'Content type',sourceOrigin:'Source site',byline:'Byline',publishedAt:'Original publication date',coverAlt:'Cover alt text'}[name], mapping.fields[name], field => update({ fields: { ...mapping.fields, [name]: field } }),'fields-'+name)}</React.Fragment>)}</div>}
+        {picker('Scope field', mapping.scope.field, field => update({ scope: { ...mapping.scope, field } }), 'scope')}
         <label className="block space-y-1 text-sm">Scope value<input aria-label={`${role} Scope value`} className={inputClass} value={mapping.scope.value} onChange={e => {
             const numeric = typeof mapping.scope.value === 'number' || /^(?:int|numeric|decimal|float|double|number)/i.test(columns.find(c => c.name === mapping.scope.field)?.type || '');
             update({ scope: { ...mapping.scope, value: numeric && e.target.value.trim() && Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : e.target.value } });
@@ -40,11 +44,16 @@ function CollectionMapping({ role, config, onChange }: { role: DirectoryRole; co
     </div></details>;
 }
 
-export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, persistenceScope = 'page', hideIdentity = false, initialSite, elementBrowsing=false, section='all' }: Props) {
+export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, persistenceScope = 'page', hideIdentity = false, initialSite, elementBrowsing=false, section='all',identityRolesInUrls=[] }: Props) {
+    const hasConfiguration=!!value;
+    useEffect(()=>{
+        const id=window.location.hash.slice(1);
+        if(hasConfiguration&&id.startsWith('binding-'))focusBindingSetting(id);
+    },[hasConfiguration]);
+
     if (!value) return <div className="space-y-3"><p className="text-sm text-muted-foreground">{persistenceScope === 'site' ? 'Configure the shared directory settings for this project.' : 'Configure one education directory template for this site. Settings are saved and versioned with the page.'}</p><button className={inputClass} onClick={() => { const config = emptyDirectoryConfiguration(); onChange({ ...config, site: { ...config.site, ...initialSite } }); }}>Add directory configuration</button></div>;
     if (value.version !== 1 || !value.site || !value.contacts || !value.routes || !value.browsing || !directoryRoles.every(role => value.collections?.[role]?.fields && value.collections[role].scope)) return <p role="alert">Unsupported directory configuration. Restore a supported page version before editing.</p>;
     const issues = directoryConfigurationIssues(value);
-    const missing = directoryConfigurationReadiness(value);
     const edit = (label: string, current: string, change: (next: string) => void, type = 'text') => <label className="block space-y-1 text-sm">{label}<input aria-label={label} type={type} className={inputClass} value={current} onChange={e => change(e.target.value)} /></label>;
     return <div className="space-y-5">
         <p className="text-sm text-muted-foreground">{persistenceScope === 'site' ? 'Save shared settings below, then prepare and review a site version to publish.' : 'Save with the page’s Save Changes button. Incomplete mappings can be saved as drafts. Prepare and review a site version to publish.'}</p>
@@ -54,8 +63,8 @@ export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, pe
             {!hideIdentity && edit('Locale', value.site.locale, locale => onChange({ ...value, site: { ...value.site, locale } }))}
             {hideIdentity && <p className="text-sm text-muted-foreground">{value.site.name || 'Set public site name in General'} · {value.site.origin || 'Set canonical URL in General'} · {value.site.locale}</p>}
         </fieldset>}
-        {section!=='site'&&<fieldset className="space-y-3"><legend className="font-semibold">Data and relationships</legend><DataSourceSelector autoSelect={false} value={value.datasourceId} onValueChange={datasourceId => onChange({ ...value, datasourceId, collections: emptyDirectoryConfiguration().collections })} />
-            {directoryRoles.filter(role => role !== 'pathway').map(role => <CollectionMapping key={`${role}:${value.datasourceId}:${value.collections[role].table}`} role={role} config={value} onChange={onChange} />)}
+        {section!=='site'&&<fieldset className="space-y-3"><legend className="font-semibold">Data and relationships</legend><div id="binding-datasourceId" tabIndex={-1}><DataSourceSelector autoSelect={false} value={value.datasourceId} onValueChange={datasourceId => onChange({ ...value, datasourceId, collections: emptyDirectoryConfiguration().collections })} /></div>
+            {directoryRoles.filter(role => role !== 'pathway').map(role => <CollectionMapping key={`${role}:${value.datasourceId}:${value.collections[role].table}`} role={role} config={value} onChange={onChange} identityInUrls={section==='data'&&identityRolesInUrls.includes(role)} />)}
         </fieldset>}
         {section!=='data'&&!elementBrowsing&&<fieldset className="space-y-3"><legend className="font-semibold">Browsing</legend>
             <label className="block space-y-1 text-sm">Default collection<select aria-label="Default collection" className={inputClass} value={value.browsing.defaultCollection} onChange={e => onChange({ ...value, browsing: { ...value.browsing, defaultCollection: e.target.value as DirectoryRole } })}>{(!['institution', 'program'].includes(value.browsing.defaultCollection) ? [value.browsing.defaultCollection, 'institution', 'program'] : ['institution', 'program']).map(role => <option key={role} disabled={!['institution', 'program'].includes(role)}>{role}{!['institution', 'program'].includes(role) ? ' (unsupported)' : ''}</option>)}</select></label>
@@ -70,7 +79,7 @@ export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, pe
             <p className="text-xs text-muted-foreground">Existing record URLs remain authoritative. These paths configure collection indexes.</p>
         </fieldset>}
         {issues.length > 0 && <p role="alert" className="text-sm text-destructive">Fix invalid settings: {issues.join(', ')}</p>}
-        <p className="text-xs text-muted-foreground">{missing.length ? `${missing.length} configuration items remain before publication review.` : 'Mappings complete. Prepare and review a site version to publish.'}</p>
+        <BindingReadiness configuration={value} area={section==='all'?undefined:section} localData={section!=='site'} identityRolesInUrls={identityRolesInUrls}/>
         {onApplyLayout && <><button className={inputClass} disabled={issues.length > 0} onClick={onApplyLayout}>Apply configured layout to this page</button>
         <p className="text-xs text-muted-foreground">Applying replaces only an existing education directory section, or adds one. Other page sections are preserved. Data mappings are saved; live collection binding is not activated by this action.</p></>}
     </div>;

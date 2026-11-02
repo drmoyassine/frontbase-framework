@@ -14,7 +14,7 @@ import { SitePublicationReviewStore } from '../site-publication-review-store.js'
 import { resolvePublicationVersionPage } from '../site-publication-runtime.js';
 import { publicationPathSchema,sitePublicationReviewRequestSchema } from '@frontbase/edge-core/directory/publication';
 import { createEngine,directProvider } from '@frontbase/edge-core';
-import { directoryBrowsingStateSchema } from '@frontbase/edge-core/directory/configuration';
+import { directoryBrowsingStateSchema, directoryConfigurationDiagnostics } from '@frontbase/edge-core/directory/configuration';
 import { chunkPreparationRequestSchema,prepareChunkPublication } from '../site-publication-chunk-prepare.js';
 import { publicationPaths,publicationRows,type PublicationVersion } from '../publication-version.js';
 import { registerSitePublicationControls } from './site-publication-controls.js';
@@ -121,6 +121,8 @@ export function registerSitePublicationRoutes(app:Hono<{Variables:ConsoleAuthVar
         const request=z.union([sitePreparationRequestSchema,chunkPreparationRequestSchema]).safeParse(input);if(!request.success)return c.json({detail:'Invalid preparation request'},422);
         const draft=await new SiteConfigurationStore(control,tenant).get();
         if(!draft || draft.revision!==request.data.expectedConfigurationRevision)return c.json({detail:'Shared settings changed; reload first'},409);
+        const bindingIssues=directoryConfigurationDiagnostics(draft.configuration);
+        if(bindingIssues.length)return c.json({detail:'Resolve the listed template data and URL settings before preparing publication.',code:'publication_bindings_incomplete',bindingIssues},422);
         const source=await storeFor(tenant).getDatasource(draft.configuration.datasourceId);
         if(!source)return c.json({detail:'Directory datasource is unavailable'},403);
         if(!['supabase','postgres','neon','sqlite','turso','d1'].includes(source.kind))return c.json({detail:'Preparation requires a supported SQL datasource'},422);

@@ -227,6 +227,18 @@ assert.equal((await call('preview',{...previewInput,hash:'a'.repeat(64)})).statu
 assert.equal((await call('preview',{...previewInput,path:'/no-record/'})).status,404);
 assert.equal((await call('prepare',{...selection,expectedConfigurationRevision:2})).status,409);
 assert.equal((await call('prepare',{...selection,programPaths:['/foreign-program/']})).status,422);
+// Missing legacy bindings report exact authoring targets, without starting a capture or leaking scope values.
+tenant='incomplete-bindings';
+const incomplete=emptyDirectoryConfiguration();incomplete.collections.program.scope.value='PRIVATE_SCOPE_VALUE';
+await new SiteConfigurationStore(db,tenant).save(incomplete,0,now);
+const beforeIncomplete=JSON.stringify(await db.query('SELECT * FROM settings WHERE tenant_slug = ? ORDER BY key',[tenant]));
+const incompleteResponse=await call('prepare',{...selection,expectedConfigurationRevision:1});
+assert.equal(incompleteResponse.status,422);assert.equal(incompleteResponse.headers.get('cache-control'),'no-store');
+const incompleteBody=await incompleteResponse.json();assert.equal(incompleteBody.code,'publication_bindings_incomplete');
+assert.ok(incompleteBody.bindingIssues.some(issue=>issue.key==='collections.program.fields.institutionId'));
+assert.ok(!JSON.stringify(incompleteBody).includes('PRIVATE_SCOPE_VALUE'));
+assert.equal(JSON.stringify(await db.query('SELECT * FROM settings WHERE tenant_slug = ? ORDER BY key',[tenant])),beforeIncomplete);
+role='viewer';assert.equal((await call('prepare',{...selection,expectedConfigurationRevision:1})).status,403);role='owner';tenant='alpha';
 await new SiteConfigurationStore(db,'alpha').save(config,1,now);await assert.rejects(()=>prepare(),/publication_configuration_conflict/);
 assert.equal((await call('read',readInput)).status,200); // reopening never recaptures current settings
 assert.equal(await store.prepare(artifact,now),hash);assert.equal(await store.active(),null);

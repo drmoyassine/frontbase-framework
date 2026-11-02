@@ -4,8 +4,9 @@ import type { SiteConfigurationDraft } from '@frontbase/edge-core/directory/conf
 import { sitePublicationReviewChecksSchema } from '@frontbase/edge-core/directory/publication';
 import { Button } from '@/components/ui/button';
 import { SitePublicationPanel } from './SitePublicationPanel';
+import {BindingReadiness} from './BindingReadiness';
 
-const rowSchema=z.object({id:z.union([z.string(),z.number()]),title:z.string(),originalPath:z.string().startsWith('/'),institutionId:z.union([z.string(),z.number()]).optional()});
+const rowSchema=z.object({id:z.union([z.string(),z.number()]),title:z.string(),originalPath:z.string().startsWith('/'),institutionId:z.union([z.string(),z.number()]).optional()}).transform(row=>({id:row.id,title:row.title,originalPath:row.originalPath,...(row.institutionId===undefined?{}:{institutionId:row.institutionId})}));
 const redirectsSchema=z.array(z.object({from:z.string().startsWith('/'),to:z.string().startsWith('/')})).max(5000);
 const redirectRows=(value:unknown)=>redirectsSchema.parse(value??[]).map(alias=>({id:alias.from,title:`Redirect: ${alias.from} → ${alias.to}`,originalPath:alias.from}));
 type Row=z.infer<typeof rowSchema>;
@@ -21,7 +22,7 @@ export function SitePreparationPanel({draft,disabled=false,currentPageId}:{draft
     const [collection,setCollection]=useState<'institution'|'article'>('institution'), [search,setSearch]=useState('');
     const [shown,setShown]=useState<{role:'institution'|'program'|'article';rows:Row[]}>({role:'institution',rows:[]});
     const [institutions,setInstitutions]=useState<Row[]>([]), [programs,setPrograms]=useState<Row[]>([]), [articles,setArticles]=useState<(Row&Approval)[]>([]);
-    const [prepared,setPrepared]=useState<{hash:string;revision:number;paths:{title:string;originalPath:string}[];directory?:string;blog?:string;review?:string|null}>(), [preview,setPreview]=useState(''), [recoveryHash,setRecoveryHash]=useState('');
+    const [prepared,setPrepared]=useState<{hash:string;revision:number;paths:Row[];directory?:string;blog?:string;review?:string|null}>(), [preview,setPreview]=useState(''), [recoveryHash,setRecoveryHash]=useState('');
     const [reviewChecks,setReviewChecks]=useState<Record<string,boolean>>({}),[reviewNote,setReviewNote]=useState(''),[reviewAttempted,setReviewAttempted]=useState(false);
     const generation=useRef(0);
     useEffect(()=>setRedirectText(''),[draft.revision]);
@@ -30,13 +31,13 @@ export function SitePreparationPanel({draft,disabled=false,currentPageId}:{draft
     useEffect(()=>{setReviewChecks({});setReviewNote('');setReviewAttempted(false);},[prepared?.hash,draft.revision]);
     async function operation(work:()=>Promise<void>) {
         const current=generation.current;setBusy(true);setMessage('');
-        try {await work();}catch(error) {if(current===generation.current)setMessage(error instanceof Error&&error.message==='publication_route_serialization'?'A source URL cannot be captured without changing its spelling or origin. Review the source URLs, or update only the saved template from the reviewed site.':'Operation unavailable. Reload saved settings and check the connection.');}
+        try {await work();}catch(error) {if(current===generation.current)setMessage(error instanceof Error&&error.message==='publication_route_serialization'?'A source URL cannot be captured without changing its spelling or origin. Review the source URLs, or update only the saved template from the reviewed site.':error instanceof Error&&error.message==='publication_bindings_incomplete'?'Resolve the listed template data and URL settings before preparing publication.':'Operation unavailable. Reload saved settings and check the connection.');}
         finally {if(current===generation.current)setBusy(false);}
     }
     async function post(path:string,input:unknown) {
         const current=generation.current,response=await fetch(`/api/project/site-configuration/${path}/`,{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
         if(current!==generation.current)throw new Error('stale');
-        if(!response.ok){const value=await response.json().catch(()=>({}));throw new Error(value.code==='publication_route_serialization'?value.code:'unavailable');}const value=await response.json();if(current!==generation.current)throw new Error('stale');return value;
+        if(!response.ok){const value=await response.json().catch(()=>({}));throw new Error(value.code==='publication_route_serialization'?value.code:value.code==='publication_bindings_incomplete'?'publication_bindings_incomplete':'unavailable');}const value=await response.json();if(current!==generation.current)throw new Error('stale');return value;
     }
     async function prepareTemplate(){
         if(!currentPageId)return;changed();const current=generation.current;
@@ -105,6 +106,7 @@ const result=await post('publication/prepare',{format:'chunked',expectedConfigur
     const locked=disabled||busy;
     return <section aria-label="Site preparation" className="space-y-3 rounded-lg border p-3">
         <h4 className="font-medium">Prepare a site version</h4>
+        <BindingReadiness configuration={draft.configuration}/>
         <p className="text-sm text-muted-foreground">Capture saved templates, mapped directory records, approved content and selected ordinary pages together. Content requires approval first. This creates a private preview.</p>
         {currentPageId&&<div className="space-y-2"><Button variant="outline" disabled={locked} onClick={()=>void operation(prepareTemplate)}>Prepare this saved template update</Button><p className="text-xs text-muted-foreground">Use the saved draft and keep the reviewed site's records, routes and other page designs. Save your page changes first.</p></div>}
         <div className="flex flex-wrap items-center gap-2"><input aria-label="Prepared version ID" value={recoveryHash} disabled={locked} maxLength={64} onChange={event=>setRecoveryHash(event.target.value)} className="min-w-0 flex-1 rounded border bg-background p-2 text-sm" placeholder="Paste a saved version ID"/><Button variant="outline" disabled={locked || !/^[a-f0-9]{64}$/.test(recoveryHash.trim())} onClick={()=>void operation(reopen)}>Reopen private version</Button></div>

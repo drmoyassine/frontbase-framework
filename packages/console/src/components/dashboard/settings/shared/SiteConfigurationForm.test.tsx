@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { SiteConfigurationForm } from './SiteConfigurationForm';
 
+vi.mock('@/hooks/data/useBindingColumns',()=>({useBindingColumns:()=>[{name:'id'},{name:'original_path'},{name:'permalink'}]}));
 vi.mock('@/components/builder/directory/DirectoryConfigurationPanel', () => ({ DirectoryConfigurationPanel: ({ value, onChange, persistenceScope }: any) => <div>
     <span>{persistenceScope}</span><input aria-label="Shared site name" value={value?.site.name || ''} onChange={e => { const c = value || emptyDirectoryConfiguration(); onChange({ ...c, site: { ...c.site, name: e.target.value } }); }} />
 </div> }));
@@ -49,6 +50,21 @@ describe('shared site settings form', () => {
         fireEvent.click(screen.getByRole('button', { name: /Reload saved settings/ }));
         await screen.findByDisplayValue('USA');
         await waitFor(() => expect(screen.getByRole('button', { name: 'Save shared settings' })).toBeEnabled());
+    });
+    it('saves record URL fields through the same revisioned configuration without changing scopes or other roles', async () => {
+        const original=reply(7); original.draft.configuration.datasourceId='existing';
+        const mapping=original.draft.configuration.collections.program;
+        mapping.table='programs';mapping.fields.id='id';mapping.fields.originalPath='original_path';mapping.scope={field:'site_id',value:0};
+        const changed=structuredClone(original.draft.configuration);changed.collections.program.fields.originalPath='permalink';
+        const fetcher=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(original))).mockResolvedValueOnce(new Response(JSON.stringify({draft:{schemaVersion:1,revision:8,configuration:changed},revision:8})));
+        vi.stubGlobal('fetch',fetcher);const onDirtyChange=vi.fn();render(<SiteConfigurationForm identityRole="program" onDirtyChange={onDirtyChange}/>);
+        await screen.findByDisplayValue('original_path');fireEvent.change(screen.getByLabelText('Original URL field'),{target:{value:'permalink'}});
+        await waitFor(()=>expect(onDirtyChange).toHaveBeenLastCalledWith(true));
+        fireEvent.click(screen.getByRole('button',{name:'Save shared settings'}));await screen.findByText(/Shared settings saved/);
+        const payload=JSON.parse(fetcher.mock.calls[1][1].body);
+        expect(payload).toEqual({schemaVersion:1,expectedRevision:7,configuration:changed});
+        expect(fetcher.mock.calls[1][0]).toBe('/api/project/site-configuration/');
+        await waitFor(()=>expect(onDirtyChange).toHaveBeenLastCalledWith(false));
     });
     it('does not save when the server draft is unavailable or malformed', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ draft: null, revision: 99 }))));
