@@ -35,6 +35,7 @@ export function RelationshipModal({ datasourceId, datasourceName, onClose }: Rel
     const queryClient = useQueryClient();
     const [newRel, setNewRel] = useState<RelationshipDefinition>({ ...EMPTY_REL });
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const isEditing = editingIndex !== null;
 
     // Tables for this datasource
     const { data: tables = [], isLoading: tablesLoading } = useQuery({
@@ -121,7 +122,6 @@ export function RelationshipModal({ datasourceId, datasourceName, onClose }: Rel
         }
     };
 
-    const isEditing = editingIndex !== null;
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">

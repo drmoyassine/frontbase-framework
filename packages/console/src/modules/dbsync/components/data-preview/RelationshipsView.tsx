@@ -44,7 +44,7 @@ function groupBySourceTable(relationships: Relationship[]) {
     return grouped;
 }
 
-export const RelationshipsView: React.FC<RelationshipsViewProps> = ({ datasourceId }) => {
+export const RelationshipsView: React.FC<RelationshipsViewProps> = ({ datasourceId, sourceSchema }) => {
     const queryClient = useQueryClient();
     const [showAddModal, setShowAddModal] = useState(false);
 
@@ -57,7 +57,7 @@ export const RelationshipsView: React.FC<RelationshipsViewProps> = ({ datasource
     // Fetch the datasource to populate the relationship modal header.
     const { data: datasource } = useQuery({
         queryKey: ['datasource', datasourceId],
-        queryFn: () => datasourcesApi.get(datasourceId).then(r => r.data),
+        queryFn: () => datasourcesApi.get(String(datasourceId)).then(r => r.data),
         staleTime: STALE.STANDARD,
     });
 
@@ -250,7 +250,7 @@ export const RelationshipsView: React.FC<RelationshipsViewProps> = ({ datasource
 
             {showAddModal && (
                 <RelationshipModal
-                    datasourceId={datasourceId}
+                    datasourceId={String(datasourceId)}
                     datasourceName={datasource?.name || ''}
                     onClose={() => setShowAddModal(false)}
                 />
