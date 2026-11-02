@@ -1,3 +1,5 @@
+November 2 source update: the [authoring consolidation candidate](template-binding-consolidation-20261102.md) removes Configure from the installer and moves identity/URL editing to its existing owner. The November 1 Configure-flow receipts below remain historical evidence; they do not verify this new UI on cloud. Fresh acceptance remains open.
+
 # Booking for X installer — November 1, 2026
 
 The bounded first-start, draft-installation, browser/mobile-preview and post-install upgrade repair is qualified on both managed fixtures. This is not a general-availability or uninterrupted native-button claim. Booking for X is the public name of the same template used for Studygram education sites, not a second product.

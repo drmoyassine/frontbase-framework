@@ -1,3 +1,5 @@
+2026-11-02 current authoring work: [template binding consolidation](template-binding-consolidation-20261102.md) is a bounded source candidate. Legacy query/identity/scope compatibility migration and fresh cloud acceptance remain explicit, ordered gaps. Earlier cloud receipts do not certify the changed installer. No public-release or merged-source claim.
+
 2026-11-01 current addition: Booking for X first-start and unconnected-draft repairs are verified on managed CF/Vercel fixtures, including responsive browser canvases and exact post-install upgrade/session preservation. [Installer receipts, scope and remaining release gates](booking-for-x-installer-20261101.md). This does not claim a new uninterrupted native-button run or published bilingual data site.
 
 # Frontbase Developer Preview: current release plan
