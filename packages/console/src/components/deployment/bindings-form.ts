@@ -23,6 +23,10 @@ export interface BindingsFormOptions {
     resourceOptions?: Record<string,Array<{id:string;name:string}>>;
     /** Only supplied by a host with an authenticated server-side connection flow. */
     providerConnections?: Partial<Record<ProviderName,{available:boolean;connected:boolean;label?:string;accountId?:string;capabilities?:string[]}>>;
+    onDemand?: boolean;
+    loadConnections?: ()=>Promise<BindingsFormOptions['providerConnections']>;
+    loadResources?: ()=>Promise<NonNullable<BindingsFormOptions['resourceOptions']>>;
+    connectionsPending?: boolean;
     onConnect?: (provider:ProviderName)=>Promise<void>;
     /** Origin-relative base of the read-only discovery endpoints; '' talks to the same origin. */
     discoveryBase?: string;
@@ -42,6 +46,9 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     const inventories=new Map<string,Discovery<{id:string;name:string;url?:string;endpoint?:string}>>();
     const schemasByProject=new Map<string,Discovery<SchemaOption>>();
     let postgresDiscovery:{generation:number;status:'loading'|'ready'|'failed';schemas:string[];message:string}|undefined,postgresGeneration=0;
+    let reviewing=false,accountPickerOpened=false;
+    const pending=new Set<Promise<void>>();
+    const track=(work:Promise<void>)=>{pending.add(work);void work.finally(()=>pending.delete(work));};
     const node=<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string,className?:string)=>{
         const element=document.createElement(tag);
         if(text)element.textContent=text;
@@ -62,11 +69,13 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     /** A step counts as done once its binding is either intentionally off or holds everything validation requires. */
     const stepReady=(role:ConfigurableRole)=>{
         const binding=manifest.bindings[role];
+        if(options.connectionsPending)return false;
         if(binding.mode==='disabled')return role!=='state-db';
         const selected=adapters.find(a=>a.role===role&&a.id===binding.adapterId);
         if(!selected||!compatible(role).some(a=>a.id===binding.adapterId))return false;
         if(cloudflarePicker(binding)){
-            const accounts=inventories.get('cf-accounts');if(accounts?.status!=='ready'||!accounts.items.some(i=>i.id===binding.config.accountId))return false;
+            const inherited=options.onDemand&&binding.config.accountId===options.providerConnections?.cloudflare?.accountId&&!!binding.config.accountId;
+            const accounts=inventories.get('cf-accounts');if(!inherited&&(accounts?.status!=='ready'||!accounts.items.some(i=>i.id===binding.config.accountId)))return false;
             if(binding.mode!=='create'){const inventory=inventories.get('cf-'+binding.config.accountId+'-'+binding.adapterId),id=binding.adapterId==='d1-http'?binding.config.databaseId:binding.adapterId==='cloudflare-vectorize-http'?binding.config.indexName:binding.adapterId==='cloudflare-r2-http'?binding.config.bucket:binding.resourceRef;if(inventory?.status!=='ready'||!inventory.items.some(i=>i.id===id))return false;}
         }
         if(selected.id==='supabase-storage'&&options.providerConnections?.supabase?.connected){const list=inventories.get('sb-buckets-'+binding.config.projectRef);if(list?.status!=='ready'||!list.items.some(i=>i.id===binding.config.bucket))return false;}
@@ -107,13 +116,13 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     const inventory=(key:string,path:string,body:unknown,listKey:string)=>{
         if(inventories.has(key))return inventories.get(key)!;
         inventories.set(key,{status:'loading'});
-        void (async()=>{let state:Discovery<{id:string;name:string;url?:string;endpoint?:string}>;try{
+        track((async()=>{let state:Discovery<{id:string;name:string;url?:string;endpoint?:string}>;try{
             const response=await fetch((options.discoveryBase??'')+'/provider-resources/'+path,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
             const data=response.ok?await response.json():null;
             if(!Array.isArray(data?.[listKey]))throw Error();
             const items=data[listKey];if(items.length>1000||items.some((i:any)=>!i||typeof i.id!=='string'||typeof i.name!=='string'))throw Error();
             state={status:'ready',items};
-        }catch{state={status:'fallback'};}inventories.set(key,state);if(!destroyed)render();})();return inventories.get(key)!;
+        }catch{state={status:'fallback'};}inventories.set(key,state);if(!destroyed)render();})());return inventories.get(key)!;
     };
     const resourceSelect=(card:HTMLElement,label:string,state:Discovery<{id:string;name:string;url?:string;endpoint?:string}>,value:string,update:(value:string)=>void,retryKey:string)=>{
         if(state.status==='loading'){card.append(node('p','Loading '+label.toLowerCase()+'…','fb-binding-note'));return;}
@@ -137,9 +146,13 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     };
     const renderCloudflarePicker=(card:HTMLElement,role:ConfigurableRole)=>{
         const b=manifest.bindings[role];
-        const accounts=inventory('cf-accounts','cloudflare/accounts',{},'accounts');
+
         if(!b.config.accountId&&options.providerConnections?.cloudflare?.accountId)b.config.accountId=options.providerConnections.cloudflare.accountId;
-        resourceSelect(card,'Account',accounts,b.config.accountId??'',value=>{b.config.accountId=value;delete b.resourceRef;delete b.config.indexName;delete b.config.databaseId;},'cf-accounts');
+        if(options.onDemand&&!accountPickerOpened&&b.config.accountId&&b.config.accountId===options.providerConnections?.cloudflare?.accountId){
+            const changeAccount=node('button','Change account');changeAccount.type='button';
+            changeAccount.onclick=()=>{accountPickerOpened=true;render();};
+            card.append(node('p',options.providerConnections.cloudflare.label??b.config.accountId),changeAccount);
+        }else resourceSelect(card,'Account',inventory('cf-accounts','cloudflare/accounts',{},'accounts'),b.config.accountId??'',value=>{b.config.accountId=value;delete b.resourceRef;delete b.config.indexName;delete b.config.databaseId;},'cf-accounts');
         if(!b.config.accountId||b.mode==='create')return;
         const key='cf-'+b.config.accountId+'-'+b.adapterId,state=inventory(key,'cloudflare/resources',{accountId:b.config.accountId,adapterId:b.adapterId},'resources');
         const configKey=b.adapterId==='cloudflare-r2-http'?'bucket':b.adapterId==='d1-http'?'databaseId':b.adapterId==='cloudflare-vectorize-http'?'indexName':undefined;
@@ -151,12 +164,12 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     const loadSchemas=(projectRef:string)=>{
         if(schemasByProject.has(projectRef))return;
         schemasByProject.set(projectRef,{status:'loading'});
-        void (async()=>{
+        track((async()=>{
             const data=await discoveryFetch('schemas',{projectRef}) as {schemas?:unknown}|null;
             const list=Array.isArray(data?.schemas)?(data!.schemas as SchemaOption[]).filter(item=>item&&typeof item.name==='string').slice(0,50):[];
             schemasByProject.set(projectRef,data?{status:'ready',items:list}:{status:'fallback'});
             if(!destroyed)render();
-        })();
+        })());
     };
     /** The picker implies the mode: an existing schema is reuse, the suffix input is create. Discovery
         failures fall back to the single connected project plus a fenced create input — a supported mode. */
@@ -172,12 +185,12 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
         if(!connection?.connected){card.append(node('p','Connect Supabase to choose a project and schema.','fb-binding-note'));return;}
         if(!projects){
             projects={status:'loading'};
-            void (async()=>{
+            track((async()=>{
                 const data=await discoveryFetch('projects',{}) as {projects?:unknown}|null;
                 const list=Array.isArray(data?.projects)?(data!.projects as ProjectOption[]).filter(item=>item&&typeof item.ref==='string'&&typeof item.name==='string').slice(0,50):[];
                 projects=list.length?{status:'ready',items:list}:{status:'fallback'};
                 if(!destroyed)render();
-            })();
+            })());
         }
         if(projects.status==='loading'){card.append(node('p','Loading projects…','fb-binding-note'));return;}
         const wrapper=node('div',undefined,'fb-binding-field'),title=node('label','Project'),select=node('select');
@@ -260,9 +273,9 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
         test.addEventListener('click',async()=>{
             const url=binding.config.url,token=secrets.get(reference);if(!url||!token){postgresDiscovery={generation:postgresGeneration,status:'failed',schemas:[],message:'Enter the endpoint and access token first.'};render();return;}
             const generation=++postgresGeneration;postgresDiscovery={generation,status:'loading',schemas:[],message:'Testing connection…'};render();
-            let data:any;try{const r=await fetch((options.discoveryBase??'')+'/provider-resources/postgrest/schemas',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({url,token})});data=await r.json();if(!r.ok)throw Error();}catch{data={success:false};}
+            let data:any;try{const r=await fetch((options.discoveryBase??'')+'/provider-resources/postgrest/schemas',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({url,token})});data=await r.json();if(!r.ok)data={success:false,message:typeof data.message==='string'?data.message:undefined};}catch{data={success:false};}
             if(destroyed||generation!==postgresGeneration)return;
-            postgresDiscovery={generation,status:data.success===true?'ready':'failed',schemas:Array.isArray(data.schemas)?data.schemas.map((s:any)=>String(s.name)).filter((s:string)=>/^[a-z_][a-z0-9_]{0,62}$/.test(s)):[],message:data.success===true?'Connection verified. Select an empty schema or create a new one during Apply.':'Cannot read schemas. Check the HTTPS endpoint, credential and execute_query helper permissions.'};render();change();
+            postgresDiscovery={generation,status:data.success===true?'ready':'failed',schemas:Array.isArray(data.schemas)?data.schemas.map((s:any)=>String(s.name)).filter((s:string)=>/^[a-z_][a-z0-9_]{0,62}$/.test(s)):[],message:data.success===true?'Connection verified. Select an empty schema or create a new one during Apply.':data?.message??'Could not contact the setup service. Check your setup session and try again.'};render();change();
         });card.append(test);
         if(postgresDiscovery){const message=node('p',postgresDiscovery.message,'fb-binding-note');message.setAttribute('role','status');card.append(message);}
         if(postgresDiscovery?.status!=='ready')return;
@@ -276,10 +289,11 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
         card.append(node('p','Existing schemas must be empty. Schema creation and protected SQL helper installation happen only when you Apply. The credential must have the necessary DDL privileges.','fb-binding-note'));
     };
     function render() {
+        steps=stepOrder.filter(role=>compatible(role).length);
         root.classList.add('fb-bindings-form');root.replaceChildren();
         if(options.providerConnections){
             const needed=new Set<ProviderName>();
-            for(const binding of Object.values(manifest.bindings))if(binding.mode!=='disabled'){
+            for(const [key,binding] of Object.entries(manifest.bindings))if((!options.onDemand||key===steps[currentStep])&&binding.mode!=='disabled'){
                 if(binding.adapterId.startsWith('cloudflare-')||binding.adapterId==='d1-http')needed.add('cloudflare');
                 if(binding.adapterId==='turso-marketplace')needed.add('vercel');
                 if(binding.adapterId.startsWith('supabase'))needed.add('supabase');
@@ -294,6 +308,10 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                     const mark=document.createElement('span');mark.className='fb-connect-mark';mark.innerHTML=brandMarks[provider];
                     button.append(mark,node('span','Connect '+label));
                     button.addEventListener('click',async()=>{button.disabled=true;try{await options.onConnect!(provider);}catch{row.append(node('p','Connection could not start. Please try again.','fb-binding-note'));}finally{button.disabled=false;}});row.append(button);
+                }else if(options.loadConnections){
+                    const discover=node('button','Check '+label+' connection');discover.type='button';
+                    discover.onclick=async()=>{discover.disabled=true;try{const connections=await options.loadConnections!();if(!destroyed){options.providerConnections=connections;options.loadConnections=undefined;render();}}catch{discover.disabled=false;row.append(node('p','Connection discovery failed. Try again.'));}};
+                    row.append(discover);
                 }else row.append(node('p',label+' authorization is not configured for this installation.','fb-binding-note'));
                 root.append(row);
             }
@@ -312,6 +330,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             root.append(indicator);
         }
         for(const [index,role] of steps.entries()) {
+            if(options.onDemand&&index!==currentStep&&(!reviewing||manifest.bindings[role].mode==='disabled'))continue;
             const binding=manifest.bindings[role],card=node('section',undefined,'fb-binding-card');
             const heading=node('h3',stepCopy[role][0]);heading.append(node('span',role==='state-db'?'Required':'Optional',role==='state-db'?'fb-binding-tag fb-tag-required':'fb-binding-tag fb-tag-optional'));
             card.append(heading,node('p',stepCopy[role][1],'fb-binding-lede'));
@@ -325,7 +344,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             select.value=binding.mode==='disabled'?'disabled':binding.adapterId;
             select.addEventListener('change',()=>{
                 for(const reference of Object.values(binding.secretRefs))secrets.delete(reference);
-                projects=undefined;schemasByProject.clear();postgresGeneration++;postgresDiscovery=undefined;
+                if(role==='state-db'){postgresGeneration++;postgresDiscovery=undefined;}
                 if(select.value==='disabled')manifest.bindings[role]={...binding,mode:'disabled',secretRefs:{}};
                 else {
                     const adapter=compatibleAdapters.find(a=>a.id===select.value)!;
@@ -337,7 +356,9 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                 render();change();
             });
             wrapper.append(title,select);card.append(wrapper);
-            if(binding.mode!=='disabled'&&selected) {
+            if(options.connectionsPending){
+                card.append(node('p','Loading connected accounts…','fb-binding-note'));
+            }else if(binding.mode!=='disabled'&&selected) {
                 if(selected.id==='supabase-postgres'||selected.id==='supabase-storage'){
                     if(!compatibleAdapters.includes(selected))card.append(node('p','This adapter is unavailable in this deployment flow.','fb-binding-note'));
                     else {renderSupabasePicker(card,role);card.append(node('p','Connected Supabase authorization is stored encrypted and reused after reload. Server credentials stay out of the browser and plan.','fb-binding-note'));}
@@ -360,6 +381,10 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                         modeWrapper.append(modeTitle,mode);card.append(modeWrapper);
                         if(usePicker)renderCloudflarePicker(card,role);
                         if(binding.mode==='reuse'&&!usePicker) {
+                            if(selected.id==='cloudflare-d1'&&options.loadResources&&!options.resourceOptions?.[selected.id]){
+                                const load=options.loadResources;options.loadResources=undefined;
+                                track(load().then(value=>{options.resourceOptions=value;}).catch(()=>{}).finally(()=>{if(!destroyed)render();}));
+                            }
                             const resources=options.resourceOptions?.[selected.id];
                             if(resources) {
                                 const row=node('div',undefined,'fb-binding-field'),label=node('label','Resource'),resource=node('select');resource.id='binding-resource-'+role;label.htmlFor=resource.id;resource.append(option('Select a connected resource',''));
@@ -411,6 +436,22 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     function clearCredentials(){secrets.clear();postgresGeneration++;postgresDiscovery=undefined;for(const input of root.querySelectorAll<HTMLInputElement>('input[type=password]'))input.value='';}
     render();
     return {
+        finishDiscovery(connections:BindingsFormOptions['providerConnections'], resources?:BindingsFormOptions['resourceOptions']){
+            if(destroyed)return;
+            options.providerConnections=connections;
+            options.resourceOptions=resources??options.resourceOptions;
+            options.connectionsPending=false;
+            render();
+        },
+        async prepareReview(){
+            reviewing=true;
+            try{
+                render();
+                while(pending.size)await Promise.all([...pending]);
+                const invalid=steps.findIndex(role=>manifest.bindings[role].mode!=='disabled'&&!stepReady(role));
+                if(invalid!==-1){currentStep=invalid;throw Error('Complete '+stepCopy[steps[invalid]][0]+' before review.');}
+            }finally{reviewing=false;if(!destroyed)render();}
+        },
         ready(){return stepReady('state-db');},
         snapshot(){
             const references=new Set(Object.values(manifest.bindings).filter(b=>b.mode!=='disabled').flatMap(b=>Object.values(b.secretRefs)));

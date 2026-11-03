@@ -25,6 +25,16 @@ assert.equal((await request('configuration',{cookie:cookie.slice(0,-1)+'!'})).st
 app=createHostedBootstrap({...deps,context:{...context,destination:'another/container'}});assert.equal((await request('configuration',{cookie})).status,403);
 app=createHostedBootstrap(deps);assert.equal((await request('configuration',{cookie})).status,200);
 let r=await request('configuration',{cookie});assert.equal(r.headers.get('cache-control'),'no-store');assert.ok(!(await r.text()).includes(token));
+// Discovery has the same authorization gates, and startup reads each source once.
+let journalReads=0,inventoryReads=0;
+app=createHostedBootstrap({...deps,journal:{...journal,read:async c=>{journalReads++;return journal.read(c);}},resourceOptions:async()=>{inventoryReads++;return {example:[]};}});
+for(const path of ['session','form','resource-options'])assert.equal((await request(path)).status,403);
+assert.deepEqual(await (await request('session',{cookie})).json(),{phase:null});
+assert.equal((await request('form',{cookie})).status,200);
+assert.equal(journalReads,2);
+assert.equal(inventoryReads,0);
+assert.deepEqual((await (await request('configuration',{cookie})).json()).resourceOptions,{example:[]});
+assert.equal(inventoryReads,1);
 // Without the mount the discovery path is an ordinary 404; with it, discovery rides the claim cookie and dies with the install.
 app=createHostedBootstrap(deps);assert.equal((await request('provider-resources/supabase/projects',{body:{},cookie,headers:{'x-actor':'_root/owner'}})).status,404);
 app=createHostedBootstrap({...deps,providerResources:resources});

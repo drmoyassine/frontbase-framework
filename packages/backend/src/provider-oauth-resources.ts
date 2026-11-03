@@ -56,13 +56,21 @@ export function createProviderOAuthResources(deps:ProviderOAuthResourcesDeps){
     app.post('/postgrest/schemas',async c=>{
         const input=await body(c);
         if(!input||Object.keys(input).length!==2||typeof input.url!=='string'||typeof input.token!=='string'||!input.token||input.token.length>8192)return c.json({error:'state_connection_invalid',message:'Enter the HTTPS PostgREST endpoint and its server credential.'},400);
+        let status=0;
         try{
             const url=checkedExternalUrl(input.url);if(url.search||url.hash)throw Error();
-            const runner=supabaseRunner({url:url.href,restUrl:url.href.replace(/\/$/,''),serviceKey:input.token,fetchImpl:(request,init)=>guardedExternalFetch(deps.fetch,request,init)});
+            const runner=supabaseRunner({url:url.href,restUrl:url.href.replace(/\/$/,''),serviceKey:input.token,fetchImpl:async(request,init)=>{const response=await guardedExternalFetch(deps.fetch,request,init);status=response.status;return response;}});
             const rows=await runner.query("SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('information_schema','pg_catalog','pg_toast') AND schema_name NOT LIKE 'pg_%' ORDER BY schema_name");
             if(!Array.isArray(rows)||rows.length>1000)throw Error();
             return c.json({success:true,message:'Connection and SQL query capability verified. Select a dedicated schema or create a new one during Apply.',schemas:rows.map(row=>({name:String(row.schema_name??'')})).filter(row=>/^[a-z_][a-z0-9_]{0,62}$/.test(row.name)&&row.name!=='public'&&!row.name.startsWith('pg_')).slice(0,100)});
-        }catch{return c.json({error:'state_connection_failed',message:'Cannot read schemas. Check the HTTPS endpoint, server credential and execute_query SQL helper permissions.'},502);}
+        }catch{
+            const issue=status===401?['state_unauthorized','PostgREST rejected the access token. Use a current server JWT issued for this endpoint.']
+                :status===403?['state_role_denied','PostgREST denied the server role permission to run the state query helper.']
+                :status===406?['state_profile_unavailable','The public RPC schema used by the state installer is unavailable. Use a dedicated state endpoint with its setup helpers installed.']
+                :status===404?['state_helper_unavailable','The execute_query RPC was not found at this API root. Use the state endpoint with execute_query and execute_sql installed.']
+                :['state_connection_failed','Could not verify the HTTPS SQL helper. Check the service URL, TLS and server configuration.'];
+            return c.json({error:issue[0],message:issue[1]},502);
+        }
     });
     app.post('/supabase/schemas',async c=>{
         const input=await body(c);if(!input||Object.keys(input).length!==1||typeof input.projectRef!=='string'||!projectRefPattern.test(input.projectRef))return c.json({error:'oauth_refused'},400);

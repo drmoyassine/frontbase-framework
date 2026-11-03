@@ -10,3 +10,9 @@ assert.equal((await app.fetch(new Request('https://attacker.example/postgrest/sc
 for(const url of ['http://db.example','https://127.0.0.1/rpc','https://10.0.0.1','https://db.example/?token=bad','https://db.example/#secret','https://user:password@db.example']){r=await request({...input,url});assert.equal(r.status,502);assert.equal(calls.length,1,'unsafe endpoint refused before egress');}
 assert.equal((await request({...input,extra:'field'})).status,400);assert.equal((await request({...input,token:''})).status,400);
 console.log('PASS state discovery: owner/CSRF, HTTPS/SSRF/query/fragment refusal, read-only SQL, eligible schemas and credential-free responses');
+
+for(const [status,code] of [[401,'state_unauthorized'],[403,'state_role_denied'],[404,'state_helper_unavailable'],[406,'state_profile_unavailable']]){
+ const denied=createProviderOAuthResources({origin,authorize:async()=>({tenant:'_root',subject:'fixture'}),supabaseGrant:async()=>null,fetch:async()=>Response.json({message:'private upstream detail'},{status})});
+ const reply=await denied.fetch(new Request(origin+'/postgrest/schemas',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(input)}));
+ const result=await reply.json();assert.equal(result.error,code);assert.ok(!result.message.includes('private upstream detail'));
+}

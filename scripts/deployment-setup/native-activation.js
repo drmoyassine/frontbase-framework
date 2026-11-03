@@ -12,6 +12,7 @@
    try{
     const r=await fetch('/frontbase-bootstrap/api/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({token}),redirect:'error',signal:AbortSignal.timeout(15000)});
     if(r.ok){
+     if(r.headers?.get('X-Frontbase-Initialization')==='ready'){location.replace('/frontbase-bootstrap/');return;}
      let initialized;try{initialized=await fetch('/frontbase-bootstrap/api/initialize',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:'{}',redirect:'error',signal:AbortSignal.timeout(15000)});}catch{/* An uncertain initialization must not be repeated. */}
      if(initialized?.ok){location.replace('/frontbase-bootstrap/');return;}
      status.textContent='Deployment ownership is confirmed, but setup initialization could not be confirmed. Open setup to inspect its current state; no provisioning operation has been repeated.';open.hidden=false;return;

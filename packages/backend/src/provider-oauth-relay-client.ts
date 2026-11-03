@@ -14,7 +14,7 @@ const canonical=(value:any):string=>value&&typeof value==='object'?'{'+Object.ke
 async function json(request:Request|Response,max=65536){const reader=request.body?.getReader();if(!reader)throw Error('relay_refused');let length=0,text='';const decoder=new TextDecoder();try{for(;;){const part=await reader.read();if(part.done)break;length+=part.value.length;if(length>max)throw Error('relay_refused');text+=decoder.decode(part.value,{stream:true});}}finally{await reader.cancel().catch(()=>{});}return JSON.parse(text+decoder.decode());}
 export function createProviderRelayClient(deps:ProviderRelayClientDeps){
     if(new URL(deps.origin).origin!==deps.origin||!deps.origin.startsWith('https://')||new URL(deps.relayOrigin).origin!==deps.relayOrigin||!deps.relayOrigin.startsWith('https://')||deps.target.origin!==deps.origin||deps.mode==='authenticated'&&(!deps.cipher||!deps.store)||deps.mode==='native-install'&&(!deps.establish||deps.target.purpose!=='install'))throw Error('invalid_relay_client');
-    const app=new Hono(),now=deps.now??Date.now;
+    const app=new Hono(),actors=new WeakMap<Request,OAuthActor>(),now=deps.now??Date.now;
     if(deps.mode==='setup-renewal'&&(!deps.establish||!deps.cipher||!deps.registrationKey||deps.target.purpose!=='connect'||!['cloudflare','vercel'].includes(deps.target.host)))throw Error('invalid_relay_client');
     const cookiePrefix=deps.mode==='setup-renewal'?'__Host-fb_relay_recovery_':'__Host-fb_relay_client_';
     const seal=async(value:unknown)=>{const encoded=JSON.stringify(value);if(!deps.cipher)return encodeURIComponent(encoded);const encrypted=await deps.cipher.encrypt(encoded);if(!deps.cipher.isEncrypted(encrypted))throw Error('relay_cipher_required');return encodeURIComponent(encrypted);};
@@ -31,11 +31,17 @@ export function createProviderRelayClient(deps:ProviderRelayClientDeps){
         if(deps.mode!=='authenticated'||!deps.enrollReceiver||!deps.registrationKey||!/^[\w-]{43}$/.test(deps.registrationKey))return c.text('Not found',404);
         return c.json({version:1,origin:deps.origin,host:deps.target.host,proof:await hash(deps.registrationKey)});
     });
-    app.use(base+'/*',async(c,next)=>{if(!await deps.authorize(c.req.raw))return c.json({error:'oauth_operator_required'},403);if(c.req.method==='POST'&&(c.req.header('origin')!==deps.origin||c.req.header('content-type')?.split(';')[0]!=='application/json'))return c.json({error:'relay_refused'},403);return next();});
+    app.use(base+'/*',async(c,next)=>{const actor=await deps.authorize(c.req.raw);if(!actor)return c.json({error:'oauth_operator_required'},403);actors.set(c.req.raw,actor);if(c.req.method==='POST'&&(c.req.header('origin')!==deps.origin||c.req.header('content-type')?.split(';')[0]!=='application/json'))return c.json({error:'relay_refused'},403);return next();});
     app.get(base+'/status',async c=>{
         if(deps.mode==='setup-renewal')return c.json({error:'setup_recovery_only'},404);
-        const response=await deps.fetch(deps.relayOrigin+'/health',{redirect:'manual',signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('relay_unavailable');const status=await json(response);const actor=await deps.authorize(c.req.raw);if(!actor)throw Error('relay_refused');
-        return c.json({providers:['cloudflare','vercel','supabase','upstash'].map(provider=>({provider,available:Array.isArray(status.providers)&&status.providers.includes(provider)})),connections:deps.store?await deps.store.connections(actor):[]});
+        const actor=actors.get(c.req.raw);
+        if(!actor)throw Error('relay_refused');
+        const connections=deps.store?deps.store.connections(actor):Promise.resolve([]);
+        if(c.req.query('view')==='connections')return c.json({providers:[],connections:await connections});
+        const [response,retained]=await Promise.all([deps.fetch(deps.relayOrigin+'/health',{redirect:'manual',signal:AbortSignal.timeout(10000)}),connections]);
+        if(!response.ok)throw Error('relay_unavailable');
+        const status=await json(response);
+        return c.json({providers:['cloudflare','vercel','supabase','upstash'].map(provider=>({provider,available:Array.isArray(status.providers)&&status.providers.includes(provider)})),connections:retained});
     });
     app.post(base+'/:provider/start',async c=>{
         const provider=c.req.param('provider')??'';if(!['cloudflare','vercel','supabase','upstash'].includes(provider))return c.json({error:'relay_refused'},400);

@@ -12,7 +12,8 @@ const faults=[
  ['cookie audience','payload.aud === audience','true'],
  ['cookie expiry','payload.exp > now()','true'],
  ['body bounds','length > 65536','false'],
+ ['installed session lock',"record?.phase === 'active'",'false'],
  ['initialized lock',"(await deps.journal.read(deps.context))?.phase === 'active'",'false'],
 ];
 for(const [name,before,after] of faults){assert.equal(source.split(before).length,2,name+' anchor');const path=fileURLToPath(new URL('../dist/.hosted-bootstrap-fault-'+randomUUID()+'.js',import.meta.url));try{writeFileSync(path,source.replace(before,after));const r=spawnSync(process.execPath,[testPath],{encoding:'utf8',timeout:20000,env:{...process.env,FRONTBASE_HOSTED_BOOTSTRAP_TEST_MODULE:pathToFileURL(path).href}});assert.notEqual(r.status,0,name);assert.match(r.stderr,/AssertionError/,name+' behavior');console.log('PASS detected '+name);}finally{unlinkSync(path);}}
-assert.equal(readFileSync(sourcePath,'utf8'),source);console.log('PASS seven hosted authorization faults; source unchanged');
+assert.equal(readFileSync(sourcePath,'utf8'),source);console.log('PASS eight hosted authorization faults; source unchanged');

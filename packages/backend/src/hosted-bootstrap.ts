@@ -9,11 +9,12 @@ export interface HostedBootstrapDeps {
     now?: ()=>number;
     nextSetup?: ()=>string;
     initialize?: ()=>Promise<void>;
+    resourceOptions?: ()=>Promise<Record<string,unknown>>;
     configuration?: ()=>Promise<Record<string,unknown>>;
     pendingSetup?: boolean;
     /** Separate expiring access from the stable encryption/signing root. */
     access?: ()=>Promise<import('./hosted-setup-access.js').HostedSetupAccess>;
-    renewalAvailable?: boolean;
+    renewalAvailable?: boolean | (()=>Promise<boolean>);
     resolveCredentials?: (manifest:import('@frontbase/edge-core/deployment').DeploymentManifest,input:Record<string,string>)=>Promise<Record<string,string>>;
     /** Read-only provider discovery (e.g. createProviderOAuthResources); inherits every gate below.
      *  A function defers construction until an authenticated request reaches the route, keeping
@@ -24,8 +25,9 @@ const base='/frontbase-bootstrap/api';
 const cookieName='__Host-fb_bootstrap';
 const encode=(bytes:Uint8Array)=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 function decode(raw:string): Uint8Array<ArrayBuffer> {return Uint8Array.from(atob(raw.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));}
-export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
-    const app=new Hono(),now=deps.now??Date.now;
+type SetupEnv={Variables:{phase:string|null;operationId:string|null;access:import('./hosted-setup-access.js').HostedSetupAccess}};
+export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono<SetupEnv> {
+    const app=new Hono<SetupEnv>(),now=deps.now??Date.now;
     const origin=new URL(deps.origin);
     if(origin.protocol!=='https:'||origin.origin!==deps.origin||deps.token.length<32||deps.token.length>256||!Number.isFinite(Date.parse(deps.expiresAt)))throw Error('invalid_bootstrap_configuration');
     const key=()=>crypto.subtle.importKey('raw',new TextEncoder().encode(deps.token),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);
@@ -47,14 +49,20 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
         c.header('Cache-Control','no-store');c.header('Referrer-Policy','no-referrer');c.header('X-Content-Type-Options','nosniff');c.header('X-Frame-Options','DENY');c.header('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'");
         const access=deps.access?await deps.access():{generation:0,token:deps.token,expiresAt:deps.expiresAt};
         if(!deps.enabled)return c.json({error:'bootstrap_unavailable',message:'This installation is configured. Sign in to Frontbase to manage it.'},410);
-        if(now()>=Date.parse(access.expiresAt))return c.json({error:'bootstrap_access_expired',message:deps.renewalAvailable?'Your private setup link has expired. Renew setup access by verifying deployment ownership.':'Your private setup link has expired. Ask the deployment owner to inspect this installation; this deployment does not support browser renewal.'},410);
+        if(now()>=Date.parse(access.expiresAt))return c.json({error:'bootstrap_access_expired',message:(typeof deps.renewalAvailable==='function'?await deps.renewalAvailable():deps.renewalAvailable)?'Your private setup link has expired. Renew setup access by verifying deployment ownership.':'Your private setup link has expired. Ask the deployment owner to inspect this installation; this deployment does not support browser renewal.'},410);
         const url=new URL(c.req.url);
         if(url.origin!==deps.origin||url.search)return c.json({error:'bootstrap_refused'},403);
         if(c.req.method==='POST'){
             if(c.req.header('origin')!==deps.origin||c.req.header('content-type')?.split(';')[0]!=='application/json')return c.json({error:'bootstrap_refused'},403);
         }
         if(c.req.path!==base+'/claim'&&!await authenticated(c.req.raw,access))return c.json({error:'bootstrap_session_required',message:'Setup access is missing or expired. Reopen your current private link or renew setup access.'},403);
-        if(c.req.path!==base+'/claim'&&await active())return c.json({error:'bootstrap_unavailable'},410);
+        if(c.req.path!==base+'/claim'){
+            const record=await deps.journal.read(deps.context);
+            if(record?.phase==='active')return c.json({error:'bootstrap_unavailable'},410);
+            c.set('phase',record?.phase??null);
+            c.set('operationId',record?.operationId??null);
+        }
+        if(c.req.path===base+'/claim')c.set('access',access);
         await next();
     });
     const body=async(request:Request):Promise<Record<string,unknown>>=>{
@@ -65,16 +73,26 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono {
     const exact=(input:Record<string,unknown>,keys:string[])=>{if(Object.keys(input).length!==keys.length||Object.keys(input).some(k=>!keys.includes(k)))throw Error('invalid');};
     app.post(base+'/claim',async c=>{
         const input=await body(c.req.raw);exact(input,['token']);if(typeof input.token!=='string'||input.token.length>256)return c.json({error:'bootstrap_refused'},403);
-        const access=deps.access?await deps.access():{generation:0,token:deps.token,expiresAt:deps.expiresAt};
+        const access=c.get('access');
         const digest=async(value:string)=>new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
         if(!timingSafeEqual(await digest(input.token),await digest(access.token)))return c.json({error:'bootstrap_refused',message:'This setup link is invalid or has been replaced. Use the latest private link or renew setup access.'},403);
         if(await active())return c.json({error:'bootstrap_unavailable'},410);
         const exp=Math.min(Date.parse(access.expiresAt),now()+900000),payload=encode(new TextEncoder().encode(JSON.stringify({aud:audience,exp,generation:access.generation})));
         c.header('Set-Cookie',cookieName+'='+payload+'.'+await sign(payload)+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age='+Math.floor((exp-now())/1000));
+        if(!deps.initialize)c.header('X-Frontbase-Initialization','ready');
         return c.json({ok:true,expiresAt:new Date(exp).toISOString()});
     });
     app.post(base+'/initialize',async c=>{const input=await body(c.req.raw);exact(input,[]);await deps.initialize?.();return c.json({ok:true});});
-    app.get(base+'/configuration',async c=>c.json({operation:await deps.journal.read(deps.context).then(record=>record?{phase:record.phase,operationId:record.operationId}:null),manifest:defaultDeploymentManifest(deps.context.target),adapters:deploymentAdapters.filter(a=>a.targets.includes(deps.context.target)),target:deps.context.target,...(deps.configuration?await deps.configuration():{})}));
+    app.get(base+'/session',c=>c.json({phase:c.get('phase')}));
+    app.get(base+'/resource-options',async c=>c.json(await deps.resourceOptions?.()??{}));
+    app.on('GET',[base+'/configuration',base+'/form'],async c=>{
+        const [configuration,resources]=await Promise.all([
+            deps.configuration?.(),
+            c.req.path===base+'/configuration'?deps.resourceOptions?.():undefined
+        ]);
+        const phase=c.get('phase');
+        return c.json({operation:phase?{phase,operationId:c.get('operationId')}:null,manifest:defaultDeploymentManifest(deps.context.target),adapters:deploymentAdapters.filter(a=>a.targets.includes(deps.context.target)),target:deps.context.target,...configuration,...(resources?{resourceOptions:resources}:{})});
+    });
     app.post(base+'/review',async c=>{const input=await body(c.req.raw);exact(input,['manifest']);const result=await reviewBootstrap(deps.context,input.manifest,deps.journal,deps.executor);return c.json({reviewId:result.operationId,phase:result.phase,manifest:result.manifest});});
     app.post(base+'/apply',async c=>{const input=await body(c.req.raw);exact(input,['reviewId','credentials']);if(typeof input.reviewId!=='string')throw Error('invalid');let credentials=input.credentials as Record<string,string>;
         if(deps.resolveCredentials){const reviewed=await deps.journal.read(deps.context);if(!reviewed||reviewed.operationId!==input.reviewId||reviewed.phase!=='reviewed')throw Error('invalid');credentials=await deps.resolveCredentials(reviewed.manifest,credentials);}

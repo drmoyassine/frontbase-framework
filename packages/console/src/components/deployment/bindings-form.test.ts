@@ -312,3 +312,31 @@ test('local manual Supabase Storage profiles remain usable without a hosted OAut
  }
  const snapshot=form!.snapshot();expect(snapshot.manifest.bindings.storage.config).toEqual({projectRef:'fixtureproj',bucket:'files-private'});expect(snapshot.credentials['storage/token']).toBe('manual-server-private');expect(JSON.stringify(snapshot.manifest)).not.toContain('manual-server-private');expect(card.textContent).toContain('until Apply');
 });
+
+test('provider choices made while discovery is pending survive its completion',()=>{
+ const root=mount('cloudflare',{connectionsPending:true});
+ expect(form!.ready()).toBe(false);
+ select(root,'binding-provider-state-db','libsql-http');
+ form!.finishDiscovery({cloudflare:{available:true,connected:true}});
+ expect(root.querySelector<HTMLSelectElement>('#binding-provider-state-db')!.value).toBe('libsql-http');
+ expect(root.textContent).not.toContain('Loading connected accounts');
+});
+
+test('hosted create avoids inventories, reuse loads once and Review checks unvisited services',async()=>{
+ const manifest=defaultDeploymentManifest('cloudflare');
+ manifest.bindings.vector={adapterId:'cloudflare-vectorize-http',mode:'connect',config:{},secretRefs:{}};
+ const calls:string[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
+  calls.push(url);return Response.json({resources:[]});
+ }));
+ const root=mount('cloudflare',{manifest,onDemand:true,discoveryBase:'/frontbase-bootstrap/api',providerConnections:{cloudflare:{available:true,connected:true,accountId:'a'.repeat(32)}}});
+ expect(calls).toEqual([]);
+ select(root,'binding-mode-state-db','reuse');
+ await vi.waitFor(()=>expect(calls).toHaveLength(1));
+ select(root,'binding-mode-state-db','create');select(root,'binding-mode-state-db','reuse');
+ expect(calls).toHaveLength(1);
+ select(root,'binding-mode-state-db','create');
+ await expect(form!.prepareReview()).rejects.toThrow('Vector Database');
+ expect(calls).toHaveLength(2);
+ expect(root.querySelector('#binding-provider-vector')).not.toBeNull();
+});
