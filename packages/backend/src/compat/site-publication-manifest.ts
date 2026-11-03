@@ -101,6 +101,16 @@ export const sitePublicationManifestSchema = z.object({ schemaVersion: z.literal
     }
 });
 export type SitePublicationManifest = z.infer<typeof sitePublicationManifestSchema>;
+// Only snapshots already parsed and hash-verified from tenant-scoped storage are marked.
+// Weak membership retains no data; callers cannot mark a mutable or hand-built manifest.
+const verifiedSnapshots=new WeakSet<SitePublicationManifest>();
+function freezeJson(value:unknown):void {
+    if(value&&typeof value==='object'&&!Object.isFrozen(value)){for(const child of Object.values(value))freezeJson(child);Object.freeze(value);}
+}
+export function readPublicationManifest(input:SitePublicationManifest):SitePublicationManifest {
+    return verifiedSnapshots.has(input)?input:sitePublicationManifestSchema.parse(input);
+}
+
 /** Every path this manifest claims — records, static pages, populated routes and both redirect
  *  endpoints: the surface the live-locale route reservation must keep the translation router's
  *  /{locale}/… namespace clear of (the superRefine path list plus redirect from/to). */
@@ -166,7 +176,7 @@ export class SitePublicationManifestStore {
             if (new TextEncoder().encode(raw).byteLength > MAX_MANIFEST_BYTES) throw new Error();
             const manifest = sitePublicationManifestSchema.parse(JSON.parse(raw));
             if (await publicationHash(manifest) !== hash) throw new Error();
-            return manifest;
+            freezeJson(manifest);verifiedSnapshots.add(manifest);return manifest;
         } catch { throw new Error('publication_manifest_unavailable'); }
     }
     async loadChunk(manifestInput: SitePublicationManifest, referenceInput: PublicationChunkReference): Promise<PublicationChunk> {
@@ -177,7 +187,7 @@ export class SitePublicationManifestStore {
      * reference/membership/content/index check for each uncached chunk read.
      * No DB bytes or authorization result are cached between requests. */
     chunkReader(manifestInput: SitePublicationManifest): (reference: PublicationChunkReference) => Promise<PublicationChunk> {
-        const manifest = sitePublicationManifestSchema.parse(manifestInput);
+        const manifest = readPublicationManifest(manifestInput);
         return reference => this.loadVerifiedChunk(manifest, publicationChunkReferenceSchema.parse(reference));
     }
     private async loadVerifiedChunk(manifest: SitePublicationManifest, reference: PublicationChunkReference): Promise<PublicationChunk> {

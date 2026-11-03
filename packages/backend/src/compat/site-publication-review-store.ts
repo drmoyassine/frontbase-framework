@@ -10,6 +10,13 @@ export class SitePublicationReviewStore {
     private key(hash:string) { return `site_publication:review:v1:${hash}`; }
     async get(hash:string) {
         if(!await new SitePublicationStore(this.db,this.tenant).getVersion(hash))return null;
+        return this.receipt(hash);
+    }
+    async reviewedActiveVersion(){
+        const active=await new SitePublicationStore(this.db,this.tenant).activeVersion();
+        return active&&await this.receipt(active.pointer.hash)?active:null;
+    }
+    private async receipt(hash:string){
         const rows=await this.db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',[this.tenant,this.key(hash)]);
         if(!rows.length)return null;
         try {const review=sitePublicationReviewSchema.parse(JSON.parse(String(rows[0]!.value)));if(review.hash!==hash)throw new Error();return review;}

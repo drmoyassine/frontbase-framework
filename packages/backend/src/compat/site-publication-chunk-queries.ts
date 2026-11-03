@@ -2,7 +2,7 @@ import {templateListingIds} from './template-listing.js';
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { defineQueries, type QueryRegistry } from '@frontbase/compiler/queries';
-import { SitePublicationManifestStore, sitePublicationManifestSchema, type SitePublicationManifest } from './site-publication-manifest.js';
+import { SitePublicationManifestStore, readPublicationManifest, type SitePublicationManifest } from './site-publication-manifest.js';
 import { verifyManifestEditorial } from './site-publication-approval-check.js';
 import { publicationPathSchema } from '@frontbase/edge-core/directory/publication';
 
@@ -35,7 +35,7 @@ export function localizedIndexTitleReader(localizedTitles?:LocalizedTitles,local
 
 export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:string,db:DbRunner,localizedTitles?:LocalizedTitles,locale?:string):QueryRegistry{
     if(!owner)throw new Error('publication_owner_required');
-    const manifest=sitePublicationManifestSchema.parse(input),store=new SitePublicationManifestStore(db,owner);
+    const manifest=readPublicationManifest(input),store=new SitePublicationManifestStore(db,owner);
     const loadChunk=store.chunkReader(manifest);
     const cache=new Map<string,Promise<Awaited<ReturnType<typeof store.loadChunk>>>>();
     const collections={institution:'institutions',program:'programs',city:'cities',article:'articles',page:'pages'} as const;

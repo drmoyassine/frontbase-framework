@@ -7,7 +7,7 @@ import { buildSiteManifest } from '@frontbase/compiler/manifest';
 import { directoryLayoutQueries, projectDirectoryRecords, projectSharedDirectoryPreview, projectDirectoryBrowsing, projectRelativeSiteLinks, projectTemplatePresentation, readLandingSettings, landingQueryParams } from '@frontbase/edge-core/directory/configuration';
 import type { PageLayoutData, EngineOptions, PageEntry } from '@frontbase/edge-core';
 import { publicationPathSchema } from '@frontbase/edge-core/directory/publication';
-import { sitePublicationManifestSchema, type SitePublicationManifest } from './site-publication-manifest.js';
+import { readPublicationManifest, type SitePublicationManifest } from './site-publication-manifest.js';
 import { createChunkDirectoryQueries,localizedIndexTitleReader,type LocalizedQueryPlan } from './site-publication-chunk-queries.js';
 import { PublicationRequestError } from './site-publication-runtime.js';
 import { projectPublicationListRows,type PublishedLiveQuery } from './publication-list-source.js';
@@ -19,7 +19,7 @@ import { localeDirection } from '@frontbase/edge-core/localization';
  *  which hash the display-field inventory, never formatted dates — stay byte-stable. */
 export async function resolveChunkPublicationPage(input:SitePublicationManifest,hash:string,owner:string,db:DbRunner,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string):Promise<{templateRecord:Record<string,unknown>;sourcePageId:string;page:PageEntry;version:string;cacheKey:string;document:NonNullable<EngineOptions['document']>}|null>{
     if(!owner || !/^[a-f0-9]{64}$/.test(hash))throw new Error('publication_context_required');
-    const artifact=sitePublicationManifestSchema.parse(input),url=new URL(request.url),path=url.pathname;
+    const artifact=readPublicationManifest(input),url=new URL(request.url),path=url.pathname;
     if(!publicationPathSchema.safeParse(path).success)return null;
     const staticPage=artifact.staticPages?.find(page=>page.originalPath===path),entry=artifact.index.find(row=>row.originalPath===path);
     const route=templateRoute(artifact,path);
