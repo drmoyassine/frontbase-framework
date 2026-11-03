@@ -1,14 +1,61 @@
-2026-11-02 current authoring work: [template binding consolidation](template-binding-consolidation-20261102.md) is a bounded source candidate. Legacy query/identity/scope compatibility migration and fresh cloud acceptance remain explicit, ordered gaps. Earlier cloud receipts do not certify the changed installer. No public-release or merged-source claim.
-
-2026-11-01 current addition: Booking for X first-start and unconnected-draft repairs are verified on managed CF/Vercel fixtures, including responsive browser canvases and exact post-install upgrade/session preservation. [Installer receipts, scope and remaining release gates](booking-for-x-installer-20261101.md). This does not claim a new uninterrupted native-button run or published bilingual data site.
-
 # Frontbase Developer Preview: current release plan
 
-## Current checkpoint — 2026-11-01
+## Current checkpoint — 2026-11-02
+
+The template binding consolidation and bounded legacy source dependency retirement are **complete at source and merged**. The integration receipt records `main` and `codex/native-template-publication-20261102` at `e9b0e985f94b63cbfb0323b9d08a9e00d9694b44` (implementation `ac78bc5f`). This documentation update does not establish a newer remote or live runtime revision. [Exact implementation and qualification](template-binding-consolidation-20261102.md).
+
+Delivered: draft-only installation without duplicate mapping controls; existing Data Studio/Bind/@ ownership; reusable-template identity/URL controls; per-element/Block Version publication diagnostics; canonical v2 authoring persistence and immutable captured source bindings. Old authoring and publication formats retain compatible readers. Existing scopes, original URLs, publication bytes/hashes, translation identities and source/translated edit destinations are preserved. Existing Booking for X completeness rules remain; arbitrary per-template multi-source joins are not part of this delivery.
+
+Local qualification passed workspace check/build, **51 focused UI tests and 75 affected fault checks**, plus old/new capture English/Arabic save/reload and source-write equivalence. These are recorded results from the implementation, not new tests run during this documentation update. Existing deployed services were **not updated** by the source merge.
+
+### Completed work: do not reopen without a reproduced regression
+
+- Shared source retirement and compatibility migration: source complete; no bulk rewrite on reads. The next explicit settings save writes v2.
+- Per-element diagnostics and simplified installer: source complete. Cloud acceptance of the changed journey is still required.
+- Native CF zero-resource bootstrap, credential handoff and native Vercel integration wiring: implemented with dated live receipts. Their earlier successes remain evidence, not certification of all later code.
+- Secure setup renewal: implemented; real Vercel identity-only owner renewal already passed. Do not plan another recovery implementation. Remaining live renewal cases are listed in [the onboarding matrix](onboarding-final-acceptance-20261101.md).
+- Prior visual builder, multilingual editing, reusable details, URL policy/SEO and settings repairs retain their accepted receipts.
+
+### Remaining execution order
+
+| Order | Actual remaining gap | Completion evidence |
+| --- | --- | --- |
+| 1 | **Qualify the merged installer and migration on CF and Vercel** | Follow the public README in a standard browser on disposable clean installations. Record exact source/build/resource IDs; verify no bindings are created before Review → Apply. Complete administrator setup, UI Install Template, exactly six editable drafts, existing datasource/view binding and actionable per-element diagnostics. Publish English and Arabic; verify desktop/mobile, RTL, localized click-through, reusable URLs and source/translation save routing. Then ordinary linked-Git upgrade, refreshed session, retained accounts, unchanged resources/configuration/publications and supported rollback/restore. Keep assisted recoveries separate from uninterrupted acceptance. |
+| 2 | **Freeze one reproducible candidate** | After any acceptance repairs, record immutable source, supported Node/tool versions, console/hydration/host artifacts and seven library archive hashes. Reproduce the standalone console type inventory; fix supported-path defects or document justified tooling residue. Account for generated `cms.mjs` without accidentally committing unrelated drift. |
+| 3 | **Qualify that exact candidate and supported security/operations** | Required check/build and applicable functional/mutation/conformance gates, strict external consumers of all seven libraries and advertised host upgrade/recovery proofs. Close independently controlled account/recipient isolation and relay rotation/refresh/recovery/operations evidence, plus actual reset-mail inbox/lifecycle proof, or explicitly restrict the advertised optional service boundary. Existing local passes and owner-account evidence alone do not prove every live combination. |
+| 4 | **Complete supported-provider and clean-room documentation acceptance** | Finish outstanding advertised storage/queue/resource and renewal cases from the linked matrices; test only combinations promised as supported. A clean-room adopter follows public install → configure → publish → operate/upgrade/recover on claimed hosts. Record precise support limits. Upstash partnership/consent and unverified optional combinations remain external/experimental rather than mandatory additions to release scope. |
+| 5 | **Prepare versioned distribution** | Confirm registry authority, coordinated versions/ranges, archive contents/licenses/provenance, publishing dry-run and partial-publication recovery. Documentation, compatibility/deprecation guidance and release notes must match the candidate and actual support matrix. |
+| 6 | **Publish the scoped Framework Developer Preview** | Publish the qualified exact packages/tag/notes, verify a fresh registry consumer and record support ownership/limitations. No GA claim; source merge and website deployment alone do not close this gate. |
+
+Steps 2–4 can collect independent evidence alongside step 1, but any repair changes the candidate and requires relevant requalification. Retain dated unchanged successes; do not repeat provisioning or broad tests merely to refresh timestamps.
+
+### Next executable task and safeguards
+
+Inspect the existing CF/Vercel fixtures, their deployed revisions and current access before creating anything. Resume the existing Vercel acceptance installation through supported owner renewal if still pending; do not replay its native claim or extract setup credentials. Preserve populated fixtures and the owner's unconfigured Study-in-USA wizard. The [current onboarding matrix](onboarding-final-acceptance-20261101.md) records Vercel Apply/admin/publication/upgrade and CF signed storage/queue/session/positive-renewal residuals. The [installer receipt](booking-for-x-installer-20261101.md) records managed-fixture successes and their native-browser limits. A current-source clean installer run must be separately identified from those earlier receipts.
+
+Use an isolated fixture to exercise a pre-upgrade v1 configuration and then an explicit v2 save, confirming published routes/translations/edit destinations remain stable. A binary predating the v2 reader cannot safely be rolled back after that save without verified pre-upgrade state restoration. Publication rollback is a separate supported operation. [Upgrade delivery and downgrade boundary](../guides/updating-deployed-frontbase.md).
+
+For self-hosted PostgREST, establish the required authenticated SQL-helper/schema-discovery prerequisite before using it for state acceptance; a bare endpoint is not enough. Report the precise refusal if it is missing. Do not bypass helper permissions or substitute direct TCP for the owner's HTTPS runtime requirement.
+
+### Scope and status boundaries
+
+The accepted edition remains **Frontbase Framework Developer Preview**. CF is the leading edge target; Vercel support is Node Functions, not Vercel Edge. Preserve Node 22 support boundaries. Bulk untranslated datasource records/media, other WordPress sites, production Study-in-USA cutover, CF-22 parity, Deno parity, every optional provider and a hosted SaaS launch are outside this release critical path. New independently selectable source contracts, filter operators or other feature expansions are not prerequisites invented by this plan.
+
+This is a documentation reconciliation only. No new live test, service update, grant, cloud resource, package publication or source-record change occurred. The prior source integration receipt is retained; remote refresh was unavailable during this update. Pre-existing `.gitignore` and generated `examples/cf-full/api/cms.mjs` changes remain untouched.
+
+## Historical checkpoints
+
+The dated sections below preserve evidence and earlier diagnoses. They are superseded by the November 2 checkpoint and ordered table above wherever they conflict; in particular, legacy source retirement and Vercel renewal implementation are no longer open engineering tasks.
+
+<a id="current-checkpoint--2026-11-01"></a>
+
+## Historical checkpoint — 2026-11-01
 
 The [bounded onboarding acceptance stream](onboarding-final-acceptance-20261101.md) now repairs secure native setup renewal at source, with generation/encryption separation, fresh provider edit-authority proof, actionable errors and existing/new security gates passing. Live CF/Vercel renewal consent and fresh optional-binding/native-README → administrator → publication → Git-upgrade evidence remain OPEN. The source repair reduces the engineering backlog; it does not close those live gates or wider public-release requirements. Preserve the original October 31 checkpoint below as historical evidence, not the current verified source tip.
 
-## Current checkpoint — 2026-10-31
+<a id="current-checkpoint--2026-10-31"></a>
+
+## Historical checkpoint — 2026-10-31
 
 **November 1 binding task delivered:** [hosted Supabase/PostgREST HTTP state](hosted-postgres-state-20261031.md), source `87eebed9`, passes workspace/security/MVCC qualification and isolated CF/Vercel Supabase activation → administrator → visual save/publish → retained-account tests → Git-upgrade checks. Self-hosted PostgREST has actual local HTTP and both target-fixture evidence, not a separate remote-provider live receipt. Vercel's administrator link needed approved assisted recovery; secure hosted owner-link renewal and an uninterrupted public-main Vercel journey remain the next genuine onboarding gaps. Preserve the owner's unconfigured Study-in-USA installation. This does not close wider Developer Preview release gates.
 
@@ -24,7 +71,7 @@ The verified main implementation checkpoint is `1ea8d2266e2528f0c7da35a2310c013f
 | Vercel fresh activation → publication | OPEN — follows renewal repair | A fresh main README run must reach bindings, activate an empty state database, create an administrator, publish, test the retained account and preserve session/data on an ordinary Git upgrade. No CLI deployment, secret injection or bespoke claim recovery substitutes for this proof. |
 | Framework public release | OPEN — Developer Preview preparation | One candidate manifest, cumulative qualification, supported install/recovery evidence and versioned distribution remain distinct gates below. No GA or package-publication claim. |
 
-### Immediate execution order
+### Historical execution order
 
 1. **Repair secure hosted setup renewal and error handling.** Follow the [recorded requirements](hosted-setup-access-renewal-20261031.md). Prove exact-target ownership again, renew/revoke only access capabilities, preserve encryption keys and durable operations, refuse installed/uncertain-state reprovisioning, and distinguish actual expiry from missing authorization, refusals and transport errors. Planned, not implemented; the owner requested recording this next repair.
 2. **Close the Vercel browser acceptance gap.** Follow the [exact checklist](vercel-native-browser-acceptance-20261031.md#next-run-checklist) in standard Chrome from the current public README. Record source/build IDs, an empty database's identity, activation, first administrator, publication, anonymous denial, retained Connected Account and upgrade preservation. The browser safety control previously stopped because it could not determine Chrome's URL; this is an automation barrier, not evidence of a new Vercel service failure. The owner handles authentication/consent/password submissions when required.
@@ -198,7 +245,7 @@ No new reproducible runtime defect is established by this documentation review. 
 
 CF-22/product-equivalence work remains parked and outside this edition. Complete Study in USA record translations, other WordPress sites, production website cutover, Deno/Vercel Edge parity, every optional provider, booking/payments and a hosted SaaS launch are outside this release's critical path. This does not excuse a security defect or false success in an enabled supported capability.
 
-## Next executable task
+## Historical next-task recommendation
 
 First implement and qualify [secure hosted setup access renewal](hosted-setup-access-renewal-20261031.md), then close the [fresh native Vercel browser journey](vercel-native-browser-acceptance-20261031.md#next-run-checklist), prepare the candidate manifest and execute the ordered work in the October 31 checkpoint above. Renewal is a newly identified recovery gap; do not reopen completed Cloudflare provisioning, Neon, behavior, workflow or PostgREST repairs without a new reproducible failure. No unrelated feature sprint is required.
 

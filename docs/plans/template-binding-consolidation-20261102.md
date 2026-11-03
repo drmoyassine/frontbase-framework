@@ -24,7 +24,7 @@ Source commits: `a3e85f4b` (relationship editor repairs), `08a5a2fa` (installer,
 5. Two pre-existing relationship UI crashes found by the broader type review are repaired: selected schema is passed into RelationshipsView; RelationshipModal defines its editing flag before using it. Numeric datasource IDs are normalized only for APIs requiring strings.
 6. Existing sites, serialized configuration, publication captures, scopes, original paths and frontend write routing remain unchanged. No data migration or deployed-site mutation has been performed.
 
-## Still required for the full authorized consolidation
+## Historical migration backlog — superseded by the retirement receipt
 
 1. Replace legacy semantic query dependencies with explicit authoritative source/identity/filter references using existing datasource and saved-view contracts. Keep the legacy reader until equivalence is demonstrated. Do not infer arbitrary title/URL fields or loosen parent filters.
 2. Complete live qualification of the moved identity/path controls and eventual per-template source ownership. Current persisted ownership remains shared by semantic role; moving the controls does not create independent per-template data contracts. The URL panel GET works with zero published records; record-specific overrides naturally require record inventory.
@@ -46,7 +46,7 @@ No full-consolidation or cloud acceptance claim is made by the initial patch. Ke
 - Node 26.7.0 was used; examples declare Node 22.x and emit an engine warning. Console chunk-size/dynamic-import warnings remain.
 - No live CF/Vercel deployment, new cloud resources, source-record edits, template installation or browser/mobile acceptance was performed for this patch. Generated `examples/cf-full/api/cms.mjs` and pre-existing `.gitignore` drift remain unstaged.
 
-## Next executable task
+## Historical next-task recommendation — completed at source
 
 Inventory each legacy semantic query use in the six installed layouts and record-edit/publication paths. Design a versioned compatibility reader that maps existing saved configuration into existing source/view contracts without changing record identity, original URLs or scope predicates. Add equivalence tests before retiring any old controls or relaxing the fixed-role readiness checks. Reuse the delivered element/schema diagnostics in the replacement writer and perform the fresh UI acceptance matrix. This patch is an initial authoring consolidation, not completion of the entire migration.
 
@@ -86,3 +86,10 @@ The frontend-record test initially completed its assertions but hit a transient 
 This closes the bounded legacy source dependency retirement at source. It does not claim a new generic multi-source publication format, arbitrary filter operators, new provider grants, a live cloud rollout or public release.
 
 Migration guidance is in [updating deployed installations](../guides/updating-deployed-frontbase.md). No live cloud data, existing site configuration or deployed application was changed by local qualification.
+
+
+## Current integration and remaining acceptance — November 2
+
+Source retirement is closed and integrated: implementation `ac78bc5f`, qualification/documentation `e9b0e985`; the preceding integration receipt verified remote main and the working branch at full SHA `e9b0e985f94b63cbfb0323b9d08a9e00d9694b44`. No deployed app was updated. Earlier open migration inventories in this file describe the work before this receipt and must not be reused as current backlog.
+
+Next: qualify the changed installer and lazy v1 → v2 settings save on disposable native CF/Vercel installations, including six editable drafts, UI bindings/diagnostics, English/Arabic publication and edits, desktop/mobile, and ordinary upgrade/recovery. Preserve existing installations and data. Keep managed/API/assisted evidence distinct from native uninterrupted browser proof. Wider package/security/distribution gates and execution order are in the [current overall plan](frontbase-public-release-finalization-20261024.md#current-checkpoint--2026-11-02).
