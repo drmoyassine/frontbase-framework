@@ -100,6 +100,7 @@ it('clears the previous publication success when another page cannot load',async
  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Preview language'}));
  await screen.findByTitle('Prepared homepage language preview');fireEvent.click(screen.getByRole('button',{name:'Publish language'}));
  await screen.findByText('Language published. Visitors now receive the reviewed translation for this page.');
+ expect(screen.getByText('1 / 1 fields translated · A language version is published')).toBeTruthy();
  fireEvent.focus(screen.getByLabelText('Page'));await screen.findByRole('option',{name:/Explore —/});fireEvent.change(screen.getByLabelText('Page'),{target:{value:'/explore/'}});
  await screen.findByText('Interactive live-list translation is not available for this page yet. Its controls and source data are unchanged.');
  expect(screen.queryByText('Language published. Visitors now receive the reviewed translation for this page.')).toBeNull();
