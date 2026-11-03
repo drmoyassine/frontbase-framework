@@ -4,7 +4,7 @@ import {mkdirSync,rmSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const out=new URL('../.native-cloud-test/',import.meta.url);mkdirSync(out,{recursive:true});
 try{
- await build({entryPoints:[fileURLToPath(new URL('../src/native-cloud.ts',import.meta.url))],outfile:fileURLToPath(new URL('host.mjs',out)),bundle:true,platform:'node',format:'esm',packages:'external',plugins:[{name:'assets',setup(b){b.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:'assets',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:'export default {"/frontbase-bootstrap/native":{body:"native fixture",type:"text/html"}}'}));}}]});
+ await build({entryPoints:[fileURLToPath(new URL('../src/native-cloud.ts',import.meta.url))],outfile:fileURLToPath(new URL('host.mjs',out)),bundle:true,platform:'node',format:'esm',packages:'external',plugins:[{name:'assets',setup(b){b.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:'assets',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:'export default {"/frontbase-bootstrap/activation":{body:"<!-- provider choices -->",type:"text/html"},"/frontbase-bootstrap/native":{body:"native fixture",type:"text/html"}}'}));}}]});
  const {createNativeCloudBootstrap}=await import(new URL('host.mjs',out));
  const origin='https://native-fixture.fixture.workers.dev',env={FRONTBASE_HOSTED_SETUP:'1',FRONTBASE_BOOTSTRAP:'native',FRONTBASE_NATIVE_PUBLIC_ORIGIN:origin,FRONTBASE_NATIVE_RELAY_URL:'https://relay.example',FRONTBASE_NATIVE_INSTALLATION_ID:'11111111-2222-4333-8444-555555555555',FRONTBASE_NATIVE_ACCOUNT:'a'.repeat(32),FRONTBASE_NATIVE_PROJECT:'native-fixture'};
  let mutations=0;const host=createNativeCloudBootstrap(env,'cloudflare',async(input,init={})=>{if(init.method&&init.method!=='GET')mutations++;assert.equal(String(input),'https://relay.example/health');return Response.json({providers:['cloudflare','vercel']});});
@@ -14,6 +14,12 @@ try{
  assert.equal((await request('/health')).status,200);
  const config=await(await request('/frontbase-bootstrap/native-configuration')).json();assert.equal(config.target,'cloudflare');assert.equal(config.manifest.bindings['state-db'].adapterId,'cloudflare-d1');assert.ok(config.adapters.some(a=>a.id==='libsql-http'));assert.ok(config.adapters.some(a=>a.id==='upstash-http'));assert.ok(config.adapters.some(a=>a.id==='supabase-postgres'),'cloudflare native wizard must offer supabase-postgres');assert.ok(config.adapters.some(a=>a.id==='postgrest-http'),'cloudflare native wizard must offer the connect-only postgrest-http');assert.ok(!JSON.stringify(config).includes('fixture-only'));
  const vercelHost=createNativeCloudBootstrap(env,'vercel',async()=>Response.json({providers:[]}));
+ for(const [server,expected] of [[host,'cloudflare-d1'],[vercelHost,'libsql-http']]){
+  const first=await server.fetch(new Request(origin+'/frontbase-bootstrap/activation'));
+  assert.equal(first.status,200);const html=await first.text();
+  assert.match(html,new RegExp('value="'+expected+'" selected'));assert.match(html,/data-role="storage"/);
+  assert.doesNotMatch(html,/type="password"/);
+ }
  const vercelConfig=await(await vercelHost.fetch(new Request(origin+'/frontbase-bootstrap/native-configuration'))).json();assert.ok(!vercelConfig.adapters.some(a=>a.id==='supabase-postgres'),'vercel native wizard must stay supabase-free until its executor provisions');assert.ok(vercelConfig.adapters.some(a=>a.id==='postgrest-http'),'vercel native wizard offers the connect-only postgrest-http');
  assert.equal((await host.fetch(new Request('https://attacker.example/frontbase-bootstrap/'))).status,403);
  assert.equal((await request('/frontbase-bootstrap/api/apply',{method:'POST',body:'{}'})).status,404);assert.equal(mutations,0,'native page does not provision before verified OAuth');

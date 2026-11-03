@@ -11,6 +11,11 @@ async function open(token){
  }
  const connections=readProviderConnections(true).then(connectionOptions).catch(()=>undefined);
  const config=await api('form');
+ let initialProviders;
+ try{
+  initialProviders=JSON.parse(sessionStorage.getItem('fb-setup-provider-choices'));
+  sessionStorage.removeItem('fb-setup-provider-choices');
+ }catch{}
  let saved;
  try{saved=JSON.parse(sessionStorage.getItem('fb-setup-manifest'));sessionStorage.removeItem('fb-setup-manifest');}catch{}
  $('unlock').hidden=true;
@@ -22,7 +27,7 @@ async function open(token){
   $('result').textContent='A previous installation needs reconciliation. No changes will be sent again.';
  }
  form=mountBindingsForm($('bindings'),{
-  manifest:restoreSetupManifest(saved,config.manifest),adapters:config.adapters,resourceOptions:config.resourceOptions,
+  manifest:restoreSetupManifest(saved,config.manifest),initialProviders:canReview?initialProviders:undefined,adapters:config.adapters,resourceOptions:config.resourceOptions,
   credentials:'entry',onDemand:true,loadResources:()=>api('resource-options'),loadConnections:()=>readProviderConnections().then(connectionOptions),connectionsPending:true,discoveryBase:'/frontbase-bootstrap/api',
   onDeployNow:()=>$('review').click(),
   onConnect:async provider=>{

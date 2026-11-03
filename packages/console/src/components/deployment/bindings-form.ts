@@ -1,7 +1,7 @@
 import { configurableRoles, deploymentAdapters, supabaseStateSchemaName, type ConfigurableRole, type DeploymentAdapter, type DeploymentManifest, type BindingSelection } from '@frontbase/edge-core/deployment';
 
-export const bindingLabels = { 'state-db':'State database', cache:'Application cache', storage:'Object storage', vector:'Vector index', queue:'Queue delivery', 'email-send':'Outbound email' };
-const names: Record<string,string> = {'turso-marketplace':'Turso (connected Vercel integration)','cloudflare-d1':'Cloudflare D1','cloudflare-kv':'Cloudflare KV','cloudflare-r2-http':'Cloudflare R2 Object Storage (S3 over HTTPS)','cloudflare-r2':'Cloudflare R2 Object Storage','supabase-storage':'Supabase Storage','cloudflare-queue':'Cloudflare Queues','libsql-http':'Remote libSQL / Turso','d1-http':'Cloudflare D1 over HTTP','supabase-postgres':'Supabase','postgrest-http':'Self-hosted Postgres (PostgREST)','upstash-http':'Upstash Redis over HTTP','s3-http':'S3-compatible storage','cloudflare-vectorize-http':'Cloudflare Vectorize over HTTP','libsql-vector-http':'libSQL vector index over HTTP','qstash-http':'Upstash QStash'};
+import {names} from './binding-labels';
+export {bindingLabels} from './binding-labels';
 const fields: Record<string,string> = {url:'Service URL',endpoint:'Endpoint',region:'Region',bucket:'Bucket',accountId:'Account ID',databaseId:'Database ID',indexName:'Index name',destination:'Callback URL',resourceName:'Resource name',from:'Sender address',token:'Access token',accessKeyId:'Access key ID',secretAccessKey:'Secret access key',signingKey:'Signing key',nextSigningKey:'Next signing key',schema:'Schema',host:'Host',port:'Port',database:'Database',projectRef:'Project reference',username:'Role name',password:'Role password'};
 const stepCopy: Record<string,[string,string]> = {'state-db':['State Database','Required. Where Frontbase stores its own state and configuration.'],storage:['File Storage','Optional. Object storage for uploads and media.'],cache:['Application Cache','Optional. Fast ephemeral storage for sessions and caching.'],queue:['Queue Delivery','Optional. Background jobs and message delivery.'],vector:['Vector Database','Optional. Embeddings storage for semantic search.'],'email-send':['Email Delivery','Optional. Outbound transactional email.']};
 const stepOrder: readonly ConfigurableRole[] = ['state-db','storage','cache','queue','vector','email-send'];
@@ -20,6 +20,7 @@ export interface BindingsFormOptions {
     adapters?: readonly DeploymentAdapter[];
     executionCapabilities?: {adapters: Record<string, readonly BindingSelection['mode'][]>};
     credentials?: 'entry' | 'references';
+    initialProviders?: Partial<Record<ConfigurableRole,string>>;
     resourceOptions?: Record<string,Array<{id:string;name:string}>>;
     /** Only supplied by a host with an authenticated server-side connection flow. */
     providerConnections?: Partial<Record<ProviderName,{available:boolean;connected:boolean;label?:string;accountId?:string;capabilities?:string[]}>>;
@@ -57,6 +58,26 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     };
     const compatible=(role:ConfigurableRole)=>adapters.filter(a=>a.role===role&&a.selectable&&a.targets.includes(manifest.target)&&(!options.executionCapabilities||options.executionCapabilities.adapters[a.id]?.length));
     const modes=(adapter:DeploymentAdapter)=>options.executionCapabilities?.adapters[adapter.id]??adapter.modes;
+    function chooseProvider(role:ConfigurableRole,value:string){
+        const binding=manifest.bindings[role];
+        if(value==='disabled' ? role==='state-db' : !compatible(role).some(a=>a.id===value))return;
+        for(const reference of Object.values(binding.secretRefs))secrets.delete(reference);
+        if(role==='state-db'){postgresGeneration++;postgresDiscovery=undefined;}
+        if(value==='disabled')manifest.bindings[role]={...binding,mode:'disabled',secretRefs:{}};
+        else {
+            const adapter=compatible(role).find(a=>a.id===value);
+            if(!adapter)return;
+            const allowed=modes(adapter),mode=adapter.id==='supabase-postgres'?'reuse':allowed.includes('connect')?'connect':allowed[0];
+            if(!mode)return;
+            const secretRefs=entry?{}:Object.fromEntries((adapter.requiredSecrets??[]).map(key=>[key,role+'/'+key]));
+            manifest.bindings[role]={adapterId:adapter.id,mode,config:{...(mode==='create'&&createNames.get(role)?{resourceName:createNames.get(role)!}:{})},secretRefs};
+        }
+    }
+    for(const role of configurableRoles){
+        const choice=options.initialProviders?.[role];
+        const current=manifest.bindings[role];
+        if(typeof choice==='string'&&choice!==(current.mode==='disabled'?'disabled':current.adapterId))chooseProvider(role,choice);
+    }
     const option=(label:string,value:string)=>{const result=node('option',label);result.value=value;return result;};
     const field=(parent:HTMLElement,label:string,value:string|undefined,update:(value:string)=>void,secret=false,required=false)=>{
         const wrapper=node('div',undefined,'fb-binding-field'),id='binding-'+crypto.randomUUID();
@@ -343,16 +364,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             if(binding.mode!=='disabled'&&!compatibleAdapters.some(a=>a.id===binding.adapterId)){const unsupported=option(binding.adapterId+' — setup unavailable',binding.adapterId);unsupported.disabled=true;select.append(unsupported);}
             select.value=binding.mode==='disabled'?'disabled':binding.adapterId;
             select.addEventListener('change',()=>{
-                for(const reference of Object.values(binding.secretRefs))secrets.delete(reference);
-                if(role==='state-db'){postgresGeneration++;postgresDiscovery=undefined;}
-                if(select.value==='disabled')manifest.bindings[role]={...binding,mode:'disabled',secretRefs:{}};
-                else {
-                    const adapter=compatibleAdapters.find(a=>a.id===select.value)!;
-                    const allowed=modes(adapter),mode=adapter.id==='supabase-postgres'?'reuse':allowed.includes('connect')?'connect':allowed[0];
-                    if(!mode)return;
-                    const secretRefs=entry?{}:Object.fromEntries((adapter.requiredSecrets??[]).map(key=>[key,role+'/'+key]));
-                    manifest.bindings[role]={adapterId:adapter.id,mode,config:{...(mode==='create'&&createNames.get(role)?{resourceName:createNames.get(role)!}:{})},secretRefs};
-                }
+                chooseProvider(role,select.value);
                 render();change();
             });
             wrapper.append(title,select);card.append(wrapper);

@@ -340,3 +340,14 @@ test('hosted create avoids inventories, reuse loads once and Review checks unvis
  expect(calls).toHaveLength(2);
  expect(root.querySelector('#binding-provider-vector')).not.toBeNull();
 });
+
+test('first-screen provider choices use the hosted adapter rules and preserve other defaults',()=>{
+ const original=defaultDeploymentManifest('cloudflare');
+ mount('cloudflare',{manifest:original,onDemand:true,initialProviders:{'state-db':'libsql-http',storage:'cloudflare-r2',queue:'libsql-http'}});
+ const {manifest,credentials}=form!.snapshot();
+ expect(manifest.bindings['state-db']).toMatchObject({adapterId:'libsql-http',mode:'connect'});
+ expect(manifest.bindings.storage).toMatchObject({adapterId:'cloudflare-r2',mode:'create'});
+ expect(manifest.bindings.queue).toEqual(original.bindings.queue);
+ expect(manifest.bindings.cache).toEqual(original.bindings.cache);
+ expect(credentials).toEqual({});
+});

@@ -1,6 +1,7 @@
 import {createProviderRelayClient,type OAuthRelayTarget} from '@frontbase/backend';
 import {defaultDeploymentManifest,deploymentAdapters} from '@frontbase/edge-core/deployment';
 import {claimNativeInstallation} from './native-claim.js';
+import {activationPage} from './setup-provider-choices.js';
 import assets from 'virtual:bootstrap-assets';
 const fail=():never=>{throw Error('native_setup_refused');};
 /** Explicit zero-state entry. Database failures never enter this branch. */
@@ -21,7 +22,7 @@ export function createNativeCloudBootstrap(env:any,host:'cloudflare'|'vercel',tr
   // provisioning route, so advertising create/reuse there would fail closed at apply.
   // postgrest-http is connect-only (no provisioning), so it ships on both hosts.
   if(url.pathname==='/frontbase-bootstrap/native-configuration')return Response.json({target:host,manifest:defaultDeploymentManifest(host,'production'),adapters:deploymentAdapters.filter(a=>a.targets.includes(host)&&['cloudflare-d1','cloudflare-kv','libsql-http','d1-http','postgrest-http',...(host==='cloudflare'?['supabase-postgres']:[]),'upstash-http','libsql-vector-http','cloudflare-vectorize-http','s3-http','qstash-http'].includes(a.id))},{headers});
-  const key=url.pathname==='/frontbase-bootstrap/'?'/frontbase-bootstrap/native':url.pathname,asset=assets[key];if(asset)return new Response(asset.body,{headers:{...headers,'content-type':asset.type}});
+  const key=url.pathname==='/frontbase-bootstrap/'?'/frontbase-bootstrap/native':url.pathname,asset=assets[key];if(asset)return new Response(url.pathname==='/frontbase-bootstrap/activation'?activationPage(asset.body,host):asset.body,{headers:{...headers,'content-type':asset.type}});
   if(url.pathname.startsWith('/api/'))return new Response('Not found',{status:404,headers});
   return new Response(null,{status:302,headers:{...headers,location:'/frontbase-bootstrap/'}});
  }};
