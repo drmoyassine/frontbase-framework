@@ -224,7 +224,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                         {editProvider
                             ? `Update credentials or display name for this ${currentConfig.label} connection.`
                             : lockedProvider
-                                ? `Add your ${currentConfig.label} credentials.`
+                                ? `Connect your ${currentConfig.label} account.`
                                 : 'Authorize Frontbase to deploy workers on your behalf.'}
                     </DialogDescription>
                 </DialogHeader>

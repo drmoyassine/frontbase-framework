@@ -21,6 +21,7 @@ import {
     DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, Link2, RefreshCw, Plus } from 'lucide-react';
+import { PROVIDER_CONFIGS } from './edgeConstants';
 import { useEdgeProviders } from '@/hooks/useEdgeInfrastructure';
 import { ConnectProviderDialog } from './ConnectProviderDialog';
 
@@ -282,8 +283,8 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
 
     // No compatible accounts → show "Connect Account" button
     if (compatibleAccounts.length === 0) {
-        const providerName = compatibleProviders[0]?.charAt(0).toUpperCase() + (compatibleProviders[0]?.slice(1) || '');
-        const buttonLabel = autoSelectSingle
+        const providerName = PROVIDER_CONFIGS[compatibleProviders[0]]?.label || compatibleProviders[0] || 'Provider';
+        const buttonLabel = autoSelectSingle && compatibleProviders[0] === 'turso'
             ? `Add ${providerName} Database`
             : `Connect ${providerName} Account`;
         return (

@@ -1,5 +1,17 @@
 # Frontbase Developer Preview: current release plan
 
+## Connected Accounts and datasource forms — 2026-11-03
+
+The provider dialog previously rendered manual credentials before OAuth discovery resolved. The shared React Query cache now holds availability for 60 seconds. An explicit pending state appears on first lookup, provider switches reuse the result, and discovery errors offer Retry. CF, Vercel and Supabase button selection is browser-verified on the disposable Vercel app.
+
+The datasource selector and list use one catalog derived from the existing provider registry. Cloudflare renders the shared account/resource picker filtered to D1. Both saved `cloudflare` and `d1` kinds use the existing D1 HTTP runner. Selected D1 database/account, Supabase project, Neon project and Turso database identifiers survive save/read/edit. Type switches clear previous credentials and resource selections, stale discovery responses are ignored, and new connections require a name and selected resource or valid manual HTTPS credentials. Picker buttons cannot submit their parent form.
+
+Neon introspection uses the PostgreSQL dialect. Supabase setup targets the selected project even when the account default differs. Turso recognizes legacy registry `url` entries. Google Sheets has the required Apps Script URL, spreadsheet ID and secret fields in the existing account dialog. Generic PostgreSQL and MySQL are visibly unavailable for new selection because the current HTTP runtime lacks their generic wire adapters. Existing saved entries retain their readers.
+
+Validation passed `pnpm -r check`, `pnpm -r build`, 15 focused console regressions, `test:record-fields`, the Supabase bootstrap regression, adapter selection/redaction checks, seven Neon HTTP groups and all eight `test:http-provider-repairs-mutation` faults with sources restored. Final label changes additionally passed console check/build and all 15 focused tests.
+
+Live verification uses the existing `frontbase-live-vc-261103` native Git copy. The initial push was blocked by the local commit email. A new commit using the authenticated owner's verified GitHub identity allowed the provider build, and a root build marker addressed Vercel's skipped empty retry. Repair source `9a43645` completed deployment. The signed-in browser verified all eight enabled datasource types, disabled PostgreSQL/MySQL options and CF/Supabase/Vercel OAuth-only dialogs. Final label deployment `d4b32d8` is tracked with the same test app. Live query acceptance with credentials for every listed provider and a separate CF-host deployment of these UI repairs remain open. The wider installer/bilingual/upgrade release checks below remain separately tracked.
+
 ## Hosted setup verification — 2026-11-03
 
 Fresh README-button deployments from `b33441b5` verified ownership and activated isolated state on both hosts. The following receipts distinguish successful provisioning from the first administrator sign-in.
