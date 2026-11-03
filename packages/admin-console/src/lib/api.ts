@@ -81,17 +81,23 @@ export async function getSetupStatus(): Promise<SetupStatus> {
 export async function postSetupClaim(setupToken: string): Promise<{ ok: true }> {
     // Exchanging an existing capability only issues a cookie. It is idempotent;
     // provisioning and administrator creation are deliberately never retried.
+    const deadline = Date.now() + 45_000;
     for (let attempt = 0; ; attempt++) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) throw new ApiError(0, 'network_error');
+        const signal = AbortSignal.timeout(Math.min(10_000, remaining));
         try {
             return await setupApi('/claim', {
                 method: 'POST',
                 redirect: 'error',
                 cache: 'no-store',
+                signal,
                 body: JSON.stringify({ setupToken }),
             });
         } catch (error) {
-            if (!(error instanceof ApiError) || !['activation_in_progress', 'network_error'].includes(error.code) || attempt >= 14) throw error;
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const failure = signal.aborted ? new ApiError(0, 'network_error') : error;
+            if (!(failure instanceof ApiError) || !['activation_in_progress', 'network_error'].includes(failure.code) || attempt >= 14) throw failure;
+            await new Promise(resolve => setTimeout(resolve, Math.max(0, Math.min(2000, deadline - Date.now()))));
         }
     }
 }

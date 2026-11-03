@@ -1,4 +1,5 @@
-let bootstrapCompletion:Promise<void>|undefined;
+let receiptCompleted = false;
+let nextReceiptCheck = 0;
 import {providerOAuthClients,providerOAuthRelay,importProviderOAuth} from '@frontbase/backend';
 import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap} from './hosted-cloud.js';
 import {createNativeCloudBootstrap} from './native-cloud.js';
@@ -888,7 +889,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     return app;
 }
 
-let enginePromise: Promise<Hono> | null = null;
+let readyEngine: Hono | undefined;
 let currentCtx: ExecutionContext | null = null;
 let bootstrapHost:any;
 
@@ -903,7 +904,8 @@ const worker = {
                 return new Response('SESSION_SECRET is not configured — run: wrangler secret put SESSION_SECRET', { status: 500 });
             }
             currentCtx = ctx;
-            if (!enginePromise) {
+            let engine = readyEngine;
+            if (!engine) {
                 const isCloud = env.FRONTBASE_DEPLOYMENT_MODE === 'cloud';
                 if (isCloud && !env.HYPERDRIVE?.connectionString) {
                     return new Response(
@@ -967,7 +969,7 @@ const worker = {
                 if (isCloud) {
                     console.log(`[cf-full] cloud mode: zone ${env.FRONTBASE_BASE_DOMAIN}`);
                 }
-                enginePromise = createCmsEngine({
+                engine = await createCmsEngine({
                     runner: stateDb.runner,
                     translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
                     sessionSecret: env.SESSION_SECRET,
@@ -1027,10 +1029,18 @@ const worker = {
                             vector: envServiceDescriptor(envServices.vector, ENV_CARD_LABELS.vector),
                         },
                     } : {}),
-                }).catch((e) => { enginePromise = null; throw e; });
+                });
+                readyEngine = engine;
             }
-            const engine = await enginePromise;
-            await (bootstrapCompletion??=completeCloudBootstrap(env,'cloudflare',()=>engine.fetch(new Request(new URL('/health',req.url)),env,ctx)).catch(()=>{console.warn('bootstrap_receipt_completion_pending')}));
+            // Receipt reconciliation is idempotent and independent of this response.
+            // A cancelled poll must not leave later requests waiting on its I/O.
+            if (!receiptCompleted && Date.now() >= nextReceiptCheck) {
+                nextReceiptCheck = Date.now() + 30_000;
+                const health = () => engine.fetch(new Request(new URL('/health', req.url)), env, ctx);
+                ctx.waitUntil(completeCloudBootstrap(env, 'cloudflare', health).then(completed => {
+                    receiptCompleted = completed !== false;
+                }).catch(() => { console.warn('bootstrap_receipt_completion_pending'); }));
+            }
             const proof=await bootstrapRuntimeProof(req,env,()=>engine.fetch(new Request(new URL('/health',req.url)),env,ctx));if(proof)return proof;
             if(new URL(req.url).pathname.startsWith('/frontbase-bootstrap/'))return new Response('Setup closed',{status:410});
             return engine.fetch(req, env, ctx);

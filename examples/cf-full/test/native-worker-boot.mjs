@@ -18,5 +18,27 @@ try {
  assert.equal((await request(first,'/api/pages/',{headers:{cookie}})).status,200);
  const second=await load('second');assert.equal((await request(second,'/api/pages/',{headers:{cookie}})).status,200);assert.equal(secret(),persisted);console.log('PASS actual self-host entry boots, persists one key and preserves original session across independent entry instances');
  const leak=await request(second,'/api/variables/',{headers:{cookie}});assert.ok(!(await leak.text()).includes(persisted));console.log('PASS reserved generated key is absent from tenant variables response');
+ // A disconnected deployment probe can stop making progress in its request context.
+ // A later request must be able to boot against the same already-migrated database.
+ const recovering=await load('interrupted');
+ const entered=Promise.withResolvers(), resume=Promise.withResolvers();
+ let hold=true;
+ const delayed={prepare(sql){
+  const stmt=DB.prepare(sql);
+  return {
+   bind(...args){stmt.bind(...args);return this;},
+   async all(){if(hold){hold=false;entered.resolve();await resume.promise;}return stmt.all();},
+   run(){return stmt.run();}
+  };
+ }};
+ const interrupted=recovering.fetch(new Request(base+'/health'),{...env,DB:delayed},ctx);
+ await entered.promise;
+ let timer;
+ try {
+  const next=await Promise.race([request(recovering,'/api/console/setup/status'),
+   new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('second request blocked by first boot')),5000);})]);
+  assert.equal(next.status,200);
+ } finally { clearTimeout(timer);resume.resolve();await interrupted; }
+ console.log('PASS later request boots while the first request is suspended');
  const broken=await load('broken');assert.equal((await broken.fetch(new Request(base+'/'),{ASSETS:env.ASSETS},ctx)).status,500);console.log('PASS missing state fails closed');
 } finally {db.close();}

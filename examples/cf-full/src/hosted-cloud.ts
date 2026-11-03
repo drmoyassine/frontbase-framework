@@ -262,5 +262,6 @@ export async function completeCloudBootstrap(env:any,target:'cloudflare'|'vercel
  const context={installationId:env.FRONTBASE_INSTALLATION_ID,target,destination:env.FRONTBASE_BOOTSTRAP_ACCOUNT+'/'+env.FRONTBASE_BOOTSTRAP_PROJECT+'/'+env.FRONTBASE_BOOTSTRAP_ENVIRONMENT};
  const journal=target==='cloudflare'&&!env.FRONTBASE_BOOTSTRAP_STORE?sqlBootstrapJournal(d1RunnerFromBinding(env.FRONTBASE_SETUP_JOURNAL),context):createCloudBootstrap({...env,FRONTBASE_BOOTSTRAP:'1'},target,transport,{operationId:env.FRONTBASE_BOOTSTRAP_OPERATION,fingerprint:env.FRONTBASE_BOOTSTRAP_FINGERPRINT}).journal;
  const record=await journal.read(context);if(!record||record.phase==='active')return;
- await reconcileBootstrap(context,journal,{preflight:async()=>{refuse()},apply:async()=>{refuse()},inspect:async()=>({operationId:env.FRONTBASE_BOOTSTRAP_OPERATION,fingerprint:env.FRONTBASE_BOOTSTRAP_FINGERPRINT,healthy:(await health()).ok,bootstrapDisabled:true})});
+ const reconciled=await reconcileBootstrap(context,journal,{preflight:async()=>{refuse()},apply:async()=>{refuse()},inspect:async()=>({operationId:env.FRONTBASE_BOOTSTRAP_OPERATION,fingerprint:env.FRONTBASE_BOOTSTRAP_FINGERPRINT,healthy:(await health()).ok,bootstrapDisabled:true})});
+ return reconciled.phase==='active';
 }

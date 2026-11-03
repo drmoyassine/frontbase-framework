@@ -23,6 +23,22 @@ globalThis.setTimeout=fn=>{waits++;fn();return 0;};
 try{
  globalThis.fetch=async(url,init)=>{assert.equal(url,'/api/console/setup/claim');assert.equal(init.redirect,'error');assert.deepEqual(JSON.parse(init.body),{setupToken:'synthetic'});calls++;return calls===1?Response.json({error:'activation_in_progress'},{status:503}):Response.json({ok:true});};
  assert.deepEqual(await postSetupClaim('synthetic'),{ok:true});assert.equal(calls,2);assert.equal(waits,1);
+ const realTimeoutSignal = AbortSignal.timeout;
+ try {
+  const controller = new AbortController();
+  AbortSignal.timeout = ms => { assert.ok(ms > 0 && ms <= 10000); return calls === 0 ? controller.signal : new AbortController().signal; };
+  calls=0;
+  globalThis.fetch=async(_url,init)=>{
+   assert.equal(init.signal.aborted,false);
+   if(++calls===2)return Response.json({ok:true});
+   return new Promise((_,reject)=>{
+    init.signal.addEventListener('abort',()=>reject(init.signal.reason),{once:true});
+    queueMicrotask(()=>controller.abort());
+   });
+  };
+  assert.deepEqual(await postSetupClaim('synthetic'),{ok:true});
+  assert.equal(calls,2,'stalled first request is cancelled and the cookie exchange recovers');
+ } finally { AbortSignal.timeout=realTimeoutSignal; }
  calls=0;globalThis.fetch=async()=>{calls++;throw Error('redirect/temporary transport');};
  await assert.rejects(()=>postSetupClaim('synthetic'),e=>e.code==='network_error');assert.equal(calls,15,'claim retry is bounded');
  calls=0;globalThis.fetch=async()=>{calls++;return Response.json({error:'invalid_setup_token'},{status:403});};
