@@ -5,7 +5,7 @@ import {localizeNavigationProps,localizePublicHref,localeDirection} from '@front
 import {resolvePublicationVersionPage,PublicationRequestError} from './site-publication-runtime.js';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {PageLayoutData} from '@frontbase/edge-core';
-import {captureHomepage,localizedTitleIndex,listPublishedLocalePointers,LOCALE_PATTERN,publishedLocalesForPath,projectHomepageLocale,templateListingPath} from './translation-homepage.js';
+import {captureHomepage,createPageCapture,localizedTitleIndex,listPublishedLocalePointers,LOCALE_PATTERN,publishedLocalesForPath,projectHomepageLocale,templateListingPath} from './translation-homepage.js';
 import type {PublishedLocalePointerEntry} from './translation-homepage.js';
 import type {LocalizedQueryPlan} from './site-publication-chunk-queries.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
@@ -104,22 +104,22 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     type LiveEntry=PublishedLocalePointerEntry&{pointer:{hash:string;generation:number};release:NonNullable<PublishedLocalePointerEntry['release']>};
     const liveOf=(item:PublishedLocalePointerEntry|null):LiveEntry|null=>item&&!item.corrupt&&item.release?item as LiveEntry:null;
     const sourceUrl=new URL(request.url);if(matched)sourceUrl.pathname=stripped;
-    const capture=await captureHomepage(db,tenant,request,liveQuery);
+    const context=await createPageCapture(db,tenant,request,liveQuery),active=context.active;
     const captures=new Map<string,Awaited<ReturnType<typeof captureHomepage>>>();
     // Listing releases resolve through localized queries: their fresh released titles drive the
     // registry (search/sort/totals) and standard-list reads beside the per-unit text join.
     // Cached beside the source capture.
     const captureFor=async(p:string,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string)=>{
-        if(localizedTitles){const key=p+'\u0000localized';
-            if(!captures.has(key))captures.set(key,await captureHomepage(db,tenant,request,liveQuery,p,undefined,localizedTitles,recordsLocale));
+        if(localizedTitles){const key=p+'\u0000localized:'+recordsLocale;
+            if(!captures.has(key))captures.set(key,await context.capture(p,undefined,localizedTitles,recordsLocale));
             return captures.get(key)!;}
-        if(p==='/')return capture;
-        if(!captures.has(p))captures.set(p,await captureHomepage(db,tenant,request,liveQuery,p));
+        if(!captures.has(p))captures.set(p,await context.capture(p));
         return captures.get(p)!;};
     // A per-unit release stays selectable while its page still resolves; freshness is decided per unit
     // at projection. If the page itself is gone the release is skipped so the source 404s naturally.
     // Selection is exact-path first, homepage shell-fallback second — no site-wide registry scan.
-    const perUnitResolves=async(item:LiveEntry)=>{try{await captureFor(item.release.path);}catch{return false;}return true;};
+    const planFor=(item:LiveEntry)=>active.artifact.schemaVersion===2&&item===rawExact&&item.release.path!=='/'?localizedTitleIndex(item.release,active.artifact):undefined;
+    const perUnitResolves=async(item:LiveEntry)=>{try{await captureFor(item.release.path,planFor(item),item.release.locale);}catch{return false;}return true;};
     const selectable=async(item:LiveEntry)=>!(item.release.policy?.outdated==='source-fallback'&&!await perUnitResolves(item));
     const liveExact=liveOf(rawExact),liveHome=liveOf(rawHome);
     let selected:LiveEntry|null=null;
@@ -131,22 +131,22 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     // Every selected page release gets a localized query plan: listings intersect fresh titles
     // with the parameterized registry; static pages pass the catalog to their live lists
     // (full-dataset localized sort/filter) and any pinned reads beside them.
-    const listingTitles=capture.active.artifact.schemaVersion===2&&selected&&selected.release.path!=='/'
-        ?localizedTitleIndex(selected.release,capture.active.artifact):undefined;
+    const listingTitles=active.artifact.schemaVersion===2&&selected&&selected.release.path!=='/'
+        ?localizedTitleIndex(selected.release,active.artifact):undefined;
     // Freshness is decided per entry, never per registry: per-unit releases stay fresh while
     // their page resolves (a site re-publication does not deactivate them); strict releases need
     // the unchanged site+source they were prepared against. Each entry is evaluated and caught
     // on its own, so one stale/corrupt release can never fail a sibling locale or another page.
     const isFresh=async(item:LiveEntry)=>{
         if(item.release.policy?.outdated==='source-fallback')return perUnitResolves(item);
-        if(item.release.siteHash!==capture.active.pointer.hash)return false;
-        const c=item.release.path==='/'?capture:await captureFor(item.release.path).catch(()=>null);
+        if(item.release.siteHash!==active.pointer.hash)return false;
+        const c=await captureFor(item.release.path).catch(()=>null);
         return !!c&&item.release.sourceHash===c.sourceHash;};
     if(selected&&!await isFresh(selected))throw Error('locale_unavailable');
     const availableExact:LiveEntry[]=[];
     for(const item of perPath){const entry=liveOf(item);if(entry&&await isFresh(entry))availableExact.push(entry);}
     const availableHome:LiveEntry[]=[];
-    if(stripped!=='/')for(const item of homeEntries){const entry=liveOf(item);if(entry&&await isFresh(entry))availableHome.push(entry);}
+    if(stripped!=='/'&&!availableExact.length)for(const item of homeEntries){const entry=liveOf(item);if(entry&&await isFresh(entry))availableHome.push(entry);}
     if(!selected&&!availableExact.length&&!availableHome.length)return null;
     // sourceLocale falls back to the selected entry (both families carry the same value): the
     // freshness refusal above must stay the ONLY refusal for a stale release — the mutation gate
@@ -154,21 +154,21 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     const sourceLocale=(availableExact[0]??availableHome[0]??selected)!.release.sourceLocale,current=selected?.release.locale??sourceLocale;
     const isHomepage=sourceUrl.pathname==='/';
     const pageRelease=selected&&selected.release.path!=='/'?selected:null;
-    const origins=[url.origin,new URL(capture.active.artifact.configuration.site.origin).origin];
+    const origins=[url.origin,new URL(active.artifact.configuration.site.origin).origin];
     // Public locale registries are per-path, never site-wide: a locale joins a page's switcher
     // and alternates only when it publishes that same path (a homepage-only release must not
     // advertise /fr/ equivalents for every page it merely shells). The switcher additionally
     // keeps the current locale so the active URL stays reachable on fallback serves.
     const scopedLocales=[...new Set(availableExact.map(item=>item.release.locale))].filter(code=>code!==sourceLocale);
-    const redirect=(capture.active.artifact.schemaVersion===2?capture.active.artifact.redirects:undefined)?.find(alias=>alias.from===sourceUrl.pathname);
-    if(redirect){if(url.search)throw new PublicationRequestError();if(capture.active.artifact.schemaVersion===2){await new SitePublicationManifestStore(db,tenant).verify(capture.active.artifact);await verifyManifestEditorial(db,tenant,capture.active.artifact);}return {kind:'redirect' as const,redirect:selected?localizePublicHref(redirect.to,current,origins):redirect.to,siteHash:capture.active.pointer.hash,generation:capture.active.pointer.generation,releaseHash:selected?.pointer.hash??null,locale:current};}
+    const redirect=(active.artifact.schemaVersion===2?active.artifact.redirects:undefined)?.find(alias=>alias.from===sourceUrl.pathname);
+    if(redirect){if(url.search)throw new PublicationRequestError();if(active.artifact.schemaVersion===2){await new SitePublicationManifestStore(db,tenant).verify(active.artifact);await verifyManifestEditorial(db,tenant,active.artifact);}return {kind:'redirect' as const,redirect:selected?localizePublicHref(redirect.to,current,origins):redirect.to,siteHash:active.pointer.hash,generation:active.pointer.generation,releaseHash:selected?.pointer.hash??null,locale:current};}
     // Template listing releases join the parameterized rendering (explore type/q/page); their
     // prepare-time fence guarantees per-unit policy, so the identity join stays per unit.
-    const listingRelease=!!pageRelease&&capture.active.artifact.schemaVersion===2&&templateListingPath(capture.active.artifact,pageRelease.release.path);
+    const listingRelease=!!pageRelease&&active.artifact.schemaVersion===2&&templateListingPath(active.artifact,pageRelease.release.path);
     // Static pages refuse query parameters at their source path; the localized path refuses
     // them identically instead of rendering an indexable duplicate the source never serves.
     if(pageRelease&&!listingRelease&&sourceUrl.search)throw new PublicationRequestError();
-    const resolved=pageRelease?projectHomepageLocale(listingRelease&&sourceUrl.search?await captureHomepage(db,tenant,request,liveQuery,pageRelease.release.path,sourceUrl,listingTitles,pageRelease.release.locale):await captureFor(pageRelease.release.path,pageRelease.release.policy?.outdated==='source-fallback'?listingTitles:undefined,pageRelease.release.locale),pageRelease.release):isHomepage?(selected?projectHomepageLocale(capture,selected.release):capture.result):await resolvePublicationVersionPage(capture.active.artifact,capture.active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
+    const resolved=pageRelease?projectHomepageLocale(listingRelease&&sourceUrl.search?await context.capture(pageRelease.release.path,sourceUrl,listingTitles,pageRelease.release.locale):await captureFor(pageRelease.release.path,pageRelease.release.policy?.outdated==='source-fallback'?listingTitles:undefined,pageRelease.release.locale),pageRelease.release):isHomepage?(selected?projectHomepageLocale(await captureFor('/'),selected.release):(await captureFor('/')).result):!sourceUrl.search&&captures.has(sourceUrl.pathname)?captures.get(sourceUrl.pathname)!.result:await resolvePublicationVersionPage(active.artifact,active.pointer.hash,tenant,db,new Request(sourceUrl),{authenticated:false},liveQuery);
     if(!resolved)return null;
     if(selected&&!pageRelease&&!isHomepage){
         // Only the already approved shared shell is translated here. Other page copy stays source content.
@@ -201,5 +201,5 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
         openGraph:{...resolved.document.openGraph,title:templateSeo.socialTitle||resolved.page.title,description:templateSeo.socialDescription||resolved.page.description,url:canonical.href,siteName:resolved.document.openGraph?.siteName??'',type:resolved.document.openGraph?.type??'website',locale:contentLocale},
         // og:locale follows the content locale; alternates mirror the per-path hreflang set minus current.
         localesAlternate:alternates?.map(link=>link.language).filter(code=>code!==contentLocale)};
-    return {kind:'page' as const,resolved,siteHash:capture.active.pointer.hash,generation:capture.active.pointer.generation,releaseHash:selected?.pointer.hash??null,locale:current,contentLocale};
+    return {kind:'page' as const,resolved,siteHash:active.pointer.hash,generation:active.pointer.generation,releaseHash:selected?.pointer.hash??null,locale:current,contentLocale};
 }

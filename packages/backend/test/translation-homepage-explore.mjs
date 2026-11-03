@@ -47,7 +47,7 @@ let auth = true, role = 'owner', owner = tenant;
 const app = await createCompatApp({ makeRunner: () => f.db, sessionSecret: 'allowance-private-fixture', now: () => now, externalFetch: f.host.externalFetch, resolvePrincipal: async () => ({ user: auth ? { id: 'editor', role } : null, tenant: owner }) });
 const root = '/api/project/translation-batches/homepage/';
 async function call(path, body, status = 200) { const r = await app.request('https://site.test' + root + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) }); assert.equal(r.status, status, await r.clone().text()); const value = await r.json(); assert.doesNotMatch(JSON.stringify(value), /PRIVATE_|serviceKey|data\.example/); return value; }
-const html = async path => { const r = await renderReviewedSitePublication(f.db, tenant, new Request('https://site.test' + path)); return { status: r?.status, headers: r?.headers, text: await r?.text() }; };
+const html = async (path,runner=f.db) => { const r = await renderReviewedSitePublication(runner, tenant, new Request('https://site.test' + path)); return { status: r?.status, headers: r?.headers, text: await r?.text() }; };
 const rowTitles = text => { const doc = new JSDOM(text).window.document;
     return [...doc.querySelectorAll('h1,h2,h3,h4')].map(element => element.textContent.trim()).filter(t => /Institution|Program|آخر/.test(t)); };
 async function prepareActivate(records_, templates_ = templates) {
@@ -104,7 +104,9 @@ try {
     const homePrepared = await saveAll(homeReview, '/');
     await saveAll(review, '/explore/', { missing: 'source-fallback', outdated: 'source-fallback' }, { 'Institution 03': 'عربي آخر' });
     const home = await html('/ar/'); assert.equal(home.status, 200); assert.ok(home.text.includes('عربي Study in the USA'));
-    const explore = await html('/ar/explore/'); assert.equal(explore.status, 200); assert.equal(explore.headers.get('Content-Language'), 'ar');
+    let activeReads=0;
+    const measured=new Proxy(f.db,{get(db,key){if(key==='query')return (sql,params)=>{if(params?.[1]==='site_publication:active:v1')activeReads++;return db.query(sql,params);};const value=db[key];return typeof value==='function'?value.bind(db):value;}});
+    const explore = await html('/ar/explore/',measured);assert.equal(activeReads,1,'one reviewed publication snapshot supplies the complete localized render'); assert.equal(explore.status, 200); assert.equal(explore.headers.get('Content-Language'), 'ar');
     const doc = new JSDOM(explore.text).window.document;
     assert.equal(doc.documentElement.lang, 'ar'); assert.equal(doc.documentElement.dir, 'rtl');
     assert.ok(explore.text.includes('>عربي Institutions</a>'), 'tab chrome renders the translated label');

@@ -7,7 +7,7 @@ import type {PageLayoutData} from '@frontbase/edge-core';
 import {menuReferenceSchema,visibleMenuItems,type MenuItem,type MenuDocument} from '@frontbase/edge-core/menus';
 import {MenusSnapshotStore} from './menus-snapshot.js';
 import {translationHomepageReviewSchema,translationHomepageSaveSchema} from '@frontbase/edge-core/localization/batches';
-import {SitePublicationStore,publicationHash} from './site-publication-store.js';
+import {publicationHash} from './site-publication-store.js';
 import {SitePublicationReviewStore} from './site-publication-review-store.js';
 import {resolvePublicationVersionPage} from './site-publication-runtime.js';
 import {sitePublicationManifestSchema} from './site-publication-manifest.js';
@@ -111,9 +111,15 @@ export function localizedTitleIndex(release:z.infer<typeof releaseSchema>|null,m
     return {titles:freshLocalizedIndexTitles(release.catalog,indexTitles),catalog:release.catalog};
 }
 export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string){
+    const context=await createPageCapture(db,tenant,request,liveQuery);
+    return context.capture(path,sourceUrl,localizedTitles,recordsLocale);
+}
+/** One request, one verified active publication; no authorization or DB bytes survive the request. */
+export async function createPageCapture(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery){
     const active=await new SitePublicationReviewStore(db,tenant).reviewedActiveVersion();
     if(!active||active.artifact.schemaVersion!==2)throw Error('reviewed_homepage_required');
     const manifest=active.artifact;
+    return {active,capture:async(path:string,sourceUrl?:URL,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string)=>{
     const page=manifest.staticPages?.find(candidate=>candidate.originalPath===path);
     // Template listing pages resolve with their request parameters (explore type/q/page); static pages never carry them.
     const listing=page?undefined:manifest.templates.find(template=>['directory','article-index'].includes(template.role)
@@ -141,6 +147,7 @@ export async function captureHomepage(db:DbRunner,tenant:string,request:Request,
     const sorted=fields.map(field=>{const identity=stableIdentity(field);return {key:JSON.stringify(identity),pair:[identity,field.text]};}).sort((a,b)=>a.key<b.key?-1:a.key>b.key?1:0);
     const sourceHash=await publicationHash(sorted.map(item=>item.pair));
     return {active,result,layout,fields,sourceHash,pageId:target.pageId,path,templateListing:!!listing};
+    }};
 }
 async function reviewContext(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery:PublishedLiveQuery|undefined,path:string,batchReview:boolean){
     locale.parse(target);const config=(await new TranslationGenerationStore(db,tenant).get()).configuration;
