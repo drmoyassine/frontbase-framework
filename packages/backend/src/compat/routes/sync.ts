@@ -442,7 +442,7 @@ export function registerSyncRoutes(
 
         const resolved = await mergeAccount(tenant, 'supabase', config);
         const projectRef = String(
-            source.project_ref ?? source.ref ?? resolved.project_ref ?? resolved.ref
+            config.project_ref ?? config.ref ?? source.project_ref ?? source.ref ?? resolved.project_ref ?? resolved.ref
             ?? String(resolved.api_url ?? resolved.url ?? '').match(/^https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1]
             ?? '',
         );
@@ -470,7 +470,7 @@ export function registerSyncRoutes(
         'project_ref', 'ref', 'jwt_secret', 'jwt', 'schema', 'endpoint_format',
         'app_password', 'api_mode', 'webAppUrl', 'webAppSecret', 'spreadsheetId', 'spreadsheetName',
         'accountId', 'account_id', 'databaseId', 'database_id', 'apiToken', 'api_token',
-        'db_url', 'db_token', 'authToken', 'token', 'access_token', 'org', 'org_slug', 'databases',
+        'db_id', 'db_name', 'project_id', 'db_url', 'db_token', 'authToken', 'token', 'access_token', 'org', 'org_slug', 'databases',
     ];
     const flatBodyToConfig = (b: Record<string, unknown>): Record<string, unknown> => {
         const config: Record<string, unknown> = { ...(b.config as Record<string, unknown> ?? {}) };

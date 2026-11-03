@@ -12,9 +12,9 @@
  *   - Turso save flow          — Inline (find-or-create + add DB) — small enough
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {connectProvider,readProviderConnections} from '@/components/deployment/provider-connect';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     AlertTriangle, CheckCircle2, Cloud, Loader2,
     Shield, XCircle, Zap,
@@ -64,7 +64,6 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
 }) => {
     const effectiveLockedProvider = editProvider?.provider || lockedProvider;
     const queryClient = useQueryClient();
-    const [oauthAvailable,setOAuthAvailable]=useState(false);
     const state = useConnectProvider(effectiveLockedProvider, open, editProvider);
     const {
         providers, refetch,
@@ -80,12 +79,20 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
         handleGenericSave,
         resetForm,
     } = state;
-    useEffect(()=>{let current=true;setOAuthAvailable(false);
-        if(open&&['cloudflare','vercel','supabase','upstash'].includes(effectiveProvider))void readProviderConnections().then(status=>{if(current)setOAuthAvailable(status.providers.some(p=>p.provider===effectiveProvider&&p.available));}).catch(()=>{});
-        return ()=>{current=false;};
-    },[open,effectiveProvider]);
+    const supportsOAuth = ['cloudflare', 'vercel', 'supabase', 'upstash'].includes(effectiveProvider);
+    const authorization = useQuery({
+        queryKey: ['provider-oauth-status'],
+        queryFn: () => readProviderConnections(),
+        enabled: open && supportsOAuth,
+        staleTime: 60_000,
+        retry: false,
+    });
+    const oauthAvailable = supportsOAuth && !!authorization.data?.providers.some(
+        provider => provider.provider === effectiveProvider && provider.available,
+    );
+    const authorizationPending = supportsOAuth && authorization.isPending;
+    const manualAvailable = !oauthAvailable && !authorizationPending && !(supportsOAuth && authorization.isError);
 
-    // ── Provider-specific discovery state ────────────────────────────────
     // Supabase
     const [discoveredProjects, setDiscoveredProjects] = useState<{ ref: string; name: string; region: string; status: string }[]>([]);
     const [selectedProjectRef, setSelectedProjectRef] = useState('');
@@ -254,15 +261,17 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                         </div>
                     )}
 
-                    {!oauthAvailable && !hideDisplayName && effectiveProvider !== 'turso' && (
+                    {manualAvailable && !hideDisplayName && effectiveProvider !== 'turso' && (
                         <div className="space-y-2">
                             <Label>Display Name</Label>
                             <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. My Prod Account" />
                         </div>
                     )}
 
+                    {authorizationPending && <p role="status">Checking connection options…</p>}
+                    {supportsOAuth && authorization.isError && <p role="alert">Connection options could not be loaded. <Button variant="link" onClick={() => void authorization.refetch()}>Retry</Button></p>}
                     {oauthAvailable&&<Button type="button" onClick={()=>void connectProvider(effectiveProvider as 'cloudflare'|'vercel'|'supabase'|'upstash','/frontbase-admin/settings?tab=accounts',editProvider?.id).catch(()=>setError('Could not start provider authorization. Please try again.'))}>Connect to {currentConfig.label}</Button>}
-                    {!oauthAvailable&&currentConfig.fields.map(field => (
+                    {manualAvailable&&currentConfig.fields.map(field => (
                         <div key={field.key} className="space-y-2">
                             <Label>{field.label}{!editProvider && field.required && ' *'}</Label>
                             <Input
@@ -291,7 +300,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                         </div>
                     )}
 
-                    {!oauthAvailable && currentConfig.helpText && (
+                    {manualAvailable && currentConfig.helpText && (
                         <p className="text-xs text-muted-foreground flex items-center mt-1">
                             <Shield className="w-3 h-3 mr-1" />
                             {currentConfig.helpText}
@@ -347,7 +356,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
 
                 <DialogFooter className="gap-2 sm:gap-0">
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    {!oauthAvailable && <>
+                    {manualAvailable && <>
                     <Button
                         variant="outline"
                         onClick={handleTestAndDiscover}

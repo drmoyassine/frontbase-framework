@@ -335,7 +335,11 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
         label: 'Google Sheets',
         defaultName: 'Google Sheets',
         capabilities: ['database'],
-        fields: [],  // Configured inline in DatasourceModal, not via Connected Account
+        fields: [
+            { key: 'webAppUrl', label: 'Apps Script Web App URL', placeholder: 'https://script.google.com/macros/s/.../exec', required: true },
+            { key: 'spreadsheetId', label: 'Spreadsheet ID', placeholder: 'Spreadsheet ID', required: true },
+            { key: 'webAppSecret', label: 'Shared secret', placeholder: 'Apps Script shared secret', type: 'password', required: true },
+        ],
         helpText: <>Connect Google Sheets as a datasource via Apps Script Web App. See <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">docs/google-sheets-setup.md</code> in the repo for setup instructions.</>,
     },
     turso: {

@@ -13,7 +13,7 @@ import {
 import { resolveDatasourceConfig } from '../compat/credential-resolver.js';
 import { guardedExternalFetch, type CompatFetch } from '../compat/external-http.js';
 
-export type DatasourceKind = 'sqlite' | 'd1' | 'turso' | 'supabase' | 'postgres' | 'neon';
+export type DatasourceKind = 'sqlite' | 'cloudflare' | 'd1' | 'turso' | 'supabase' | 'postgres' | 'neon';
 
 /** Build a DbRunner from a datasource's kind + config. Throws on unknown kind / missing fields.
  *  Applies the per-kind credential resolver first, so callers may pass a raw account config
@@ -29,6 +29,7 @@ export function datasourceRunner(kind: string, config: Record<string, unknown>, 
         case 'turso':
             // Turso is libsql over the wire.
             return sqliteRunner(String(resolved.url ?? ''), resolved.authToken ? String(resolved.authToken) : undefined, transport);
+        case 'cloudflare':
         case 'd1':
             return d1RunnerFromRest({
                 accountId: String(resolved.accountId ?? ''),
@@ -58,13 +59,13 @@ export function datasourceRunner(kind: string, config: Record<string, unknown>, 
 
 /** Whether this kind can be introspected (has a working runner). */
 export function isIntrospectable(kind: string): boolean {
-    return kind === 'sqlite' || kind === 'turso' || kind === 'd1' || kind === 'supabase' || kind === 'postgres';
+    return kind === 'sqlite' || kind === 'turso' || kind === 'cloudflare' || kind === 'neon' || kind === 'd1' || kind === 'supabase' || kind === 'postgres';
 }
 
 /** The SQL dialect a kind speaks — drives which introspection SQL the Data Studio
  *  runs (F7b: sqlite_master vs information_schema). */
 export type Dialect = 'sqlite' | 'postgres';
 export function dialectOf(kind: string): Dialect {
-    return (kind === 'supabase' || kind === 'postgres') ? 'postgres' : 'sqlite';
+    return (kind === 'supabase' || kind === 'postgres' || kind === 'neon') ? 'postgres' : 'sqlite';
 }
 

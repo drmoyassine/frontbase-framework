@@ -5,18 +5,9 @@ import { Datasource } from '../types';
 import { connectionTestFeedback } from '../lib/connectionTestFeedback';
 import { track } from '@/lib/analytics';
 import { AccountResourcePicker, DiscoveredResource } from '@/components/dashboard/settings/shared/AccountResourcePicker';
-import { PROVIDER_CONFIGS } from '@/components/dashboard/settings/shared/edgeConstants';
 import { Database, TestTube, CheckCircle, XCircle, Loader2, Table, Copy, Zap } from 'lucide-react';
 
-/** Providers with 'database' or 'cms' capability — drives the Database Type selector. */
-const DATABASE_PROVIDERS = Object.entries(PROVIDER_CONFIGS)
-    .filter(([, c]) => c.capabilities?.includes('database') || c.capabilities?.includes('cms'))
-    .map(([key, c]) => ({ key, label: c.label }));
-
-/** Maps datasource types to their compatible connected account provider types. */
-const DATASOURCE_PROVIDER_MAP: Record<string, string[]> = Object.fromEntries(
-    DATABASE_PROVIDERS.map(p => [p.key, [p.key]])
-);
+import { DATABASE_PROVIDERS, DATASOURCE_RESOURCE_TYPES, datasourceResourceConfig } from '../lib/datasourceProviders';
 
 interface DatasourceModalProps {
     datasource?: Datasource | null;
@@ -31,6 +22,12 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
     const [manualHttp, setManualHttp] = useState(false);
 
     const [formData, setFormData] = useState({
+        database_id: datasource?.database_id || '',
+        account_id: datasource?.account_id || '',
+        project_ref: datasource?.project_ref || '',
+        project_id: datasource?.project_id || '',
+        db_id: datasource?.db_id || '',
+        db_name: datasource?.db_name || '',
         name: datasource?.name || '',
         type: datasource?.type || 'wordpress_rest',
         host: datasource?.host || '',
@@ -88,8 +85,15 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                 : datasourcesApi.testRaw(data),
     });
 
+    const canSave = !!formData.name.trim() && (isEditing || (
+        manualHttp && formData.type === 'supabase'
+            ? /^https:\/\//.test(formData.api_url) && !!formData.service_role_key
+            : !!formData.provider_account_id
+    ));
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canSave) return;
         mutation.mutate(formData);
     };
 
@@ -133,15 +137,18 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                                     setFormData({
                                         ...formData,
                                         type: newType,
-                                        ...(manualHttp ? { api_url: '', service_role_key: '', provider_account_id: '' } : {}),
+                                        provider_account_id: '', database_id: '', account_id: '', project_ref: '', project_id: '', db_id: '', db_name: '',
+                                        api_url: '', base_url: '', username: '', connection_uri: '', password: '', service_role_key: '', anon_key: '', api_key: '',
+                                        extra_config: {},
                                         port: newType === 'mysql' ? 3306 : 5432
                                     });
                                 }}
                                 className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 focus:ring-2 focus:ring-primary-500 outline-none"
                                 disabled={isEditing}
                             >
+                                {isEditing && !DATABASE_PROVIDERS.some(p => p.key === formData.type) && <option value={formData.type}>{formData.type === 'd1' ? 'Cloudflare D1' : formData.type}</option>}
                                 {DATABASE_PROVIDERS.map(p => (
-                                    <option key={p.key} value={p.key}>{p.key === 'supabase' ? 'Supabase / PostgREST' : p.label}</option>
+                                    <option key={p.key} value={p.key} disabled={p.unavailable}>{p.label}{p.unavailable ? ' — unavailable on HTTP runtime' : ''}</option>
                                 ))}
                             </select>
                         </div>
@@ -160,16 +167,13 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                             <p className="text-xs text-muted-foreground">For Supabase or native PostgREST. Credentials are stored encrypted. Translation storage also has a separate protocol check in Settings → Translations. {isEditing && 'Leave blank values to preserve the saved connection.'}</p>
                         </div>}
                         {/* Connected Account Picker — WordPress + Google Sheets + all DB types */}
-                        {!(manualHttp && formData.type === 'supabase') && (formData.type.startsWith('wordpress_') ||
-                         formData.type === 'google_sheets' ||
-                         formData.type === 'postgres' ||
-                         formData.type === 'mysql' ||
-                         formData.type === 'supabase' ||
-                         formData.type === 'neon' ||
-                         formData.type === 'turso') ? (
+                        {!(manualHttp && formData.type === 'supabase') ? (
                             <div className="space-y-3">
                                 <AccountResourcePicker
-                                    compatibleProviders={DATASOURCE_PROVIDER_MAP[formData.type] || [formData.type]}
+                                    key={formData.type}
+                                    selectedResourceId={formData.database_id || formData.project_ref || formData.project_id || formData.db_id}
+                                    resourceTypeFilter={DATASOURCE_RESOURCE_TYPES[formData.type]}
+                                    compatibleProviders={[formData.type === 'd1' ? 'cloudflare' : formData.type]}
                                     label="Connected Account (recommended)"
                                     autoSelectSingle
                                     selectedAccountId={formData.provider_account_id || undefined}
@@ -178,20 +182,11 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                                             ...formData,
                                             provider_account_id: accountId,
                                             name: formData.name || resource.name || '',
-                                            // Auto-fill WordPress fields from resource metadata
-                                            ...(formData.type.startsWith('wordpress_') && {
-                                                // Store the site URL under api_url (the column the backend
-                                                // adapter reads) AND base_url (legacy alias) so the datasource
-                                                // row is self-describing without relying solely on the
-                                                // Connected Account at read time.
-                                                api_url: resource.api_url || formData.api_url,
-                                                base_url: resource.api_url || formData.base_url,
-                                                username: resource.username || formData.username,
-                                            }),
+                                            ...datasourceResourceConfig(formData.type, resource),
                                         });
                                     }}
                                     onClear={() => {
-                                        setFormData({ ...formData, provider_account_id: '' });
+                                        setFormData({ ...formData, provider_account_id: '', database_id: '', account_id: '', project_ref: '', project_id: '', db_id: '', db_name: '' });
                                     }}
                                 />
 
@@ -282,8 +277,9 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                             Cancel
                         </button>
                         <button
+                            type="button"
                             onClick={handleSubmit}
-                            disabled={mutation.isPending || testRawMutation.isPending || (!isEditing && manualHttp && formData.type === 'supabase' && (!/^https:\/\//.test(formData.api_url) || !formData.service_role_key))}
+                            disabled={mutation.isPending || testRawMutation.isPending || !canSave}
                             className="flex-1 px-4 py-3 text-sm font-bold bg-primary-600 text-primary-foreground rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50 shadow-lg shadow-primary-500/20"
                         >
                             {mutation.isPending ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Data Source')}

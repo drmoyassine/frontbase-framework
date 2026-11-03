@@ -9,16 +9,11 @@ import { RelationshipModal } from '../components/RelationshipModal'
 import { supportsManualRelationships } from '../types/relationship'
 import { Database, Trash2, TestTube, CheckCircle, XCircle, Loader2, Edit2, Link2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import { PROVIDER_CONFIGS } from '@/components/dashboard/settings/shared/edgeConstants'
+import { DATABASE_PROVIDERS } from '../lib/datasourceProviders'
 import { connectionTestFeedback } from '../lib/connectionTestFeedback'
 
-/** Providers with 'database' or 'cms' capability — drives the Database Type selector. */
-const DATABASE_PROVIDERS = Object.entries(PROVIDER_CONFIGS)
-    .filter(([, c]) => c.capabilities?.includes('database') || c.capabilities?.includes('cms'))
-    .map(([key, c]) => ({ key, label: c.label }));
-
 const TYPE_LABELS: Record<string, string> = Object.fromEntries(
-    DATABASE_PROVIDERS.map(p => [p.key, p.label])
+    [...DATABASE_PROVIDERS.map(p => [p.key, p.label]), ['d1', 'Cloudflare D1']]
 );
 
 const TYPE_COLORS: Record<string, string> = {

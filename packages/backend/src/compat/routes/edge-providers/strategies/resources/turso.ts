@@ -74,7 +74,7 @@ export function createTursoResourceStrategy(externalFetch: CompatFetch): Provide
                     const d = (entry ?? {}) as Record<string, unknown>;
                     const name = String(d.name ?? '');
                     const hostname = String(d.hostname ?? '');
-                    const storedDbUrl = String(d.db_url ?? '');
+                    const storedDbUrl = String(d.db_url ?? d.url ?? '');
                     resources.push({
                         id: String(d.id ?? name),
                         name,

@@ -15,6 +15,11 @@ export function serializeDatasource(ds: {
         id: ds.id,
         name: ds.name,
         project_id: null,
+        ...Object.fromEntries(
+            ['provider_account_id', 'database_id', 'account_id', 'project_ref', 'project_id', 'db_id', 'db_name']
+                .filter(key => typeof ds.config?.[key] === 'string')
+                .map(key => [key, ds.config![key]]),
+        ),
         type: ds.kind, // Spec mandates `type`, not `kind`
         host: null,
         port: 5432,

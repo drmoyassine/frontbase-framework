@@ -9,7 +9,7 @@
  * and creating new resources via the management API.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ export interface DiscoveredResource {
     id: string;
     name: string;
     type: string;
+    account_id?: string;
     // Turso
     hostname?: string;
     db_url?: string;
@@ -81,6 +82,7 @@ interface AccountResourcePickerProps {
     onClear?: () => void;
     /** Currently selected account ID (for edit mode) */
     selectedAccountId?: string | null;
+    selectedResourceId?: string;
     /** Label override */
     label?: string;
     /** URLs already imported — matching resources shown as "Already connected" */
@@ -100,6 +102,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
     onResourceSelected,
     onClear,
     selectedAccountId,
+    selectedResourceId: initialResourceId,
     label = 'Connected Account',
     existingUrls = [],
     autoSelectSingle,
@@ -110,7 +113,8 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
     const queryClient = useQueryClient();
     const [selectedAccount, setSelectedAccount] = useState<string>(selectedAccountId || '');
     const [resources, setResources] = useState<DiscoveredResource[]>([]);
-    const [selectedResourceId, setSelectedResourceId] = useState<string>('');
+    const [selectedResourceId, setSelectedResourceId] = useState<string>(initialResourceId || '');
+    const discoverySequence = useRef(0);
     const [isDiscovering, setIsDiscovering] = useState(false);
     const [discoverError, setDiscoverError] = useState<string | null>(null);
 
@@ -139,14 +143,16 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
     // Auto-discover when account is selected
     useEffect(() => {
         if (selectedAccount) {
-            discoverResources(selectedAccount);
+            void discoverResources(selectedAccount);
         } else {
             setResources([]);
             setDiscoverError(null);
         }
-    }, [selectedAccount]);
+        return () => { ++discoverySequence.current; };
+    }, [selectedAccount, resourceTypeFilter]);
 
     const discoverResources = async (accountId: string) => {
+        const sequence = ++discoverySequence.current;
         setIsDiscovering(true);
         setDiscoverError(null);
         setResources([]);
@@ -159,6 +165,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
                 throw new Error(`Discovery failed: HTTP ${res.status}`);
             }
             const data = await res.json();
+            if (sequence !== discoverySequence.current) return;
             if (data.success && data.resources) {
                 // Apply type filter if specified
                 const filtered = resourceTypeFilter
@@ -169,9 +176,9 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
                 setDiscoverError(data.detail || 'No resources found');
             }
         } catch (e: any) {
-            setDiscoverError(e.message || 'Discovery failed');
+            if (sequence === discoverySequence.current) setDiscoverError(e.message || 'Discovery failed');
         } finally {
-            setIsDiscovering(false);
+            if (sequence === discoverySequence.current) setIsDiscovering(false);
         }
     };
 
@@ -193,6 +200,9 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
             setShowConnectDialog(true);
             return;
         }
+        ++discoverySequence.current;
+        setResources([]);
+        onClear?.();
         setSelectedAccount(value);
         setSelectedResourceId('');
     };
@@ -280,6 +290,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
             <div className="space-y-2">
                 <Label className="text-sm">{autoSelectSingle ? (resourceLabel || label) : label}</Label>
                 <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     className="w-full justify-start gap-2 text-muted-foreground"
@@ -355,6 +366,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-destructive">{discoverError}</span>
                             <Button
+                    type="button"
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => discoverResources(selectedAccount)}
@@ -503,6 +515,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
                                 Cancel
                             </Button>
                             <Button
+                    type="button"
                                 onClick={handleCreateNew}
                                 disabled={!createName.trim() || isCreating}
                             >

@@ -65,4 +65,12 @@ const manual = await request('/api/sync/datasources/', {
 });
 assert.equal(manual.status, 201);
 assert.equal(calls.length, connectedCallCount, 'manual key-only setup must not refresh credentials or pretend to bootstrap');
+const beforeSelection = calls.length;
+const selected = await request('/api/sync/datasources/', {
+    name: 'Selected Supabase', type: 'supabase', provider_account_id: 'supa-account', project_ref: 'selected-project',
+});
+assert.equal(selected.status, 201);
+const selectedCalls = calls.slice(beforeSelection);
+assert.ok(selectedCalls.length > 0);
+assert.ok(selectedCalls.every(call => call.url.includes('/projects/selected-project/')), 'selected project must override the account default for setup as well as runtime');
 console.log('supabase datasource bootstrap: PASS');

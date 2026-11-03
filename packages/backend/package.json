@@ -17,7 +17,7 @@
     "test:source-contract": "node test/source-contract.mjs && node test/source-contract-compatibility.mjs",
     "test:source-contract-mutation": "node test/source-contract-mutation.mjs",
     "test:template-urls": "node test/template-policy.mjs && node test/template-policy-mutation.mjs",
-    "test:record-fields": "node test/record-fields.mjs && node test/postgrest-inspector.mjs && node test/datasource-schema.mjs",
+    "test:record-fields": "node test/record-fields.mjs && node test/postgrest-inspector.mjs && node test/datasource-schema.mjs && node test/datasource-selection.mjs",
     "test:record-fields-mutation": "node test/record-fields-mutation.mjs",
     "test:workflow-authoring": "node test/workflow-authoring.mjs",
     "test:workflow-authoring-mutation": "node test/workflow-authoring-mutation.mjs",
