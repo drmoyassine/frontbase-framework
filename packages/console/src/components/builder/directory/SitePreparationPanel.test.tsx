@@ -11,6 +11,15 @@ const institution={id:512,title:'Muhlenberg',originalPath:'/muhlenberg/'},progra
 const ok=(value:unknown)=>({ok:true,json:async()=>value});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 describe('site preparation',()=>{
+ it('explains missing or cross-origin record URLs without offering them for publication',async()=>{
+  vi.stubGlobal('fetch',vi.fn(async(path:string)=>path==='/api/pages/'?ok({data:pages}):ok({revision:1,rows:[{...institution,originalPath:null}],hasMore:false})));
+  render(<SitePreparationPanel draft={draft}/>);
+  fireEvent.click(screen.getByText('Choose templates and records'));await screen.findByLabelText('directory template');
+  fireEvent.click(screen.getByText('Find records'));
+  expect(await screen.findByText(/Some record URLs are missing or do not match the canonical site URL/)).toBeInTheDocument();
+  expect(screen.queryByLabelText('Include institution')).toBeNull();
+ });
+
  it('shows page, element and version diagnostics returned by preparation',async()=>{
   const fetcher=vi.fn(async(path:string)=>path.endsWith('/read/')?{ok:false,json:async()=>({code:'publication_elements_incomplete',elementIssues:[{pageId:'page',elementId:'card-title',versionId:'mobile',message:'Field title is unavailable.'}]})}:ok({}));
   vi.stubGlobal('fetch',fetcher);render(<SitePreparationPanel draft={draft}/>);
@@ -81,6 +90,17 @@ describe('site preparation',()=>{
   expect(screen.queryByRole('button',{name:'Program 120'})).toBeNull();fireEvent.change(screen.getByLabelText('Find captured URL'),{target:{value:'/program-120/'}});fireEvent.click(screen.getByRole('button',{name:'Program 120'}));
   expect(screen.getByTitle('Prepared site preview').getAttribute('src')).toContain('path=%2Fprogram-120%2F');
   expect(fetcher.mock.calls.some(([path])=>path.endsWith('/activate/'))).toBe(false);
+ });
+ it('prepares an approved article without requiring an unrelated editorial-page template',async()=>{
+  const article={id:'00000000-0000-4000-8000-000000000099',title:'Article',originalPath:'/blog/article/'};
+  const fetcher=vi.fn(async(path:string)=>path==='/api/pages/'?ok({data:pages}):path.endsWith('/editorial/read/')?ok({document:{...article,revision:3},approval:{documentRevision:3,configurationRevision:1,fingerprint:'b'.repeat(64)}}):path.endsWith('/prepare/')?ok({hash:'a'.repeat(64),configurationRevision:1,publicationAvailable:false,records:{institutions:[],programs:[],articles:[article]}}):ok({revision:1,rows:[article]}));
+  vi.stubGlobal('fetch',fetcher);render(<SitePreparationPanel draft={draft}/>);
+  fireEvent.click(screen.getByText('Choose templates and records'));await screen.findByLabelText('Preparation collection');
+  fireEvent.change(screen.getByLabelText('Preparation collection'),{target:{value:'article'}});fireEvent.click(screen.getByText('Find records'));await screen.findByText('Article');fireEvent.click(screen.getByText('Include approved revision'));
+  await screen.findByText('Selected: 0 institutions · 0 programs · 1 approved articles');fireEvent.click(screen.getByText('Prepare private preview'));
+  await screen.findByText(/Private version prepared/);
+  const input=JSON.parse(String(fetcher.mock.calls.find(([path])=>path.endsWith('/prepare/'))![1]?.body));
+  expect(input.pageIds).toEqual([pages[3].id,pages[4].id]);expect(input.articles[0].revision).toBe(3);
  });
  it('does not include an unapproved article or infer approval from a draft',async()=>{
   vi.stubGlobal('fetch',vi.fn(async(path:string)=>path==='/api/pages/'?ok({data:pages}):path.endsWith('/editorial/read/')?ok({approval:null,document:{revision:3}}):ok({revision:1,rows:[{id:'article',title:'Article',originalPath:'/blog/article/'}]})));

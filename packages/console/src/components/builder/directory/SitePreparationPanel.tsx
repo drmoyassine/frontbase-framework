@@ -32,7 +32,7 @@ export function SitePreparationPanel({draft,disabled=false,currentPageId}:{draft
     useEffect(()=>{setReviewChecks({});setReviewNote('');setReviewAttempted(false);},[prepared?.hash,draft.revision]);
     async function operation(work:()=>Promise<void>) {
         const current=generation.current;setBusy(true);setMessage('');setElementIssues([]);
-        try {await work();}catch(error) {if(current===generation.current)setMessage(error instanceof Error&&error.message==='publication_elements_incomplete'?'Resolve the element bindings listed below.':error instanceof Error&&error.message==='publication_route_serialization'?'A source URL cannot be captured without changing its spelling or origin. Review the source URLs, or update only the saved template from the reviewed site.':error instanceof Error&&error.message==='publication_bindings_incomplete'?'Resolve the listed template data and URL settings before preparing publication.':'Operation unavailable. Reload saved settings and check the connection.');}
+        try {await work();}catch(error) {if(current===generation.current)setMessage(error instanceof Error&&error.message==='directory_record_urls_unavailable'?'Some record URLs are missing or do not match the canonical site URL. Check the original URL field in template URLs and the canonical site URL in General, then search again.':error instanceof Error&&error.message==='publication_elements_incomplete'?'Resolve the element bindings listed below.':error instanceof Error&&error.message==='publication_route_serialization'?'A source URL cannot be captured without changing its spelling or origin. Review the source URLs, or update only the saved template from the reviewed site.':error instanceof Error&&error.message==='publication_bindings_incomplete'?'Resolve the listed template data and URL settings before preparing publication.':'Operation unavailable. Reload saved settings and check the connection.');}
         finally {if(current===generation.current)setBusy(false);}
     }
     async function post(path:string,input:unknown) {
@@ -62,6 +62,7 @@ export function SitePreparationPanel({draft,disabled=false,currentPageId}:{draft
     }
     async function load(role:'institution'|'program'|'article',institutionId?:string|number) {
         const result=await post('preview',{expectedRevision:draft.revision,role,mode:'list',params:institutionId===undefined?{q:search}:{institutionId}});
+        if(Array.isArray(result.rows)&&result.rows.some((row:any)=>row&&row.originalPath===null))throw new Error('directory_record_urls_unavailable');
         if(result.revision!==draft.revision)throw new Error();setShown({role,rows:z.array(rowSchema).parse(result.rows)});
         setMessage(result.hasMore?'More results exist. Narrow the title search to find the records you need.':'Choose the records for this private preview.');
     }
@@ -76,7 +77,7 @@ export function SitePreparationPanel({draft,disabled=false,currentPageId}:{draft
         const redirects=redirectsSchema.parse(redirectText.split(/\r?\n/).filter(line=>line.trim()).map(line=>{
             const parts=line.trim().split(/\s+/);if(parts.length!==2)throw new Error('Use two paths per redirect line');return {from:parts[0],to:parts[1]};
         }));
-        const needed:Role[]=[...(allCatalog || institutions.length || programs.length?['directory','institution'] as Role[]:[]),...(allCatalog || programs.length?['program'] as Role[]:[]),...(articles.length?['article-index','article','editorial'] as Role[]:[])];
+        const needed:Role[]=[...(allCatalog || institutions.length || programs.length?['directory','institution'] as Role[]:[]),...(allCatalog || programs.length?['program'] as Role[]:[]),...(articles.length?['article-index','article'] as Role[]:[])];
         if(needed.some(role=>!pages[role])){setMessage('Choose a saved template for each included page type.');return;}
 const result=await post('publication/prepare',{format:'chunked',expectedConfigurationRevision:draft.revision,pageIds:roles.flatMap(role=>pages[role] && (needed.includes(role)||allEditorial&&['article-index','article','editorial'].includes(role))?[pages[role]]:[]),staticPageIds:staticIds,replaceEditorialHomepage:savedPages.some(page=>staticIds.includes(page.id)&&page.landing),includeMappedCatalog:allCatalog,includeApprovedEditorial:allEditorial,institutionPaths:institutions.map(row=>row.originalPath),programPaths:programs.map(row=>row.originalPath),articles:articles.map(({id,revision,fingerprint})=>({id,revision,fingerprint})),...(redirects.length?{redirects}:{})});
         const hash=z.string().regex(/^[a-f0-9]{64}$/).parse(result.hash);if(result.configurationRevision!==draft.revision || result.publicationAvailable!==false)throw new Error();

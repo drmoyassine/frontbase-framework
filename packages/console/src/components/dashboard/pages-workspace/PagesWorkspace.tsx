@@ -48,7 +48,7 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
       setOrganization(org); setReady(true);
     } catch (e) {if(ticket===generation.current)setError(e instanceof Error ? e.message : 'Site inventory unavailable');} finally {if(ticket===generation.current)setLoading(false);}
   }
-  useEffect(() => {setInventory(null); setOrganization(emptyOrganization()); setSelection([]);setFolderSelection([]); setFolderId('all');setDialog(null);setContent(null);setRoutes(null);void load();return()=>{generation.current++;};}, [scope, pages]);
+  useEffect(() => {sourceRequest.current=undefined;setInventory(null); setOrganization(emptyOrganization()); setSelection([]);setFolderSelection([]); setFolderId('all');setDialog(null);setContent(null);setRoutes(null);void load();return()=>{generation.current++;};}, [scope, pages]);
   useEffect(()=>{
     const role=new URLSearchParams(location.search).get('recordSource');
     if(!inventory||!role||!['institution','program','article'].includes(role)||sourceRequest.current===location.key)return;
@@ -119,9 +119,9 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
     };
   const entryActions = (entry:WorkspaceEntry) => <div className="flex w-full flex-wrap items-center justify-end gap-1">
     {entry.pageId && <Button size="sm" onClick={()=>edit(entry.pageId!)}><Pencil className="mr-1 h-3.5 w-3.5"/>{entry.kind==='page'&&!entry.role?'Edit':'Design'}</Button>}
-    {(entry.path || entry.paths?.length) && <Button variant="outline" size="sm" onClick={()=>setRoutes(entry)}><Eye className="mr-1 h-3.5 w-3.5"/>URLs</Button>}
+    {(entry.kind === 'layout' || !!entry.path || !!entry.paths?.length) && <Button variant="outline" size="sm" onClick={()=>setRoutes(entry)}><Eye className="mr-1 h-3.5 w-3.5"/>URLs</Button>}
     {entry.contentAction && <Button variant="outline" size="sm" onClick={()=>void openContent(entry)}><Database className="mr-1 h-3.5 w-3.5"/>{entry.contentAction.recordId?'Edit content':'Content'}</Button>}
-    {entry.role && <Button variant="ghost" size="sm" aria-label={`Configure ${entry.name}`} onClick={()=>navigate('/settings?tab=template')}><Settings2 className="h-4 w-4"/></Button>}
+    {entry.role && <Button variant="ghost" size="sm" aria-label={`Configure ${entry.name}`} onClick={()=>entry.kind === 'layout' && entry.pageId ? setRoutes(entry) : navigate('/data-studio/datasources?setup=collections')}><Settings2 className="h-4 w-4"/></Button>}
     <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm" aria-label={`Actions for ${entry.name}`}><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
       <DropdownMenuItem disabled={!ready||saving} onSelect={()=>{setSelection([entry.id]);setFolderSelection([]);openDialog({kind:'move-entries'});}}><Move className="mr-2 h-4 w-4"/>Move</DropdownMenuItem>
       {entry.source==='saved' && (()=>{const page=pages.find(p=>p.id===entry.pageId);return page?<><DropdownMenuSeparator/>{actions(page)}</>:null;})()}

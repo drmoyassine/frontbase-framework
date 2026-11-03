@@ -43,7 +43,7 @@ export function registerTranslationGenerationRoutes(app: Hono<{ Variables: Conso
         try {
             const tenant = c.get('tenant'), store = new TranslationGenerationStore(runner, tenant), current = await store.get();
             if (current.revision !== parsed.data.expectedRevision) return c.json({ detail: 'AI settings changed. Reload before saving.' }, 409);
-            if (parsed.data.configuration) await resolveGenerationInvoker(host, tenant, parsed.data.configuration.accountId);
+            if (parsed.data.configuration?.accountId) await resolveGenerationInvoker(host, tenant, parsed.data.configuration.accountId);
             const next = await store.save(parsed.data.configuration, parsed.data.expectedRevision, now());
             return next ? c.json(next) : c.json({ detail: 'AI settings changed. Reload before saving.' }, 409);
         } catch { return c.json({ detail: 'AI selection could not be saved. Check the connected account and reload.' }, 422); }

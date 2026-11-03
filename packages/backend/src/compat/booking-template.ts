@@ -25,7 +25,13 @@ export async function bookingPages(owner:string){
   else {layout={root:{siteConfiguration:{version:1,role}},content:[]};
    const collection=role==='directory'?'institution':role==='article-index'?'article':role;
    layout=addDirectoryTemplate({layoutData:layout},directoryQueryBindingSchema.parse({version:1,queryId:`directory.${collection}.${role==='directory'||role==='article-index'?'list':'detail'}` as any,params:role==='directory'||role==='article-index'?{limit:12}:{path:'/preview-record/'}}));
-   if(role==='directory')layout.content[layout.content.length-1]!.props!.directoryControls={version:1,tabs:true,search:true,sorting:true,filters:true,recordCount:true,pagination:true,paginationPosition:'bottom'};
+   if(role==='directory'){
+    layout=addDirectoryTemplate({layoutData:layout},directoryQueryBindingSchema.parse({version:1,queryId:'directory.program.list',params:{limit:12}}));
+    for(const node of layout.content){
+     if(node.type==='Heading')node.props={...node.props,text:'Explore'};
+     if(node.props?.directoryQuery)node.props.directoryControls={version:1,tabs:true,search:true,sorting:true,filters:true,recordCount:true,pagination:true,paginationPosition:'bottom'};
+    }
+   }
   }
   // Every document uses normal authored nodes; no remote HTML, copied records or special runtime renderer.
   const containsFooter=(n:PageComponent):boolean=>n.props?.href==='/privacy-policy/'||(n.children??[]).some(containsFooter);

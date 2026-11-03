@@ -15,6 +15,15 @@ const org={schemaVersion:1,revision:2,folders:[{id:'dir',name:'Directory',parent
 function mount(){return render(<MemoryRouter><PagesWorkspace scope="owner:1" pages={pages} search="" filterStatus="all" edit={vi.fn()} actions={()=>null}/></MemoryRouter>);}
 beforeEach(()=>{localStorage.clear();vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:{hash:'capture',generation:12},entries}:options?.method==='PUT'?{...org,revision:3,...JSON.parse(String(options.body))}:org),{status:200})));});
 describe('site pages workspace',()=>{
+  it.each(['URLs', 'Configure Programs'])('opens %s for a reusable template before its first publication', async action => {
+    const layouts=[{id:'template',pageId:'template',name:'Programs',kind:'layout',role:'program',publicationStatus:'draft',paths:[],source:'saved'}];
+    vi.stubGlobal('fetch',vi.fn(async(url:string)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:null,entries:layouts}:org))));
+    mount();
+    fireEvent.click(await screen.findByRole('button',{name:action,exact:true}));
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Template template: urls');
+    expect(vi.mocked(fetch).mock.calls.every(([,options])=>!options?.method)).toBe(true);
+  });
+
   it.each([1,2])('opens only an unambiguous template from the diagnostic link (%i matches)',async(count)=>{
     const layouts=Array.from({length:count},(_,i)=>({id:'template'+i,pageId:'template'+i,name:'Programs '+i,kind:'layout',role:'program',publicationStatus:'draft',paths:[],source:'saved'}));
     vi.stubGlobal('fetch',vi.fn(async(url:string)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:null,entries:layouts}:org))));
@@ -22,6 +31,15 @@ describe('site pages workspace',()=>{
     if(count===1)expect(await screen.findByRole('dialog')).toHaveTextContent('Template template0: source');
     else {await screen.findByText('Multiple templates match. Open the intended template’s URLs panel.');expect(screen.queryByRole('dialog')).not.toBeInTheDocument();}
     expect(vi.mocked(fetch).mock.calls.every(([,options])=>!options?.method)).toBe(true);
+  });
+  it('keeps the record-source diagnostic reachable when the parent pages finish loading', async () => {
+    const layouts=[{id:'template',pageId:'template',name:'Programs',kind:'layout',role:'program',publicationStatus:'draft',paths:[],source:'saved'}];
+    vi.stubGlobal('fetch',vi.fn(async(url:string)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:null,entries:layouts}:org))));
+    const tree=(documents:any[]) => <MemoryRouter initialEntries={['/frontbase-admin/pages?recordSource=program']}><PagesWorkspace scope="owner:1" pages={documents} search="" filterStatus="all" edit={vi.fn()} actions={()=>null}/></MemoryRouter>;
+    const result=render(tree([]));
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Template template: source');
+    result.rerender(tree([...pages]));
+    await waitFor(()=>expect(screen.getByRole('dialog')).toHaveTextContent('Template template: source'));
   });
   it('shows actual routes/status, persists list preference, and keeps test documents optional',async()=>{
     mount();await screen.findByText('Explore');expect(screen.getByText('/explore/')).toBeInTheDocument();expect(screen.getAllByText('Published')).toHaveLength(2);

@@ -35,6 +35,7 @@ export interface GenerationHost {
 export const isTranslationAIProvider = (provider: unknown): provider is 'openai' | 'openrouter' => provider === 'openai' || provider === 'openrouter';
 /** Owned metadata is checked before decrypting; deleted/foreign/wrong-kind resources fail closed. No network call. */
 export async function resolveGenerationAccount(host: GenerationHost, tenant: string, accountId: string) {
+    if (!accountId) throw Error('translation_ai_unavailable');
     const store = host.accountsFor(tenant), account = await store.getEdgeResource(accountId);
     if (!account || account.kind !== 'provider' || !isTranslationAIProvider(account.provider) || account.status !== 'active') throw Error('translation_ai_unavailable');
     const config = await store.getEdgeResourceConfig(accountId);

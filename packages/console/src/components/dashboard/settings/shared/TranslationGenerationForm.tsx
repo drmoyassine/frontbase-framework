@@ -49,7 +49,7 @@ export function TranslationGenerationForm() {
     const parsed = translationGenerationConfigurationSchema.safeParse({ version: 1, accountId, model, sourceLocale: source,
         targetLocales: targets, promptVersion: 'plain-v1', maxOutputTokens: Number(limit) });
     async function save(clear = false) {
-        if (!options || busy || blocked || (!clear && (!parsed.success || !selected?.supported))) return;
+        if (!options || busy || blocked || (!clear && (!parsed.success || (!!accountId && !selected?.supported)))) return;
         setBusy(true); setMessage('');
         try {
             const result = await fetch(endpoint, { method: 'PUT', credentials: 'include', headers: { 'content-type': 'application/json' },
@@ -57,15 +57,15 @@ export function TranslationGenerationForm() {
             if (result.status === 409) { setBlocked(true); setMessage('Another editor changed AI settings. Your edits are retained; reload before saving.'); return; }
             if (!result.ok) throw Error();
             const next = translationGenerationSettingsSchema.parse(await result.json()); if (next.revision !== options.revision + 1) throw Error();
-            setOptions({ ...options, ...next }); setMessage(clear ? 'AI selection cleared. Existing translations are preserved.' : 'AI settings saved. No content was sent to the provider.');
+            setOptions({ ...options, ...next }); setMessage(clear ? 'AI selection cleared. Existing translations are preserved.' : accountId ? 'AI settings saved. No content was sent to the provider.' : 'Languages saved for manual translation. AI generation requires a connected account and model.');
         } catch { setBlocked(true); setMessage('Save outcome needs review. Your edits are retained; reload before retrying.'); }
         finally { setBusy(false); }
     }
     const inputClass = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm';
-    return <Card><CardHeader><CardTitle>Translation AI</CardTitle><CardDescription>Select an existing connected account and model. Saving these settings does not generate translations.</CardDescription></CardHeader><CardContent className="space-y-4">
+    return <Card><CardHeader><CardTitle>Translation languages</CardTitle><CardDescription>Choose source and target languages. Connect an AI account to enable generation when needed.</CardDescription></CardHeader><CardContent className="space-y-4">
         <fieldset disabled={busy || blocked || !options} className="space-y-4">
             <div><Label htmlFor="translation-ai-account">AI connection</Label><select id="translation-ai-account" className={inputClass} value={accountId} onChange={e => {setAccount(e.target.value);setModel('');}}>
-                <option value="">Select a connected account</option>
+                <option value="">Manual translations only</option>
                 {accountId && !options?.accounts.some(a => a.id === accountId) && <option value={accountId} disabled>Saved account unavailable</option>}
                 {options?.accounts.map(a => <option key={a.id} value={a.id} disabled={!a.supported}>{a.name}{a.supported ? '' : ' — unavailable for translation'}</option>)}
             </select></div>
@@ -84,7 +84,7 @@ export function TranslationGenerationForm() {
             {selected?.provider === 'openrouter' && <p className="text-sm text-muted-foreground">Use an exact OpenRouter model ID, including :free for an available free variant. Free-model requests enforce zero prompt, completion and request pricing. Routing excludes providers that collect data and disables provider fallbacks; unavailable models fail without automatic retries. Availability and rate limits depend on OpenRouter.</p>}
         </fieldset>
         <div className="flex flex-wrap gap-2"><Button type="button" disabled={busy} variant="outline" onClick={() => void load()}>Reload AI settings</Button>
-            <Button type="button" disabled={busy || blocked || !parsed.success || !selected?.supported} onClick={() => void save()}>Save AI settings</Button>
+            <Button type="button" disabled={busy || blocked || !parsed.success || (!!accountId && !selected?.supported)} onClick={() => void save()}>{accountId ? 'Save AI settings' : 'Save languages'}</Button>
             <Button type="button" variant="outline" disabled={busy || blocked || !options?.configuration} onClick={() => void save(true)}>Clear AI selection</Button></div>
         <p role="status" className="text-sm">{message}</p>
     </CardContent></Card>;
