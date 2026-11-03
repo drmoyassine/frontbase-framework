@@ -1,5 +1,9 @@
 # Frontbase Developer Preview: current release plan
 
+## Hosted setup verification — 2026-11-03
+
+Native Cloudflare and Vercel reached the configuration form on candidate `51dc2648`. See the [request counts and timing](../history/PUBLIC-RELEASE-AUDIT.md) and the [separate self-hosted PostgREST state endpoint](frontbase-postgrest-owner-deployment-20261017.md#separate-frontbase-state-endpoint). Startup acceptance is complete. On Vercel the authorized runtime rollout was the dominant wait; readiness polling during that rollout remains a performance improvement opportunity. Neither timing fixture was activated. Continue with the installer, bilingual publication and upgrade checks below.
+
 ## Current checkpoint — 2026-11-02
 
 The template binding consolidation and bounded legacy source dependency retirement are **complete at source and merged**. The integration receipt records `main` and `codex/native-template-publication-20261102` at `e9b0e985f94b63cbfb0323b9d08a9e00d9694b44` (implementation `ac78bc5f`). This documentation update does not establish a newer remote or live runtime revision. [Exact implementation and qualification](template-binding-consolidation-20261102.md).
