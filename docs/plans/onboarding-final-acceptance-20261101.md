@@ -2,9 +2,19 @@
 
 Owner scope: fresh optional-binding Review → Apply, secure setup access renewal, and fresh main-README deployments on **both Cloudflare and Vercel**. Work autonomously on engineering/verification; collect authorization-dependent steps at the end. Preserve Study-in-USA/source records, populated acceptance apps and the owner's unconfigured wizard. The owner subsequently approved the identity-only Vercel recovery application described below; no new management permission or public-release scope expansion.
 
-## Current acceptance matrix
+## Current cross-fixture status — November 3, 2026
 
-### Current checkpoint: source integration authorized, live acceptance partial
+[The current release plan](frontbase-public-release-finalization-20261024.md#current-checkpoint--2026-11-03) controls execution order. Main `80da202f` includes the latest template/review/public-serving repairs.
+
+The newer `frontbase-live-cf-261103b` and `frontbase-live-vc-261103` fixtures passed real Review → Apply, administrator sign-in, six-entry UI template installation, English/Arabic publication and native Git upgrades. All twelve representative URLs per host returned 200 with expected language/direction; signed-in sessions could reload their published review after upgrading. Vercel administrator creation required private-link/session recovery, so uninterrupted first-admin handoff remains open. [Exact native acceptance](booking-for-x-installer-20261101.md#native-booking-for-x-acceptance--november-3-2026).
+
+This supersedes blanket claims that Vercel Apply/publication/upgrade are unverified. It does not close the November 1 fixture's unexecuted Supabase/private-bucket profile, signed R2 readback, actual queue delivery, CF positive pre-install renewal or cross-account/negative-provider cases. Keep those receipts tied to their own configuration. Do not restart the old fixture simply to repeat the newer D1/Turso/template proof.
+
+Remaining onboarding work is candidate-scoped: uninterrupted first-admin handoff, required renewal/negative-isolation cases, advertised resource delivery and supported upgrade/restore. There is no new grant, infrastructure mutation or browser action in this documentation update.
+
+## Historical November 1 acceptance matrix
+
+### November 1 checkpoint: source integration authorized, live acceptance partial
 
 The owner requests commit, push and merge of the qualified fixes. This integrates source and evidence; it does not close the remaining live gates. The dated baseline sections below are historical and superseded by this checkpoint where they differ.
 
@@ -23,7 +33,7 @@ The browser then stopped on the HTTPS Vercel Renew control because Windows URL d
 | Secure native setup renewal | Vercel real identity renewal and same-wizard resume pass; local security/mutation gates pass | CF positive pre-install provider renewal; live old-generation invalidation and remaining negative-provider cases. Installed CF remains closed; do not reset it to manufacture proof |
 | Native README deployment journey and upgrade | Both imports/builds and uninterrupted Vercel owned-wizard completion pass; CF activation/publication/Git upgrade pass | Finish Vercel supported renewal -> Apply -> administrator -> visual publication -> Git upgrade/session/resource preservation |
 
-### Next executable acceptance steps
+### Historical November 1 continuation
 
 1. Resume the same Vercel HTTPS tab through Renew setup access; the nonsecret manifest is saved for restoration. Keep the existing installation and integration, obtain no broader scopes, and promptly perform Review -> Apply once. Unknown/applying outcomes use only supported status/reconciliation.
 2. Have the owner submit the new Vercel administrator password in its actual form. Verify Unicode visual save/publish, refreshed session, retained encrypted accounts, anonymous admin/setup refusal and ordinary connected-Git upgrade.

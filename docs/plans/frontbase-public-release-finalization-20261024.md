@@ -1,8 +1,37 @@
 # Frontbase Developer Preview: current release plan
 
+## Current checkpoint — 2026-11-03
+
+Verified framework integration: `main` at `80da202f98c5df57a3a0639517b4a9de40b69531`. This is the starting source for candidate preparation, not a frozen package release. No new deployment, test run or registry publication is implied by this plan update. The dated sections below retain earlier evidence; this section controls the next work.
+
+### Completed and closed
+
+- Booking for X installed through the UI on the two native fixtures, with six editable entries and three reusable detail layouts.
+- Reviewed English/Arabic publication and native linked-Git upgrades: **12/12 public URLs per host**, expected language/direction, retained admin sessions, responsive Arabic checks and program filters. Vercel retained all twelve pre-upgrade text hashes; a second repaired Cloudflare pass matched all twelve post-upgrade hashes. [Exact receipt and limitations](booking-for-x-installer-20261101.md#native-booking-for-x-acceptance--november-3-2026).
+- Translation review opens with one authenticated browser request and reads the 67 homepage fields in one adapter operation. Page inventory and history load on interaction. This is a translation-review budget, not a claim about every builder request or all content adapters.
+- Cloudflare activation/public-serving CPU repairs, scoped PostgREST batch reads, manual-language configuration and the six-entry publication repairs are merged. Required workspace check/build, ten workspace UI cases and 31 affected seeded publication faults passed at the recorded implementation checkpoint.
+- Source-binding retirement, simplified installer, Bind/@ ownership and per-element diagnostics retain their previous qualified evidence. Reopen only for an observed regression.
+
+Existing PostgREST translation stores require the [additive read migration](../../packages/translation/sql/postgrest-read-batch-v1.sql) before the upgraded review UI. The approved shared test store has it. Existing publications and source records are preserved. Native Git copies require explicit source synchronization; pushing framework main does not update every installed copy.
+
+### Remaining execution order
+
+| Order | Remaining work | Done when |
+| --- | --- | --- |
+| 1 | **Freeze a reproducible candidate** | Record the intended source SHA, supported runtime/tool versions, console/hydration/host artifact hashes and seven library archive hashes. Inventory generated artifacts and standalone console diagnostics. Preserve unrelated working changes. |
+| 2 | **Qualify that exact candidate** | Required check/build, affected functional/security/mutation/conformance gates and seven strict external library consumers pass against the manifest. Fix supported-path/security defects; explicitly classify accepted tooling residue. Reuse dated evidence where the surface is unchanged. |
+| 3 | **Finish installation and recovery evidence** | Resolve uninterrupted Vercel first-admin handoff, supported CF pre-install renewal/negative cases and advertised upgrade/restore paths. Verify the frozen public README entry points and Node/Docker boundary. Reuse the completed installer/bilingual/upgrade receipts; do not reinstall templates merely to repeat them. |
+| 4 | **Close promised-provider and operations coverage** | Complete independently controlled OAuth recipient/account isolation and relay rotation/refresh/recovery evidence; signed storage/queue delivery and reset-mail inbox/lifecycle proof where advertised. Certify selected real providers or mark unverified optional combinations experimental. Upstash partnership/consent remains externally dependent. |
+| 5 | **Finish adopter docs and distribution preparation** | A clean-room adopter succeeds using public docs. README/support/migration guidance matches the candidate. Confirm registry authority, coordinated preview versions/ranges, archive contents/licenses/provenance, publish dry-run and partial-publication recovery. |
+| 6 | **Publish and verify Framework Developer Preview** | Publish the exact qualified versions/tag/notes; verify a fresh registry consumer and record support ownership and limitations. |
+
+**Next executable task:** produce the candidate manifest and gate ledger from the merged source, then refresh the standalone console diagnostic inventory and strict package consumers. Each ledger row must identify the candidate, command or journey, evidence, result and any credential dependency. Start with local/Git work; prepare credential-dependent checks before requesting access.
+
+Target remains **Framework Developer Preview**. Full datasource translation, site-specific media, Study-in-USA production cutover, other WordPress sites, CF-22 parity, Deno parity, booking/payments and every optional adapter are outside this release's critical path. A supported capability must still fail truthfully and preserve security.
+
 ## Booking for X: installed, published and upgraded on both hosts — 2026-11-03
 
-[Acceptance receipt and migration instructions](booking-for-x-installer-20261101.md#native-booking-for-x-acceptance--november-3-2026). Close the six-entry installation, bilingual public delivery and linked-Git upgrade portions of item 1 below: 24/24 URLs passed across the two hosts, including all three reusable detail layouts. Do not repeat those checks as missing features. The Vercel administrator step used recovery. Independently verify uninterrupted first-admin setup, clean-room upgrade/restore on the frozen candidate and any unverified provider combinations before advertising them. Neither bulk source-record translation nor CF-22 is a blocker for this acceptance. The next release engineering step is to freeze a candidate and qualify the exact package artifacts; no public release or production cutover was made here.
+[Acceptance receipt and migration instructions](booking-for-x-installer-20261101.md#native-booking-for-x-acceptance--november-3-2026). The six-entry installation, bilingual public delivery and linked-Git upgrade acceptance are closed: 24/24 URLs passed across the two hosts, including all three reusable detail layouts. Do not repeat those checks as missing features. The Vercel administrator step used recovery. Independently verify uninterrupted first-admin setup, clean-room upgrade/restore on the frozen candidate and any unverified provider combinations before advertising them. Neither bulk source-record translation nor CF-22 is a blocker for this acceptance. The next release engineering step is to freeze a candidate and qualify the exact package artifacts; no public release or production cutover was made here.
 
 ## Connected Accounts and datasource forms — 2026-11-03
 
@@ -29,7 +58,9 @@ The first Cloudflare run (`frontbase-live-cf-261103`, build `499bab09`) passed R
 
 Framework repair `0ddf5e52` caches the completed CF engine and schedules receipt reconciliation outside the response. The idempotent administrator claim has per-request timeouts and a 45-second total budget. The build, workspace checks, administrator suite, interrupted Worker boot regression and eight hosted fault checks passed. Fixture source `e3850e8f` aligns the final receipt retry behavior. Both hosts passed through first administrator sign-in with the recovery steps recorded above. Next, install Booking for X through the UI, publish in English and Arabic, and verify the published pages after an upgrade on each host.
 
-## Current checkpoint — 2026-11-02
+<a id="current-checkpoint--2026-11-02"></a>
+
+## Historical checkpoint — 2026-11-02
 
 The template binding consolidation and bounded legacy source dependency retirement are **complete at source and merged**. The integration receipt records `main` and `codex/native-template-publication-20261102` at `e9b0e985f94b63cbfb0323b9d08a9e00d9694b44` (implementation `ac78bc5f`). This documentation update does not establish a newer remote or live runtime revision. [Exact implementation and qualification](template-binding-consolidation-20261102.md).
 
@@ -45,7 +76,7 @@ Local qualification passed workspace check/build, **51 focused UI tests and 75 a
 - Secure setup renewal: implemented; real Vercel identity-only owner renewal already passed. Do not plan another recovery implementation. Remaining live renewal cases are listed in [the onboarding matrix](onboarding-final-acceptance-20261101.md).
 - Prior visual builder, multilingual editing, reusable details, URL policy/SEO and settings repairs retain their accepted receipts.
 
-### Remaining execution order
+### Historical execution order
 
 | Order | Actual remaining gap | Completion evidence |
 | --- | --- | --- |
@@ -236,7 +267,7 @@ The staging PostgREST hold is closed. Security reporting is enabled, and SECURIT
 
 The [record-card starters receipt](record-card-starters-20261024.md) closes reusable Image/Compact/Text starters, institution-card publication and actual English/Arabic RTL acceptance. Runtime58a19aa preserves the HTTP RPC layer and uses the existing reviewed layout derivative store. Site generation22 preserves all1,282 routes/counts; Arabic Explore generation1 uses62 reviewed interface units and explicit source fallback for datasource text. Both language layouts, flags, pagination and Programs preservation pass. No scoped card activation delta remains; bulk record translation and the release gates below stay separate.
 
-## Actual remaining release gates, in execution order
+## Historical release gates — retained background
 
 | Order | Remaining work | Concrete exit |
 |---|---|---|
