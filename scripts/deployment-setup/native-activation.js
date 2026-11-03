@@ -9,9 +9,20 @@
  if(providers)providers.hidden=false;
  providers?.addEventListener('change',event=>{
   const role=event.target.dataset.role;
-  if(role)choices[role]=event.target.value;
+  if(role){choices[role]=event.target.value;event.target.dataset.edited='1';}
  });
  function enterWizard(){
+  if(document.getElementById('owned-wizard')){
+   // Load protected controls in this document. The server still verifies the signed session.
+   history.replaceState(null,'','/frontbase-bootstrap/');
+   status.textContent='Ownership verified. Loading service details…';
+   const script=document.createElement('script');
+   script.type='module';script.src='/frontbase-bootstrap/app.js';
+   script.onerror=()=>{status.textContent='Service details could not load. Open setup to continue.';open.hidden=false;};
+   document.body.append(script);
+   return;
+  }
+  // Compatibility with activation HTML already open during an upgrade.
   try{sessionStorage.setItem('fb-setup-provider-choices',JSON.stringify(choices));}catch{}
   location.replace('/frontbase-bootstrap/');
  }

@@ -65,20 +65,40 @@ export function createCloudBootstrap(env:any,target:'cloudflare'|'vercel',transp
  async function preflight(c:any,manifest:any){if(c.destination!==context.destination||manifest.target!==target||manifest.environment!==environment||!validateDeploymentManifest(manifest).ready)refuse();
   if(manifest.bindings['state-db'].adapterId==='supabase-postgres'&&!['create','reuse'].includes(manifest.bindings['state-db'].mode))refuse();
   if(target==='cloudflare'){const settings=await api(cf+'/workers/scripts/'+project+'/settings');const bindings=settings.bindings;if(!Array.isArray(bindings)||bindings.find(b=>b.name==='FRONTBASE_INSTALLATION_ID')?.text!==installationId||bindings.find(b=>b.name==='FRONTBASE_BOOTSTRAP')?.text!=='1'||bindings.some(b=>!initialBinding(b)))refuse();
-   const state=manifest.bindings['state-db'];if(state.adapterId==='cloudflare-d1'){
+
+  }
+  else{const deployment=await api('/v13/deployments/'+env.VERCEL_DEPLOYMENT_ID+'?'+team);if(deployment.projectId!==project||deployment.readyState!=='READY'||(deployment.target??'preview')!==environment)refuse();}
+  const enabled=Object.entries(manifest.bindings).filter(([,binding]:any)=>binding.mode!=='disabled');
+  const allowed=hostedAdapters(target);
+  async function checkBinding(role:string,b:any){
+   if(!allowed.some(a=>a.id===b.adapterId&&a.role===role))refuse();
+   if(['cloudflare-d1','cloudflare-kv','cloudflare-r2','cloudflare-queue'].includes(b.adapterId)&&b.config.accountId&&b.config.accountId!==account)throw Error('native_resource_account_mismatch');
+   const state=b;if(state.adapterId==='cloudflare-d1'){
     if(state.mode==='create'){const rows=await api(cf+'/d1/database?name='+encodeURIComponent(state.config.resourceName)+'&per_page=100');if(!Array.isArray(rows))refuse();if(rows.some(r=>r.name===state.config.resourceName))throw Error('setup_database_already_exists');}
     if(state.mode==='reuse')await empty(runner(state.resourceRef),!metadata&&state.resourceRef===await locate());
    }
+   if(b.adapterId==='cloudflare-r2'){
+    if(!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(b.mode==='reuse'?b.resourceRef??'':b.config.resourceName??''))throw Error('invalid_r2_bucket_name');
+    if(b.mode==='reuse')await privateR2(b.resourceRef);
+   }
+   if(b.adapterId==='cloudflare-queue'){
+    if(!/^[a-z0-9][a-z0-9-]{0,62}$/.test(b.config.resourceName??''))throw Error('invalid_queue_name');
+    if(b.mode==='reuse')await unusedQueue(b.resourceRef,b.config.resourceName);
+   }
   }
-  else{const deployment=await api('/v13/deployments/'+env.VERCEL_DEPLOYMENT_ID+'?'+team);if(deployment.projectId!==project||deployment.readyState!=='READY'||(deployment.target??'preview')!==environment)refuse();}
-  for(const b of Object.values(manifest.bindings) as any[])if(b.mode!=='disabled'&&['cloudflare-d1','cloudflare-kv','cloudflare-r2','cloudflare-queue'].includes(b.adapterId)&&b.config.accountId&&b.config.accountId!==account)throw Error('native_resource_account_mismatch');
-  for(const b of Object.values(manifest.bindings) as any[])if(b.mode!=='disabled'){
-   if(b.adapterId==='cloudflare-r2'&&!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(b.mode==='reuse'?b.resourceRef??'':b.config.resourceName??''))throw Error('invalid_r2_bucket_name');
-   if(b.adapterId==='cloudflare-queue'&&!/^[a-z0-9][a-z0-9-]{0,62}$/.test(b.config.resourceName??''))throw Error('invalid_queue_name');
-   if(b.adapterId==='cloudflare-r2'&&b.mode==='reuse')await privateR2(b.resourceRef);
-   if(b.adapterId==='cloudflare-queue'&&b.mode==='reuse')await unusedQueue(b.resourceRef,b.config.resourceName);
+  let next=0;
+  const failures=new Map<string,string>();
+  async function readBindings(){
+   while(next<enabled.length){
+    const [role,binding]=enabled[next++];
+    try{await checkBinding(role,binding);}
+    catch(error){failures.set(role,error instanceof Error?error.message:'binding_check_failed');}
+   }
   }
-  for(const b of Object.values(manifest.bindings) as any[])if(b.mode!=='disabled'&&!['cloudflare-d1','cloudflare-kv','cloudflare-r2','cloudflare-queue','supabase-storage','cloudflare-r2-http','libsql-http','d1-http','supabase-postgres','postgrest-http','upstash-http','libsql-vector-http','cloudflare-vectorize-http','s3-http','qstash-http'].includes(b.adapterId))refuse();
+  // Ownership is verified before the pool starts. Only read-only checks may run here.
+  await Promise.all(Array.from({length:Math.min(3,enabled.length)},readBindings));
+  const issues=enabled.filter(([role])=>failures.has(role)).map(([role])=>({role,code:failures.get(role)}));
+  if(issues.length)throw Object.assign(Error('binding_review_failed'),{bindingIssues:issues});
  }
  async function runtimeValues(record:any,credentials:any){const values=profileEnvironment({manifest:record.manifest,credentials});values.SESSION_SECRET=await secret(owner,'session:'+record.operationId);values.SETUP_TOKEN=await secret(owner,'administrator:'+installationId);values.SETUP_EXPIRES_AT=new Date(Date.now()+3600000).toISOString();values.FRONTBASE_PUBLIC_ORIGIN=origin;values.FRONTBASE_BOOTSTRAP='0';values.FRONTBASE_INSTALLATION_ID=installationId;values.FRONTBASE_BOOTSTRAP_ACCOUNT=account;values.FRONTBASE_BOOTSTRAP_PROJECT=project;values.FRONTBASE_BOOTSTRAP_ENVIRONMENT=environment;values.FRONTBASE_BOOTSTRAP_OPERATION=record.operationId;values.FRONTBASE_BOOTSTRAP_FINGERPRINT=record.fingerprint;if(metadata)for(const name of ['FRONTBASE_BOOTSTRAP_STORE','FRONTBASE_BOOTSTRAP_BASE_VERSION','FRONTBASE_BOOTSTRAP_TOKEN','FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN','FRONTBASE_BOOTSTRAP_EXPIRES_AT'])values[name]=env[name];values.FRONTBASE_BOOTSTRAP_PROOF_KEY=await secret(owner,'proof:'+record.operationId);if(values.FRONTBASE_STORAGE){const s=JSON.parse(values.FRONTBASE_STORAGE);if(s.provider!=='none'){s.namespace='installation-'+installationId;values.FRONTBASE_STORAGE=JSON.stringify(s);}}for(const [name,value] of Object.entries(env))if((oauthKey(name)||['FRONTBASE_OAUTH_CONNECTIONS','FRONTBASE_OAUTH_RELAY_URL','FRONTBASE_OAUTH_RELAY_TARGET','FRONTBASE_OAUTH_RELAY_REGISTRATION_KEY','FRONTBASE_OAUTH_RELAY_ENROLL'].includes(name))&&typeof value==='string')values[name]=value;return values;}
  const executor:any={preflight,apply:async(record:any,credentials:any)=>{

@@ -15,7 +15,7 @@
  */
 import * as esbuild from 'esbuild';
 import {vercelNativeBuildMetadata} from '../../scripts/deployment-setup/native-build-metadata.mjs';
-import {buildBindingsAssets} from '../../scripts/deployment-setup/bindings-assets.mjs';
+import {hostedAssets} from '../../scripts/deployment-setup/hosted-assets.mjs';
 import { gzipSync } from 'node:zlib';
 import { existsSync, readFileSync, readdirSync, statSync, mkdirSync, copyFileSync, cpSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -282,19 +282,7 @@ const postgresUnavailable = {
 };
 const NODE_BUILTINS = [...new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)])];
 
-const formAssets=buildBindingsAssets();
-const bootstrapAssets={
- '/frontbase-bootstrap/setup-manifest.mjs':{body:readFileSync(join(here,'../../scripts/deployment-setup/setup-manifest.mjs'),'utf8'),type:'text/javascript'},
- '/frontbase-bootstrap/native':{body:readFileSync(join(here,'../../scripts/deployment-setup/native-index.html'),'utf8'),type:'text/html; charset=utf-8'},
- '/frontbase-bootstrap/native.js':{body:readFileSync(join(here,'../../scripts/deployment-setup/native-app.js'),'utf8'),type:'text/javascript'},
- '/frontbase-bootstrap/activation':{body:readFileSync(join(here,'../../scripts/deployment-setup/native-activation.html'),'utf8'),type:'text/html; charset=utf-8'},
- '/frontbase-bootstrap/native-activation.js':{body:readFileSync(join(here,'../../scripts/deployment-setup/native-activation.js'),'utf8'),type:'text/javascript'},
- '/frontbase-bootstrap/':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-index.html'),'utf8'),type:'text/html; charset=utf-8'},
- '/frontbase-bootstrap/app.js':{body:readFileSync(join(here,'../../scripts/deployment-setup/hosted-app.js'),'utf8'),type:'text/javascript'},
- '/frontbase-bootstrap/bindings-form.js':{body:formAssets.js,type:'text/javascript'},
- '/frontbase-bootstrap/provider-connect.js':{body:formAssets.connectionJs,type:'text/javascript'},
- '/frontbase-bootstrap/style.css':{body:readFileSync(join(here,'../../scripts/deployment-setup/style.css'),'utf8')+'\n'+formAssets.css,type:'text/css'}
-};
+const bootstrapAssets=hostedAssets();
 const bootstrapAssetPlugin={name:'bootstrap-assets',setup(build){build.onResolve({filter:/packages\/edge-core\/dist\/deployment\.js$/},()=>({path:'@frontbase/edge-core/deployment',external:true}));build.onResolve({filter:/packages\/backend\/dist\/(?:index|compat\/deployment-storage|hosted-bootstrap)\.js$/},()=>({path:'@frontbase/backend',external:true}));build.onResolve({filter:/packages\/edge-infra\/dist\/index\.js$/},()=>({path:'@frontbase/edge-infra',external:true}));build.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:'assets',namespace:'bootstrap'}));build.onLoad({filter:/.*/,namespace:'bootstrap'},()=>({contents:'export default '+JSON.stringify(bootstrapAssets),loader:'js'}));}};
 const bootstrapAssetsPlugin={name:"portable-bootstrap-assets",setup(build){build.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:"assets",namespace:"bootstrap-assets"}));build.onLoad({filter:/.*/,namespace:"bootstrap-assets"},()=>({contents:"export default "+JSON.stringify(bootstrapAssets),loader:"js"}));}};
 

@@ -1,4 +1,4 @@
-import { configurableRoles, deploymentAdapters, supabaseStateSchemaName, type ConfigurableRole, type DeploymentAdapter, type DeploymentManifest, type BindingSelection } from '@frontbase/edge-core/deployment';
+import { configurableRoles, deploymentAdapters, validateDeploymentManifest, supabaseStateSchemaName, type ConfigurableRole, type DeploymentAdapter, type DeploymentManifest, type BindingSelection } from '@frontbase/edge-core/deployment';
 
 import {names} from './binding-labels';
 export {bindingLabels} from './binding-labels';
@@ -20,6 +20,8 @@ export interface BindingsFormOptions {
     adapters?: readonly DeploymentAdapter[];
     executionCapabilities?: {adapters: Record<string, readonly BindingSelection['mode'][]>};
     credentials?: 'entry' | 'references';
+    externalProviders?: boolean;
+    initialRole?: ConfigurableRole;
     initialProviders?: Partial<Record<ConfigurableRole,string>>;
     resourceOptions?: Record<string,Array<{id:string;name:string}>>;
     /** Only supplied by a host with an authenticated server-side connection flow. */
@@ -126,7 +128,8 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             if(index===currentStep)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');
         }
     };
-    const change=()=>{syncNavigation();options.onChange?.();};
+    let reviewIssues:Partial<Record<ConfigurableRole,string>>={};
+    const change=()=>{reviewIssues={};syncNavigation();options.onChange?.();};
     const discoveryFetch=async(path:string,body:unknown)=>{
         try{
             const response=await fetch((options.discoveryBase??'')+'/provider-resources/supabase/'+path,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
@@ -312,6 +315,15 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     function render() {
         steps=stepOrder.filter(role=>compatible(role).length);
         root.classList.add('fb-bindings-form');root.replaceChildren();
+        if(Object.keys(reviewIssues).length){
+            const list=node('ul');list.setAttribute('aria-label','Bindings to fix');
+            for(const role of steps.filter(role=>reviewIssues[role])){
+                const item=node('li'),link=node('button',stepCopy[role][0]+': '+reviewIssues[role]);
+                link.type='button';link.onclick=()=>{currentStep=steps.indexOf(role);render();root.querySelector<HTMLElement>('.fb-binding-card:not([hidden]) input, .fb-binding-card:not([hidden]) select')?.focus();};
+                item.append(link);list.append(item);
+            }
+            root.append(list);
+        }
         if(options.providerConnections){
             const needed=new Set<ProviderName>();
             for(const [key,binding] of Object.entries(manifest.bindings))if((!options.onDemand||key===steps[currentStep])&&binding.mode!=='disabled'){
@@ -367,7 +379,8 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                 chooseProvider(role,select.value);
                 render();change();
             });
-            wrapper.append(title,select);card.append(wrapper);
+            wrapper.append(title,select);if(!options.externalProviders)card.append(wrapper);
+            if(reviewIssues[role])card.append(node('p',reviewIssues[role],'fb-binding-note'));
             if(options.connectionsPending){
                 card.append(node('p','Loading connected accounts…','fb-binding-note'));
             }else if(binding.mode!=='disabled'&&selected) {
@@ -446,8 +459,23 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
         }
     }
     function clearCredentials(){secrets.clear();postgresGeneration++;postgresDiscovery=undefined;for(const input of root.querySelectorAll<HTMLInputElement>('input[type=password]'))input.value='';}
+    if(options.initialRole)currentStep=Math.max(0,stepOrder.filter(role=>compatible(role).length).indexOf(options.initialRole));
     render();
     return {
+        showRole(role:ConfigurableRole){
+            const index=steps.indexOf(role);
+            if(index>=0&&index!==currentStep){currentStep=index;render();}
+        },
+        selectProvider(role:ConfigurableRole,value:string){
+            if(!steps.includes(role))return;
+            chooseProvider(role,value);currentStep=steps.indexOf(role);change();render();
+        },
+        showIssues(issues:Array<{role:ConfigurableRole;message:string}>){
+            reviewIssues={};
+            for(const issue of issues)if(steps.includes(issue.role))reviewIssues[issue.role]=issue.message;
+            const index=steps.findIndex(role=>reviewIssues[role]);
+            if(index>=0){currentStep=index;render();}
+        },
         finishDiscovery(connections:BindingsFormOptions['providerConnections'], resources?:BindingsFormOptions['resourceOptions']){
             if(destroyed)return;
             options.providerConnections=connections;
@@ -460,8 +488,14 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             try{
                 render();
                 while(pending.size)await Promise.all([...pending]);
-                const invalid=steps.findIndex(role=>manifest.bindings[role].mode!=='disabled'&&!stepReady(role));
-                if(invalid!==-1){currentStep=invalid;throw Error('Complete '+stepCopy[steps[invalid]][0]+' before review.');}
+                const plan=validateDeploymentManifest(manifest);
+                const invalidRoles=new Set(plan.issues.map(issue=>issue.role));
+                const incomplete=steps.filter(role=>invalidRoles.has(role)||(manifest.bindings[role].mode!=='disabled'&&!stepReady(role)));
+                if(incomplete.length){
+                    for(const role of incomplete)reviewIssues[role]='Complete the required fields before review.';
+                    currentStep=steps.indexOf(incomplete[0]);
+                    throw Error('Complete '+incomplete.map(role=>stepCopy[role][0]).join(', ')+' before review.');
+                }
             }finally{reviewing=false;if(!destroyed)render();}
         },
         ready(){return stepReady('state-db');},

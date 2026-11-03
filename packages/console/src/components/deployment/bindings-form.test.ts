@@ -351,3 +351,12 @@ test('first-screen provider choices use the hosted adapter rules and preserve ot
  expect(manifest.bindings.cache).toEqual(original.bindings.cache);
  expect(credentials).toEqual({});
 });
+
+test('Review lists every incomplete enabled service and lets the owner select its fields',async()=>{
+ const root=mount('vercel',{onDemand:true,initialProviders:{'state-db':'libsql-http',cache:'upstash-http'}});
+ await expect(form!.prepareReview()).rejects.toThrow(/State Database, Application Cache/);
+ const issues=root.querySelector('[aria-label="Bindings to fix"]')!;
+ expect(issues.querySelectorAll('button')).toHaveLength(2);
+ fireEvent.click(issues.querySelectorAll('button')[1]);
+ expect(root.querySelector('#binding-provider-cache')).toBeTruthy();
+});
