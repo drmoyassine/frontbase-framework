@@ -1,15 +1,16 @@
 import { z } from 'zod';
 import { localizationScopeSchema, translationRevisionSchema, type LocalizationScope } from '../contracts.js';
 import { parsePersistenceKey, parsePersistenceChange, translationSnapshotSchema, sourceRecordSchema, storedRevisionSchema,
-    type TranslationSnapshot, type SourceRecord, type StoredRevision, type PersistenceChange, type CasResult } from '../revisions.js';
+    type TranslationBatchReader, type TranslationSnapshot, type SourceRecord, type StoredRevision, type PersistenceChange, type CasResult } from '../revisions.js';
 import { translationJobSchema, translationJobIntentSchema, jobErrorSchema,
     type TranslationJobPersistence, type TranslationJob, type TranslationJobIntent, type EnqueueResult, type JobError } from '../jobs.js';
 
-export type TranslationRpcOperation = 'capabilities' | 'read' | 'read-revision' | 'list-revisions' | 'find-approved-head' | 'read-source' | 'cas' | 'enqueue' | 'read-job'
+export type TranslationRpcOperation = 'capabilities' | 'read-many' | 'read-revisions' | 'read' | 'read-revision' | 'list-revisions' | 'find-approved-head' | 'read-source' | 'cas' | 'enqueue' | 'read-job'
     | 'ready-jobs' | 'claim' | 'renew' | 'dispatch' | 'fail' | 'cancel';
 /** Host-injected authenticated HTTP client. No SQL, socket or credential lookup in the engine. */
 export interface TranslationRpcTransport {
     call(operation: TranslationRpcOperation, scope: LocalizationScope, input: Record<string, unknown>): Promise<unknown>;
+
 }
 const id = translationRevisionSchema.shape.revisionId;
 const positive = z.number().int().positive().safe();
@@ -19,7 +20,7 @@ function owner(actual: LocalizationScope, expected: LocalizationScope): void {
 }
 
 /** Each mutation is one atomic domain RPC. SQL installation is an explicit administrative operation. */
-export class PostgrestTranslationJobPersistence implements TranslationJobPersistence {
+export class PostgrestTranslationJobPersistence implements TranslationJobPersistence, TranslationBatchReader {
     constructor(private readonly transport: TranslationRpcTransport) {}
     private async request(operation: TranslationRpcOperation, scope: LocalizationScope, input: Record<string, unknown>): Promise<unknown> {
         try { return await this.transport.call(operation, localizationScopeSchema.parse(scope), input); }
@@ -35,6 +36,27 @@ export class PostgrestTranslationJobPersistence implements TranslationJobPersist
         if (value.source) owner(value.source.unit.scope, scope);
         if (value.head) { owner(value.head.scope, scope); if (value.head.unitId !== unitId || value.head.locale !== locale) throw Error('translation_rpc_key_mismatch'); }
         return value;
+    }
+    async readMany(scopeInput: LocalizationScope, units: string[], localeInput?: string): Promise<TranslationSnapshot[]> {
+        const keys=z.array(id).min(1).max(500).parse(units).map(unit=>parsePersistenceKey(scopeInput,unit,localeInput));
+        const scope=keys[0]!.scope,locale=keys[0]!.locale;
+        if(new Set(units).size!==units.length)throw Error('translation_rpc_key_mismatch');
+        const raw=await this.request('read-many',scope,{unitIds:units,locale:locale??null});
+        const rows=z.array(z.object({unitId:id,snapshot:translationSnapshotSchema}).strict()).length(units.length).parse(raw);
+        return rows.map((row,i)=>{if(row.unitId!==units[i])throw Error('translation_rpc_key_mismatch');const value=row.snapshot;
+            if(value.source)owner(value.source.unit.scope,scope);
+            if(value.head){owner(value.head.scope,scope);if(value.head.unitId!==row.unitId||value.head.locale!==locale)throw Error('translation_rpc_key_mismatch');}
+            if(!value.source&&(value.version!==0||value.head)||value.source&&value.version<1)throw Error('translation_rpc_key_mismatch');
+            return value;});
+    }
+    async readRevisions(scopeInput: LocalizationScope, input:{unitId:string;revisionId:string}[], localeInput:string):Promise<(StoredRevision|null)[]> {
+        const keys=z.array(z.object({unitId:id,revisionId:id}).strict()).min(1).max(500).parse(input);
+        const {scope,locale}=parsePersistenceKey(scopeInput,keys[0]!.unitId,localeInput);
+        for(const key of keys)parsePersistenceKey(scope,key.unitId,locale);
+        const raw=await this.request('read-revisions',scope,{keys,locale});
+        const rows=z.array(z.object({unitId:id,revisionId:id,revision:storedRevisionSchema.nullable()}).strict()).length(keys.length).parse(raw);
+        return rows.map((row,i)=>{const key=keys[i]!;if(row.unitId!==key.unitId||row.revisionId!==key.revisionId)throw Error('translation_rpc_key_mismatch');
+            if(row.revision){owner(row.revision.scope,scope);if(row.revision.unitId!==key.unitId||row.revision.revisionId!==key.revisionId||row.revision.locale!==locale)throw Error('translation_rpc_key_mismatch');}return row.revision;});
     }
     async readSourceVersion(scopeInput: LocalizationScope, unitInput: string, version: number): Promise<SourceRecord | null> {
         const { scope, unitId } = parsePersistenceKey(scopeInput, unitInput);

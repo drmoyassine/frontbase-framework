@@ -20,13 +20,13 @@ function translationTransports(options: Omit<SupabaseOpts, 'schema'>) {
         throw Error('translation_https_required');
     }
     const client = supabasePostgrestClient({ ...options, schema: 'translations' });
-    const call = async (rpc: 'translation_request' | 'translation_accounting_request', operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => {
+    const call = async (rpc: 'translation_request' | 'translation_read_batch' | 'translation_accounting_request', operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => {
         const { data, error } = await client.rpc(rpc, { p_operation: operation, p_scope: scope, p_input: input });
         if (error) throw Error('translation_rpc_failed');
         return data;
     };
     return {
-        jobs: { call: (operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => call('translation_request', operation, scope, input) },
+        jobs: { call: (operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => call(operation==='read-many'||operation==='read-revisions'?'translation_read_batch':'translation_request', operation, scope, input) },
         accounting: { call: (operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => call('translation_accounting_request', operation, scope, input) },
     };
 }

@@ -84,3 +84,5 @@ pnpm --filter @frontbase/translation test:mutation
 ```
 
 The package is Apache-2.0 and intended for the framework's npm distribution. Independent tarball installation/type checks, host evidence, security/concurrency gates, versioning and release approval are required before publishing or claiming broader compatibility. Current execution evidence uses Node24 and local workerd; minimum-Node, actual-browser and full workflow acceptance remain open. No package publication follows automatically from building it.
+
+For page translation review, apply [the read-only batch migration](sql/postgrest-read-batch-v1.sql) after `postgrest-v1.sql` and before upgrading the app. It adds one invoker-rights function in the translations schema, without changing stored translations or existing grants on tables. Older applications continue to use the original RPC. A review reads up to 500 field identities in order in one call; missing entries remain explicit. No per-field network fallback is used.

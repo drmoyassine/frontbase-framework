@@ -105,10 +105,12 @@ export interface MessageResolver {
 
 /** Reference-only generation policy. Selecting a provider never authorizes generation. */
 export const translationGenerationConfigurationSchema = z.object({
-    version: z.literal(1), accountId: id, model: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/),
+    version: z.literal(1), accountId: z.union([id, z.literal('')]), model: z.union([z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/), z.literal('')]),
     sourceLocale: localeSchema, targetLocales: z.array(localeSchema).min(1).max(16),
     promptVersion: z.literal('plain-v1'), maxOutputTokens: z.number().int().min(1).max(16384),
 }).strict().superRefine((value, ctx) => {
+    if (Boolean(value.accountId) !== Boolean(value.model))
+        ctx.addIssue({ code: 'custom', message: 'Choose both an AI account and model, or leave both empty for manual translation' });
     if (new Set(value.targetLocales).size !== value.targetLocales.length || value.targetLocales.includes(value.sourceLocale))
         ctx.addIssue({ code: 'custom', message: 'Target languages must be unique and differ from source' });
 });
