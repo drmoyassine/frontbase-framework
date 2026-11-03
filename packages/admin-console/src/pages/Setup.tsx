@@ -49,6 +49,7 @@ export function Setup({ status }: { status: SetupStatus }) {
             const current = await getSetupStatus();
             if (current.setupExpired) throw new Error('The setup authorization has expired. Your entries are preserved. Renew the secure setup link, then try again.');
             if (!current.setupEnabled) throw new Error('Administrator setup is no longer available. Your entries are preserved.');
+            if (current.setupAuthorized === false) throw new Error('Your browser setup session has expired. Open the original private administrator setup link in another tab, then return here and click Create admin account. Your entries are preserved.');
             await postSetup(email, password);
             try {
                 await loginProductAdmin(email, password);
