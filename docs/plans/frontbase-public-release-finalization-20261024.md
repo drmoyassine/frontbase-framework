@@ -2,7 +2,16 @@
 
 ## Hosted setup verification — 2026-11-03
 
-Native Cloudflare and Vercel reached the configuration form on candidate `51dc2648`. See the [request counts and timing](../history/PUBLIC-RELEASE-AUDIT.md) and the [separate self-hosted PostgREST state endpoint](frontbase-postgrest-owner-deployment-20261017.md#separate-frontbase-state-endpoint). Startup acceptance is complete. On Vercel the authorized runtime rollout was the dominant wait; readiness polling during that rollout remains a performance improvement opportunity. Neither timing fixture was activated. Continue with the installer, bilingual publication and upgrade checks below.
+Fresh README-button deployments from `b33441b5` verified ownership and activated isolated state on both hosts. The following receipts distinguish successful provisioning from the first administrator sign-in.
+
+| Native installation | Observed live | Remaining acceptance |
+| --- | --- | --- |
+| Cloudflare `frontbase-live-cf-261103b` | Native build `923365bc`. Review passed. One Apply created D1 `dacbad58-b308-4ade-9169-7a07bca0eb47` and KV `6b910e40f2e846e3b1c00f7ce06360d9`. The new D1 had 35 tables. The initial administrator claim stalled. Native Git upgrade `a356948e` preserved the bindings. The original private link opened the verified administrator form when reopened. Health, setup HTML and status returned 200 in 0.20 to 0.33 s in one subsequent sample. | Create the first administrator and confirm the signed-in dashboard. |
+| Vercel `frontbase-live-vc-261103` | Native integration handoff after MFA. Review passed against the isolated Turso Starter database `fb-live-vc-261103`. One Apply produced READY deployment `dpl_8anvsWpSSMe43CQ4Z6NEFnWKaqwq`. Turso went from zero to 34 tables. Reloading the same private link during rollout opened the verified administrator form. | Create the first administrator and confirm the signed-in dashboard. |
+
+The first Cloudflare run (`frontbase-live-cf-261103`, build `499bab09`) passed Review with ten existing D1s. Its single Apply was inconclusive and neither named resource appeared. Preserve that journal. Freeing one slot allowed the fresh run above to succeed. The original provider refusal code was unavailable. The retired test D1 `b0a16077-20fd-4a88-a58c-7183b33a2571` was privately exported and restored before deletion. Integrity and foreign-key checks passed and the two pages and one user matched remote counts.
+
+Framework repair `0ddf5e52` caches the completed CF engine and schedules receipt reconciliation outside the response. The idempotent administrator claim has per-request timeouts and a 45-second total budget. The build, workspace checks, administrator suite, interrupted Worker boot regression and eight hosted fault checks passed. Fixture source `e3850e8f` aligns the final receipt retry behavior. Record signed-in results separately, then continue with the installer, bilingual publication and upgrade checks below.
 
 ## Current checkpoint — 2026-11-02
 
