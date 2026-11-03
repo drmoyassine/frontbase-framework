@@ -1,5 +1,9 @@
 # Frontbase Developer Preview: current release plan
 
+## Booking for X: installed, published and upgraded on both hosts — 2026-11-03
+
+[Acceptance receipt and migration instructions](booking-for-x-installer-20261101.md#native-booking-for-x-acceptance--november-3-2026). Close the six-entry installation, bilingual public delivery and linked-Git upgrade portions of item 1 below: 24/24 URLs passed across the two hosts, including all three reusable detail layouts. Do not repeat those checks as missing features. The Vercel administrator step used recovery. Independently verify uninterrupted first-admin setup, clean-room upgrade/restore on the frozen candidate and any unverified provider combinations before advertising them. Neither bulk source-record translation nor CF-22 is a blocker for this acceptance. The next release engineering step is to freeze a candidate and qualify the exact package artifacts; no public release or production cutover was made here.
+
 ## Connected Accounts and datasource forms — 2026-11-03
 
 The provider dialog previously rendered manual credentials before OAuth discovery resolved. The shared React Query cache now holds availability for 60 seconds. An explicit pending state appears on first lookup, provider switches reuse the result, and discovery errors offer Retry. CF, Vercel and Supabase button selection is browser-verified on the disposable Vercel app.
@@ -10,7 +14,7 @@ Neon introspection uses the PostgreSQL dialect. Supabase setup targets the selec
 
 Validation passed `pnpm -r check`, `pnpm -r build`, 15 focused console regressions, `test:record-fields`, the Supabase bootstrap regression, adapter selection/redaction checks, seven Neon HTTP groups and all eight `test:http-provider-repairs-mutation` faults with sources restored. Final label changes additionally passed console check/build and all 15 focused tests.
 
-Live verification uses the existing `frontbase-live-vc-261103` native Git copy. The initial push was blocked by the local commit email. A new commit using the authenticated owner's verified GitHub identity allowed the provider build, and a root build marker addressed Vercel's skipped empty retry. Repair source `9a43645` completed deployment. The signed-in browser verified all eight enabled datasource types, disabled PostgreSQL/MySQL options and CF/Supabase/Vercel OAuth-only dialogs. Final label deployment `d4b32d8` completed and the signed-in browser verified the Cloudflare D1 picker, Connect Cloudflare Account action and OAuth button after reload. Live query acceptance with credentials for every listed provider and a separate CF-host deployment of these UI repairs remain open. The wider installer/bilingual/upgrade release checks below remain separately tracked.
+Live verification uses the existing `frontbase-live-vc-261103` native Git copy. The initial push was blocked by the local commit email. A new commit using the authenticated owner's verified GitHub identity allowed the provider build, and a root build marker addressed Vercel's skipped empty retry. Repair source `9a43645` completed deployment. The signed-in browser verified all eight enabled datasource types, disabled PostgreSQL/MySQL options and CF/Supabase/Vercel OAuth-only dialogs. Final label deployment `d4b32d8` completed and the signed-in browser verified the Cloudflare D1 picker, Connect Cloudflare Account action and OAuth button after reload. Live query acceptance with credentials for every listed provider and a separate CF-host deployment of these UI repairs remain open. The November 3 Booking for X receipt above records installer, bilingual and upgrade acceptance.
 
 ## Hosted setup verification — 2026-11-03
 
