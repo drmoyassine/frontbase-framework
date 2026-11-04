@@ -188,7 +188,7 @@ test('postgrest-http renders the self-hosted Postgres fields without any picker'
  expect(binding.mode).toBe('connect');
 });
 test('hosted PostgREST tests credentials before choosing existing/new schema, invalidates on credential change',async()=>{
- const requests:any[]=[];vi.stubGlobal('fetch',vi.fn(async(url,init)=>{requests.push({url,body:JSON.parse(init.body)});return {ok:true,json:async()=>({success:true,schemas:[{name:'private_state'},{name:'translations'},{name:'existing_business_data'}]})};}));
+ const requests:any[]=[];vi.stubGlobal('fetch',vi.fn(async(url,init)=>{requests.push({url,body:JSON.parse(init.body)});return {ok:true,json:async()=>({success:true,schemas:[{name:'private_state'},{name:'translations'},{name:'existing_business_data'},{name:'public',selectable:false,reason:'Reserved shared schema'},{name:'Quoted Name',selectable:false,reason:'Unsupported identifier'}]})};}));
  const root=mount('cloudflare',{discoveryBase:'/frontbase-bootstrap/api'});select(root,'binding-provider-state-db','postgrest-http');
  const input=(label:string)=>{const node=[...root.querySelectorAll('label')].find(l=>l.textContent===label)!;return root.querySelector('#'+node.htmlFor)!;};
  fireEvent.input(input('Service URL'),{target:{value:'https://db.example/rest/v1'}});fireEvent.input(input('Access token'),{target:{value:'private-state-key'}});expect(form!.ready()).toBe(false);
@@ -196,6 +196,7 @@ test('hosted PostgREST tests credentials before choosing existing/new schema, in
  await vi.waitFor(()=>expect(root.querySelector('#binding-postgrest-schema-state-db')).toBeTruthy());expect(requests).toHaveLength(1);expect(requests[0].body).toEqual({url:'https://db.example/rest/v1',token:'private-state-key'});expect(form!.ready()).toBe(false);
  select(root,'binding-postgrest-schema-state-db','private_state');expect(form!.ready()).toBe(true);expect(form!.snapshot().manifest.bindings['state-db'].mode).toBe('reuse');expect(JSON.stringify(form!.snapshot().manifest)).not.toContain('private-state-key');
  expect([...root.querySelectorAll('#binding-postgrest-schema-state-db option')].map(option=>(option as HTMLOptionElement).value)).toEqual(expect.arrayContaining(['translations','existing_business_data']));
+ expect(root.querySelector<HTMLOptionElement>('option[value=public]')?.disabled).toBe(true);expect(root.querySelector<HTMLOptionElement>('option[value=public]')?.textContent).toContain('Reserved shared schema');expect(root.querySelector<HTMLOptionElement>('option[value=\"Quoted Name\"]')?.disabled).toBe(true);
  select(root,'binding-postgrest-schema-state-db','__create__');expect(form!.snapshot().manifest.bindings['state-db'].mode).toBe('create');expect(input('New schema name')).toBeTruthy();
  fireEvent.input(input('Access token'),{target:{value:'changed-key'}});expect(form!.ready()).toBe(false);expect(requests).toHaveLength(1,'editing never dispatches a test or writes');
 });

@@ -48,7 +48,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     let projects: Discovery<ProjectOption>|undefined;
     const inventories=new Map<string,Discovery<{id:string;name:string;url?:string;endpoint?:string}>>();
     const schemasByProject=new Map<string,Discovery<SchemaOption>>();
-    let postgresDiscovery:{generation:number;status:'loading'|'ready'|'failed';schemas:string[];message:string}|undefined,postgresGeneration=0;
+    let postgresDiscovery:{generation:number;status:'loading'|'ready'|'failed';schemas:{name:string;selectable:boolean;reason?:string}[];message:string}|undefined,postgresGeneration=0;
     let reviewing=false,accountPickerOpened=false;
     const pending=new Set<Promise<void>>();
     const track=(work:Promise<void>)=>{pending.add(work);void work.finally(()=>pending.delete(work));};
@@ -300,15 +300,15 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             const generation=++postgresGeneration;postgresDiscovery={generation,status:'loading',schemas:[],message:'Testing connection…'};render();
             let data:any;try{const r=await fetch((options.discoveryBase??'')+'/provider-resources/postgrest/schemas',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({url,token})});data=await r.json();if(!r.ok)data={success:false,message:typeof data.message==='string'?data.message:undefined};}catch{data={success:false};}
             if(destroyed||generation!==postgresGeneration)return;
-            postgresDiscovery={generation,status:data.success===true?'ready':'failed',schemas:Array.isArray(data.schemas)?data.schemas.map((s:any)=>String(s.name)).filter((s:string)=>/^[a-z_][a-z0-9_]{0,62}$/.test(s)):[],message:data.success===true?'Connection verified. Select an empty schema or create a new one during Apply.':data?.message??'Could not contact the setup service. Check your setup session and try again.'};render();change();
+            postgresDiscovery={generation,status:data.success===true?'ready':'failed',schemas:Array.isArray(data.schemas)?data.schemas.filter((s:any)=>s&&typeof s.name==='string'&&s.name.length>0&&new TextEncoder().encode(s.name).length<=63).map((s:any)=>({name:s.name,selectable:s.selectable!==false&&/^[a-z_][a-z0-9_]{0,62}$/.test(s.name)&&s.name!=='public'&&!s.name.startsWith('pg_')&&s.name!=='information_schema',reason:typeof s.reason==='string'?s.reason:undefined})):[],message:data.success===true?'Connection verified. Select an empty schema or create a new one during Apply.':data?.message??'Could not contact the setup service. Check your setup session and try again.'};render();change();
         });card.append(test);
         if(postgresDiscovery){const message=node('p',postgresDiscovery.message,'fb-binding-note');message.setAttribute('role','status');card.append(message);}
         if(postgresDiscovery?.status!=='ready')return;
         const wrapper=node('div',undefined,'fb-binding-field'),label=node('label','Schema'),select=node('select');select.id='binding-postgrest-schema-'+role;label.htmlFor=select.id;
         select.append(option('Select an existing schema…',''),option('Create new schema…','__create__'));
-        for(const name of postgresDiscovery.schemas)select.append(option(name,name));
+        for(const schema of postgresDiscovery.schemas){const choice=option(schema.name+(schema.selectable?'':' — '+(schema.reason??'Unavailable for application state')),schema.name);choice.disabled=!schema.selectable;select.append(choice);}
         select.value=binding.mode==='create'?'__create__':binding.mode==='reuse'?binding.resourceRef??'':'';
-        select.addEventListener('change',()=>{delete binding.resourceRef;delete binding.config.schema;if(select.value==='__create__'){binding.mode='create';binding.config.schema='frontbase_edge_state';}else if(select.value){binding.mode='reuse';binding.resourceRef=select.value;binding.config.schema=select.value;}else binding.mode='connect';render();change();});
+        select.addEventListener('change',()=>{delete binding.resourceRef;delete binding.config.schema;if(select.value==='__create__'){binding.mode='create';binding.config.schema='frontbase_edge_state';}else if(select.value&&postgresDiscovery?.schemas.some(schema=>schema.name===select.value&&schema.selectable)){binding.mode='reuse';binding.resourceRef=select.value;binding.config.schema=select.value;}else binding.mode='connect';render();change();});
         wrapper.append(label,select);card.append(wrapper);
         if(binding.mode==='create')field(card,'New schema name',binding.config.schema,value=>binding.config.schema=value,false,true);
         card.append(node('p','Existing schemas must be empty. Schema creation and protected SQL helper installation happen only when you Apply. The credential must have the necessary DDL privileges.','fb-binding-note'));
