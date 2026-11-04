@@ -16,6 +16,7 @@ export async function verifyInlineWizard(host,origin,env,target){
    if(url.origin!==origin)return route.abort();
    seen.push([request.resourceType(),url.pathname]);
    if(url.pathname.endsWith('/api/claim'))await hold;
+   if(url.pathname.endsWith('/api/apply'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({phase:'active'})});
    const response=await host.fetch(new Request(url,{method:request.method(),headers:await request.allHeaders(),body:request.postDataBuffer()??undefined}));
    await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:Buffer.from(await response.arrayBuffer())});
   });
@@ -26,20 +27,23 @@ export async function verifyInlineWizard(host,origin,env,target){
   const position=await page.evaluate(()=>window.scrollY);
   assert.equal(seen.some(([,path])=>path.endsWith('/api/form')),false);
   release();
-  await page.waitForFunction(()=>!document.querySelector('#review').disabled,null,{timeout:15000});
+  await page.waitForFunction(()=>!document.querySelector('#apply').disabled,null,{timeout:15000});
   assert.equal(await select.inputValue(),'libsql-http');
   assert.ok(await select.evaluate(node=>document.activeElement===node));
   assert.equal(await page.evaluate(()=>window.scrollY),position);
   assert.equal(seen.filter(([type])=>type==='document').length,1);
-  await page.getByRole('button',{name:'Review configuration'}).click();
+  await page.getByRole('button',{name:'Activate Frontbase'}).click();
   await page.getByRole('list',{name:'Bindings to fix'}).waitFor();
-  assert.equal(await page.locator('#apply').isDisabled(),true);
+  assert.equal(seen.filter(([,path])=>path.endsWith('/api/apply')).length,0,'invalid bindings never activate');
   await page.getByLabel('Service URL').fill('https://fixture.example');
   await page.getByLabel('Access token').fill('fixture-only');
-  await page.getByRole('button',{name:'Review configuration'}).click();
-  await page.waitForFunction(()=>!document.querySelector('#apply').disabled,null,{timeout:10000});
+  await page.getByRole('button',{name:'Activate Frontbase'}).click();
+  await page.getByRole('status').filter({hasText:'Configuration activated.'}).waitFor();
   assert.equal(seen.filter(([,path])=>path.endsWith('/api/review')).length,1);
+  assert.equal(seen.filter(([,path])=>path.endsWith('/api/apply')).length,1,'one click reviews then submits once');
+  assert.equal(await page.getByRole('button',{name:'Review configuration'}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Deploy now'}).count(),0);
   assert.deepEqual(errors,[]);
-  console.log('PASS '+target+' browser: verified session unlocked in place, focus/scroll/selection retained, invalid review refused, corrected review accepted.');
+  console.log('PASS '+target+' browser: verified session unlocked in place, focus/scroll/selection retained, invalid activation refused, one primary action reviews then submits corrected bindings.');
  }finally{await browser.close();}
 }

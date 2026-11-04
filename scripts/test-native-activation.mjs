@@ -9,7 +9,7 @@ async function fixture({readyAfter=0,invalid=false,initialize=true,alreadyReady=
  if(inline)nodes['owned-wizard']={hidden:true};
  const location={hash:'#claim='+(invalid?'invalid':'a'.repeat(64)),pathname:'/frontbase-bootstrap/activation',replace(value){replaced=value;}};
  const saved=new Map();
- const operation=runInNewContext(source,{URLSearchParams,AbortSignal,Date:{now:()=>stamp},history:{replaceState(){location.hash='';}},sessionStorage:{setItem(k,v){saved.set(k,v);}},location,document:{getElementById:id=>nodes[id],createElement:()=>({}),body:{append:script=>scripts.push(script)}},setTimeout(fn,ms){stamp+=ms;fn();},fetch:async(path,options)=>{
+ const operation=runInNewContext(source,{URLSearchParams,AbortSignal,Date:{now:()=>stamp},history:{replaceState(){location.hash='';}},sessionStorage:{setItem(k,v){saved.set(k,v);}},location,document:{querySelectorAll:()=>[],getElementById:id=>nodes[id],createElement:()=>({}),body:{append:script=>scripts.push(script)}},setTimeout(fn,ms){stamp+=ms;fn();},fetch:async(path,options)=>{
   assert.equal(options.method,'POST');assert.equal(options.redirect,'error');assert.equal(options.credentials,'same-origin');assert(options.signal);
   if(path==='/frontbase-bootstrap/api/claim'){claims++;assert.equal(nodes.providers.hidden,false);
    if(selectProvider&&claims===1)nodes.providers.handler({target:{dataset:{role:'state-db'},value:'postgrest-http'}});
@@ -56,9 +56,9 @@ console.log('PASS native activation: slow provider build, bounded request/deadli
  });
  await new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(calls,['accounts','/frontbase-bootstrap/api/form']);
- assert.ok(mounted);assert.equal(finished,false);assert.equal(element('review').disabled,true);
+ assert.ok(mounted);assert.equal(finished,false);assert.equal(element('apply').disabled,true);
  resolveAccounts({cloudflare:{connected:true}});
  await new Promise(resolve=>setImmediate(resolve));
- assert.ok(finished);assert.equal(element('review').disabled,false);assert.equal(calls.length,2);
+ assert.ok(finished);assert.equal(element('apply').disabled,false);assert.equal(calls.length,2);
  console.log('PASS hosted wizard renders during account discovery and skips duplicate inventory');
 }

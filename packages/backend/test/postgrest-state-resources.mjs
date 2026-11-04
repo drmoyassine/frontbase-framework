@@ -11,8 +11,16 @@ for(const url of ['http://db.example','https://127.0.0.1/rpc','https://10.0.0.1'
 assert.equal((await request({...input,extra:'field'})).status,400);assert.equal((await request({...input,token:''})).status,400);
 console.log('PASS state discovery: owner/CSRF, HTTPS/SSRF/query/fragment refusal, read-only SQL, eligible schemas and credential-free responses');
 
+const allSchemas=createProviderOAuthResources({origin,authorize:async()=>({tenant:'_root',subject:'fixture'}),supabaseGrant:async()=>null,fetch:async()=>Response.json([{result:[{schema_name:'translations'},{schema_name:'existing_business_data'},{schema_name:'frontbase_edge_state'},{schema_name:'public'},{schema_name:'pg_catalog'}]}])});
+const discovered=await allSchemas.fetch(new Request(origin+'/postgrest/schemas',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(input)}));
+assert.equal(discovered.status,200);assert.deepEqual((await discovered.json()).schemas.map(s=>s.name),['translations','existing_business_data','frontbase_edge_state'],'discovery includes all eligible schemas, not only Frontbase-prefixed schemas');
+let inventoryRequests=0;const names=Array.from({length:180},(_,i)=>({schema_name:'business_'+i}));
+const manySchemas=createProviderOAuthResources({origin,authorize:async()=>({tenant:'_root',subject:'fixture'}),supabaseGrant:async()=>null,fetch:async()=>{inventoryRequests++;return Response.json([{result:names}]);}});
+const all=await manySchemas.fetch(new Request(origin+'/postgrest/schemas',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(input)}));
+assert.equal((await all.json()).schemas.length,180,'do not silently truncate the schema dropdown after 100');assert.equal(inventoryRequests,1);
+
 for(const [status,code] of [[401,'state_unauthorized'],[403,'state_role_denied'],[404,'state_helper_unavailable'],[406,'state_profile_unavailable']]){
  const denied=createProviderOAuthResources({origin,authorize:async()=>({tenant:'_root',subject:'fixture'}),supabaseGrant:async()=>null,fetch:async()=>Response.json({message:'private upstream detail'},{status})});
  const reply=await denied.fetch(new Request(origin+'/postgrest/schemas',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(input)}));
- const result=await reply.json();assert.equal(result.error,code);assert.ok(!result.message.includes('private upstream detail'));
+const result=await reply.json();assert.equal(result.error,code);assert.ok(!result.message.includes('private upstream detail'));
 }

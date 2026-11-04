@@ -291,6 +291,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
     const renderPostgrestPicker=(card:HTMLElement,role:ConfigurableRole)=>{
         const binding=manifest.bindings[role],reference=binding.secretRefs.token??role+'/token';
         const invalidate=()=>{postgresGeneration++;postgresDiscovery=undefined;binding.mode='connect';delete binding.resourceRef;delete binding.config.rpcPrefix;delete binding.config.rpcSchema;};
+        card.append(node('p','Discovery lists all usable non-system schemas visible to this credential in the endpoint’s database. Use an endpoint with the state setup helpers installed; a translations-only API cannot provision state. Discovery never creates schemas or tables.','fb-binding-note'));
         field(card,'Service URL',binding.config.url,value=>{binding.config.url=value;invalidate();},false,true);
         field(card,'Access token',secrets.get(reference),value=>{if(value){binding.secretRefs.token=reference;secrets.set(reference,value);}else{delete binding.secretRefs.token;secrets.delete(reference);}invalidate();},true,true);
         const test=node('button','Test connection and fetch schemas');test.type='button';test.disabled=postgresDiscovery?.status==='loading';
