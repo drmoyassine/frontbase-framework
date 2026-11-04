@@ -46,6 +46,17 @@ for(const pageProof of [undefined,'a'.repeat(43)]){
  assert.equal(exchanges,0);
 }
 assert.ok((await(await call('/connect.js')).text()).includes('x-frontbase-relay-proof'),'browser sends the displayed connection challenge');
+const {runInNewContext}=await import('node:vm');
+const browserScript=await(await call('/connect.js')).text();
+for(const proof of ['b'.repeat(43),'a'.repeat(43)]){
+ let requests=0,redirects=0,handler;const button={disabled:false,addEventListener(_event,fn){handler=fn;}},status={textContent:''};
+ let settled;const done=new Promise(resolve=>settled=resolve);
+ runInNewContext(browserScript,{URL,document:{getElementById:id=>id==='connect'?button:status},location:{href:relayOrigin+'/connect?provider=cloudflare&challenge='+proof,assign:url=>{redirects++;assert.equal(new URL(url).hostname,'dash.cloudflare.com');settled();}},fetch:async(path,init)=>{requests++;const response=await call(path,{cookie:cookie(newerPage),headers:init.headers,body:JSON.parse(init.body)});if(!response.ok)queueMicrotask(()=>queueMicrotask(settled));return response;}});
+ let timer;try{await Promise.race([done,new Promise((_resolve,reject)=>{timer=setTimeout(()=>reject(Error('Relay did not start automatically')),1000);})]);}finally{clearTimeout(timer);}
+ assert.equal(requests,1,'popup begins consent without an intermediate click');
+ if(proof.startsWith('b')){assert.equal(redirects,1);await handler();assert.equal(requests,1,'disabled fallback prevents duplicate consent dispatch');}
+ else{assert.equal(redirects,0);assert.match(status.textContent,/replaced/,'automatic handoff still refuses a replaced receiver');}
+}
 console.log('PASS concurrent relay tabs refuse a replaced page-to-session binding before consent');
 let f=await flow();assert.equal(exchanges,1);assert.equal(verified,1);
 const raw=await db.query('SELECT value FROM _frontbase_oauth_relay');assert.ok(raw.every(r=>String(r.value).startsWith('enc:')));assert.ok(!JSON.stringify(raw).includes('fixture-sensitive'));
