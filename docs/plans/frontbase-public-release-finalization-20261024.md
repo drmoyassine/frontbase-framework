@@ -1,3 +1,5 @@
+November 4 setup UX update: [single activation action, complete eligible schema discovery and direct provider popup](state-discovery-and-oauth-popup-20261104.md) are qualified; production relay and the current native CF app were upgraded. The original self-hosted URL is translations-only; the dedicated state URL is healthy. No state-database relocation or new permissions were applied. Candidate freeze remains next.
+
 November 4 operational update: the owner retired the named test fixtures after acceptance. [Cleanup scope and preserved resources](test-artifact-cleanup-20261104.md). The dated receipts below remain historical evidence; retired URLs cannot be reused for live checks. Select or create scoped replacement fixtures for candidate qualification.
 
 # Frontbase Developer Preview: current release plan
