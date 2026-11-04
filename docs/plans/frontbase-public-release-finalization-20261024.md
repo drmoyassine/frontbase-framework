@@ -1,3 +1,5 @@
+November 4 operational update: the owner retired the named test fixtures after acceptance. [Cleanup scope and preserved resources](test-artifact-cleanup-20261104.md). The dated receipts below remain historical evidence; retired URLs cannot be reused for live checks. Select or create scoped replacement fixtures for candidate qualification.
+
 # Frontbase Developer Preview: current release plan
 
 ## Current checkpoint — 2026-11-03

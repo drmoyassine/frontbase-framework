@@ -1,3 +1,5 @@
+November 4 operational update: the owner retired the named test fixtures after acceptance. [Cleanup scope and preserved resources](test-artifact-cleanup-20261104.md). The dated receipts below remain historical evidence; retired URLs cannot be reused for live checks. Select or create scoped replacement fixtures for candidate qualification.
+
 # Native onboarding final acceptance — November 1, 2026
 
 Owner scope: fresh optional-binding Review → Apply, secure setup access renewal, and fresh main-README deployments on **both Cloudflare and Vercel**. Work autonomously on engineering/verification; collect authorization-dependent steps at the end. Preserve Study-in-USA/source records, populated acceptance apps and the owner's unconfigured wizard. The owner subsequently approved the identity-only Vercel recovery application described below; no new management permission or public-release scope expansion.

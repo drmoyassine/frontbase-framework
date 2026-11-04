@@ -1,3 +1,5 @@
+November 4 operational update: the owner retired the named test fixtures after acceptance. [Cleanup scope and preserved resources](test-artifact-cleanup-20261104.md). The dated receipts below remain historical evidence; retired URLs cannot be reused for live checks. Select or create scoped replacement fixtures for candidate qualification.
+
 ## Native Booking for X acceptance — November 3, 2026
 
 The isolated installations are `frontbase-live-cf-261103b` (Cloudflare/D1) and `frontbase-live-vc-261103` (Vercel/Turso). Both used the UI installer and retained six editable entries. Content was read from the approved Studygram connection; Arabic drafts and releases use separate translation project identities in the approved PostgREST store. Neither the WordPress site nor its source records were modified. The Vercel administrator needed owner-session recovery during initial setup; this is not evidence of uninterrupted administrator onboarding.
