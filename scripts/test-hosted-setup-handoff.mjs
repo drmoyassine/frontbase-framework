@@ -13,6 +13,6 @@ async function run(ready,wake=false){
  assert.equal(times[0],0);assert.equal(getEventListeners(document,'visibilitychange').length,ready?0:1,'only unresolved activation keeps a resume listener');
  if(wake)assert.deepEqual(times,[0,123]);
  if(!ready){assert.deepEqual(times.slice(0,5),[0,1000,3000,7000,15000]);assert.ok(times.length<=22);}
- if(ready)assert.deepEqual(redirects,['/setup#/setup?claim=fixture']);else{assert.deepEqual(redirects,[]);assert.match(element('result').textContent,/could not be confirmed/);}
+ if(ready)assert.deepEqual(redirects,['/setup#/setup?claim=fixture']);else{assert.deepEqual(redirects,[]);assert.match(element('result').textContent,/taking longer than expected/);}
 }
 await run(true);await run(true,true);await run(false);console.log('PASS uncertain activation: delayed healthy runtime reaches administrator setup; unconfirmed runtime stops honestly; neither case repeats writes');

@@ -6,7 +6,7 @@
  const providers=document.getElementById('providers');
  const choices=Object.create(null);
  // The previous activation HTML can still be in flight during a rollout.
- if(providers)providers.hidden=false;
+ if(providers)providers.hidden=true;
  providers?.addEventListener('change',event=>{
   const role=event.target.dataset.role;
   if(role){choices[role]=event.target.value;event.target.dataset.edited='1';}
@@ -15,7 +15,7 @@
   if(document.getElementById('owned-wizard')){
    // Load protected controls in this document. The server still verifies the signed session.
    history.replaceState(null,'','/frontbase-bootstrap/');
-   status.textContent='Ownership verified. Loading service details…';
+   status.textContent='Opening setup...';
    const script=document.createElement('script');
    script.type='module';script.src='/frontbase-bootstrap/app.js';
    script.onerror=()=>{status.textContent='Service details could not load. Open setup to continue.';open.hidden=false;};
@@ -30,7 +30,7 @@
  // page's memory, bound each readiness request, and never repeat provisioning.
  async function check(){
   let delay=1000;retry.hidden=true;const deadline=Date.now()+600000;
-  status.textContent='Checking deployment ownership…';
+  status.textContent='Opening your private setup session...';
   while(Date.now()<deadline){
    try{
     const r=await fetch('/frontbase-bootstrap/api/claim',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({token}),redirect:'error',signal:AbortSignal.timeout(15000)});
@@ -38,7 +38,7 @@
      if(r.headers?.get('X-Frontbase-Initialization')==='ready'){enterWizard();return;}
      let initialized;try{initialized=await fetch('/frontbase-bootstrap/api/initialize',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:'{}',redirect:'error',signal:AbortSignal.timeout(15000)});}catch{/* An uncertain initialization must not be repeated. */}
      if(initialized?.ok){enterWizard();return;}
-     status.textContent='Deployment ownership is confirmed, but setup initialization could not be confirmed. Open setup to inspect its current state; no provisioning operation has been repeated.';open.hidden=false;return;
+     status.textContent='Your setup link is valid, but setup is not ready yet. Open setup to inspect its current state; no provisioning operation has been repeated.';open.hidden=false;return;
     }
     if([400,401,403,410].includes(r.status)){
      status.textContent='This setup link is invalid, expired or closed. Reopen the current private link or use setup recovery.';

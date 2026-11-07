@@ -1,5 +1,5 @@
 let bootstrapCompletion:Promise<void>|undefined;
-import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap} from './hosted-cloud.js';
+import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap,closedBootstrapResponse} from './hosted-cloud.js';
 import {createNativeCloudBootstrap} from './native-cloud.js';
 /**
  * Vercel entry (A-24) — the FULL CMS as one serverless function.
@@ -114,7 +114,7 @@ export async function handler(req: Request): Promise<Response> {
         const e = await raceBootTimeout(engine(), budget, 'the full-CMS engine');
         await (bootstrapCompletion??=completeCloudBootstrap(process.env,'vercel',()=>e.fetch(new Request(new URL('/health',req.url))),externalFetch).catch(()=>{console.warn('bootstrap_receipt_completion_pending')}));
             const proof=await bootstrapRuntimeProof(req,process.env,()=>e.fetch(new Request(new URL('/health',req.url))));if(proof)return proof;
-        if(new URL(req.url).pathname.startsWith('/frontbase-bootstrap/'))return new Response('Setup closed',{status:410});
+        const closedSetup=closedBootstrapResponse(req);if(closedSetup)return closedSetup;
         return await raceBootTimeout(e.fetch(req), budget, 'the state database-backed engine');
     } catch (err) {
         if (err instanceof StateDbConfigError) return new Response(err.message, { status: 500 });

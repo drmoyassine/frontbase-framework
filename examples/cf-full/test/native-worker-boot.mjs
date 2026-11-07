@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
+import {createSecretCipher} from '@frontbase/backend';
+import {hashPassword} from '@frontbase/edge-infra';
 // Exercise the deployed entry, not only createCmsEngine or the secret helper.
 const db=new DatabaseSync(':memory:');
 const DB={prepare(sql){const stmt=db.prepare(sql);let params=[];return {bind(...values){params=values;return this;},async all(){return {results:stmt.all(...params)};},async run(){return {meta:{changes:Number(stmt.run(...params).changes)}};}};}};
@@ -40,5 +42,24 @@ try {
   assert.equal(next.status,200);
  } finally { clearTimeout(timer);resume.resolve();await interrupted; }
  console.log('PASS later request boots while the first request is suspended');
+ const enrolledDb=new DatabaseSync(':memory:');
+ const enrolledBinding={prepare(sql){const stmt=enrolledDb.prepare(sql);let params=[];return{bind(...values){params=values;return this;},async all(){return{results:stmt.all(...params)};},async run(){return{meta:{changes:Number(stmt.run(...params).changes)}};}};}};
+ try{
+  const installationId='11111111-2222-4333-8444-555555555555',sessionSecret='s'.repeat(64),password='Pending-admin-fixture-123';
+  const pending={version:1,installationId,email:'pending@example.test',passwordHash:await hashPassword(password)};
+  const pendingEnv={DB:enrolledBinding,ASSETS:env.ASSETS,SESSION_SECRET:sessionSecret,FRONTBASE_INSTALLATION_ID:installationId,
+   FRONTBASE_ADMINISTRATOR_HANDOFF:await(await createSecretCipher(sessionSecret)).encrypt(JSON.stringify(pending))};
+  const prepared=await load('administrator-first');
+  const ready=await prepared.fetch(new Request(base+'/api/console/setup/status'),pendingEnv,ctx);
+  assert.equal(ready.status,200);assert.equal((await ready.json()).needsSetup,false);
+  const signIn=await prepared.fetch(new Request(base+'/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:pending.email,password})}),pendingEnv,ctx);
+  assert.equal(signIn.status,200,await signIn.text());
+  const session=signIn.headers.get('set-cookie').split(';')[0];
+  const upgraded=await load('administrator-first-upgrade');
+  assert.equal((await upgraded.fetch(new Request(base+'/api/pages/',{headers:{cookie:session}}),pendingEnv,ctx)).status,200);
+  assert.equal(enrolledDb.prepare('SELECT COUNT(*) AS n FROM users').get().n,1);
+  const closed=await upgraded.fetch(new Request(base+'/api/console/setup',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}),pendingEnv,ctx);assert.equal(closed.status,410);
+  console.log('PASS built Worker: pending secret creates administrator once, login works, upgrade retains session and setup closes');
+ }finally{enrolledDb.close();}
  const broken=await load('broken');assert.equal((await broken.fetch(new Request(base+'/'),{ASSETS:env.ASSETS},ctx)).status,500);console.log('PASS missing state fails closed');
 } finally {db.close();}

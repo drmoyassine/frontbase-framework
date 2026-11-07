@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {fileURLToPath} from 'node:url';
 const fixture={
+ './hosted-cloud.js': 'export const createCloudBootstrap=()=>{throw Error("unexpected_fixture_bootstrap");}; export const bootstrapRuntimeProof=async()=>null; export const completeCloudBootstrap=async()=>{};export const closedBootstrapResponse=()=>null;',
+ './native-cloud.js': 'export const createNativeCloudBootstrap=()=>{throw Error("unexpected_fixture_native_bootstrap");};',
  '@frontbase/edge-infra/node-http': 'export const createNodeHttpTransport=()=>Object.assign(async()=>{throw Error("unexpected_fixture_http");},{close:async()=>{}});',
  '@frontbase/backend': 'export const deploymentStorageOptions=()=>({}), parseEnvServices=()=>({}), envServiceDescriptor=()=>null, ENV_CARD_LABELS={};',
  './state-db.js': 'export class StateDbConfigError extends Error {} export const resolveStateDb=()=>({runner:{},kind:"fixture",displayUrl:"fixture",label:"fixture",card:null});',

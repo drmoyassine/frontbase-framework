@@ -6,7 +6,7 @@ import type {BootstrapContext,BootstrapJournal,BootstrapRecord} from '@frontbase
 import type {OAuthVault} from '../../../packages/backend/src/provider-oauth-vault.js';
 export const setupMetadataBinding='FRONTBASE_SETUP_METADATA';
 type Api=(path:string,method?:string,body?:any,contentType?:string)=>Promise<any>;
-type State={version:1;context:BootstrapContext;sequence:number;journal:BootstrapRecord|null;vault:Array<{key:string;value:string}>};
+type State={version:1;context:BootstrapContext;sequence:number;journal:BootstrapRecord|null;vault:Array<{key:string;value:string}>;signIn?:{window:number;count:number}};
 const uuid=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/;
 function refuse():never{throw Error('setup_metadata_unconfirmed');}
 const hash=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),n=>n.toString(16).padStart(2,'0')).join('');
@@ -61,6 +61,36 @@ export function cloudflareSetupMetadata(context:BootstrapContext,owner:string,ap
   async replace(key,expected,value){if(!(await cipher).isEncrypted(value))refuse();const {tip,state}=await read();if(!state.vault.some(r=>r.key===key&&r.value===expected))return false;return !!await append(tip,{...state,sequence:state.sequence+1,vault:state.vault.map(r=>r.key===key?{key,value}:r)});}
  };
  return {journal,vault,
+  async consumeSignInAttempt(now:number){
+   const {tip,state}=await read(),window=Math.floor(now/900000);
+   if(state.journal?.phase==='active')return false;
+   if(state.signIn&&(!Number.isSafeInteger(state.signIn.window)||!Number.isSafeInteger(state.signIn.count)||state.signIn.count<0))refuse();
+   const count=state.signIn?.window===window?state.signIn.count:0;
+   if(count>=10)return false;
+   // A losing concurrent append is denied, never allowed on a stale count.
+   return !!await append(tip,{...state,sequence:state.sequence+1,signIn:{window,count:count+1}});
+  },
+  // The secret binding is carried into the finished runtime. The encrypted
+  // vault copy lets the setup runtime resume without deploying another version
+  // merely to read a secret that Cloudflare deliberately masks in its API.
+  async savePendingAdministrator(value:string){
+   if(!(await cipher).isEncrypted(value))refuse();
+   const {tip,state}=await read(),key='pending-administrator:'+context.installationId;
+   if(state.journal&&state.journal.phase!=='reviewed')refuse();
+   if(state.vault.some(r=>r.key===key))return false;
+   return !!await append(tip,{...state,sequence:state.sequence+1,vault:[...state.vault,{key,value}]},{
+    FRONTBASE_PENDING_ADMINISTRATOR:{type:'secret_text',text:value}
+   });
+  },
+  async retirePendingAdministrator(){
+   const {tip,state}=await read(),key='pending-administrator:'+context.installationId;
+   if(state.journal?.phase!=='active')refuse();
+   if(!state.vault.some(r=>r.key===key)&&!tip.env?.FRONTBASE_PENDING_ADMINISTRATOR&&!tip.env?.FRONTBASE_ADMINISTRATOR_HANDOFF)return;
+   const created=await append(tip,{...state,sequence:state.sequence+1,vault:state.vault.filter(r=>r.key!==key)},
+    {FRONTBASE_PENDING_ADMINISTRATOR:null,FRONTBASE_ADMINISTRATOR_HANDOFF:null});
+   if(!created)refuse();
+   await api(root+'scripts/'+project+'/deployments','POST',{strategy:'percentage',versions:[{version_id:created.id,percentage:100}]});
+  },
   async activate(record:BootstrapRecord,bindings:any[],allowed:(binding:any)=>boolean){
    const {tip,state}=await read(),current=state.journal;
    if(!current||current.phase!=='applying'||current.revision!==record.revision||current.operationId!==record.operationId||current.fingerprint!==record.fingerprint)refuse();

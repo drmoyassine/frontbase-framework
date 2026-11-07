@@ -1,7 +1,8 @@
 /** Storage-independent owner-authorized bootstrap API. Hosts mount this only in explicit bootstrap mode. */
 import {Hono} from 'hono';
-import {timingSafeEqual} from '@frontbase/edge-infra';
-import {defaultDeploymentManifest,deploymentAdapters} from '@frontbase/edge-core/deployment';
+import {enrollAdministrator,type PendingAdministratorStore} from './pending-administrator.js';
+import {timingSafeEqual,verifyPassword} from '@frontbase/edge-infra';
+import {defaultDeploymentManifest,deploymentAdapters,deploymentManifestSchema,configurableRoles} from '@frontbase/edge-core/deployment';
 import {reviewBootstrap,applyBootstrap,reconcileBootstrap,type BootstrapContext,type BootstrapJournal,type BootstrapExecutor} from '@frontbase/edge-core/deployment-bootstrap';
 export interface HostedBootstrapDeps {
     enabled: boolean; origin: string; token: string; expiresAt: string;
@@ -12,6 +13,8 @@ export interface HostedBootstrapDeps {
     resourceOptions?: ()=>Promise<Record<string,unknown>>;
     configuration?: ()=>Promise<Record<string,unknown>>;
     pendingSetup?: boolean;
+    administrator?: PendingAdministratorStore;
+    draft?: {read():Promise<unknown>;save(value:unknown):Promise<void>};
     /** Separate expiring access from the stable encryption/signing root. */
     access?: ()=>Promise<import('./hosted-setup-access.js').HostedSetupAccess>;
     renewalAvailable?: boolean | (()=>Promise<boolean>);
@@ -41,7 +44,7 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono<SetupEnv>
             const parts=raw.split('.');if(parts.length!==2)return false;
             if(!await crypto.subtle.verify('HMAC',await key(),decode(parts[1]!),new TextEncoder().encode(parts[0]!)))return false;
             const payload=JSON.parse(new TextDecoder().decode(decode(parts[0]!)));
-            return payload.aud===audience&&(payload.generation??0)===access.generation&&Number.isSafeInteger(payload.exp)&&payload.exp>now()&&payload.exp<=Date.parse(access.expiresAt)&&payload.exp<=now()+900000;
+            return payload.aud===audience&&Number.isSafeInteger(payload.exp)&&payload.exp>now()&&payload.exp<=now()+900000&&(payload.kind==='administrator'?Boolean(deps.administrator):(payload.generation??0)===access.generation&&payload.exp<=Date.parse(access.expiresAt));
         }catch{return false;}
     };
     const active=async()=> (await deps.journal.read(deps.context))?.phase==='active';
@@ -49,13 +52,14 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono<SetupEnv>
         c.header('Cache-Control','no-store');c.header('Referrer-Policy','no-referrer');c.header('X-Content-Type-Options','nosniff');c.header('X-Frame-Options','DENY');c.header('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'");
         const access=deps.access?await deps.access():{generation:0,token:deps.token,expiresAt:deps.expiresAt};
         if(!deps.enabled)return c.json({error:'bootstrap_unavailable',message:'This installation is configured. Sign in to Frontbase to manage it.'},410);
-        if(now()>=Date.parse(access.expiresAt))return c.json({error:'bootstrap_access_expired',message:(typeof deps.renewalAvailable==='function'?await deps.renewalAvailable():deps.renewalAvailable)?'Your private setup link has expired. Renew setup access by verifying deployment ownership.':'Your private setup link has expired. Ask the deployment owner to inspect this installation; this deployment does not support browser renewal.'},410);
         const url=new URL(c.req.url);
         if(url.origin!==deps.origin||url.search)return c.json({error:'bootstrap_refused'},403);
         if(c.req.method==='POST'){
             if(c.req.header('origin')!==deps.origin||c.req.header('content-type')?.split(';')[0]!=='application/json')return c.json({error:'bootstrap_refused'},403);
         }
-        if(c.req.path!==base+'/claim'&&!await authenticated(c.req.raw,access))return c.json({error:'bootstrap_session_required',message:'Setup access is missing or expired. Reopen your current private link or renew setup access.'},403);
+        const signedIn=await authenticated(c.req.raw,access);
+        if(!signedIn&&c.req.path!==base+'/sign-in'&&now()>=Date.parse(access.expiresAt))return c.json({error:'bootstrap_access_expired',message:(typeof deps.renewalAvailable==='function'?await deps.renewalAvailable():deps.renewalAvailable)?'Your private setup link has expired. Renew setup access by confirming your setup access.':'Your private setup link has expired. Ask the deployment owner to inspect this installation; this deployment does not support browser renewal.'},410);
+        if(c.req.path!==base+'/claim'&&c.req.path!==base+'/sign-in'&&!signedIn)return c.json({error:'bootstrap_session_required',message:'Setup access is missing or expired. Reopen your current private link or renew setup access.'},403);
         if(c.req.path!==base+'/claim'){
             const record=await deps.journal.read(deps.context);
             if(record?.phase==='active')return c.json({error:'bootstrap_unavailable'},410);
@@ -82,6 +86,18 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono<SetupEnv>
         if(!deps.initialize)c.header('X-Frontbase-Initialization','ready');
         return c.json({ok:true,expiresAt:new Date(exp).toISOString()});
     });
+    app.post(base+'/sign-in',async c=>{
+        if(!deps.administrator?.consumeSignInAttempt)return c.json({error:'setup_sign_in_unavailable',message:'Use your private setup link to continue.'},409);
+        const input=await body(c.req.raw);exact(input,['email','password']);
+        if(typeof input.email!=='string'||typeof input.password!=='string'||input.email.length>254||input.password.length>1024)return c.json({error:'invalid_credentials',message:'Email or password is incorrect.'},401);
+        if(!await deps.administrator.consumeSignInAttempt()){c.header('Retry-After','900');return c.json({error:'rate_limited',message:'Too many sign-in attempts. Wait 15 minutes before trying again.'},429);}
+        const pending=await deps.administrator.read();
+        const valid=pending?await verifyPassword(input.password,pending.passwordHash):false;
+        if(!pending||pending.email!==input.email||!valid)return c.json({error:'invalid_credentials',message:'Email or password is incorrect.'},401);
+        const payload=encode(new TextEncoder().encode(JSON.stringify({aud:audience,kind:'administrator',exp:now()+900000})));
+        c.header('Set-Cookie',cookieName+'='+payload+'.'+await sign(payload)+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=900');
+        return c.json({ok:true});
+    });
     app.post(base+'/initialize',async c=>{const input=await body(c.req.raw);exact(input,[]);await deps.initialize?.();return c.json({ok:true});});
     app.get(base+'/session',c=>c.json({phase:c.get('phase')}));
     app.get(base+'/resource-options',async c=>c.json(await deps.resourceOptions?.()??{}));
@@ -91,14 +107,40 @@ export function createHostedBootstrap(deps: HostedBootstrapDeps): Hono<SetupEnv>
             c.req.path===base+'/configuration'?deps.resourceOptions?.():undefined
         ]);
         const phase=c.get('phase');
-        return c.json({operation:phase?{phase,operationId:c.get('operationId')}:null,manifest:defaultDeploymentManifest(deps.context.target),adapters:deploymentAdapters.filter(a=>a.targets.includes(deps.context.target)),target:deps.context.target,...configuration,...(resources?{resourceOptions:resources}:{})});
+        const administrator=deps.administrator?{required:true,saved:Boolean(await deps.administrator.read())}:undefined;
+        return c.json({draft:deps.draft&&administrator?.saved?await deps.draft.read():undefined,administrator,operation:phase?{phase,operationId:c.get('operationId')}:null,manifest:defaultDeploymentManifest(deps.context.target),adapters:deploymentAdapters.filter(a=>a.targets.includes(deps.context.target)),target:deps.context.target,...configuration,...(resources?{resourceOptions:resources}:{})});
     });
-    app.post(base+'/review',async c=>{const input=await body(c.req.raw);exact(input,['manifest']);const result=await reviewBootstrap(deps.context,input.manifest,deps.journal,deps.executor);return c.json({reviewId:result.operationId,phase:result.phase,manifest:result.manifest});});
-    app.post(base+'/apply',async c=>{const input=await body(c.req.raw);exact(input,['reviewId','credentials']);if(typeof input.reviewId!=='string')throw Error('invalid');let credentials=input.credentials as Record<string,string>;
+    app.post(base+'/draft',async c=>{
+        if(!deps.draft||!deps.administrator||!await deps.administrator.read())throw Error('administrator_required');
+        if(c.get('phase')&&c.get('phase')!=='reviewed')return c.json({error:'setup_in_progress',message:'Setup is already submitted. Your saved choices will not be changed.'},409);
+        const input=await body(c.req.raw);exact(input,['manifest','credentials','role']);
+        const manifest=deploymentManifestSchema.parse(input.manifest);
+        const defaults=(await deps.configuration?.())?.manifest as {environment?:string}|undefined;
+        if(manifest.target!==deps.context.target||(defaults?.environment&&manifest.environment!==defaults.environment)||!configurableRoles.includes(input.role as any))throw Error('invalid');
+        const credentials=input.credentials as Record<string,string>;
+        if(!credentials||typeof credentials!=='object'||Array.isArray(credentials)||Object.keys(credentials).length>32)throw Error('invalid');
+        const refs=new Set<string>();
+        for(const role of configurableRoles){
+            const binding=manifest.bindings[role],adapter=deploymentAdapters.find(a=>a.role===role&&a.id===binding.adapterId&&(binding.mode==='disabled'||a.targets.includes(manifest.target)));
+            if(!adapter||Object.keys(binding.config).some(k=>!adapter.configKeys.includes(k))||Object.keys(binding.secretRefs).some(k=>!adapter.secretKeys.includes(k)))throw Error('invalid');
+            for(const reference of Object.values(binding.secretRefs))refs.add(reference);
+        }
+        for(const [ref,value] of Object.entries(credentials))if(!refs.has(ref)||typeof value!=='string'||value.length>8192)throw Error('invalid');
+        await deps.draft.save({manifest,credentials,role:input.role});
+        return c.json({saved:true});
+    });
+    app.post(base+'/administrator',async c=>{
+        if(!deps.administrator)return c.json({error:'administrator_setup_unavailable'},409);
+        const phase=c.get('phase');if(phase&&phase!=='reviewed')return c.json({error:'setup_in_progress',message:'Setup is already in progress. Check its status to continue.'},409);
+        await enrollAdministrator(deps.administrator,deps.context.installationId,await body(c.req.raw));
+        return c.json({saved:true});
+    });
+    app.post(base+'/review',async c=>{const input=await body(c.req.raw);exact(input,['manifest']);if(deps.administrator&&!await deps.administrator.read())throw Error('administrator_required');const result=await reviewBootstrap(deps.context,input.manifest,deps.journal,deps.executor);return c.json({reviewId:result.operationId,phase:result.phase,manifest:result.manifest});});
+    app.post(base+'/apply',async c=>{const input=await body(c.req.raw);exact(input,['reviewId','credentials']);if(typeof input.reviewId!=='string')throw Error('invalid');if(deps.administrator&&!await deps.administrator.read())throw Error('administrator_required');let credentials=input.credentials as Record<string,string>;
         if(deps.resolveCredentials){const reviewed=await deps.journal.read(deps.context);if(!reviewed||reviewed.operationId!==input.reviewId||reviewed.phase!=='reviewed')throw Error('invalid');credentials=await deps.resolveCredentials(reviewed.manifest,credentials);}
         const result=await applyBootstrap(deps.context,input.reviewId,credentials,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...((result.phase==='active'||deps.pendingSetup)&&deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
     app.post(base+'/reconcile',async c=>{const input=await body(c.req.raw);exact(input,[]);const result=await reconcileBootstrap(deps.context,deps.journal,deps.executor);return c.json({phase:result.phase,operationId:result.operationId,...(deps.nextSetup?{nextSetup:deps.nextSetup()}: {})});});
-    app.onError((error,c)=>{console.warn('bootstrap_operation_refused', error.message.includes('Illegal invocation')?'invalid_receiver':['TypeError','RangeError','DOMException'].includes(error.name)?error.name:'Error');const messages:Record<string,string>={invalid_r2_bucket_name:'Use an R2 bucket name of 3–63 lowercase letters, digits or hyphens, starting and ending with a letter or digit.',invalid_queue_name:'Use a queue name of 1–63 lowercase letters, digits or hyphens, starting with a letter or digit.',setup_database_already_exists:'A database with this name already exists. Select it explicitly or choose a new name.',oauth_vectorize_permission_required:'The connected Cloudflare token lacks Vectorize access. Reauthorize with Vectorize permissions, or disable this binding.',native_resource_account_mismatch:'Native Cloudflare resources must belong to the account hosting this Worker. Choose that account.',storage_requires_private_bucket:'This R2 bucket has public access. Select a private bucket or create a new one.',storage_bucket_unavailable:'The selected private bucket is unavailable. Reload resource discovery and select it again.',queue_requires_unused_resource:'This queue is already attached to another producer or consumer. Choose an unused queue or create a new one.',provider_resources_unavailable:'Provider resources could not be read. Check connection permissions and refresh the resource list.',provider_resource_changed:'The selected resource changed. Reload resource discovery before applying.',provider_resource_unavailable:'The selected resource is no longer available. Choose it again from the resource list.',oauth_binding_account_required:'The selected resource needs a valid connected provider account. Reconnect that provider.',storage_server_key_unavailable:'Supabase did not provide a server Storage credential. Check the project API-key settings and authorization.'};
+    app.onError((error,c)=>{console.warn('bootstrap_operation_refused', error.message.includes('Illegal invocation')?'invalid_receiver':['TypeError','RangeError','DOMException'].includes(error.name)?error.name:'Error');const messages:Record<string,string>={setup_draft_conflict:'Your progress changed in another tab. Reload to restore the latest saved choices before continuing.',setup_metadata_capacity:'This setup draft is too large to save. Reduce the number or size of entered credentials and try again.',setup_in_progress:'Setup has already been submitted. Check its status; no resources will be created again.',administrator_required:'Create your administrator account before choosing services.',administrator_details_invalid:'Enter a valid email address and a password between 12 and 1024 characters.',administrator_password_mismatch:'The passwords do not match. Enter the same password in both fields.',administrator_already_saved:'Administrator details are already saved. Continue to services with the existing account.',invalid_r2_bucket_name:'Use an R2 bucket name of 3–63 lowercase letters, digits or hyphens, starting and ending with a letter or digit.',invalid_queue_name:'Use a queue name of 1–63 lowercase letters, digits or hyphens, starting with a letter or digit.',setup_database_already_exists:'A database with this name already exists. Select it explicitly or choose a new name.',oauth_vectorize_permission_required:'The connected Cloudflare token lacks Vectorize access. Reauthorize with Vectorize permissions, or disable this binding.',native_resource_account_mismatch:'Native Cloudflare resources must belong to the account hosting this Worker. Choose that account.',storage_requires_private_bucket:'This R2 bucket has public access. Select a private bucket or create a new one.',storage_bucket_unavailable:'The selected private bucket is unavailable. Reload resource discovery and select it again.',queue_requires_unused_resource:'This queue is already attached to another producer or consumer. Choose an unused queue or create a new one.',provider_resources_unavailable:'Provider resources could not be read. Check connection permissions and refresh the resource list.',provider_resource_changed:'The selected resource changed. Reload resource discovery before applying.',provider_resource_unavailable:'The selected resource is no longer available. Choose it again from the resource list.',oauth_binding_account_required:'The selected resource needs a valid connected provider account. Reconnect that provider.',storage_server_key_unavailable:'Supabase did not provide a server Storage credential. Check the project API-key settings and authorization.'};
         if(error.message==='binding_review_failed'){
             const failures=(error as Error & {bindingIssues?:Array<{role:string;code:string}>}).bindingIssues;
             const issues=Array.isArray(failures)?failures.filter(f=>['state-db','storage','cache','queue','vector','email-send'].includes(f.role)).map(f=>{

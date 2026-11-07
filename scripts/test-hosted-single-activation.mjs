@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const source=readFileSync(new URL('./deployment-setup/hosted-app.js',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'');
 const html=readFileSync(new URL('./deployment-setup/hosted-index.html',import.meta.url),'utf8');
-assert(!html.includes('id="review"'));assert.equal((html.match(/>Activate Frontbase</g)??[]).length,1);
+assert(!html.includes('id="review"'));assert.equal((html.match(/>Finish setup</g)??[]).length,1);
 for(const scenario of ['success','invalid-binding','rejected-review','changed-review','lost-apply']){
  const elements=new Map(),calls=[];let mount,checks=0;
  const element=id=>{if(!elements.has(id))elements.set(id,{handlers:{},disabled:false,textContent:'',addEventListener(event,fn){this.handlers[event]=fn;},querySelectorAll(){return[];}});return elements.get(id);};
