@@ -67,6 +67,8 @@ jobs:
         run: pnpm --filter @frontbase/example-cf-full smoke:host
       - name: Deployment profile and local bootstrap security
         run: pnpm test:deployment-gates && pnpm test:deployment-setup
+      - name: Hosted wizard activation handoff
+        run: node scripts/test-hosted-setup-handoff.mjs && node scripts/test-hosted-single-activation.mjs
       - name: State-db resolver contract
         run: pnpm --filter @frontbase/example-cf-full test:state-db && pnpm --filter @frontbase/example-cf-full test:state-db-mutation
       - name: vercel.json routing contract
