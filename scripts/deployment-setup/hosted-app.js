@@ -83,44 +83,59 @@ function checkRecovery(){return recoveryCheck??=fetch('/frontbase-bootstrap/reco
 $('renew').addEventListener('click',async()=>{$('renew').disabled=true;try{if(form)sessionStorage.setItem('fb-setup-manifest',JSON.stringify(form.snapshot().manifest));const out=await api('renew',{});const url=new URL(out.url);if(url.protocol!=='https:')throw Error('Frontbase returned an invalid authorization address. Inspect the deployment configuration.');location.assign(url.href);}catch(error){$('status').textContent=error.message;$('renew').disabled=false;}});
 addEventListener('pagehide',()=>form?.clearCredentials());
 
-$('reconcile').addEventListener('click',async()=>{try{const out=await api('reconcile',{});if(out.phase==='uncertain'){$('result').textContent='Activation is not yet confirmed. Checking application readiness; no changes will be repeated.';if(typeof out.nextSetup==='string'&&out.nextSetup.startsWith('/setup#/setup?claim='))await waitForActivation(out.nextSetup);return;}$('result').textContent=out.phase==='active'?'Installation verified. Continuing to administrator setup.':'Waiting for activation; no changes will be repeated.';if(typeof out.nextSetup==='string'&&out.nextSetup.startsWith('/setup#/setup?claim='))await waitForActivation(out.nextSetup);}catch(error){$('result').textContent=error.message;}});
+$('reconcile').addEventListener('click',async()=>{
+ if(activationLink)return resumeActivation();
+ try{
+  const out=await api('reconcile',{});
+  $('result').textContent=out.phase==='active'?'Installation verified. Continuing to administrator setup.':'Waiting for activation; no changes will be repeated.';
+  if(typeof out.nextSetup==='string'&&out.nextSetup.startsWith('/setup#/setup?claim='))await waitForActivation(out.nextSetup);
+ }catch(error){$('result').textContent=error.message;}
+});
 
-let activationWait;
+let activationLink,activationWait,activationDeadline;
 function waitForActivation(link){
- if(!activationWait)activationWait=pollActivation(link).finally(()=>{activationWait=undefined;});
- return activationWait;
+ if(!activationLink)document.addEventListener('visibilitychange',resumeActivation);
+ activationLink=link;
+ return resumeActivation();
 }
 
-function waitForVisibleTabOrTimer(ms){
+function resumeActivation(){
+ if(document.hidden||!activationLink)return;
+ activationDeadline=Date.now()+180000;
+ $('result').textContent='Checking application readiness. Activation will not be repeated.';
+ return activationWait??=pollActivation().finally(()=>{activationWait=undefined;});
+}
+
+function waitForVisibilityChangeOrTimer(ms){
  return new Promise(resolve=>{
   const finish=()=>{
    clearTimeout(timer);
-   document.removeEventListener('visibilitychange',visible);
+   document.removeEventListener('visibilitychange',finish);
    resolve();
   };
-  const visible=()=>{if(!document.hidden)finish();};
   const timer=setTimeout(finish,ms);
-  document.addEventListener('visibilitychange',visible);
+  document.addEventListener('visibilitychange',finish);
  });
 }
 
-async function pollActivation(link){
- const deadline=Date.now()+180000;
+async function pollActivation(){
  let delay=1000;
- while(Date.now()<deadline){
-  if(document.hidden){
-   await waitForVisibleTabOrTimer(deadline-Date.now());
-   continue;
-  }
+ while(!document.hidden&&Date.now()<activationDeadline){
   try{
-   const response=await fetch('/api/console/setup/status',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(Math.max(1,Math.min(10000,deadline-Date.now())))});
+   const response=await fetch('/api/console/setup/status',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(Math.max(1,Math.min(10000,activationDeadline-Date.now())))});
    if(response.ok&&response.headers.get('content-type')?.includes('application/json')){
     const status=await response.json();
-    if(status.needsSetup===true||status.needs_setup===true){location.assign(link);return;}
+    if(!document.hidden&&(status.needsSetup===true||status.needs_setup===true)){
+     location.assign(activationLink);
+     activationLink=undefined;
+     document.removeEventListener('visibilitychange',resumeActivation);
+     return;
+    }
    }
   }catch{/* A rollout can temporarily make the read-only status endpoint unavailable. */}
-  await waitForVisibleTabOrTimer(Math.max(0,Math.min(delay,deadline-Date.now())));
+  if(document.hidden)return;
+  await waitForVisibilityChangeOrTimer(Math.max(0,Math.min(delay,activationDeadline-Date.now())));
   delay=Math.min(delay*2,10000);
  }
- $('result').textContent='Activation could not be confirmed. Check installation status to try again.';
+ if(!document.hidden)$('result').textContent='Activation could not be confirmed. Return to this tab or check installation status to try again.';
 }
