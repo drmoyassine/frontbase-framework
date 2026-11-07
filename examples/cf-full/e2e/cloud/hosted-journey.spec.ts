@@ -62,7 +62,7 @@ test('second hosted customer: signup, payment, data source, canvas edit, publish
         const signup = page.waitForResponse((value) => value.url().endsWith('/api/auth/signup') && value.request().method() === 'POST');
         await page.getByRole('button', { name: 'Create Workspace', exact: true }).click();
         expect((await signup).status()).toBe(200);
-        await expect(page.getByRole('link', { name: /builder studio/i })).toBeVisible();
+        await expect(page.getByRole('link', { name: /^Pages$/i })).toBeVisible();
         const me = await api(page, '/api/auth/me');
         expect(me.status).toBe(200);
         expect(me.body.user?.tenant_slug).toBe(slug);
