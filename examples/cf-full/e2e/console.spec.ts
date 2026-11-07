@@ -43,7 +43,7 @@ async function login(page: Page): Promise<void> {
     await page.locator('input[type="password"]').fill(ADMIN.password);
     await page.getByRole('button', { name: /sign in/i }).click();
     // The shell is the signal the session took: the sidebar only renders authed.
-    await expect(page.getByRole('link', { name: /builder studio/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Pages$/i })).toBeVisible();
 }
 
 test.describe('CF-22 Gate 4 — console acceptance', () => {
@@ -65,18 +65,18 @@ test.describe('CF-22 Gate 4 — console acceptance', () => {
         await page.locator('input[type="password"]').fill('definitely-not-the-password');
         await page.getByRole('button', { name: /sign in/i }).click();
         // Stays on the login form — the sidebar must not appear.
-        await expect(page.getByRole('link', { name: /builder studio/i })).toHaveCount(0);
+        await expect(page.getByRole('link', { name: /^Pages$/i })).toHaveCount(0);
 
         await page.locator('input[type="password"]').fill(ADMIN.password);
         await page.getByRole('button', { name: /sign in/i }).click();
-        await expect(page.getByRole('link', { name: /builder studio/i })).toBeVisible();
+        await expect(page.getByRole('link', { name: /^Pages$/i })).toBeVisible();
     });
 
     // Each nav area: renders its own content, no page errors, no failed API call.
     const AREAS = [
         { name: '3. Dashboard', path: '/dashboard', heading: /dashboard/i },
-        { name: '4. Builder Studio', path: '/pages', heading: /pages/i },
-        { name: '5. Data Studio', path: '/data-studio', heading: /data studio|database/i },
+        { name: '4. Pages', path: '/pages', heading: /pages/i },
+        { name: '5. Data', path: '/data-studio', heading: /^data$/i },
         { name: '6. App Users', path: '/users', heading: /users/i },
         { name: '7. File Storage', path: '/storage', heading: /storage/i },
         { name: '8. Automations', path: '/automations', heading: /automations/i },
@@ -86,8 +86,8 @@ test.describe('CF-22 Gate 4 — console acceptance', () => {
 
     for (const area of AREAS) {
         test(`${area.name} renders with no page or API errors`, async ({ page }) => {
-            const seen = watch(page);
             await login(page);
+            const seen = watch(page);
             await page.goto(CONSOLE + area.path, { waitUntil: 'domcontentloaded' });
             await expect(page.getByRole('heading', { name: area.heading }).first()).toBeVisible();
             // networkidle is flaky under HMR-less static serving; settle explicitly.
@@ -159,8 +159,9 @@ test.describe('CF-22 Gate 4 — console acceptance', () => {
 
     test('14. logging out revokes access to the console', async ({ page }) => {
         await login(page);
-        await page.getByRole('button', { name: /log out/i }).click();
-        await expect(page.getByRole('link', { name: /builder studio/i })).toHaveCount(0);
+        await page.getByRole('button', { name: 'Open account menu' }).click();
+        await page.getByRole('menuitem', { name: /log out/i }).click();
+        await expect(page.getByRole('link', { name: /^Pages$/i })).toHaveCount(0);
         // And the API refuses the cleared session rather than just hiding the UI.
         const status = await page.evaluate(async () => {
             const r = await fetch('/api/auth/me', { credentials: 'include' });
