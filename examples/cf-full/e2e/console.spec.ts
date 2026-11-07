@@ -91,7 +91,7 @@ test.describe('CF-22 Gate 4 — console acceptance', () => {
             await page.goto(CONSOLE + area.path, { waitUntil: 'domcontentloaded' });
             await expect(page.getByRole('heading', { name: area.heading }).first()).toBeVisible();
             // networkidle is flaky under HMR-less static serving; settle explicitly.
-            await page.waitForLoadState('networkidle').catch(() => {});
+            await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
             expect(seen.apiFailures, `failed API calls on ${area.path}`).toEqual([]);
             expect(seen.errors, `page errors on ${area.path}`).toEqual([]);
         });
