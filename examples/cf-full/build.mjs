@@ -283,7 +283,24 @@ const postgresUnavailable = {
 const NODE_BUILTINS = [...new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)])];
 
 const bootstrapAssets=hostedAssets();
-const bootstrapAssetPlugin={name:'bootstrap-assets',setup(build){build.onResolve({filter:/packages\/edge-core\/dist\/deployment\.js$/},()=>({path:'@frontbase/edge-core/deployment',external:true}));build.onResolve({filter:/packages\/backend\/dist\/(?:index|compat\/deployment-storage|hosted-bootstrap)\.js$/},()=>({path:'@frontbase/backend',external:true}));build.onResolve({filter:/packages\/edge-infra\/dist\/index\.js$/},()=>({path:'@frontbase/edge-infra',external:true}));build.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:'assets',namespace:'bootstrap'}));build.onLoad({filter:/.*/,namespace:'bootstrap'},()=>({contents:'export default '+JSON.stringify(bootstrapAssets),loader:'js'}));}};
+const bootstrapAssetPlugin = {
+    name: 'bootstrap-assets',
+    setup(build) {
+        build.onResolve({ filter: /packages\/edge-core\/dist\/deployment\.js$/ },
+            () => ({ path: '@frontbase/edge-core/deployment', external: true }));
+        build.onResolve({ filter: /packages\/backend\/dist\/(?:index|compat\/deployment-storage|hosted-bootstrap)\.js$/ },
+            () => ({ path: '@frontbase/backend', external: true }));
+        build.onResolve({ filter: /packages\/edge-infra\/dist\/index\.js$/ },
+            () => ({ path: '@frontbase/edge-infra', external: true }));
+        // Keep Node resolution in edge-infra so the helper can load its PostgREST dependency.
+        build.onResolve({ filter: /packages\/edge-infra\/dist\/providers\/supabase-http\.js$/ },
+            () => ({ path: '@frontbase/edge-infra/supabase-http', external: true }));
+        build.onResolve({ filter: /^virtual:bootstrap-assets$/ },
+            () => ({ path: 'assets', namespace: 'bootstrap' }));
+        build.onLoad({ filter: /.*/, namespace: 'bootstrap' },
+            () => ({ contents: 'export default ' + JSON.stringify(bootstrapAssets), loader: 'js' }));
+    },
+};
 const bootstrapAssetsPlugin={name:"portable-bootstrap-assets",setup(build){build.onResolve({filter:/^virtual:bootstrap-assets$/},()=>({path:"assets",namespace:"bootstrap-assets"}));build.onLoad({filter:/.*/,namespace:"bootstrap-assets"},()=>({contents:"export default "+JSON.stringify(bootstrapAssets),loader:"js"}));}};
 
 // One emit shape for every self-contained edge artifact (the worker and the new

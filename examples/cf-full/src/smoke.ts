@@ -32,10 +32,10 @@ const assetBinding = {
 };
 
 // Test-only provider transport: production URL validation and signing remain in place.
-let s3Transport: ((input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) | undefined;
+let storageTransport: ((input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) | undefined;
 const engine = await createCmsEngine({
     runner: sqliteRunner(':memory:'),
-    externalFetch: (input, init) => s3Transport ? s3Transport(input, init) : fetch(input, init),
+    externalFetch: (input, init) => storageTransport ? storageTransport(input, init) : fetch(input, init),
     sessionSecret: 'smoke-session-secret-not-for-prod',
     setupToken: undefined,
     admin: ADMIN,
@@ -196,7 +196,7 @@ await check('hydrate source anchors: all six translated patch sites are present'
     const anchors: Array<[string, string]> = [
         ['packages/console/packages/chart/src/hooks/useChartQuery.ts', bail],
         ['packages/console/packages/kpicard/src/hooks/useKPICardQuery.ts', bail],
-        ['packages/console/packages/grid/src/hooks/useGridQuery.ts', bail],
+        ['packages/console/packages/grid/src/hooks/useGridQuery.ts', "mode==='builder'||isBuilderCanvas()?'builder':'edge'"],
         ['packages/console/packages/form/src/hooks/useFormQuery.ts', modeGate],
         ['packages/console/packages/infolist/src/hooks/useInfoListQuery.ts', modeGate],
         ['packages/hydrate/src/entry.tsx', 'setTimeout(() => initUIEventTriggers(store))'],
@@ -597,15 +597,15 @@ await check('caches/queues/vectors synthesize no system rows (nothing platform-w
 
 // ---- engine import tier gate: the engine_imports plan feature flag ----
 // The framework ships gated by default (no plan → community): the paste-in
-// bundle path 403s until an operator assigns a plan carrying the flag. The
-// unlock exercises the native /plans route on the same compat session.
+// unsupported transfer stays refused even when the operator assigns a plan
+// carrying the import flag through the native plans API.
 await check('GET /api/tenants/me/plan reports the community plan (MyPlanResponse shape)', async () => {
     const r = await req('/api/tenants/me/plan', { headers: { cookie: compatCookie } });
     const body = await r.json() as { plan?: { slug?: string }; limits?: Record<string, unknown>; pending_request?: unknown };
     return r.status === 200 && body.plan?.slug === 'community'
         && body.limits !== undefined && body.pending_request === null;
 });
-await check('engine import 403s on community, unlocks via the admin plans API', async () => {
+await check('engine transfer refuses safely before and after a plan upgrade', async () => {
     const authed = { 'content-type': 'application/json', cookie: compatCookie } as const;
     const created = await req('/api/edge-engines/', {
         method: 'POST', headers: authed,
@@ -616,14 +616,16 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
     const exported = await req(`/api/edge-engines/${engineId}/export`, {
         method: 'POST', headers: authed, body: JSON.stringify({ passphrase: 'correct-horse' }),
     });
-    const { bundle } = await exported.json() as { bundle?: string };
+    const exportBody = await exported.json() as { bundle?: string; code?: string };
+    if (exported.status !== 501 || exportBody.code !== 'engine_transfer_unsupported' || exportBody.bundle !== undefined) return false;
+    const bundle = 'synthetic-unsupported-transfer';
     const deny = await req('/api/edge-engines/import', {
         method: 'POST', headers: authed, body: JSON.stringify({ bundle, passphrase: 'correct-horse' }),
     });
-    if (deny.status !== 403 || ((await deny.json()) as { detail?: string }).detail !== 'Engine import requires an upgraded plan') {
+    if (deny.status !== 501 || ((await deny.json()) as { code?: string }).code !== 'engine_transfer_unsupported') {
         return false;
     }
-    // Operator unlock: the product-shaped admin plans surface (the console's
+    // Plan upgrade: the product-shaped admin plans surface (the console's
     // Subscription Plans editor talks to the same paths).
     const unlock = await req('/api/admin/plans', {
         method: 'POST', headers: authed,
@@ -633,9 +635,9 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
     const allow = await req('/api/edge-engines/import', {
         method: 'POST', headers: authed, body: JSON.stringify({ bundle, passphrase: 'correct-horse' }),
     });
-    const allowed = await allow.json() as { engine_id?: string; confirm_secret?: string };
-    return allow.status === 200 && typeof allowed.engine_id === 'string'
-        && typeof allowed.confirm_secret === 'string';
+    const allowed = await allow.json() as { code?: string; engine_id?: string; confirm_secret?: string };
+    return allow.status === 501 && allowed.code === 'engine_transfer_unsupported'
+        && allowed.engine_id === undefined && allowed.confirm_secret === undefined;
 });
 
 // ---- storage: provider-configured byte transfer (out-of-the-box S3/R2) ----
@@ -721,7 +723,7 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
     const s3Endpoint = 'https://storage-fixture.example.com';
     const localEndpoint = `http://127.0.0.1:${(s3mock.address() as AddressInfo).port}`;
     let signedRequests = 0;
-    s3Transport = async (input, init) => {
+    storageTransport = async (input, init) => {
         const url = new URL(input instanceof Request ? input.url : String(input));
         if (url.origin !== s3Endpoint) throw new Error('unexpected_storage_fixture_destination');
         if (init?.redirect !== 'manual') throw new Error('storage_fixture_requires_guarded_transport');
@@ -807,7 +809,7 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
             const r = await req(`/api/storage/signed-url?provider_id=${providerId}&bucket=smoke-bucket&path=${encodeURIComponent('/smoke/hello.txt')}`, { headers: { cookie: compatCookie } });
             const body = await r.json() as { success?: boolean; signedUrl?: string };
             if (r.status !== 200 || body.success !== true || !body.signedUrl?.includes('X-Amz-Signature')) return false;
-            const direct = await s3Transport!(body.signedUrl, { redirect: 'manual' });
+            const direct = await storageTransport!(body.signedUrl, { redirect: 'manual' });
             return direct.status === 200 && (await direct.text()) === 'storage-smoke-bytes';
         });
         await check('storage: s3 file list uses ListObjectsV2 (delimiter folders, sizes)', async () => {
@@ -854,7 +856,7 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
             });
             const body = await r.json() as { success?: boolean; message?: string };
             if (r.status !== 200 || body.success !== true || body.message !== undefined) return false;
-            const probe = await s3Transport!(s3Endpoint + '/smoke-bucket/smoke/moved.txt', { redirect: 'manual' });
+            const probe = await storageTransport!(s3Endpoint + '/smoke-bucket/smoke/moved.txt', { redirect: 'manual' });
             return probe.status === 404;
         });
         await check('storage: unknown provider_id → 404 with the product detail', async () => {
@@ -880,7 +882,7 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
                 && body.detail.some((d) => d.loc?.join('.') === 'query.provider_id');
         });
     } finally {
-        s3Transport = undefined;
+        storageTransport = undefined;
         s3mock.close();
     }
 }
@@ -1022,7 +1024,20 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
         }
     });
     await new Promise<void>((resolve) => supaMock.listen(0, '127.0.0.1', resolve));
-    const supaOrigin = `http://127.0.0.1:${(supaMock.address() as AddressInfo).port}`;
+    const supaOrigin = 'https://storage-fixture.supabase.co';
+    const localOrigin = `http://127.0.0.1:${(supaMock.address() as AddressInfo).port}`;
+    const fixtureFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        if (url.origin !== supaOrigin) throw new Error('unexpected_supabase_fixture_destination');
+        return fetch(localOrigin + url.pathname + url.search, init);
+    };
+    storageTransport = async (input, init) => {
+        if (init?.redirect !== 'manual') throw new Error('storage_fixture_requires_guarded_transport');
+        const headers = new Headers(init.headers);
+        if (headers.get('authorization') !== 'Bearer smoke-service-key'
+            || headers.get('apikey') !== 'smoke-service-key') throw new Error('missing_supabase_fixture_authorization');
+        return fixtureFetch(input, init);
+    };
     try {
         const authed = { 'content-type': 'application/json', cookie: compatCookie } as const;
         // Connect a supabase account the way enrichment leaves it: api_url + the
@@ -1080,7 +1095,7 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
         });
         await check('storage: supabase public URL round-trips through /object/public', async () => {
             if (!publicUrl) return false;
-            const direct = await fetch(publicUrl);
+            const direct = await fixtureFetch(publicUrl);
             return direct.status === 200 && (await direct.text()) === 'supabase-smoke-bytes';
         });
         await check('storage: supabase public-url endpoint returns the product shape', async () => {
@@ -1095,7 +1110,7 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
             const r = await req(`/api/storage/signed-url?provider_id=${providerId}&bucket=frontbase-assets&path=${encodeURIComponent('smoke/hello.txt')}`, { headers: { cookie: compatCookie } });
             const body = await r.json() as { success?: boolean; signedUrl?: string };
             if (r.status !== 200 || body.success !== true || !body.signedUrl?.startsWith(supaOrigin)) return false;
-            const direct = await fetch(body.signedUrl);
+            const direct = await fixtureFetch(body.signedUrl);
             return direct.status === 200 && (await direct.text()) === 'supabase-smoke-bytes';
         });
         await check('storage: supabase file list reflects provider objects', async () => {
@@ -1242,6 +1257,7 @@ await check('engine import 403s on community, unlocks via the admin plans API', 
             return r.status === 200 && !buckets.has('frontbase-assets');
         });
     } finally {
+        storageTransport = undefined;
         supaMock.close();
     }
 }
