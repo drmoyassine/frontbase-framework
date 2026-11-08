@@ -41,7 +41,9 @@ async function fixture(target,pending=false,postgrest=false,buildGrant=false,met
  if(url.pathname.endsWith('/settings')){if(method==='GET')return cf({bindings:[...bindings,...(unknownBinding?[{name:'UNRELATED',type:'service'}]:[])]});if(metadata)return Response.json({success:false,errors:[{code:10214,message:'Latest metadata version is not deployed; use immutable version activation'}]},{status:400});bindings=JSON.parse(init.body.get('settings')).bindings;activeEnv=Object.fromEntries(bindings.filter(b=>b.text!==undefined).map(b=>[b.name,b.text]));writes.push('activate');return cf({});}
  if(url.pathname.endsWith('/storage/kv/namespaces')){writes.push('kv');return cf({id:'b'.repeat(32)});}
  if(url.pathname.endsWith('/keys')){assert.equal(url.searchParams.get('limit'),'10');return cf(occupiedKV?[{name:'occupied'}]:[]);}
- if(url.pathname.endsWith('/env')){if(method==='GET')return Response.json({envs:[...vars.values()]});if(Array.isArray(body)){for(const v of body)vars.set(v.key,{...v,id:v.key});activeEnv=Object.fromEntries([...vars.values()].map(v=>[v.key,v.value]));writes.push('env');return Response.json({created:body,failed:[]});}if(vars.has(body.key))return Response.json({error:{code:'ENV_CONFLICT'}},{status:400});vars.set(body.key,{...body,id:body.key});if(lost){lost=false;throw Error('lost committed response');}return Response.json({created:{id:body.key},failed:[]});}
+ if(url.pathname.includes('/env/')&&method==='GET'){const row=vars.get(decodeURIComponent(url.pathname.split('/').at(-1)));assert(row);return Response.json(row);}
+ if(url.pathname.includes('/env/')&&method==='DELETE'){vars.delete(decodeURIComponent(url.pathname.split('/').at(-1)));return Response.json({});}
+ if(url.pathname.endsWith('/env')){if(method==='GET')return Response.json({envs:[...vars.values()]});if(Array.isArray(body)){for(const v of body)vars.set(v.key,{...v,id:v.key});activeEnv=Object.fromEntries([...vars.values()].map(v=>[v.key,v.value]));writes.push('env');return Response.json({created:body,failed:[]});}if(vars.has(body.key)&&url.searchParams.get('upsert')!=='true')return Response.json({error:{code:'ENV_CONFLICT'}},{status:400});vars.set(body.key,{...body,id:body.key});if(lost){lost=false;throw Error('lost committed response');}return Response.json({created:{id:body.key},failed:[]});}
  if(url.pathname.endsWith('/deployments/dpl_initial'))return Response.json({projectId:'prj_fixture',readyState:'READY',target:'production'});
  if(url.pathname.endsWith('/deployments')){if(method==='POST'){assert.equal(body.withLatestCommit,false);assert.equal(body.deploymentId,'dpl_initial');writes.push('deploy');deployments.push({meta:body.meta,target:'production',state:'READY'});return Response.json({id:'dpl_next'});}return Response.json({deployments});}
  throw Error('unexpected route '+url.pathname);
@@ -68,6 +70,7 @@ async function fixture(target,pending=false,postgrest=false,buildGrant=false,met
   db.close();return;
  }
  const claim=await request('claim',{token:env.FRONTBASE_BOOTSTRAP_TOKEN});assert.equal(claim.status,200);cookie=claim.headers.get('set-cookie').split(';')[0];
+ if(metadata||target==='vercel'){assert.equal((await request('administrator',{email:'fixture@example.test',password:'test-password-only-123',confirmation:'test-password-only-123'})).status,200);}
  assert.equal((await request('initialize',{})).status,200);
  if(process.env.HOSTED_CLOUD_RELAY==='1'&&!buildGrant){const status=await host.fetch(new Request(origin+'/api/provider-oauth/status',{headers:{cookie}}));assert.equal(status.status,200);assert.equal((await status.json()).providers.find(p=>p.provider==='cloudflare').available,true);const start=await host.fetch(new Request(origin+'/api/provider-oauth/cloudflare/start',{method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify({returnPath:'/frontbase-bootstrap/'})}));assert.equal(start.status,200);assert.equal(new URL((await start.json()).url).origin,'https://relay.example');}
  if(buildGrant){const status=await host.fetch(new Request(origin+'/api/provider-oauth/status',{headers:{cookie}}));assert.equal(status.status,200);const projected=await status.json();assert.equal(projected.connections.length,1);assert.equal(projected.connections[0].provider,'cloudflare');assert.equal(projected.connections[0].reconnectRequired,false);assert.deepEqual(projected.connections[0].capabilities,['vectorize']);assert.ok(!JSON.stringify(projected).includes('build-api-token-fixture'));}
@@ -90,12 +93,35 @@ async function fixture(target,pending=false,postgrest=false,buildGrant=false,met
  assert.deepEqual(issues.map(x=>x.role).sort(),['queue','storage']);
  occupiedQueue=false;publicR2=false;assert.equal(writes.length,0,'invalid optional resources cannot create a state database');}
  if(extras){manifest.bindings.storage={adapterId:'cloudflare-r2',mode:'create',config:{resourceName:'fixture-private-files'},secretRefs:{}};manifest.bindings.queue={adapterId:'cloudflare-queue',mode:'create',config:{resourceName:'fixture-jobs'},secretRefs:{}};}
+ if(metadata||target==='vercel'){
+  const draft={manifest,credentials,role:'cache'};
+  assert.equal((await request('draft',draft)).status,200);
+  const resumedHost=createCloudBootstrap(env,target,transport);
+  cookie=undefined;
+  const login=await resumedHost.fetch(new Request(origin+'/frontbase-bootstrap/api/sign-in',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({email:'fixture@example.test',password:'test-password-only-123'})}));
+  assert.equal(login.status,200,'fresh runtime resumes using stored password hash');cookie=login.headers.get('set-cookie').split(';')[0];
+  const restored=await resumedHost.fetch(new Request(origin+'/frontbase-bootstrap/api/form',{headers:{cookie}}));
+  assert.deepEqual((await restored.json()).draft,draft,'provider-backed draft survives new instance');
+  if(extras||target==='vercel'&&!postgrest&&!pending){
+   for(let i=0;i<9;i++)assert.equal((await request('sign-in',{email:'fixture@example.test',password:'wrong'})).status,401);
+   const limited=await resumedHost.fetch(new Request(origin+'/frontbase-bootstrap/api/sign-in',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({email:'fixture@example.test',password:'test-password-only-123'})}));
+   assert.equal(limited.status,429,'rate limit is shared across runtime instances');
+  }
+ }
  const review=await request('review',{manifest});assert.equal(review.status,200);if(metadata)assert.equal(writes.length,0,'Review creates only metadata, no resource bindings');const {reviewId}=await review.json();
  // Independent runtime instances share the provider journal; only one dispatch wins.
  const other=createCloudBootstrap(env,target,transport);
  const attempts=await Promise.allSettled([host,other].map(h=>h.fetch(new Request(origin+'/frontbase-bootstrap/api/apply',{method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify({reviewId,credentials})}))));
  const results=await Promise.all(attempts.map(async r=>r.status==='fulfilled'?{status:r.value.status,body:await r.value.json()}:null));
  assert.equal(results.filter(r=>r?.body.phase===(pending?'uncertain':'active')).length,1,JSON.stringify(results));assert.equal(writes.filter(x=>x===(target==='cloudflare'?'activate':'deploy')).length,1);
+ if(pending&&(metadata||target==='vercel')){
+  cookie=undefined;
+  const returning=createCloudBootstrap(env,target,transport);
+  const login=await returning.fetch(new Request(origin+'/frontbase-bootstrap/api/sign-in',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({email:'fixture@example.test',password:'test-password-only-123'})}));
+  assert.equal(login.status,200,'pending login survives runtime-secret deployment');cookie=login.headers.get('set-cookie').split(';')[0];
+  const resumed=await request('form');assert.equal(resumed.status,200);assert.equal((await resumed.json()).operation.phase,'uncertain');
+  await request('reconcile',{});assert.equal(writes.filter(x=>x===(target==='cloudflare'?'activate':'deploy')).length,1,'returning during deployment never repeats provisioning');
+ }
  if(pending){const prepare=(sql,args=[])=>({bind:(...a)=>prepare(sql,a),all:async()=>({results:db.prepare(sql).all(...args)}),run:async()=>({meta:{changes:Number(db.prepare(sql).run(...args).changes)}})});await completeCloudBootstrap({...env,...activeEnv,FRONTBASE_SETUP_JOURNAL:{prepare}},target,async()=>new Response('healthy'),transport);}
  if(postgrest===true){assert.equal(activeEnv.APP_DB_POSTGREST_URL,'https://postgrest.fixture.example/rest/v1');assert.equal(activeEnv.APP_DB_POSTGRES_SCHEMA,'frontbase_edge_state');assert.equal(activeEnv.APP_DB_URL,undefined);assert.equal(activeEnv.APP_DB_HYPERDRIVE,undefined,'no Hyperdrive lowers for PostgREST state');assert.equal(activeEnv.APP_DB_D1_ACCOUNT_ID,undefined,'no D1 parts lower for PostgREST state');
   assert.equal(probes.length,1,'exactly one emptiness probe rides the apply');assert.equal(probes[0].url,'https://postgrest.fixture.example/rest/v1/rpc/execute_query');assert.equal(probes[0].authorization,'Bearer fixture-rest-bearer');assert.ok(probes[0].body.includes("schemaname='frontbase_edge_state'"),'the probe counts tables in the application schema only');

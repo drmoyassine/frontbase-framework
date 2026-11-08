@@ -1,7 +1,8 @@
+import {parsePendingAdministrator,installPendingAdministrator} from '../../../packages/backend/src/pending-administrator.js';
 let receiptCompleted = false;
 let nextReceiptCheck = 0;
 import {providerOAuthClients,providerOAuthRelay,importProviderOAuth} from '@frontbase/backend';
-import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap} from './hosted-cloud.js';
+import {createCloudBootstrap,bootstrapRuntimeProof,completeCloudBootstrap,closedBootstrapResponse} from './hosted-cloud.js';
 import {createNativeCloudBootstrap} from './native-cloud.js';
 import {audienceConditionUser} from '@frontbase/edge-core';
 /**
@@ -200,6 +201,15 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // at-rest cipher, JWT verify). env wins; one-click deploys without one
     // generate + persist on this first boot (see resolveSessionSecret).
     const sessionSecret = await resolveSessionSecret(opts.runner, opts.sessionSecret);
+    if(typeof opts.providerOAuthEnv?.FRONTBASE_ADMINISTRATOR_HANDOFF==='string') {
+        const cipher=await createSecretCipher(sessionSecret);
+        const value=opts.providerOAuthEnv.FRONTBASE_ADMINISTRATOR_HANDOFF;
+        if(!cipher.isEncrypted(value))throw Error('pending_administrator_invalid');
+        const installationId=opts.providerOAuthEnv.FRONTBASE_INSTALLATION_ID;
+        if(typeof installationId!=='string')throw Error('pending_administrator_invalid');
+        const pending=parsePendingAdministrator(JSON.parse(await cipher.decrypt(value)),installationId);
+        await installPendingAdministrator(opts.runner,pending,now());
+    }
     if(typeof opts.providerOAuthEnv?.FRONTBASE_OAUTH_CONNECTIONS==='string')await importProviderOAuth(opts.runner,await createSecretCipher(sessionSecret),'_root',opts.providerOAuthEnv.FRONTBASE_OAUTH_CONNECTIONS);
     if (cloud) {
         // Cloud boot: seed the global plan catalog ('_global' rows, idempotent —
@@ -1042,7 +1052,7 @@ const worker = {
                 }).catch(() => { console.warn('bootstrap_receipt_completion_pending'); }));
             }
             const proof=await bootstrapRuntimeProof(req,env,()=>engine.fetch(new Request(new URL('/health',req.url)),env,ctx));if(proof)return proof;
-            if(new URL(req.url).pathname.startsWith('/frontbase-bootstrap/'))return new Response('Setup closed',{status:410});
+            const closedSetup=closedBootstrapResponse(req);if(closedSetup)return closedSetup;
             return engine.fetch(req, env, ctx);
         } catch (e) {
             console.error('[cf-full] worker fetch failed:', (e as Error)?.stack ?? e);

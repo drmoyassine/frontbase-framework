@@ -20,6 +20,10 @@ export interface BindingsFormOptions {
     adapters?: readonly DeploymentAdapter[];
     executionCapabilities?: {adapters: Record<string, readonly BindingSelection['mode'][]>};
     credentials?: 'entry' | 'references';
+    /** Authenticated encrypted setup draft; never browser storage. */
+    initialCredentials?: Record<string,string>;
+    persistentDraft?: boolean;
+    onRoleChange?: (role:ConfigurableRole)=>void;
     externalProviders?: boolean;
     initialRole?: ConfigurableRole;
     initialProviders?: Partial<Record<ConfigurableRole,string>>;
@@ -41,7 +45,8 @@ export interface BindingsFormOptions {
 export function mountBindingsForm(root: HTMLElement, options: BindingsFormOptions) {
     let manifest=structuredClone(options.manifest);
     const createNames=new Map(Object.entries(options.manifest.bindings).map(([role,binding])=>[role,binding.config.resourceName]));
-    const secrets=new Map<string,string>(), document=root.ownerDocument;
+    const allowedRefs=new Set(Object.values(manifest.bindings).flatMap(b=>Object.values(b.secretRefs)));
+    const secrets=new Map<string,string>(Object.entries(options.initialCredentials??{}).filter(([ref,value])=>allowedRefs.has(ref)&&typeof value==='string')), document=root.ownerDocument;
     const adapters=options.adapters??deploymentAdapters;
     const entry=options.credentials!=='references';
     let currentStep=0, steps: readonly ConfigurableRole[]=[], destroyed=false;
@@ -116,6 +121,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
         return true;
     };
     const syncNavigation=()=>{
+        if(steps[currentStep])options.onRoleChange?.(steps[currentStep]);
         const next=root.querySelector<HTMLButtonElement>('.fb-step-next');
         if(next)next.disabled=!steps.length||!stepReady(steps[currentStep]);
         const deploy=root.querySelector<HTMLButtonElement>('.fb-step-deploy');
@@ -203,7 +209,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
             field(card,'Project reference',binding.config.projectRef,value=>binding.config.projectRef=value,false,true);
             field(card,'Private bucket',binding.config.bucket,value=>binding.config.bucket=value,false,true);
             if(entry){const reference=binding.secretRefs.token??role+'/token';field(card,'Server Storage key',secrets.get(reference),value=>{if(value){binding.secretRefs.token=reference;secrets.set(reference,value);}else{delete binding.secretRefs.token;secrets.delete(reference);}},true,true);}
-            card.append(node('p',entry?'Enter the server Storage key privately. It remains in this browser session until Apply and is then stored securely on the deployment. Hosted setup can discover projects and private buckets from a connected Supabase account.':'This plan contains credential references only. Enter the server Storage key privately during local review.','fb-binding-note'));return;
+            card.append(node('p',entry?(options.persistentDraft?'Enter the server Storage key privately. Setup saves it encrypted so you can sign in later to continue.':'Enter the server Storage key privately. It remains in this browser session until Apply and is then stored securely on the deployment. Hosted setup can discover projects and private buckets from a connected Supabase account.'):'This plan contains credential references only. Enter the server Storage key privately during local review.','fb-binding-note'));return;
         }
 
         if(!connection?.connected){card.append(node('p','Connect Supabase to choose a project and schema.','fb-binding-note'));return;}
@@ -427,7 +433,7 @@ export function mountBindingsForm(root: HTMLElement, options: BindingsFormOption
                             const reference=binding.secretRefs[key]??role+'/'+key;
                             field(card,fields[key]??key,secrets.get(reference),value=>{if(value){binding.secretRefs[key]=reference;secrets.set(reference,value);}else{delete binding.secretRefs[key];secrets.delete(reference);}},true,selected.requiredSecrets?.includes(key));
                         }
-                        if(selected.secretKeys.length&&!tokenOAuth)card.append(node('p',entry?'Manually entered credentials remain only in this browser session until Apply. Apply stores the selected runtime credentials securely on your deployment. Reloading before Apply requires re-entry.':'New credentials are entered privately in the local deployment review. This plan contains references only.','fb-binding-note'));
+                        if(selected.secretKeys.length&&!tokenOAuth)card.append(node('p',entry?(options.persistentDraft?'Your setup progress and credentials are saved encrypted on this deployment. Sign in with your administrator account to continue later.':'Manually entered credentials remain only in this browser session until Apply. Apply stores the selected runtime credentials securely on your deployment. Reloading before Apply requires re-entry.'):'New credentials are entered privately in the local deployment review. This plan contains references only.','fb-binding-note'));
                         if(useOAuth)card.append(node('p','Your connected account authorization is stored encrypted and reused after reload. Discovery is read-only; resources are created only after Review and Apply.','fb-binding-note'));
                     }
                 }

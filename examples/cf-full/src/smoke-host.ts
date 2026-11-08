@@ -55,7 +55,7 @@ const textOf = (r: Response) => r.text();
 // ========================================================================
 // A. Artifact gates — the bundle-level invariants the deploy depends on.
 // ========================================================================
-const NODE_SPEC = /['"]node:[A-Za-z]/;          // any quoted node: import form
+
 // A bundled NATIVE libsql path would carry the platform-binary loader (the
 // `libsql` package's require of @libsql/<platform>-<arch>). The plain word
 // "libsql" is NOT a usable marker — edge-infra's own provider config compares
@@ -74,8 +74,12 @@ for (const f of DIST_FILES) {
         return src.length > 100_000;
     });
 }
-await check('worker.mjs: zero quoted node: specifiers (CF isolate)', async () =>
-    !NODE_SPEC.test(readDist('worker.mjs')));
+await check('worker.mjs: only supported node:crypto with nodejs_compat enabled', async () => {
+    const specifiers = [...readDist('worker.mjs').matchAll(/['"]node:([^'"]+)['"]/g)];
+    const configs = [join(exampleRoot, 'wrangler.toml'), join(exampleRoot, '..', '..', 'wrangler.toml')];
+    return specifiers.every((match) => match[1] === 'crypto')
+        && configs.every((path) => /compatibility_flags\s*=\s*\[[^\]]*["']nodejs_compat["']/.test(readFileSync(path, 'utf8')));
+});
 await check('vercel.mjs: Node host has no native libSQL dependency', async () =>
     !NATIVE_LIBSQL.test(readDist('vercel.mjs')));
 await check('deno.mjs: node:fs import preserved EXTERNAL (deno node-compat)', async () =>

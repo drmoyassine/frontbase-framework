@@ -1,30 +1,31 @@
-# Hosted setup operator entry
+# Hosted Cloudflare and Vercel setup
 
-The existing local wizard and native buttons remain available. The opt-in cloud entry has isolated live activation evidence; it is not yet wired into the native button URLs. Build the workspace with `pnpm -r build` before staging artifacts. Use a new deployment, not an existing application.
+The README buttons deploy the initial setup application without an application database. Cloudflare uses encrypted Worker metadata and secrets for setup; Vercel uses project environment metadata and secrets. New CF deployments do not create a coordinator D1.
 
-Cloudflare uses `examples/cf-full/dist/worker.mjs` plus `examples/cf-full/console-dist` as `ASSETS`. Start with no D1/KV application bindings. Vercel uses the generated `examples/cf-full/api/cms.mjs`, `console-dist`, and the example routing configuration as a self-contained Node 22 artifact. The ordinary runtime remains the default unless `FRONTBASE_BOOTSTRAP=1` is explicit.
+## Administrator first
 
-Configure these server-side values using provider secret entry or stdin, never committed files or command arguments containing secret values:
+1. Open the private setup link provided by your deployment. It is required only to enroll the first administrator.
+2. Enter your email, password and confirmation. Email is the current login identifier. The server uses the existing password hash; the plaintext password is not persisted.
+3. Choose services. Wait for **Progress saved** before closing the page. Service choices, the selected section and manually entered service credentials are saved in the installation’s encrypted setup vault. The page warns before closing with an unsaved change and flushes pending progress when backgrounded.
+4. Choose **Finish setup**. This still performs full Review of every enabled binding before the existing single-winner Apply operation. Resources are not provisioned while creating the administrator or saving a draft.
+5. Sign in to Frontbase using the same administrator credentials when the site is ready.
 
-| Setting | Value |
-| --- | --- |
-| `FRONTBASE_BOOTSTRAP` | `1` only for this new uninitialized deployment |
-| `FRONTBASE_INSTALLATION_ID` | A new UUID, retained across setup requests |
-| `FRONTBASE_PUBLIC_ORIGIN` | Exact HTTPS origin with no trailing slash |
-| `FRONTBASE_BOOTSTRAP_TOKEN` | Private random owner capability, at least 32 characters |
-| `FRONTBASE_BOOTSTRAP_EXPIRES_AT` | Short-lived ISO expiry |
-| `FRONTBASE_BOOTSTRAP_PROVIDER_TOKEN` | Temporary provider credential scoped to intended account/project |
-| `FRONTBASE_BOOTSTRAP_ACCOUNT` | CF account ID or Vercel team ID |
-| `FRONTBASE_BOOTSTRAP_PROJECT` | Worker name or Vercel project ID |
-| `FRONTBASE_BOOTSTRAP_PROJECT_NAME` | Vercel project name (Vercel only) |
-| `FRONTBASE_BOOTSTRAP_ENVIRONMENT` | `production` or `preview`, matching deployment |
+## Leave and return
 
-CF permissions for default activation are Workers Scripts, D1 and Workers KV Storage edit on the intended account. Vercel needs project environment/deployment access; the current deployment must be READY. Neither provider credential is a database credential. Vercel's selected HTTP database must already exist and be empty; provision it through its provider/Marketplace first. The bindings form accepts its URL/token using the shared HTTP adapter.
+Return to `/frontbase-bootstrap/`. If the setup session has expired, sign in with the administrator email/password. This does not require the original private link or a second provider authorization. The server restores the saved configuration and section. Connected provider accounts remain in their existing encrypted vault.
 
-Open `/frontbase-bootstrap/#claim=<owner capability>` privately. The fragment is scrubbed and exchanged for an expiring owner cookie. Initialization establishes fixed coordination before configuration can be applied. Select bindings, review, then apply once. If activation is uncertain, check status rather than repeat provisioning. The healthy application completes the matching receipt and closes bootstrap. The browser continues to a secure administrator link; enter email, password and confirmation there. No manual administrator token entry is offered.
+If Finish setup was already submitted, returning setup checks the existing operation and application readiness. It does not call Apply again. An uncertain provider result remains held for inspection; signing in does not clear that safeguard. After completion, the setup landing redirects to normal Frontbase sign-in, while setup mutation endpoints remain closed.
 
-After an active receipt and successful administrator setup, remove temporary provisioning/owner secrets and revoke the temporary provider token. Vercel environment removal requires a subsequent deployment to remove the values from the runtime. Preserve application database credentials, SESSION_SECRET, installed manifest and selected resource bindings. CF current activation already removes its initial owner/provider bindings. Do not redeploy the original resource-free config onto the installed Worker; preserve the active D1/KV/journal bindings and runtime settings. A database failure must never trigger bootstrap mode.
+Setup sign-in uses a 15-minute secure HttpOnly SameSite cookie scoped to the installation. Attempts are admitted through persistent provider metadata (ten per 15-minute window across instances). Failed credentials and cross-origin submissions never grant access. Provider errors fail closed.
 
-The fixed CF coordinator is named `fb-setup-<installation UUID>` and may also be selected as the default application D1. Its singleton journal remains bound as `FRONTBASE_SETUP_JOURNAL`. Vercel journal records are nonsecret, create-only revision environment entries; do not edit or delete them during activation. Existing application tables, unknown CF bindings and foreign coordinator ownership are refused.
+## Credential lifecycle and compatibility
 
-Live receipt and limits: [hosted bootstrap acceptance](../plans/hosted-bootstrap-20261026.md#cloud-hosted-activation-acceptance--2026-10-26). Native-button integration and a complete reusable site-template installer remain separate; these instructions do not claim either.
+`FRONTBASE_PENDING_ADMINISTRATOR` holds the encrypted pending hash record. A separate `FRONTBASE_ADMINISTRATOR_HANDOFF`, encrypted for the final runtime, installs that same account through the existing first-administrator guard after database migrations. This separation keeps returning setup sign-in available while deployment is in progress. Existing users are never overwritten by an upgrade.
+
+Healthy completion removes the pending administrator and handoff from current provider configuration and clears the encrypted draft. Immutable provider versions/deployments may retain historical encrypted values; current-variable removal is not historical erasure. Vercel removes variables from future deployments, not already running immutable deployments. Preserve `SESSION_SECRET`, application database credentials, installed manifest and selected resources during upgrades.
+
+Legacy CF coordinator installations retain their former setup path; no automatic database reset, resource adoption or credential rotation occurs. Local CLI and Docker administrator setup are unchanged by this CF/Vercel increment.
+
+## Verification boundary
+
+The administrator-first/resume increment has local Chrome proofs against both real host handlers with simulated provider APIs, plus built-runtime account/login/upgrade tests. Fresh native provider acceptance of this increment is a separate release qualification; historical native deployment receipts do not prove the changed sequence. See the [current release plan](../plans/frontbase-public-release-finalization-20261024.md).

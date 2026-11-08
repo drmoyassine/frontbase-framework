@@ -119,7 +119,9 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     // at projection. If the page itself is gone the release is skipped so the source 404s naturally.
     // Selection is exact-path first, homepage shell-fallback second — no site-wide registry scan.
     const planFor=(item:LiveEntry)=>active.artifact.schemaVersion===2&&item===rawExact&&item.release.path!=='/'?localizedTitleIndex(item.release,active.artifact):undefined;
-    const perUnitResolves=async(item:LiveEntry)=>{try{await captureFor(item.release.path,planFor(item),item.release.locale);}catch{return false;}return true;};
+    // Missing pages may fall back, but an unavailable requested locale must retain its 503.
+    // A failure in an alternate locale only removes that alternate, never its siblings.
+    const perUnitResolves=async(item:LiveEntry)=>{try{await captureFor(item.release.path,planFor(item),item.release.locale);}catch(error){if(error instanceof Error&&['homepage_required','homepage_unavailable'].includes(error.message))return false;if(item===rawExact||item===rawHome)throw error;return false;}return true;};
     const selectable=async(item:LiveEntry)=>!(item.release.policy?.outdated==='source-fallback'&&!await perUnitResolves(item));
     const liveExact=liveOf(rawExact),liveHome=liveOf(rawHome);
     let selected:LiveEntry|null=null;

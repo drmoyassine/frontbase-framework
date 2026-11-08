@@ -26,7 +26,7 @@ async function signup(page: Page, slug: string) {
     const response = page.waitForResponse((r) => r.url().endsWith('/api/auth/signup') && r.request().method() === 'POST');
     await page.getByRole('button', { name: 'Create Workspace', exact: true }).click();
     expect((await response).status()).toBe(200);
-    await expect(page.getByRole('link', { name: /builder studio/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Pages$/i })).toBeVisible();
     const me = await api(page, '/api/auth/me');
     expect(me.status).toBe(200);
     expect(me.body.user.tenant_slug).toBe(slug);
@@ -65,7 +65,7 @@ test('two customers: browser signup, sessions, publish/reload, isolation, billin
                 expect(session?.sameSite).toBe('Lax');
             }
             await a.reload();
-            await expect(a.getByRole('link', { name: /builder studio/i })).toBeVisible();
+            await expect(a.getByRole('link', { name: /^Pages$/i })).toBeVisible();
         });
         let pageId: string;
         const marker = `Published journey ${alice}`;
@@ -138,7 +138,7 @@ test('two customers: browser signup, sessions, publish/reload, isolation, billin
             await a.getByRole('textbox', { name: /email|admin@/i }).fill(`${alice}@example.test`);
             await a.locator('input[type="password"]').fill(newPassword);
             await a.getByRole('button', { name: /sign in/i }).click();
-            await expect(a.getByRole('link', { name: /builder studio/i })).toBeVisible();
+            await expect(a.getByRole('link', { name: /^Pages$/i })).toBeVisible();
         });
     } finally { await Promise.all(contexts.map((c) => c.close())); }
 });

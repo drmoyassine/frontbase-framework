@@ -77,5 +77,5 @@ export function createProviderRelayClient(deps:ProviderRelayClientDeps){
         if(typeof returnPath!=='string'||!returnPath.startsWith('/')||returnPath.startsWith('//')||/[\\\r\n]/.test(returnPath))throw Error('relay_refused');
         c.header('Set-Cookie',name+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');return c.json({returnPath});
     });
-    app.onError((error,c)=>c.json(Object.hasOwn(callbackErrors,error.message)?{error:error.message,message:callbackErrors[error.message]}:{error:'relay_connection_failed',message:deps.mode==='setup-renewal'?'Ownership verification could not be completed. Check the provider connection and installation status; no provisioning was repeated.':callbackFailure},409));return app;
+    app.onError((error,c)=>c.json(Object.hasOwn(callbackErrors,error.message)?{error:error.message,message:callbackErrors[error.message]}:{error:'relay_connection_failed',message:deps.mode==='setup-renewal'?'Your setup access could not be confirmed. Check the provider connection and installation status; no provisioning was repeated.':callbackFailure},409));return app;
 }

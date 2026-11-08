@@ -1,0 +1,75 @@
+import assert from 'node:assert/strict';
+import {DatabaseSync} from 'node:sqlite';
+const {enrollAdministrator,parsePendingAdministrator,installPendingAdministrator}=await import(process.env.FRONTBASE_PENDING_ADMIN_TEST_MODULE??'../dist/pending-administrator.js');
+import {verifyPassword} from '@frontbase/edge-infra';
+const {createHostedBootstrap}=await import(process.env.FRONTBASE_ADMIN_BOOTSTRAP_TEST_MODULE??'../dist/hosted-bootstrap.js');
+import {defaultDeploymentManifest} from '../../edge-core/dist/deployment.js';
+
+const installationId='11111111-2222-4333-8444-555555555555';
+let saved=null,inserts=0;
+const store={read:async()=>saved,insert:async value=>{if(saved)return false;saved=structuredClone(value);inserts++;return true;}};
+const input={email:'owner@example.test',password:'test-only-password-123',confirmation:'test-only-password-123'};
+await assert.rejects(enrollAdministrator(store,installationId,{...input,confirmation:'different'}),/mismatch/);
+await assert.rejects(enrollAdministrator(store,installationId,{...input,role:'master_admin'}),/invalid/);
+await assert.doesNotReject(()=>Promise.all([enrollAdministrator(store,installationId,input),enrollAdministrator(store,installationId,input)]));
+assert.equal(inserts,1);
+assert(!JSON.stringify(saved).includes(input.password));
+assert(await verifyPassword(input.password,saved.passwordHash));
+assert.deepEqual(parsePendingAdministrator(saved,installationId),saved);
+assert.throws(()=>parsePendingAdministrator(saved,'other-installation'),/invalid/);
+await assert.rejects(enrollAdministrator(store,installationId,{...input,email:'other@example.test'}),/already_saved/);
+
+const db=new DatabaseSync(':memory:');
+db.exec('CREATE TABLE setup_state(id INTEGER PRIMARY KEY, initialized_at TEXT); INSERT INTO setup_state VALUES(1,NULL); CREATE TABLE users(id TEXT PRIMARY KEY,email TEXT,password_hash TEXT,role TEXT,tenant_slug TEXT,created_at TEXT)');
+const runner={query:async(sql,params=[])=>db.prepare(sql).all(...params),exec:async(sql,params=[])=>Number(db.prepare(sql).run(...params).changes)};
+await Promise.all([installPendingAdministrator(runner,saved,new Date().toISOString()),installPendingAdministrator(runner,saved,new Date().toISOString())]);
+assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n,1);
+assert.equal(db.prepare('SELECT role FROM users').get().role,'master_admin');
+db.prepare('UPDATE users SET password_hash=?').run('new-password-after-setup');
+await installPendingAdministrator(runner,saved,new Date().toISOString());
+assert.equal(db.prepare('SELECT password_hash FROM users').get().password_hash,'new-password-after-setup');
+db.close();
+
+const origin='https://setup.example',token='a'.repeat(64);
+let value=null,applies=0,enrolled=null,draft=null,attempts=0,now=Date.now();
+const context={installationId,target:'cloudflare',destination:'account/project/production'};
+const journal={read:async()=>value,compareAndSwap:async(_c,revision,next)=>{if((value?.revision??null)!==revision)return false;value=next;return true;}};
+const app=createHostedBootstrap({enabled:true,origin,token,expiresAt:new Date(now+600000).toISOString(),now:()=>now,context,journal,
+ draft:{read:async()=>draft,save:async value=>{draft=structuredClone(value);}},
+ administrator:{consumeSignInAttempt:async()=>++attempts<=10,read:async()=>enrolled,insert:async record=>{if(enrolled)return false;enrolled=record;return true;}},
+ executor:{preflight:async()=>{},apply:async()=>{applies++;},inspect:async()=>null}});
+let cookie;
+const request=(path,body,otherOrigin=origin)=>app.fetch(new Request(origin+'/frontbase-bootstrap/api/'+path,{method:body?'POST':'GET',headers:{origin:otherOrigin,'content-type':'application/json',...(cookie?{cookie}:{})},...(body?{body:JSON.stringify(body)}:{})}));
+assert.equal((await request('administrator',input)).status,403);
+const claim=await request('claim',{token});cookie=claim.headers.get('set-cookie').split(';')[0];
+assert.equal((await request('administrator',input,'https://attacker.example')).status,403);
+assert.equal((await request('review',{manifest:defaultDeploymentManifest('cloudflare')})).status,409);
+assert.equal((await request('administrator',input)).status,200);
+const form=await(await request('form')).json();
+assert.deepEqual(form.administrator,{required:true,saved:true});
+assert(!JSON.stringify(form).includes(input.email));
+assert(!JSON.stringify(form).includes(enrolled.passwordHash));
+const manifest=defaultDeploymentManifest('cloudflare');
+manifest.bindings.cache.config.resourceName='resumed-cache';
+const progress={manifest,credentials:{},role:'cache'};
+assert.equal((await request('draft',progress)).status,200);
+cookie=undefined;now+=700000;
+assert.equal((await request('form')).status,410,'expired private link cannot grant access');
+assert.equal((await request('sign-in',{email:input.email,password:'wrong'})).status,401);
+assert.equal((await request('sign-in',{email:input.email,password:input.password},'https://attacker.example')).status,403);
+const login=await request('sign-in',{email:input.email,password:input.password});assert.equal(login.status,200);
+cookie=login.headers.get('set-cookie').split(';')[0];
+assert.deepEqual((await(await request('form')).json()).draft,progress,'sign-in restores progress after original claim expiry');
+assert.equal(applies,0,'sign-in and draft reads never provision');
+value={phase:'applying',operationId:'held'};
+assert.equal((await request('draft',progress)).status,409);
+assert.deepEqual(draft,progress,'submitted configuration cannot be changed through drafts');
+cookie=undefined;
+const resumed=await request('sign-in',{email:input.email,password:input.password});assert.equal(resumed.status,200);
+cookie=resumed.headers.get('set-cookie').split(';')[0];
+assert.equal((await(await request('form')).json()).operation.phase,'applying');
+for(let i=0;i<7;i++)await request('sign-in',{email:input.email,password:'wrong'});
+assert.equal((await request('sign-in',{email:input.email,password:input.password})).status,429,'bounded persistent sign-in admission');
+assert.equal((await request('administrator',input)).status,409);
+assert.equal(applies,0);
+console.log('PASS administrator-first: hash-only enrollment, races, no overwrite, scoped claim, no-leak form and held-operation refusal');

@@ -91,10 +91,10 @@ try {
  console.log('PASS preserved-credential review: no key reentry, credential injection and state change refused');
 } finally {await preserve.close();}
 
-// The wizard pages must thread the clicked provider into the OAuth start call — the native page once
-// started the deployment target's flow for every connect button (Connect Supabase opened Cloudflare).
-for(const [page,markers] of [['native-app.js',['onConnect:async provider=>{try{await connect(provider);','connectProvider(provider??host']],['hosted-app.js',['connectProvider(provider,']]]) {
-    const source=await readFile(new URL('./deployment-setup/'+page,import.meta.url),'utf8');
-    for(const marker of markers)assert.ok(source.includes(marker),page+' must pass the clicked provider to connectProvider');
-}
-console.log('PASS wizard pages thread the clicked provider into the oauth start call');
+// Service-provider choices live only in the authenticated hosted wizard.
+const hostedSource=await readFile(new URL('./deployment-setup/hosted-app.js',import.meta.url),'utf8');
+assert.ok(hostedSource.includes('connectProvider(provider,'),'hosted Connect must use the clicked service provider');
+const nativeSource=await readFile(new URL('./deployment-setup/native-app.js',import.meta.url),'utf8');
+assert.ok(!nativeSource.includes('mountBindingsForm'),'public landing cannot configure bindings before enrollment');
+assert.ok(nativeSource.includes("connectProvider(host,'/frontbase-bootstrap/')"),'public landing only requests its deployment host');
+console.log('PASS hosted service Connect uses selected provider; public landing defers bindings');

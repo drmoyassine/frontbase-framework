@@ -140,6 +140,8 @@ try{
     // Beyond the bounded full-dataset scan the localized serve refuses instead of sorting a window.
     await translate('/big/',true);
     const oversized=await html('/ar/big/');assert.equal(oversized.status,503);
+    assert.equal((await html('/big/')).status,200,'an unavailable Arabic projection does not disable the English page');
+    assert.equal((await html('/ar/team/')).status,200,'the failed list cannot disable another Arabic page');
     // THE DEMO PIN: a source-record change reflects on the very next serve — the changed title
     // drops its stale Arabic (fresh source wins), localized ORDER follows the fresh effective
     // title, and untouched fields keep their released Arabic. No 503.

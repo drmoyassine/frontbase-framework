@@ -35,6 +35,10 @@ try{
  }
  {
   const f=await fixture(),a=f.open(),b=f.open(),before=f.active;
+  const pending=await cipher.encrypt(JSON.stringify({fixture:'password-hash-only'}));
+  assert.equal(await a.savePendingAdministrator(pending),true);assert.equal(await b.savePendingAdministrator(pending),false);
+  assert.equal(f.versions.at(-1).env.FRONTBASE_PENDING_ADMINISTRATOR.type,'secret_text');assert.equal(f.active,before);
+  assert.equal(await b.vault.get('pending-administrator:'+context.installationId),pending);
   assert.equal(await a.journal.read(context),null);
   const large=await cipher.encrypt('private-grant-'+('x'.repeat(7000)));assert.equal(await a.vault.insert('connection:one',large),true);assert.equal(await b.vault.get('connection:one'),large);assert.equal(f.active,before,'vault metadata remains undeployed');
   const v=f.versions.at(-1);assert(JSON.parse(v.env[setupMetadataBinding].text).chunks>1);for(const[name,value]of Object.entries(v.env))if(name.startsWith(setupMetadataBinding)){assert(value.text.length<=3500);assert(!value.text.includes('private-grant'));assert(!value.text.includes(owner));}
@@ -47,6 +51,7 @@ try{
   await assert.rejects(()=>applyBootstrap(context,review.operationId,{},b.journal,executor));assert.equal(dispatches,1);
   await assert.rejects(()=>f.open('different-private-owner-'.repeat(3)).journal.read(context));
   const other={...context,installationId:'99999999-2222-4333-8444-555555555555'};await assert.rejects(()=>cloudflareSetupMetadata(other,owner,f.api,2).journal.read(other),'same provider project cannot cross installation context');
+  await a.retirePendingAdministrator();assert.equal(f.versions.at(-1).env.FRONTBASE_PENDING_ADMINISTRATOR,undefined);assert.equal(await b.vault.get('pending-administrator:'+context.installationId),null);
   const state=await a.journal.read(context);const carry=structuredClone(f.versions.at(-1));carry.number+=100;carry.id='aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';f.versions.push(carry);
   const terminal=f.open(owner,{operationId:state.operationId,fingerprint:state.fingerprint});assert.equal((await terminal.journal.read(context)).phase,'active','terminal receipt survives later source versions');await assert.rejects(()=>a.journal.read(context));
  }

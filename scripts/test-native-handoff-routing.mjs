@@ -16,10 +16,10 @@ async function fixture({owned=[],native=true,search='',providerFailure=false}={}
  }});
  return{nodes,requests,redirects,mounted,providers,storage,draft};
 }
-{const f=await fixture();assert.equal(f.mounted,1);assert.equal(f.redirects.length,0,'unclaimed native installer stays native');}
+{const f=await fixture();assert.equal(f.mounted,0);assert.equal(f.providers,0);assert.equal(f.redirects.length,0,'unclaimed native installer stays native');}
 {const f=await fixture({owned:[reply(true)]});assert.deepEqual(f.redirects,['/frontbase-bootstrap/?handoff=1'],'an authenticated hosted runtime replaces stale native HTML');assert.equal(f.mounted,0);assert.equal(f.providers,0);assert.equal(f.storage.get('fb-setup-manifest'),f.draft,'preserve the nonsecret binding draft');}
 {const f=await fixture({native:false,owned:[reply(false,{}),reply(true)]});assert.deepEqual(f.redirects,['/frontbase-bootstrap/?handoff=1'],'recover a rollout between the first probe and native configuration');assert.equal(f.mounted,0);}
-{const f=await fixture({providerFailure:true,owned:[reply(false,{}),reply(true)]});assert.equal(f.redirects.length,1,'recover a rollout during provider status');assert.equal(f.mounted,0);}
+{const f=await fixture({providerFailure:true,owned:[reply(false,{}),reply(true)]});assert.equal(f.redirects.length,0,'no provider discovery before administrator enrollment');assert.equal(f.providers,0);assert.equal(f.mounted,0);}
 {const f=await fixture({native:false,owned:[reply(false),reply(false)]});assert.equal(f.redirects.length,0,'a refused owner session cannot redirect to an authorized wizard');assert.equal(f.nodes.continue.disabled,true);assert.match(f.nodes.status.textContent,/Setup is unavailable/);}
 {const wrong={...configuration,manifest:{target:'cloudflare'}};const f=await fixture({native:false,owned:[reply(true,wrong),reply(true,wrong)]});assert.equal(f.redirects.length,0,'reject mismatched runtime/manifest identity');}
 {const f=await fixture({search:'?handoff=3',owned:[reply(true)]});assert.equal(f.redirects.length,0,'recovery cannot reload indefinitely');assert.equal(f.nodes.continue.disabled,true);assert.match(f.nodes.status.textContent,/still updating/);}
