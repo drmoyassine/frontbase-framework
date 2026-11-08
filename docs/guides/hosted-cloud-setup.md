@@ -16,6 +16,8 @@ Return to `/frontbase-bootstrap/`. If the setup session has expired, sign in wit
 
 If Finish setup was already submitted, returning setup checks the existing operation and application readiness. It does not call Apply again. An uncertain provider result remains held for inspection; signing in does not clear that safeguard. After completion, the setup landing redirects to normal Frontbase sign-in, while setup mutation endpoints remain closed.
 
+If Finish is refused before setup starts, **Check installation status** restores the saved choices when Frontbase confirms that the same review never started. You can correct the choices and click Finish again.
+
 Setup sign-in uses a 15-minute secure HttpOnly SameSite cookie scoped to the installation. Attempts are admitted through persistent provider metadata (ten per 15-minute window across instances). Failed credentials and cross-origin submissions never grant access. Provider errors fail closed.
 
 ## Credential lifecycle and compatibility
@@ -28,4 +30,4 @@ Legacy CF coordinator installations retain their former setup path; no automatic
 
 ## Verification boundary
 
-The administrator-first/resume increment has local Chrome proofs against both real host handlers with simulated provider APIs, plus built-runtime account/login/upgrade tests. Fresh native provider acceptance of this increment is a separate release qualification; historical native deployment receipts do not prove the changed sequence. See the [current release plan](../plans/frontbase-public-release-finalization-20261024.md).
+The administrator-first/resume increment has local Chrome proofs against both real host handlers with simulated provider APIs, plus built-runtime account/login/upgrade tests. Fresh native Cloudflare and Vercel deployments also passed live enrollment, sign-in to restore the draft and one provisioning operation. [Live acceptance receipt](../plans/admin-first-live-acceptance-20261108.md). See the [current release plan](../plans/frontbase-public-release-finalization-20261024.md).
