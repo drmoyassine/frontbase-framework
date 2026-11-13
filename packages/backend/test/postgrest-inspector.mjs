@@ -11,7 +11,7 @@ const document={swagger:'2.0',paths:{'/items':{get:{}},'/owners':{get:{}},'/empt
 const data=[{id:1,name:'Alpha',owner_id:1},{id:2,name:'Beta',owner_id:1},{id:3,name:'Alpha',owner_id:1}];
 const externalFetch=async(input,init)=>{
     const request=new Request(input,init),url=new URL(request.url);calls.push(request);
-    assert.ok(['GET','HEAD'].includes(request.method));assert.equal(request.headers.get('accept-profile'),'translations');assert.equal(request.headers.get('authorization'),'Bearer PRIVATE_KEY');assert.ok(!url.pathname.includes('/rpc/'),'Inspector must not call SQL RPCs');
+    assert.ok(['GET','HEAD'].includes(request.method));assert.ok(['translations','catalog'].includes(request.headers.get('accept-profile')));assert.equal(request.headers.get('authorization'),'Bearer PRIVATE_KEY');assert.ok(!url.pathname.includes('/rpc/'),'Inspector must not call SQL RPCs');
     if(url.pathname==='/')return Response.json(document);
     if(mode==='error')return Response.json({message:'PRIVATE_KEY'},{status:400});
     if(mode==='oversize')return Response.json(data,{headers:{'content-length':String(8*1024*1024+1)}});
@@ -26,6 +26,22 @@ const externalFetch=async(input,init)=>{
 const app=await createCompatApp({makeRunner:()=>db,sessionSecret:'inspector-secret',externalFetch,resolvePrincipal:async()=>({tenant,user:authenticated?{id:'owner',role}:null})});
 const req=(path,method='GET',body)=>app.request('/api/sync/'+path,{method,...(body?{headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{})});
 try{
+ const account=await app.request('/api/edge-providers/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'Reusable',provider:'postgrest',provider_credentials:{api_url:'https://native.example.test',service_role_key:'PRIVATE_KEY',schema:'translations'}})});
+ assert.equal(account.status,201);
+ const accountBody=await account.json();
+ assert.ok(!JSON.stringify(accountBody).includes('PRIVATE_KEY'));
+ const discover=await app.request('/api/edge-providers/discover-by-account/'+accountBody.id,{method:'POST'});
+ assert.deepEqual(await discover.json(),{success:true,resources:[{id:accountBody.id,name:'Reusable',type:'postgrest_endpoint'}]});
+ for(const schemaName of ['translations','catalog']){
+   const source=await req('datasources/','POST',{name:'Reuse '+schemaName,type:'supabase',provider_account_id:accountBody.id,endpoint_format:'postgrest',schema:schemaName,api_url:'https://unrelated.example.test'});
+   assert.equal(source.status,201);
+   const saved=await source.json();
+   assert.ok(!JSON.stringify(saved).includes('PRIVATE_KEY'));
+   const verified=await req('datasources/'+saved.id+'/test/','POST',{});
+   assert.equal((await verified.json()).success,true);
+   assert.equal(new URL(calls.at(-1).url).hostname,'native.example.test');
+   assert.equal(calls.at(-1).headers.get('accept-profile'),schemaName);
+ }
  const created=await req('datasources/','POST',{name:'Native',type:'supabase',api_url:'https://native.example.test',service_role_key:'PRIVATE_KEY',endpoint_format:'postgrest',schema:'translations'}),ds=await created.json();assert.equal(created.status,201);const base='datasources/'+ds.id;
  let response=await req(base+'/tables/');assert.equal(response.status,200);assert.deepEqual(await response.json(),['empty','items','owners']);
  response=await req(base+'/tables/items/schema/');const schema=await response.json();assert.equal(schema.columns[0].primary_key,true);assert.equal(schema.columns[0].nullable,false);assert.equal(schema.foreign_keys[0].referenced_table,'owners');

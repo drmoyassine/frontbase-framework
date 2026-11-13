@@ -6,7 +6,7 @@ const mocked=vi.hoisted(()=>({create:vi.fn(),update:vi.fn(),track:vi.fn(),testRa
 vi.mock('../api',()=>({datasourcesApi:{create:mocked.create,update:mocked.update,testRaw:mocked.testRaw,testUpdate:mocked.testUpdate}}));
 vi.mock('sonner',()=>({toast:{success:mocked.success,error:mocked.error}}));
 vi.mock('@/lib/analytics',()=>({track:mocked.track}));
-vi.mock('@/components/dashboard/settings/shared/AccountResourcePicker',()=>({AccountResourcePicker:(props:any)=> <div>Account picker<button type="button" onClick={()=>props.onResourceSelected({id:'chosen',name:'Chosen',account_id:'cf-account'},'account')}>Choose resource</button><span data-testid="resource-filter">{props.resourceTypeFilter}</span></div>}));
+vi.mock('@/components/dashboard/settings/shared/AccountResourcePicker',()=>({AccountResourcePicker:(props:any)=> <div>Account picker<button type="button" onClick={()=>props.onResourceSelected({id:'chosen',name:'Chosen',account_id:'cf-account'},'account')}>Choose resource</button><span data-testid="resource-filter">{props.resourceTypeFilter}</span><span data-testid="explicit-resource">{String(!!props.requireResourceSelection)}</span></div>}));
 import { DatasourceModal } from './DatasourceModal';
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 const mount=()=>{const result=render(<QueryClientProvider client={new QueryClient({defaultOptions:{mutations:{retry:false}}})}><DatasourceModal onClose={()=>{}} /></QueryClientProvider>);fireEvent.change(screen.getByPlaceholderText('My Production DB'),{target:{value:'Test source'}});return result;};
@@ -42,6 +42,23 @@ describe('Manual HTTP datasource',()=>{
 });
 
 describe('Datasource resource routing', () => {
+    it('requires a Supabase project and reuses a PostgREST account with its own schema', async () => {
+        mocked.create.mockResolvedValue({data:{id:'new'}});
+        mount();
+        fireEvent.change(screen.getByRole('combobox',{name:'Database Type'}),{target:{value:'supabase'}});
+        expect(screen.getByTestId('explicit-resource')).toHaveTextContent('true');
+        expect(screen.getByRole('button',{name:'Add Data Source'})).toBeDisabled();
+        fireEvent.change(screen.getByLabelText('Endpoint format'),{target:{value:'postgrest'}});
+        expect(screen.getByTestId('resource-filter')).toHaveTextContent('postgrest_endpoint');
+        fireEvent.click(screen.getByRole('button',{name:'Choose resource'}));
+        fireEvent.change(screen.getByLabelText('Schema'),{target:{value:'catalog'}});
+        fireEvent.click(screen.getByRole('button',{name:'Add Data Source'}));
+        await waitFor(()=>expect(mocked.create).toHaveBeenCalled());
+        expect(mocked.create.mock.calls[0][0]).toMatchObject({
+            endpoint_format:'postgrest',provider_account_id:'account',schema:'catalog',
+            project_ref:'',service_role_key:'',api_url:'',
+        });
+    });
     it.each([['cloudflare', 'd1', {database_id:'chosen',account_id:'cf-account'}], ['supabase','supabase_project',{project_ref:'chosen'}], ['neon','neon_project',{project_id:'chosen'}], ['turso','turso_db',{db_id:'chosen',db_name:'Chosen'}]])('keeps the selected %s resource in the API payload', async (kind, filter, expected) => {
         mocked.create.mockResolvedValue({data:{id:'new'}});
         mount();

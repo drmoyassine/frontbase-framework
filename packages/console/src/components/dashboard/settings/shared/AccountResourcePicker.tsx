@@ -90,6 +90,8 @@ interface AccountResourcePickerProps {
     existingUrls?: string[];
     /** Auto-select single account and hide account dropdown (e.g. Turso container) */
     autoSelectSingle?: boolean;
+    requireResourceSelection?: boolean;
+    connectReturnPath?: string;
     /** Label for the resource dropdown (e.g. 'Select Database') */
     resourceLabel?: string;
     /** Hide Display Name in the ConnectProviderDialog (e.g. Turso) */
@@ -107,6 +109,8 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
     label = 'Connected Account',
     existingUrls = [],
     autoSelectSingle,
+    requireResourceSelection,
+    connectReturnPath,
     resourceLabel,
     hideConnectDisplayName,
 }) => {
@@ -187,7 +191,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
     // This handles the common case where a Supabase account is scoped to a single project
     // — no need to re-pick what was already selected during account creation.
     useEffect(() => {
-        if (resources.length > 0 && !selectedResourceId && !isDiscovering) {
+        if (!requireResourceSelection && resources.length > 0 && !selectedResourceId && !isDiscovering) {
             const available = resources.filter(r => !isAlreadyImported(r));
             if (available.length === 1) {
                 setSelectedResourceId(available[0].id);
@@ -302,6 +306,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
                 </Button>
                 <ConnectProviderDialog
                     provider={compatibleProviders[0]}
+                    oauthReturnPath={connectReturnPath}
                     open={showConnectDialog}
                     onOpenChange={setShowConnectDialog}
                     hideDisplayName={hideConnectDisplayName}
@@ -382,7 +387,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
                         // Auto-select shortcut: hide dropdown when exactly 1 resource is available
                         // BUT only when creation is not possible — if createResourceType is set,
                         // always show dropdown so users can access "+ Create New".
-                        if (autoSelected && !createResourceType) {
+                        if (autoSelected && !createResourceType && !requireResourceSelection) {
                             const r = available[0];
                             return (
                                 <div className="flex items-center gap-2 py-1.5 px-3 rounded-md bg-muted/50 border text-sm">
@@ -460,6 +465,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
 
             <ConnectProviderDialog
                 provider={compatibleProviders[0]}
+                oauthReturnPath={connectReturnPath}
                 open={showConnectDialog}
                 onOpenChange={setShowConnectDialog}
                 hideDisplayName={hideConnectDisplayName}

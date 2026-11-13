@@ -58,6 +58,13 @@ export async function mergeAccountConfig(
     let accountConfig:Record<string,unknown>|null=null;
     if (accountId && accountConfigFor) {
         accountConfig = await accountConfigFor(tenant, accountId).catch(() => null);
+        if (accountConfig?.endpoint_format === 'postgrest' && (kind !== 'supabase' || config.endpoint_format !== 'postgrest')) {
+            throw Error('postgrest_account_incompatible');
+        }
+        if (kind === 'supabase' && config.endpoint_format === 'postgrest') {
+            if (accountConfig?.endpoint_format !== 'postgrest') throw Error('postgrest_account_unavailable');
+            return { ...config, url: accountConfig.api_url, serviceKey: accountConfig.service_role_key, jwt: undefined };
+        }
         if (accountConfig) {
             const accountRef=String(accountConfig.project_ref??accountConfig.ref??'');
             const selectedRef=String(config.project_ref??config.ref??accountRef);

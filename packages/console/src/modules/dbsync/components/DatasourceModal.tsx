@@ -11,12 +11,13 @@ import { DATABASE_PROVIDERS, DATASOURCE_RESOURCE_TYPES, datasourceResourceConfig
 
 interface DatasourceModalProps {
     datasource?: Datasource | null;
+    initialType?: Datasource['type'];
     onClose: () => void;
     /** Called with the newly created datasource ID after successful creation */
     onCreated?: (datasourceId: string) => void;
 }
 
-export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceModalProps) {
+export function DatasourceModal({ datasource, initialType, onClose, onCreated }: DatasourceModalProps) {
     const queryClient = useQueryClient();
     const isEditing = !!datasource;
     const [manualHttp, setManualHttp] = useState(false);
@@ -29,7 +30,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
         db_id: datasource?.db_id || '',
         db_name: datasource?.db_name || '',
         name: datasource?.name || '',
-        type: datasource?.type || 'wordpress_rest',
+        type: datasource?.type || initialType || 'wordpress_rest',
         host: datasource?.host || '',
         port: datasource?.port || (datasource?.type === 'mysql' ? 3306 : 5432),
         database: datasource?.database || '',
@@ -85,10 +86,11 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                 : datasourcesApi.testRaw(data),
     });
 
+    const nativePostgrest = formData.type === 'supabase' && formData.endpoint_format === 'postgrest';
     const canSave = !!formData.name.trim() && (isEditing || (
         manualHttp && formData.type === 'supabase'
             ? /^https:\/\//.test(formData.api_url) && !!formData.service_role_key
-            : !!formData.provider_account_id
+            : !!formData.provider_account_id && (formData.type !== 'supabase' || nativePostgrest || !!formData.project_ref)
     ));
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -156,7 +158,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
 
                     <div className="space-y-4">
                         {formData.type === 'supabase' && <div className="space-y-3">
-                            <label className="block text-sm">Endpoint format<select className="w-full rounded-md border bg-background px-3 py-2" value={formData.endpoint_format} onChange={e => setFormData({ ...formData, endpoint_format: e.target.value as 'supabase' | 'postgrest' })}><option value="supabase">Supabase — /rest/v1</option><option value="postgrest">Native PostgREST — supplied endpoint</option></select></label>
+                            <label className="block text-sm">Endpoint format<select className="w-full rounded-md border bg-background px-3 py-2" value={formData.endpoint_format} onChange={e => setFormData({ ...formData, endpoint_format: e.target.value as 'supabase' | 'postgrest', provider_account_id: '', project_ref: '', api_url: '', service_role_key: '' })}><option value="supabase">Supabase — /rest/v1</option><option value="postgrest">Native PostgREST — supplied endpoint</option></select></label>
                             <label className="block text-sm">Schema<input className="w-full rounded-md border bg-background px-3 py-2" value={formData.schema} maxLength={63} onChange={e => setFormData({ ...formData, schema: e.target.value })} placeholder="public" /></label>
                             <p className="text-xs text-muted-foreground">Choose an already exposed schema. Test Connection checks HTTP access and schema metadata; it does not install SQL functions or verify every data operation.</p>
                         </div>}
@@ -170,10 +172,13 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                         {!(manualHttp && formData.type === 'supabase') ? (
                             <div className="space-y-3">
                                 <AccountResourcePicker
-                                    key={formData.type}
-                                    selectedResourceId={formData.database_id || formData.project_ref || formData.project_id || formData.db_id}
-                                    resourceTypeFilter={DATASOURCE_RESOURCE_TYPES[formData.type]}
-                                    compatibleProviders={[formData.type === 'd1' ? 'cloudflare' : formData.type]}
+                                    key={`${formData.type}:${formData.endpoint_format}`}
+                                    selectedResourceId={nativePostgrest ? formData.provider_account_id : formData.database_id || formData.project_ref || formData.project_id || formData.db_id}
+                                    resourceTypeFilter={nativePostgrest ? 'postgrest_endpoint' : DATASOURCE_RESOURCE_TYPES[formData.type]}
+                                    compatibleProviders={[nativePostgrest ? 'postgrest' : formData.type === 'd1' ? 'cloudflare' : formData.type]}
+                                    requireResourceSelection={formData.type === 'supabase' && !nativePostgrest}
+                                    resourceLabel={formData.type === 'supabase' && !nativePostgrest ? 'Select Supabase project' : undefined}
+                                    connectReturnPath={formData.type === 'supabase' ? '/frontbase-admin/data-studio/datasources?connect=supabase' : undefined}
                                     label="Connected Account (recommended)"
                                     autoSelectSingle
                                     selectedAccountId={formData.provider_account_id || undefined}
@@ -182,7 +187,7 @@ export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceMo
                                             ...formData,
                                             provider_account_id: accountId,
                                             name: formData.name || resource.name || '',
-                                            ...datasourceResourceConfig(formData.type, resource),
+                                            ...(!nativePostgrest && datasourceResourceConfig(formData.type, resource)),
                                         });
                                     }}
                                     onClear={() => {

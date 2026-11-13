@@ -32,10 +32,14 @@ type App = Hono<{ Variables: ConsoleAuthVars }>;
 
 function asProvider(row: Record<string, unknown>): Record<string, unknown> {
     const base = serializeEdgeResource(row, '_unused');
+    const oauth = (row.config as { oauth?: { accounts?: Array<{ name?: string }> } } | undefined)?.oauth;
+    const accounts = oauth?.accounts;
+    const legacySupabaseName = base.provider === 'supabase' && Array.isArray(accounts) && accounts.length > 1
+        && base.name === `${accounts[0]?.name} (supabase)`;
     delete base._unused;
     return {
         id: base.id,
-        name: base.name,
+        name: legacySupabaseName ? 'Supabase account' : base.name,
         provider: base.provider ?? 'local',
         is_active: String(row.status ?? 'active') === 'active',
         has_credentials: Object.entries(
@@ -51,6 +55,12 @@ function asProvider(row: Record<string, unknown>): Record<string, unknown> {
         created_at: base.created_at,
         updated_at: base.updated_at,
     };
+}
+
+function providerAccountConfig(provider: string, config: Record<string, unknown>): Record<string, unknown> {
+    if (provider !== 'postgrest') return config;
+    const { api_url, service_role_key, schema } = config;
+    return { api_url, service_role_key, ...(schema ? { schema } : {}), endpoint_format: 'postgrest' };
 }
 
 function pickToken(config: Record<string, unknown>, keys: readonly string[]): string {
@@ -114,7 +124,7 @@ export function registerEdgeProvidersRoutes(
         // Connect-time enrichment: fetch extra creds the product stores beyond the
         // bare token (Supabase api-keys+jwt_secret, Cloudflare account_id, …).
         // Best-effort — returns input unchanged on any failure.
-        const baseConfig = (b.config ?? b.provider_credentials ?? {}) as Record<string, unknown>;
+        const baseConfig = providerAccountConfig(provider, (b.config ?? b.provider_credentials ?? {}) as Record<string, unknown>);
         const enrichedConfig = await enrichProviderConfig(provider, baseConfig, externalFetch);
         await store.upsertEdgeResource({
             id,
@@ -175,7 +185,7 @@ export function registerEdgeProvidersRoutes(
         const provider = b.provider ?? String(existing.provider ?? 'local');
         let configToStore = existing.config as string | undefined;
         if (b.config !== undefined || b.provider_credentials !== undefined) {
-            const baseConfig = (b.config ?? b.provider_credentials) as Record<string, unknown>;
+            const baseConfig = providerAccountConfig(provider, (b.config ?? b.provider_credentials) as Record<string, unknown>);
             // Re-enrich when credentials change (e.g. rotated PAT).
             const enrichedConfig = await enrichProviderConfig(provider, baseConfig ?? {}, externalFetch);
             configToStore = await encryptedConfig(enrichedConfig);
@@ -267,6 +277,9 @@ export function registerEdgeProvidersRoutes(
         const account = await providerFor(c.get('tenant'), accountId);
         if (!account) return providerNotFound(c);
         const provider = String(account.provider ?? '');
+        if (provider === 'postgrest') return c.json({ success: true, resources: [
+            { id: accountId, name: String(account.name), type: 'postgrest_endpoint' },
+        ] });
         const kv = kvFor(c.get('tenant'));
         // Per-tenant discovery cache (60s TTL) — repeated picker opens don't hammer
         // provider rate limits. Invalidated on resource creation.

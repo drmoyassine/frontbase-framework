@@ -14,6 +14,7 @@ import { initBearerStrategies, bearerStrategyRegistry } from './bearer.js';
 import { initBasicStrategies, basicStrategyRegistry } from './basic.js';
 import { initCustomStrategies, customStrategyRegistry } from './custom.js';
 import { S3Strategy } from './s3.js';
+import { testPostgrestConnection } from '../../../postgrest-connection-test.js';
 
 /**
  * Combined registry of all provider test strategies.
@@ -32,6 +33,13 @@ export function initStrategies(externalFetch: CompatFetch): void {
 
     STRATEGY_REGISTRY.clear();
     STRATEGY_REGISTRY.set('s3', new S3Strategy(externalFetch));
+    STRATEGY_REGISTRY.set('postgrest', {
+        provider: 'postgrest',
+        async test(credentials) {
+            const result = await testPostgrestConnection({ ...credentials, endpoint_format: 'postgrest' }, externalFetch);
+            return { success: result.success, detail: 'error' in result ? result.error : result.message };
+        },
+    });
     for (const [provider, strategy] of bearerStrategyRegistry) {
         STRATEGY_REGISTRY.set(provider, strategy);
     }
