@@ -2,7 +2,7 @@ import { PROVIDER_CONFIGS } from '@/components/dashboard/settings/shared/edgeCon
 import type { DiscoveredResource } from '@/components/dashboard/settings/shared/AccountResourcePicker';
 
 export const DATABASE_PROVIDERS = Object.entries(PROVIDER_CONFIGS)
-    .filter(([, config]) => config.capabilities?.includes('database') || config.capabilities?.includes('cms'))
+    .filter(([key, config]) => key !== 'postgrest' && (config.capabilities?.includes('database') || config.capabilities?.includes('cms')))
     .map(([key, config]) => ({
         key,
         label: key === 'cloudflare' ? 'Cloudflare D1' : key === 'supabase' ? 'Supabase / PostgREST' : config.label,

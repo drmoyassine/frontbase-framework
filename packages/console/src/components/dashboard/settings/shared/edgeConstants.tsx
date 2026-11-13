@@ -34,6 +34,7 @@ const LUCIDE_FALLBACKS: Record<string, React.FC<any>> = {
     docker: Server,
     flyio: Rocket,
     supabase: Database,
+    postgrest: Database,
     upstash: Workflow,
     vercel: (props: any) => <Triangle {...props} fill="currentColor" />,
     netlify: Hexagon,
@@ -207,6 +208,17 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
             { key: 'api_token', label: 'API Token', placeholder: 'Cloudflare API Token', type: 'password', required: true },
         ],
         helpText: <span className="text-xs text-muted-foreground leading-relaxed">Create a <a href="https://dash.cloudflare.com/profile/api-tokens?ref=frontbase.dev" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Custom API Token</a> with <strong>Account</strong>-level permissions: <em>(Edit)</em> for Workers Scripts · D1 · R2 Storage · KV Storage · Queues · API Tokens, and <em>(Read)</em> for Workers AI · Account Settings.</span>,
+    },
+    postgrest: {
+        label: 'PostgREST',
+        defaultName: 'PostgREST Account',
+        capabilities: ['database'],
+        fields: [
+            { key: 'api_url', label: 'HTTPS endpoint', placeholder: 'https://postgrest.example.com', type: 'url', required: true },
+            { key: 'service_role_key', label: 'Access token', placeholder: 'Server token', type: 'password', required: true },
+            { key: 'schema', label: 'Schema for connection test', placeholder: 'public' },
+        ],
+        helpText: 'Use an exposed schema to test the account. Choose the schema separately on each datasource.',
     },
     supabase: {
         label: 'Supabase',

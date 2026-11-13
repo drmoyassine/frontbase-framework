@@ -2,6 +2,12 @@ import type {DbRunner} from '@frontbase/edge-infra';
 import type {SecretCipher} from './db/secret-cipher.js';
 import {Phase2Store} from './db/phase2-store.js';
 import type {OAuthActor,OAuthPending,OAuthAuthorization,ProviderOAuthStore} from './provider-oauth.js';
+export function providerAuthorizationLabel(authorization: Pick<OAuthAuthorization, 'provider' | 'accounts'>) {
+    const first = authorization.accounts[0]!;
+    return authorization.provider === 'supabase' && authorization.accounts.length > 1
+        ? 'Supabase account'
+        : `${first.name} (${authorization.provider})`;
+}
 export function providerAuthorizationConfig(authorization:OAuthAuthorization){
     const first=authorization.accounts[0]!;
     return {api_token:authorization.management?.apiKey??authorization.accessToken,...(authorization.management?{email:authorization.management.email}:{}),access_token:authorization.accessToken,account_id:first.id,...(authorization.provider==='vercel'?{team_id:first.id}:{}),oauth:{version:1,...(authorization.management?{management:authorization.management}:{}),provider:authorization.provider,scopes:authorization.scopes,accounts:authorization.accounts,capabilities:authorization.capabilities??[],expires_at:authorization.expiresAt??null,refresh_token:authorization.refreshToken??null}};
@@ -40,12 +46,11 @@ export function providerOAuthStore(runner:DbRunner,cipher:SecretCipher,now=Date.
             const store=new Phase2Store(runner,actor.tenant,cipher);
             const id=accountId??crypto.randomUUID();
             if(accountId){const current=await store.getEdgeResource(id);if(current?.kind!=='provider'||current.provider!==authorization.provider)throw Error('oauth_account_mismatch');}
-            const first=authorization.accounts[0]!;
             const config=providerAuthorizationConfig(authorization);
             // Reconnect cannot resurrect a deleted record; the SQL predicate includes existing ID.
             const value=await encrypted(config),stamp=new Date(now()).toISOString();
             if(accountId){const rows=await runner.query("UPDATE edge_resources SET config = ?, status = 'active', updated_at = ? WHERE id = ? AND tenant_slug = ? AND kind = 'provider' AND provider = ? RETURNING id",[value,stamp,id,actor.tenant,authorization.provider]);if(rows.length!==1)throw Error('oauth_account_removed');}
-            else await store.upsertEdgeResource({id,kind:'provider',provider:authorization.provider,name:first.name+' ('+authorization.provider+')',config:value},stamp);
+            else await store.upsertEdgeResource({id,kind:'provider',provider:authorization.provider,name:providerAuthorizationLabel(authorization),config:value},stamp);
             return id;
         },
     };
