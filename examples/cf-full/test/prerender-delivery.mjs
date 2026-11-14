@@ -15,7 +15,7 @@ for(const headers of [{cookie:'frontbase_session=x'},{authorization:'Bearer x'},
 assert.equal(reads,before,'personalized and list requests bypass the static path');
 assert.equal(await deliverPrerender(request('/ar/?q=other'),assets,()=>db,siteHash),null,'query variants never reuse the default HTML');
 response=await deliverPrerender(request('/__frontbase_prerender/secret.json'),assets,()=>db,siteHash);assert.equal(response.status,404);
-for(const path of ['/%5f_frontbase_prerender/secret.json','/__frontbase_prerender%2fsecret.json'])assert.equal((await deliverPrerender(request(path),assets,()=>db,siteHash)).status,404);
+for(const path of ['/%5f_frontbase_prerender/secret.json','/__frontbase_prerender%2fsecret.json','/%255f_frontbase_prerender%252fsecret.json'])assert.equal((await deliverPrerender(request(path),assets,()=>db,siteHash)).status,404);
 response=await deliverPrerender(request('/ar/',undefined,'HEAD'),assets,()=>db,siteHash);assert.equal(response.status,200);assert.equal(await response.text(),'');
 for(const patch of [{origin:'https://another.invalid'},{path:'/en/'},{siteHash:'d'.repeat(64)},{headers:[['set-cookie','secret=x'],['x-site-version',siteHash]]}]){
  descriptor={...proof,...patch};response=await deliverPrerender(request(),assets,()=>({query:async()=>[{valid:true}]}),siteHash);assert.equal(response.status,503);

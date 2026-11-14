@@ -1,7 +1,10 @@
 /** Small edge entry for operator-rendered responses. No compiler/CMS imports here. */
 export const PRERENDER_PREFIX='/__frontbase_prerender/';
 export function isPrivateRenderPath(path:string):boolean {
-    try{return decodeURIComponent(path).replace(/\\/g,'/').startsWith(PRERENDER_PREFIX);}catch{return true;}
+    try{for(let pass=0;pass<8;pass++){
+        path=path.replace(/\\/g,'/');if(path.startsWith(PRERENDER_PREFIX))return true;
+        const decoded=decodeURIComponent(path);if(decoded===path)return false;path=decoded;
+    }return true;}catch{return true;}
 }
 export async function prerenderKey(path:string):Promise<string>{
     return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(path)))].map(x=>x.toString(16).padStart(2,'0')).join('');

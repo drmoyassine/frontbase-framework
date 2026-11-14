@@ -18,6 +18,10 @@ try {
  const signature=(await db.query(signatureSql(query),params))[0].signature;
  const proof={siteHash:hash,owner,checks:[{sql:query,params,signature}]};
  assert.equal(await verifyRenderProof(db,proof),true);
+ const many={...proof,checks:Array.from({length:32},()=>({...proof.checks[0]}))};
+ assert.equal(await verifyRenderProof(db,many),true,'batched dependency parameters remain ordered');
+ many.checks[31].signature='0'.repeat(64);
+ assert.equal(await verifyRenderProof(db,many),false,'last failed dependency refuses the whole batch');
  sql("UPDATE settings SET value='unrelated edit' WHERE tenant_slug='tenant-b';");
  assert.equal(await verifyRenderProof(db,proof),true,'another tenant cannot invalidate this tenant');
  sql("UPDATE settings SET value='changed' WHERE tenant_slug='tenant-a' AND key='locale';");

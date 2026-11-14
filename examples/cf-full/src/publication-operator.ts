@@ -93,7 +93,13 @@ try {
         const failure=jobs.find(job=>job.status==='rejected');if(failure?.status==='rejected')throw failure.reason;
         // Revalidate each distinct dependency once, after ALL routes are rendered.
         // The complete marker is deliberately absent on a failed/partial export.
-        for(const {check} of snapshots.values()){const rows=await readState(signatureSql(check.sql),check.params);if(rows[0]?.signature!==check.signature)throw Error('Publication changed during export');}
+        const captured=[...snapshots.values()].map(snapshot=>snapshot.check);
+        for(let offset=0;offset<captured.length;offset+=32){
+            const batch=captured.slice(offset,offset+32),params:unknown[]=[];
+            const queries=batch.map(check=>{params.push(check.signature,...check.params);return `SELECT signature = ? AS valid FROM (${signatureSql(check.sql)}) fb_check`;});
+            const rows=await readState(`SELECT bool_and(valid) AS valid FROM (${queries.join(' UNION ALL ')}) fb_checks`,params);
+            if(rows.length!==1||rows[0]?.valid!==true)throw Error('Publication changed during export');
+        }
         await writeFile(join(output,'complete.json'),JSON.stringify({version:1,hash:input.hash,origin,routes:input.paths.length}),{flag:'wx',mode:0o600});
         console.log(JSON.stringify({command,hash:input.hash,routes:input.paths.length,output:outputFile,published:false}));
     }else{
