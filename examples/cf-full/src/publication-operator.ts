@@ -8,13 +8,16 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {createConfiguredNode} from './node-runtime.js';
 import {renderReviewedSitePublication,createPrivateLocalePublicationOverlay} from '@frontbase/backend';
 import {prerenderKey,signatureSql,type RenderProof} from './prerender-delivery.js';
+import {compilePreparedBrowsing,componentRecorder} from './prerender-browsing-compiler.js';
+import {compactSettingsProof} from './prerender-proof.js';
+import {renderBlock} from '@frontbase/edge-core/browser/render-block';
 import SW_BUNDLE from 'virtual:sw-bundle';
 import type {DbRunner} from '@frontbase/edge-infra';
 
-const commands = new Set(['prepare','read','preview','review','export']);
+const commands = new Set(['prepare','read','preview','review','activate','export']);
 const [command,inputFile,outputFile] = process.argv.slice(2);
 if (!command || !commands.has(command) || !inputFile || !outputFile) {
-    console.error('Usage: publication-operator <prepare|read|preview|review|export> <request.json> <new-output-file-or-directory>');
+    console.error('Usage: publication-operator <prepare|read|preview|review|activate|export> <request.json> <new-output-file-or-directory>');
     process.exit(2);
 }
 const email=process.env.FRONTBASE_OPERATOR_EMAIL,password=process.env.FRONTBASE_OPERATOR_PASSWORD;
@@ -62,7 +65,7 @@ try {
         const output=join(outputFile,'__frontbase_prerender',input.hash);await mkdir(output,{recursive:true,mode:0o700});
         const snapshots=new Map<string,{rows:Record<string,unknown>[];check:RenderProof['checks'][number];baseline:RenderProof['checks'][number]}>();
         let completed=0;
-        const renderPath=async(path:unknown)=>{
+        const renderPath=async(path:unknown,inspect=false)=>{
             if(typeof path!=='string'||!path.startsWith('/')||path.startsWith('//')||new URL(path,origin).origin!==origin||path.includes('#'))throw Error('Invalid export path');
             const dependencies=new Map<string,RenderProof['checks'][number]>();
             const runner={exec:async()=>{throw Error('Pre-render cannot write state');},query:async(sql:string,params:unknown[]=[])=>{
@@ -85,7 +88,8 @@ try {
             }};
             // The renderer's existing branding/menu resolvers use this same
             // runner too, so their state reads are included in the proof.
-            const response=await recording.run(runner,()=>renderReviewedSitePublication(runner,owner,new Request(new URL(path,origin)),{swBundle:SW_BUNDLE,resolveAudience:async()=>({authenticated:false})}));
+            const observations=componentRecorder();let browsingState:import("@frontbase/edge-core/directory/configuration").DirectoryBrowsingState|undefined;
+            const response=await recording.run(runner,()=>renderReviewedSitePublication(runner,owner,new Request(new URL(path,origin)),{swBundle:SW_BUNDLE,observeBrowsing:inspect?state=>{browsingState=state;}:undefined,observeComponent:inspect?observations.observe:undefined,resolveAudience:async()=>({authenticated:false})}));
             if(!response||![200,301].includes(response.status)||response.headers.has('set-cookie')||response.headers.get('x-site-version')!==input.hash)throw Error('Export refused for '+path+' (status '+response?.status+')');
             const html=await response.text(),bodyHash=await prerenderKey(html);
             const expectedLanguage=input.expectedLanguages?.[path];
@@ -94,9 +98,17 @@ try {
                 const actual=html.match(/<html\b[^>]*\blang=["']([^"']+)["']/i)?.[1];
                 if(actual!==expectedLanguage||response.headers.get('content-language')&&response.headers.get('content-language')!==expectedLanguage)throw Error('Export language mismatch for '+path);
             }
-            const checks=[...dependencies.values()];if(checks.length>128)throw Error('Export dependency limit exceeded');
+            let checks=[...dependencies.values()];
+            if(path==='/sitemap.xml'&&checks.length>128){
+                const registrySql='SELECT key,value FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?) ORDER BY key LIMIT ? OFFSET ?';
+                const future=localeOverlay(registrySql,[owner,'translation_homepage:active:v1:%','translation_surface:active:v1:%',20000,0],[])??[];
+                const compact=await compactSettingsProof(checks,owner,Object.fromEntries(future.map(row=>[String(row.key),String(row.value)])),readState);
+                initialChecks.set('sitemap-full-settings',compact.baseline);checks=[compact.check];
+            }
+            if(checks.length>128)throw Error('Export dependency limit exceeded');
             const proof:RenderProof={version:1,origin,path,siteHash:input.hash,owner,status:response.status,checks,headers:[...response.headers],bodyHash};
             const serialized=JSON.stringify(proof);if(serialized.length>262144)throw Error('Export proof limit exceeded');
+            if(inspect)return {html,proof,browsingState,components:observations.components,dependencies:()=>[...dependencies.values()],renderFragment:((node,context)=>recording.run(runner,()=>renderBlock(node,context))) as typeof renderBlock};
             await writeFile(join(output,bodyHash+'.html'),html,{mode:0o600});
             await writeFile(join(output,await prerenderKey(path)+'.json'),serialized,{flag:'wx',mode:0o600});
             if(++completed%100===0)console.log(JSON.stringify({command,rendered:completed,total:input.paths.length,published:false}));
@@ -109,6 +121,20 @@ try {
             catch(error){stopped=true;throw error;}
         }));
         const failure=jobs.find(job=>job.status==='rejected');if(failure?.status==='rejected')throw failure.reason;
+        if(input.dynamic!==undefined){
+            if(!Array.isArray(input.dynamic)||input.dynamic.length>48)throw Error('Invalid dynamic export groups');
+            for(const group of input.dynamic){
+                if(typeof group?.path!=='string'||!['institution','program',null].includes(group.collection))throw Error('Invalid dynamic export group');
+                const plan=await compilePreparedBrowsing({path:group.path,collection:group.collection},async path=>(await renderPath(path,true))!,async(hash,html)=>{await writeFile(join(output,hash+'.html'),html,{mode:0o600});},async(expected,actual)=>{
+                    await writeFile(join(outputFile,'compilation-diagnostic.json'),JSON.stringify({path:group.path,collection:group.collection,expected,actual}),{mode:0o600});
+                });
+                const serialized=JSON.stringify(plan);if(serialized.length>2*1024*1024)throw Error('Dynamic export too large');
+                const key=await prerenderKey(group.path+'?type='+(group.collection??''));
+                await writeFile(join(output,'dynamic-'+key+'.json'),serialized,{flag:'wx',mode:0o600});
+                if(group.default===true&&group.collection!==null)await writeFile(join(output,'dynamic-'+await prerenderKey(group.path+'?type=')+'.json'),serialized,{flag:'wx',mode:0o600});
+                console.log(JSON.stringify({command,dynamicPath:group.path,collection:group.collection,records:plan.index.length,published:false}));
+            }
+        }
         // Revalidate each distinct dependency once, after ALL routes are rendered.
         // The complete marker is deliberately absent on a failed/partial export.
         const captured=[...initialChecks.values(),...[...snapshots.values()].map(snapshot=>snapshot.baseline)];

@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 const source=await readFile(new URL('../operator-dist/prerender-delivery.mjs',import.meta.url),'utf8');
 const mutations=[
  ['origin', 'proof.origin !== url.origin', 'false'],
- ['site identity','proof.siteHash !== siteHash','false'],
+ ['site identity','proof.origin !== url.origin || proof.path !== path || proof.siteHash !== siteHash','proof.origin !== url.origin || proof.path !== path'],
  ['private assets','url.pathname.startsWith(PRERENDER_PREFIX) || isPrivateRenderPath(url.pathname)','false'],
  ['query isolation','url.pathname + url.search','url.pathname'],
  ['freshness','if (!await verifyRenderProof(openDb(), proof))','if (false)'],

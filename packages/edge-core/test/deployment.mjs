@@ -68,8 +68,8 @@ test('supabase state create/reuse refuses transport mixing, bad names and missin
  assert.ok(!codesOf(noProject).some(i=>i.code==='missing_resource_name'));
 });
 // Wave 0 of docs/plans/frontbase-wizard-provider-split-multistep-20261031.md: the provider split contract.
-test('postgrest-http is a connect-only provider entry and supabase metadata is picker-driven',()=>{
- assert.deepEqual(deploymentAdapters.find(a=>a.id==='postgrest-http'),{id:'postgrest-http',role:'state-db',targets:['cloudflare','vercel','docker'],selectable:true,modes:['connect'],configKeys:['url','schema'],secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']});
+test('postgrest-http supports schema discovery/create/reuse and Supabase metadata is picker-driven',()=>{
+ assert.deepEqual(deploymentAdapters.find(a=>a.id==='postgrest-http'),{id:'postgrest-http',role:'state-db',targets:['cloudflare','vercel','docker'],selectable:true,modes:['connect','create','reuse'],configKeys:['url','schema','rpcSchema','rpcPrefix'],configKeysByMode:{connect:['url','schema'],create:['url','schema'],reuse:['url','schema']},secretKeys:['token'],requiredConfig:['url'],requiredSecrets:['token']});
  assert.deepEqual(deploymentAdapters.find(a=>a.id==='supabase-postgres').configKeysByMode,{connect:['url','schema'],create:['projectRef','schema'],reuse:['projectRef','schema']});
  assert.deepEqual(deploymentAdapters.find(a=>a.id==='supabase-postgres').secretKeys,['token','username','password']);
  for(const target of ['cloudflare','vercel','docker'])assert.ok(adaptersFor(target,'state-db').some(a=>a.id==='postgrest-http'),target+' offers postgrest-http');

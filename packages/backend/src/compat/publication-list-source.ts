@@ -78,12 +78,16 @@ export async function readPublicationList(db:DbRunner,owner:string,bindingInput:
     const rows:Record<string,unknown>[]=[],store=new SitePublicationManifestStore(db,owner),loaded=new Map<string,Awaited<ReturnType<typeof store.loadChunk>>>();
     const loadChunk=store.chunkReader(source);
     const selectedEntries=entries.slice(pageNumber*pageSize,(pageNumber+1)*pageSize),textByRecord=localizedRowText(catalog);
-    for(const entry of selectedEntries){
+    if(db.dialect==='postgres')rows.push(...await store.readRecords(source,selectedEntries));
+    else for(const entry of selectedEntries){
         let chunk=loaded.get(entry.chunkHash);
         if(!chunk){const reference=source.chunks.find(chunk=>chunk.hash===entry.chunkHash);if(!reference)throw Error();chunk=await loadChunk(reference);loaded.set(entry.chunkHash,chunk);}
         const row=chunk.records[entry.position];if(!row)throw Error();rows.push(Object.fromEntries(Object.entries(row).filter(([key])=>key!=='body')));
     }
     if(binding.tableName==='articles')await verifyManifestEditorial(db,owner,source,rows);
+    // HTTP projection includes bodies only for exact editorial verification.
+    // Continuation responses retain the existing public list-field contract.
+    for(let i=0;i<rows.length;i++)rows[i]=Object.fromEntries(Object.entries(rows[i]!).filter(([key])=>key!=='body'));
     if(textByRecord.size)for(let i=0;i<rows.length;i++){const entry=selectedEntries[i]!,row=rows[i]!,fields=textByRecord.get(entry.collection+':'+String(entry.id));
         if(fields)for(const [fieldKey,localized] of fields){const current=row[fieldKey];
             if(typeof current==='string'&&(localized.sourceText===undefined||localized.sourceText===current))row[fieldKey]=localized.text;}}

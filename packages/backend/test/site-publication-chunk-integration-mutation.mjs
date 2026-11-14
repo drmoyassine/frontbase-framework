@@ -1,4 +1,5 @@
 import {withSourceMutation,buildPackage,runGate,expectRed,summarize,repoRoot} from '../../../scripts/mutation-lib.mjs';
+import {readFileSync} from 'node:fs';
 const dir=repoRoot+'packages/backend/',gate='test/site-publication-chunk-integration.mjs',args=['--without-capacity'];
 if(!buildPackage('@frontbase/backend')||runGate(dir,gate,args)!==0)process.exit(2);
 for(const [label,file,find,replacement] of [
@@ -15,7 +16,10 @@ for(const [label,file,find,replacement] of [
  ['chunk activation verification','site-publication-review-store.ts',"if(version?.schemaVersion===2){await new SitePublicationManifestStore(this.db,this.tenant).verify(version);await verifyManifestEditorial(this.db,this.tenant,version);}",''],
  ['chunk sitemap integrity','site-publication-serving.ts',"if(active.artifact.schemaVersion===2){await new SitePublicationManifestStore(db,owner).verify(active.artifact);await verifyManifestEditorial(db,owner,active.artifact);}",''],
 ]){
- await withSourceMutation(label,'packages/backend/src/compat/'+file,find,replacement,async()=>{
+ if(process.argv.includes('--case')&&label!==process.argv[process.argv.indexOf('--case')+1])continue;
+ const source='packages/backend/src/compat/'+file;
+ const target=readFileSync(repoRoot+source,'utf8').includes('\r\n')?find.replaceAll('\n','\r\n'):find;
+ await withSourceMutation(label,source,target,replacement,async()=>{
   if(!buildPackage('@frontbase/backend'))throw new Error('Mutation must compile');
   expectRed(label,runGate(dir,gate,args));
  });

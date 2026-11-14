@@ -50,7 +50,7 @@ export async function resolveReviewedSitePublication(db:DbRunner,owner:string,re
 }
 
 /** Final page-dispatch boundary only: null means INACTIVE, never missing/corrupt. */
-export async function renderReviewedSitePublication(db:DbRunner,owner:string,request:Request,options:{swBundle?:string;liveQuery?:PublishedLiveQuery;resolveAudience?:(owner:string,request:Request)=>Promise<import('@frontbase/edge-core/menus').VerifiedMenuAudience>}={}):Promise<Response|null> {
+export async function renderReviewedSitePublication(db:DbRunner,owner:string,request:Request,options:{swBundle?:string;liveQuery?:PublishedLiveQuery;observeBrowsing?:(state:import("@frontbase/edge-core/directory/configuration").DirectoryBrowsingState)=>void;observeComponent?:import('@frontbase/edge-core').EngineOptions['observeComponent'];resolveAudience?:(owner:string,request:Request)=>Promise<import('@frontbase/edge-core/menus').VerifiedMenuAudience>}={}):Promise<Response|null> {
     if(!['GET','HEAD'].includes(request.method))throw new Error('publication_method_invalid');
     const audience=options.resolveAudience?await options.resolveAudience(owner,request).catch(()=>({authenticated:false})):null;
     const listResponse=await renderReviewedPublicationList(db,owner,request,audience,options.liveQuery);if(listResponse)return listResponse;
@@ -85,6 +85,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         return new Response(request.method==='HEAD'?null:missing?'Not found':invalid?'Invalid request':'Site unavailable', {status:missing?404:invalid?400:503,headers});
     }
     try {
+        const browsingState=(resolution.result as {browsingState?:import("@frontbase/edge-core/directory/configuration").DirectoryBrowsingState}).browsingState;if(browsingState)options.observeBrowsing?.(browsingState);
         const {page,version,document}=resolution.result,path=new URL(request.url).pathname;
         const contentLocale=localeResult?.kind==='page'?localeResult.locale:document.language??'en';
         const pageId=resolution.result.sourcePageId;
@@ -92,7 +93,7 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         const manifest={version,pages:{[path]:{...page,layout:copy.layout}},queries:{}};
         // Layout projection (including admitted live-list initial records) is complete.
         // Host may supply its network-only SW to replace older intercepting installations.
-        const engine=createEngine({manifest,data:directProvider(manifest),environment:'edge',document,swBundle:options.swBundle,resolveConditionUser:async()=>audienceConditionUser(audience)});
+        const engine=createEngine({manifest,data:directProvider(manifest),environment:'edge',document,swBundle:options.swBundle,observeComponent:options.observeComponent,resolveConditionUser:async()=>audienceConditionUser(audience)});
         const rendered=await engine.fetch(new Request(request.url,{method:'GET'}));
         const responseHeaders=new Headers(rendered.headers);
         for(const [key,value] of headers)responseHeaders.set(key,value);

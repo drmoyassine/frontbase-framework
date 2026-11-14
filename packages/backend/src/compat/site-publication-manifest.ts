@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
 import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, directoryLayoutQueries, standardPublicationQueries,liveViewBindings } from '@frontbase/edge-core/directory/configuration';
-import { publicationTemplateSchema, publicationPathSchema } from '@frontbase/edge-core/directory/publication';
+import { publicationTemplateSchema, publicationPathSchema,publicationInstitutionSchema,publicationProgramSchema,publicationCitySchema,publicationArticleSchema,publicationPageSchema } from '@frontbase/edge-core/directory/publication';
 import {menuReferenceSchema} from '@frontbase/edge-core/menus';
 import type { PageLayoutData } from '@frontbase/edge-core';
 import { publicationHash, publicationBytesHash } from './publication-hash.js';
@@ -106,6 +106,10 @@ export type SitePublicationManifest = z.infer<typeof sitePublicationManifestSche
 // Only snapshots already parsed and hash-verified from tenant-scoped storage are marked.
 // Weak membership retains no data; callers cannot mark a mutable or hand-built manifest.
 const verifiedSnapshots=new WeakSet<SitePublicationManifest>();
+// Cache validation, never the database read. Every use still fetches the exact
+// tenant-scoped bytes; deletion or any changed byte misses this cache. Frozen
+// values prevent a caller from changing what subsequent reads would receive.
+const verifiedReads=new WeakMap<DbRunner,Map<string,{raw:string;manifest:SitePublicationManifest}>>();
 function freezeJson(value:unknown):void {
     if(value&&typeof value==='object'&&!Object.isFrozen(value)){for(const child of Object.values(value))freezeJson(child);Object.freeze(value);}
 }
@@ -184,15 +188,58 @@ export class SitePublicationManifestStore {
         if (!rows.length) return null;
         try {
             const raw = String(rows[0]!.value);
+            const identity=JSON.stringify([this.tenant,hash]),cache=verifiedReads.get(this.db);
+            const prior=cache?.get(identity);
+            if(prior?.raw===raw)return prior.manifest;
             if (new TextEncoder().encode(raw).byteLength > MAX_MANIFEST_BYTES) throw new Error();
             const manifest = sitePublicationManifestSchema.parse(JSON.parse(raw));
             if (await publicationHash(manifest) !== hash) throw new Error();
-            freezeJson(manifest);verifiedSnapshots.add(manifest);return manifest;
+            freezeJson(manifest);verifiedSnapshots.add(manifest);
+            if(raw.length>1024*1024)return manifest;
+            const entries=cache??new Map<string,{raw:string;manifest:SitePublicationManifest}>();
+            // One current capture per tenant in normal serving, bounded for operators.
+            if(entries.size>=4&&!entries.has(identity))entries.delete(entries.keys().next().value!);
+            entries.set(identity,{raw,manifest});verifiedReads.set(this.db,entries);
+            return manifest;
         } catch { throw new Error('publication_manifest_unavailable'); }
     }
     async loadChunk(manifestInput: SitePublicationManifest, referenceInput: PublicationChunkReference): Promise<PublicationChunk> {
-        const manifest = sitePublicationManifestSchema.parse(manifestInput), reference = publicationChunkReferenceSchema.parse(referenceInput);
+        const manifest = readPublicationManifest(manifestInput), reference = publicationChunkReferenceSchema.parse(referenceInput);
         return this.loadVerifiedChunk(manifest, reference);
+    }
+    /** PostgreSQL performs the same immutable byte/hash/index checks before it
+     * projects selected rows. Article bodies from unrelated rows never cross HTTP.
+     * Other adapters retain the existing complete-chunk validation path. */
+    async readRecords(input:SitePublicationManifest,selected:SitePublicationManifest['index']):Promise<Record<string,unknown>[]> {
+        const manifest=readPublicationManifest(input);
+        if(selected.length>49)throw Error('publication_record_limit');
+        if(!selected.length)return [];
+        const slots=new Map(manifest.index.map(row=>[row.chunkHash+':'+row.position,row]));
+        for(const entry of selected){const admitted=slots.get(entry.chunkHash+':'+entry.position);if(!admitted||admitted!==entry&&stableStringify(admitted)!==stableStringify(entry))throw Error('publication_manifest_index_mismatch');}
+        if(this.db.dialect!=='postgres'){
+            const loaded=new Map<string,PublicationChunk>(),read=this.chunkReader(manifest);
+            const result:Record<string,unknown>[]=[];
+            for(const entry of selected){let chunk=loaded.get(entry.chunkHash);if(!chunk){const ref=manifest.chunks.find(ref=>ref.hash===entry.chunkHash);if(!ref)throw Error('publication_manifest_chunk_missing');chunk=await read(ref);loaded.set(ref.hash,chunk);}result.push(structuredClone(chunk.records[entry.position]!));}
+            return result;
+        }
+        const hashes=new Set(selected.map(row=>row.chunkHash));
+        const refs=manifest.chunks.filter(ref=>hashes.has(ref.hash)).map(ref=>({...ref,index:manifest.index.filter(row=>row.chunkHash===ref.hash).sort((a,b)=>a.position-b.position)}));
+        const rows=await this.db.query(`SELECT * FROM (WITH refs AS (SELECT value AS ref FROM jsonb_array_elements(?::jsonb)),
+checked AS (SELECT ref,s.value::jsonb AS chunk,
+octet_length(s.value)=(ref->>'bytes')::int AND encode(sha256(convert_to(s.value,'UTF8')),'hex')=ref->>'hash'
+AND s.value::jsonb->>'kind'='directory-record-chunk' AND s.value::jsonb->>'schemaVersion'='1'
+AND s.value::jsonb->>'collection'=ref->>'collection' AND jsonb_array_length(s.value::jsonb->'records')=(ref->>'count')::int
+AND (SELECT jsonb_agg(jsonb_strip_nulls(jsonb_build_object('collection',ref->>'collection','id',r.value->'id','title',r.value->'title',
+'originalPath',r.value->'originalPath','parentId',CASE WHEN ref->>'collection'='institutions' THEN r.value->'cityId' WHEN ref->>'collection'='programs' THEN r.value->'institutionId' ELSE NULL END,
+'revision',r.value->'revision','chunkHash',ref->>'hash','position',r.ordinality-1)) ORDER BY r.ordinality) FROM jsonb_array_elements(s.value::jsonb->'records') WITH ORDINALITY r)=ref->'index' AS valid
+FROM refs LEFT JOIN settings s ON s.tenant_slug=? AND s.key='site_publication:chunk:v1:'||(ref->>'hash')),
+requested AS (SELECT value AS entry,ordinality FROM jsonb_array_elements(?::jsonb) WITH ORDINALITY)
+SELECT requested.ordinality,checked.chunk->'records'->((entry->>'position')::int) AS record,
+(SELECT count(*)=jsonb_array_length(?::jsonb) AND bool_and(COALESCE(valid,false)) FROM checked) AS valid
+FROM requested LEFT JOIN checked ON checked.ref->>'hash'=entry->>'chunkHash' ORDER BY requested.ordinality) fb_selected_records`,[JSON.stringify(refs),this.tenant,JSON.stringify(selected),JSON.stringify(refs)]);
+        if(rows.length!==selected.length||rows.some((row,i)=>row.valid!==true||Number(row.ordinality)!==i+1))throw Error('publication_chunk_unavailable');
+        const schemas={institutions:publicationInstitutionSchema,programs:publicationProgramSchema,cities:publicationCitySchema,articles:publicationArticleSchema,pages:publicationPageSchema};
+        return rows.map((row,i)=>schemas[selected[i]!.collection].parse(row.record));
     }
     /** Request-local reader: parse a detached manifest once, then retain every
      * reference/membership/content/index check for each uncached chunk read.

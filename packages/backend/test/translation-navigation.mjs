@@ -17,6 +17,11 @@ const projected=localizeNavigationProps(source,'ar',origins);assert.equal(projec
 // Switcher hrefs are embedded into the language picker, whose contract rejects whitespace and
 // \<> characters with a whole-page 503: request queries arrive percent-encoded, never raw.
 const links=homepageLanguageLinks('en',['ar','fr'],'ar','/explore/?q=a b');assert.equal(links[1].href,'/ar/explore/?q=a%20b');assert.equal(links[0].href,'/explore/?q=a%20b');
+for(const q of ['الطب','Arts & Design','100%','a/b']){
+ const search=new URLSearchParams({q,page:'2'}).toString();
+ for(const link of homepageLanguageLinks('en',['ar'],'en','/explore/?'+search))assert.equal(new URL(link.href,'https://site.test').searchParams.get('q'),q,'switching preserves the decoded search');
+}
+assert.throws(()=>homepageLanguageLinks('en',['ar'],'en','//evil.test/'));
 assert.equal(homepageLanguageLinks('en',['ar'],'ar','/explore/?q=a\\b')[1].href,'/ar/explore/?q=a%5Cb');
 assert.equal(homepageLanguageLinks('en',Array.from({length:20},(_,index)=>`l${index}`),'en','/').length,21,'the raw mapper renders every locale (invalid tags degrade to the code)');
 const capped=addHomepageLanguageLinks({content:[{id:'nav',type:'Navbar',props:{}}]},'en',Array.from({length:20},(_,index)=>`l${index}`),'en','/');

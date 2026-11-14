@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {inlinePgParams} from '@frontbase/edge-infra';
 import {verifyRenderProof,signatureSql} from '../operator-dist/prerender-delivery.mjs';
+const {compactSettingsProof}=await import(process.env.FRONTBASE_PROOF_TEST_MODULE??new URL('../operator-dist/prerender-proof.mjs',import.meta.url).href);
 const name='frontbase-render-proof-'+randomUUID().slice(0,8);
 const docker=(args,input)=>execFileSync('docker',args,{input,encoding:'utf8',windowsHide:true,stdio:['pipe','pipe','pipe'],timeout:30000});
 let started=false;
@@ -40,5 +41,17 @@ try {
  assert.equal(await verifyRenderProof(db,futureProof),true,'only the exact published locale pointer opens delivery');
  sql("UPDATE settings SET value='changed' WHERE key='translation_homepage:active:v1:ar';");
  assert.equal(await verifyRenderProof(db,futureProof),false,'locale replacement invalidates previous assets');
- console.log('PostgreSQL proof: SHA-256, parameter order, tenant isolation, invalidation, private fence passed');
+ const compact=await compactSettingsProof(proof.checks,owner,{'translation_homepage:active:v1:ar':plannedRows[0].value},db.query);
+ const sitemap={...proof,checks:[compact.check]};
+ assert.equal(await verifyRenderProof(db,sitemap),false,'future pointers remain required after compaction');
+ sql(inlinePgParams('UPDATE settings SET value=? WHERE tenant_slug=? AND key=?',[plannedRows[0].value,owner,'translation_homepage:active:v1:ar'])+';');
+ assert.equal(await verifyRenderProof(db,sitemap),true);
+ sql("UPDATE settings SET value='other tenant edit' WHERE tenant_slug='tenant-b';");
+ assert.equal(await verifyRenderProof(db,sitemap),true,'compaction remains tenant scoped');
+ sql("INSERT INTO settings VALUES ('tenant-a','new dependency','changed');");
+ assert.equal(await verifyRenderProof(db,sitemap),false,'new settings also invalidate the sitemap');
+ await assert.rejects(()=>compactSettingsProof([{...proof.checks[0],sql:'SELECT value FROM users WHERE tenant_slug = ? AND key = ?'}],owner,{},db.query));
+ await assert.rejects(()=>compactSettingsProof([{...proof.checks[0],params:['tenant-b','locale']}],owner,{},db.query));
+ await assert.rejects(()=>compactSettingsProof(proof.checks,owner,{'unrelated':'override'},db.query));
+ console.log('PostgreSQL proof: SHA-256, parameter order, tenant isolation, invalidation, private fence and conservative sitemap compaction passed');
 }finally{if(started)docker(['rm','-f',name]);}

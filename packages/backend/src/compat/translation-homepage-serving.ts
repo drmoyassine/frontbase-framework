@@ -10,7 +10,12 @@ import type {PublishedLocalePointerEntry} from './translation-homepage.js';
 import type {LocalizedQueryPlan} from './site-publication-chunk-queries.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
 
-export function homepageLanguageLinks(sourceLocale:string,locales:string[],current:string,sourcePath='/'){const source=encodeURI(sourcePath),label=(code:string)=>{if(code==='ar')return 'العربية';try{return new Intl.DisplayNames([code,'en'],{type:'language'}).of(code)??code;}catch{return code;}};
+export function homepageLanguageLinks(sourceLocale:string,locales:string[],current:string,sourcePath='/'){
+    // URL preserves existing percent escapes. encodeURI on a serialized search
+    // double-encoded Arabic/punctuation and changed the search after switching.
+    const parsed=new URL(sourcePath,'https://locale.invalid');
+    if(!sourcePath.startsWith('/')||parsed.origin!=='https://locale.invalid')throw Error('invalid_locale_path');
+    const source=parsed.pathname+parsed.search.replaceAll('\\','%5C')+parsed.hash,label=(code:string)=>{if(code==='ar')return 'العربية';try{return new Intl.DisplayNames([code,'en'],{type:'language'}).of(code)??code;}catch{return code;}};
     return [{code:sourceLocale,label:sourceLocale==='en'?'English':label(sourceLocale),href:source,current:current===sourceLocale},...locales.map(code=>({code,label:label(code),href:`/${code}${source}`,current:current===code}))];}
 /** The release that translates `path`'s content under the URL's locale prefix, for the localized
  *  list endpoint: a prefix counts only when that locale publishes THIS path (or the homepage,

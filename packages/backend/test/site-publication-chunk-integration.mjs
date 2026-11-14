@@ -66,6 +66,14 @@ assert.deepEqual(candidate.skippedUnmapped,{institutions:1,programs:0});
 assert.ok(!JSON.stringify(candidate).includes('PRIVATE_'));
 assert.deepEqual(await pages.get(applyId),beforeApply);
 const manifestStore=new SitePublicationManifestStore(db,'alpha'),manifest=await manifestStore.get(hash);
+assert.strictEqual(await manifestStore.get(hash),manifest,'identical tenant-scoped bytes reuse frozen validation');
+assert.ok(Object.isFrozen(manifest)&&Object.isFrozen(manifest.index));
+const manifestKey=`site_publication:manifest:v2:${hash}`,manifestRaw=(await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',['alpha',manifestKey]))[0].value;
+await db.exec('UPDATE settings SET value=? WHERE tenant_slug=? AND key=?',['{}','alpha',manifestKey]);
+await assert.rejects(()=>manifestStore.get(hash),'validation cache must read current bytes');
+await db.exec('UPDATE settings SET value=? WHERE tenant_slug=? AND key=?',[manifestRaw,'alpha',manifestKey]);
+assert.equal(await new SitePublicationManifestStore(db,'other').get(hash),null,'validation cache is tenant scoped');
+if(process.env.FRONTBASE_PROJECTED_POSTGRES_TEST==='1')await (await import('./publication-projected-postgres.mjs')).verifyProjectedRecords(manifest,db);
 assert.equal(manifest.schemaVersion,2);assert.ok(manifest.chunks.reduce((n,c)=>n+c.bytes,0)>1024*1024);assert.equal(manifest.approvals.length,2);
 assert.equal((await new SitePublicationStore(db,'alpha').activeVersion()),null);
 assert.equal((await call('read',{hash})).status,200);
@@ -101,6 +109,9 @@ const firstResponse=await call('activate',{hash,expected:null});assert.equal(fir
 assert.equal(first.generation,1);
 const state=await app.request('/api/project/site-configuration/publication/state/'),live=await state.json();assert.equal(live.capture.runtimeVersion,'directory-chunks-v1');assert.equal(live.capture.counts.programs,121);assert.equal(live.capture.counts.pages,3);
 const publicPage=path=>renderReviewedSitePublication(db,'alpha',new Request('https://usa.test'+path));
+const observedComponents=[];
+const observedPage=await renderReviewedSitePublication(db,'alpha',new Request('https://usa.test/explore/'),{observeComponent:(node,html)=>observedComponents.push({node,html})});
+assert.equal(observedPage.status,200);assert.ok(observedComponents.length>0,'offline compilation receives the actual publication renderer observations');
 // Captured authoring preview and live delivery use identical query semantics.
 const capturedPreview=async params=>app.request('/api/project/site-configuration/preview/',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({source:'published',expectedRevision:1,role:'program',mode:'list',params})});
 const sortedPreview=await capturedPreview({sort:'title-desc',q:'Program 12',match:'startsWith'});assert.equal(sortedPreview.status,200,await sortedPreview.clone().text());

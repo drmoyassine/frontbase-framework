@@ -51,14 +51,18 @@ import { renderLandingComponent } from './landingDispatcher.js';
  * Render a single component to HTML.
  * NOW ASYNC due to LiquidJS template resolution.
  */
-async function renderComponent(component:PageComponent,context:TemplateContext,budget={remaining:20000}):Promise<string>{
+export type ComponentRenderObserver=(component:PageComponent,html:string,context:TemplateContext)=>void;
+type RenderBudget={remaining:number;observe?:ComponentRenderObserver};
+async function renderComponent(component:PageComponent,context:TemplateContext,budget:RenderBudget={remaining:20000}):Promise<string>{
     const html=await renderComponentImpl(component,context,budget),source=component.props?._templateSourceId;
-    return html&&typeof source==='string'&&!component.versions?.length?`<div data-fb-template-source="${escapeHtml(source)}" data-fb-template-instance="${escapeHtml(component.id)}" style="display:contents">${html}</div>`:html;
+    const output=html&&typeof source==='string'&&!component.versions?.length?`<div data-fb-template-source="${escapeHtml(source)}" data-fb-template-instance="${escapeHtml(component.id)}" style="display:contents">${html}</div>`:html;
+    budget.observe?.(component,output,context);
+    return output;
 }
 async function renderComponentImpl(
     component: PageComponent,
     context: TemplateContext,
-    budget = { remaining: 20000 }
+    budget:RenderBudget = { remaining: 20000 }
 ): Promise<string> {
     if (--budget.remaining < 0) throw Error('Block render budget exceeded');
     if(component.stylesData?.values)component={...component,styles:{...component.styles,...component.stylesData.values}};
@@ -223,7 +227,8 @@ export async function renderBlock(component:PageComponent,context:TemplateContex
  */
 export async function renderPage(
     layoutData: PageLayoutData,
-    context: TemplateContext
+    context: TemplateContext,
+    observe?:ComponentRenderObserver
 ): Promise<string> {
     if (!layoutData || !layoutData.content) {
         return '<div class="fb-empty">No content</div>';
@@ -241,7 +246,7 @@ export async function renderPage(
     const { rootStyle, rootClass } = resolveRootStyles(rootProps);
 
     // Render all top-level components (async) - wrapped for proper block layout
-    const budget = { remaining: 20000 };
+    const budget:RenderBudget = { remaining: 20000, observe };
     const contentHtml = (await Promise.all(
         layoutData.content.map(component => renderComponent(component, context, budget))
     )).join('');

@@ -1,3 +1,4 @@
+import {validatePreparedBrowsing,selectPreparedRows,renderPreparedBrowsing,BrowsingRequestError,type PreparedBrowsing} from './prerender-browsing.js';
 /** Small edge entry for operator-rendered responses. No compiler/CMS imports here. */
 export const PRERENDER_PREFIX='/__frontbase_prerender/';
 export function isPrivateRenderPath(path:string):boolean {
@@ -50,7 +51,21 @@ export async function deliverPrerender(request:Request,assets:Assets,openDb:()=>
             const entries=completeBundles.get(assets)??new Set<string>();entries.add(completeKey);completeBundles.set(assets,entries);
         }
         const descriptor=await assets.fetch(new Request(new URL(base+'.json',url.origin)));
-        if(descriptor.status===404)return null;
+        if(descriptor.status===404){
+            const dynamicKey=await prerenderKey(url.pathname+'?type='+(url.searchParams.get('type')??''));
+            const dynamic=await assets.fetch(new Request(new URL(PRERENDER_PREFIX+siteHash+'/dynamic-'+dynamicKey+'.json',url.origin)));
+            if(dynamic.status===404)return null;if(!dynamic.ok)return unavailable();
+            const raw=await dynamic.text();if(raw.length>2*1024*1024)return unavailable();
+            const plan=JSON.parse(raw) as PreparedBrowsing;validatePreparedBrowsing(plan,url.pathname,url.origin,siteHash);
+            try{selectPreparedRows(plan,url);}catch(error){if(error instanceof BrowsingRequestError)return new Response('Invalid search or page parameters',{status:400,headers:{'cache-control':'no-store','x-robots-tag':'noindex, nofollow'}});throw error;}
+            if(!await verifyRenderProof(openDb(),plan.proof))return unavailable();
+            const headers=new Headers(plan.proof.headers);
+            if(headers.has('set-cookie')||headers.get('x-site-version')!==siteHash)return unavailable();
+            headers.delete('x-site-generation');headers.delete('content-length');headers.delete('etag');headers.set('cache-control','no-store');headers.set('x-frontbase-render','compiled-browsing');headers.set('x-content-type-options','nosniff');
+            if(request.method==='HEAD')return new Response(null,{status:200,headers});
+            const html=await renderPreparedBrowsing(plan,url,async fragment=>{const response=await assets.fetch(new Request(new URL(PRERENDER_PREFIX+siteHash+'/'+fragment+'.html',url.origin)));if(!response.ok)throw Error('Missing compiled card');return response.text();});
+            return new Response(html,{status:200,headers});
+        }
         if(!descriptor.ok)return unavailable();
         const raw=await descriptor.text();if(raw.length>262144)return unavailable();
         const proof=JSON.parse(raw) as RenderProof;
