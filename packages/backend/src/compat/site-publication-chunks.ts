@@ -112,13 +112,20 @@ export class SitePublicationChunkStore {
         }
         if (batch.length) yield batch;
     }
-    async insertBatch(chunks: PublicationChunk[], references: PublicationChunkReference[], now: string) {
-        const entries = chunks.map((chunk, index) => ({...references[index]!, value: stableStringify(chunk)}));
+    async insertBatch(entries: {hash:string;bytes:number;value:string}[], now: string) {
         for (const batch of this.batches(entries)) {
-            const rows = batch.map(() => '(?,?,?,?)').join(',');
-            const params = batch.flatMap(entry => [this.tenant, `site_publication:chunk:v1:${entry.hash}`, entry.value, now]);
-            const changed = await this.db.exec(`INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES ${rows} ON CONFLICT(tenant_slug, key) DO NOTHING`, params);
+            const keys = batch.map(entry => `site_publication:chunk:v1:${entry.hash}`);
+            const placeholders = batch.map(() => '(?,?,?,?)').join(',');
+            const params = batch.flatMap((entry,index) => [this.tenant, keys[index]!, entry.value, now]);
+            const changed = await this.db.exec(`INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES ${placeholders} ON CONFLICT(tenant_slug, key) DO NOTHING`, params);
             if (!Number.isInteger(changed) || changed < 0 || changed > batch.length) throw new Error('publication_write_result_invalid');
+            if (changed === batch.length) continue;
+            const persisted = await this.db.query(`SELECT key, value FROM settings WHERE tenant_slug = ? AND key IN (${keys.map(() => '?').join(',')})`, [this.tenant, ...keys]);
+            const values = new Map(persisted.map(row => [String(row.key), row.value]));
+            // A retry must read back any existing rows before admitting the manifest.
+            if (persisted.length !== batch.length || keys.some((key,index) => values.get(key) !== batch[index]!.value)) {
+                throw new Error('publication_chunk_unavailable');
+            }
         }
     }
     async put(input: PublicationChunk, now: string): Promise<PublicationChunkReference> {

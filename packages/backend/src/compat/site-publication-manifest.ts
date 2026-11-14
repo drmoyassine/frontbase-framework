@@ -7,7 +7,7 @@ import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePage
 import { publicationTemplateSchema, publicationPathSchema } from '@frontbase/edge-core/directory/publication';
 import {menuReferenceSchema} from '@frontbase/edge-core/menus';
 import type { PageLayoutData } from '@frontbase/edge-core';
-import { publicationHash } from './publication-hash.js';
+import { publicationHash, publicationBytesHash } from './publication-hash.js';
 import { packPublicationChunks, SitePublicationChunkStore, publicationChunkReferenceSchema, type PublicationChunk, type PublicationChunkReference } from './site-publication-chunks.js';
 import { assertOutsidePublishedLocaleRoutes } from './locale-route-reservation.js';
 
@@ -153,15 +153,19 @@ export class SitePublicationManifestStore {
     async prepare(header: Header, records: Records, now: string): Promise<string> {
         const input = recordsInput.parse(records);
         const packed = (['cities', 'institutions', 'programs', 'articles','pages'] as const).flatMap(collection => packPublicationChunks(collection, input[collection]));
-        const references = await Promise.all(packed.map(async chunk => publicationChunkReferenceSchema.parse({ hash: await publicationHash(chunk),
-            collection: chunk.collection, count: chunk.records.length, bytes: byteSize(chunk) })));
+        const encoded = await Promise.all(packed.map(async chunk => {
+            const value = stableStringify(chunk), bytes = new TextEncoder().encode(value);
+            const reference = publicationChunkReferenceSchema.parse({hash:await publicationBytesHash(bytes),
+                collection:chunk.collection,count:chunk.records.length,bytes:bytes.byteLength});
+            return {reference,value};
+        }));
+        const references = encoded.map(entry=>entry.reference);
         // Global admission precedes any persistence, including chunks.
         const manifest = sitePublicationManifestSchema.parse({ ...header,sourceBindings:sourceBindings(header.configuration), schemaVersion: 2, runtimeVersion: 'directory-chunks-v1',
             chunks: references, index: packed.flatMap((chunk, i) => indexChunk(chunk, references[i]!)) });
         await assertOutsidePublishedLocaleRoutes(this.db, this.tenant, manifestLocaleRouteExposures(manifest));
         if (this.db.dialect === 'postgres') {
-            await this.chunks.insertBatch(packed, references, now);
-            await this.verify(manifest);
+            await this.chunks.insertBatch(encoded.map(({reference,value})=>({...reference,value})), now);
         } else {
             for (const chunk of packed) await this.chunks.put(chunk, now);
         }

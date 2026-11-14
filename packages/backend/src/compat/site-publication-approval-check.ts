@@ -14,13 +14,16 @@ export async function verifyManifestEditorial(db:DbRunner,owner:string,manifest:
     const selected=targets.map(target=>entries.get(JSON.stringify([target.id,target.originalPath]))).filter((entry):entry is NonNullable<typeof entry>=>!!entry);
     const records=await approvals.readSnapshotRecords(selected.map(entry=>{const ref=refs.get(JSON.stringify([entry.id,entry.collection==='pages'?'page':'article',entry.revision]));if(!ref)throw Error('publication_approval_unavailable');return{id:ref.id,revision:ref.revision};}),manifest.configurationRevision);
     const chunks=rows?null:await store.readVerifiedChunks(manifest,new Set(selected.map(entry=>entry.chunkHash)));
+    const validateSnapshot=approvals.snapshotValidator(draft);
     for(const target of targets){
         const entry=entries.get(JSON.stringify([target.id,target.originalPath]));
         if(!entry)continue;
         const role=entry.collection==='pages'?'page':'article';
         const ref=refs.get(JSON.stringify([entry.id,role,entry.revision]));
         if(!ref)throw new Error('publication_approval_unavailable');
-        const snapshot=await approvals.snapshot(ref.id,ref.revision,draft,ref.fingerprint,records(ref.id,ref.revision));
+        const stored=records(ref.id,ref.revision);
+        if(stored===null)throw Error('publication_approval_unavailable');
+        const snapshot=await validateSnapshot(ref.id,ref.revision,ref.fingerprint,JSON.parse(stored));
         if(!snapshot || (snapshot.contentRole??'article')!==role)throw new Error('publication_approval_unavailable');
         const chunkRef=manifest.chunks.find(value=>value.hash===entry.chunkHash)!;
         const record=target.body!==undefined?target:(chunks?.get(chunkRef.hash)??await store.loadChunk(manifest,chunkRef)).records[entry.position]!;

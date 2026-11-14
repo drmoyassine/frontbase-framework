@@ -76,7 +76,7 @@ export async function prepareChunkPublication(control:DbRunner,canonical:DbRunne
     for(const row of cityRows){if(row.scopeValue!==city.filter.value)throw new Error('publication_scope_mismatch');if(requiredCities.has(String(row.id)))cities.push({id:row.id,title:row.title});}
     const approvals=new EditorialApprovalStore(control,tenant);
     let refs=request.articles;
-    const capturedApprovals=new Map<string,string>();
+    const capturedApprovals=new Map<string,unknown>();
     if(request.includeApprovedEditorial){
         const latest=new Map<string,z.infer<typeof reference>>();
         const prefix='editorial_approval:v1:';
@@ -89,7 +89,7 @@ export async function prepareChunkPublication(control:DbRunner,canonical:DbRunne
                 if(value.configurationRevision!==draft.revision)continue;
                 const ref=reference.parse({id:value.documentId,revision:value.documentRevision,fingerprint:value.fingerprint,contentRole:value.snapshot?.contentRole??'article'});
                 if(key!==prefix+ref.id+':'+ref.revision+':'+draft.revision || capturedApprovals.has(key))throw new Error('publication_approval_unavailable');
-                capturedApprovals.set(key,raw);
+                capturedApprovals.set(key,value);
                 const identity=ref.contentRole+':'+ref.id,old=latest.get(identity);
                 if(!old || ref.revision>old.revision)latest.set(identity,ref);
             }
@@ -102,10 +102,13 @@ export async function prepareChunkPublication(control:DbRunner,canonical:DbRunne
     }
     if(request.replaceEditorialHomepage && !staticPages.some(page=>page.originalPath==='/' && readLandingSettings(page.layout)))throw new Error('landing_homepage_required');
     const articles:Record<string,unknown>[]=[],editorialPages:Record<string,unknown>[]=[],includedRefs:typeof refs=[];
-    const readApproval=request.includeApprovedEditorial
-        ? (id:string,revision:number)=>capturedApprovals.get('editorial_approval:v1:'+id+':'+revision+':'+draft.revision)??null
-        : await approvals.readSnapshotRecords(refs,draft.revision);
-    for(const ref of refs){const snapshot=await approvals.snapshot(ref.id,ref.revision,draft,ref.fingerprint,readApproval(ref.id,ref.revision));
+    const readApproval=request.includeApprovedEditorial?null:await approvals.readSnapshotRecords(refs,draft.revision);
+    const validateSnapshot=approvals.snapshotValidator(draft);
+    for(const ref of refs){
+        const key='editorial_approval:v1:'+ref.id+':'+ref.revision+':'+draft.revision;
+        const stored=readApproval?.(ref.id,ref.revision);
+        const approval=stored?JSON.parse(stored):capturedApprovals.get(key);
+        const snapshot=await validateSnapshot(ref.id,ref.revision,ref.fingerprint,approval);
         if(!snapshot || (snapshot.contentRole??'article')!==ref.contentRole)throw new Error('publication_approval_unavailable');
         if(request.replaceEditorialHomepage && ref.contentRole==='page' && snapshot.originalPath==='/')continue;
         includedRefs.push(ref);

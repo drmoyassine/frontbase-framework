@@ -2,6 +2,8 @@ import {readSourceConfiguration} from '@frontbase/edge-core/directory/configurat
 import type { DbRunner } from '@frontbase/edge-infra';
 import { editorialDocumentSchema, editorialReviewChecksSchema, type EditorialDocument, type SiteConfigurationDraft } from '@frontbase/edge-core/directory/configuration';
 
+const editorialSnapshotSchema = editorialDocumentSchema.omit({reviewState:true,reviewNote:true});
+
 /** Private owner-scoped approval; no route activation and no mutable draft serving. */
 export class EditorialApprovalStore {
     constructor(private db: DbRunner, private tenant: string) {}
@@ -15,7 +17,6 @@ export class EditorialApprovalStore {
         if (record.schemaVersion !== 1 || record.documentId !== id || record.documentRevision !== revision || record.configurationRevision !== configurationRevision || !/^[a-f0-9]{64}$/.test(record.fingerprint)) throw new Error('approval_unavailable');
         return { documentRevision: revision, configurationRevision, fingerprint: record.fingerprint as string };
     }
-    /** Internal preparation read. Metadata alone is never proof of content integrity. */
     /** Bounded bulk reads; the same snapshot validator still verifies every returned record. */
     async readSnapshotRecords(refs:{id:string;revision:number}[],configurationRevision:number){
         const keys=[...new Set(refs.map(ref=>this.key(ref.id,ref.revision,configurationRevision)))],output=new Map<string,string>();
@@ -28,16 +29,24 @@ export class EditorialApprovalStore {
     async snapshot(id: string, revision: number, draft: SiteConfigurationDraft, expectedFingerprint: string,recordValue?:string|null) {
         const rows = recordValue===undefined?await this.db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?', [this.tenant,this.key(id,revision,draft.revision)]):recordValue===null?[]:[{value:recordValue}];
         if (!rows.length) return null;
-        try {
-            const record = JSON.parse(String(rows[0]!.value));
-            if (record.schemaVersion !== 1 || record.documentId !== id || record.documentRevision !== revision || record.configurationRevision !== draft.revision
-                || JSON.stringify(record.configuration) !== JSON.stringify(draft.configuration) || record.fingerprint !== expectedFingerprint) throw new Error();
-            editorialReviewChecksSchema.parse(record.checks);
-            const snapshot = editorialDocumentSchema.omit({reviewState:true,reviewNote:true}).parse(record.snapshot);
-            const fingerprint = [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(snapshot))))].map(v=>v.toString(16).padStart(2,'0')).join('');
-            if (snapshot.id !== id || snapshot.revision !== revision || fingerprint !== expectedFingerprint) throw new Error();
-            return snapshot;
-        } catch { throw new Error('approval_unavailable'); }
+        try { return await this.snapshotValidator(draft)(id, revision, expectedFingerprint, JSON.parse(String(rows[0]!.value))); }
+        catch { throw new Error('approval_unavailable'); }
+    }
+    /** Reuse the canonical configuration across a request; each snapshot still has its own fingerprint. */
+    snapshotValidator(draft: SiteConfigurationDraft) {
+        const configuration = JSON.stringify(draft.configuration);
+        return async (id: string, revision: number, expectedFingerprint: string, value: unknown) => {
+            try {
+                const record = value as {schemaVersion?:unknown;documentId?:unknown;documentRevision?:unknown;configurationRevision?:unknown;configuration?:unknown;fingerprint?:unknown;checks?:unknown;snapshot?:unknown};
+                if (record.schemaVersion !== 1 || record.documentId !== id || record.documentRevision !== revision || record.configurationRevision !== draft.revision
+                    || JSON.stringify(record.configuration) !== configuration || record.fingerprint !== expectedFingerprint) throw new Error();
+                editorialReviewChecksSchema.parse(record.checks);
+                const snapshot = editorialSnapshotSchema.parse(record.snapshot);
+                const fingerprint = [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(snapshot))))].map(v=>v.toString(16).padStart(2,'0')).join('');
+                if (snapshot.id !== id || snapshot.revision !== revision || fingerprint !== expectedFingerprint) throw new Error();
+                return snapshot;
+            } catch { throw new Error('approval_unavailable'); }
+        };
     }
     async approve(raw: EditorialDocument, draft: SiteConfigurationDraft, reviewer: string, note: string, checks: unknown, now: string) {
         const document = editorialDocumentSchema.parse(raw);
