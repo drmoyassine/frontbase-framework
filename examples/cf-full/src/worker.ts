@@ -899,6 +899,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     return app;
 }
 
+import {renderReviewedPublicationList} from '@frontbase/backend';
 import {deliverPrerender,isPrivateRenderPath} from './prerender-delivery.js';
 let readyEngine: Hono | undefined;
 let currentCtx: ExecutionContext | null = null;
@@ -913,6 +914,11 @@ const worker = {
             if(renderHash&&env.ASSETS&&env.FRONTBASE_DEPLOYMENT_MODE!=='cloud'){
                 const rendered=await deliverPrerender(req,env.ASSETS,()=>resolveStateDb({env:env as unknown as Record<string,string|undefined>,host:'cloudflare',d1Binding:env.DB,hyperdriveBinding:env.HYPERDRIVE}).runner,renderHash);
                 if(rendered)return rendered;
+                if(req.method==='GET'&&req.headers.has('X-Frontbase-List')&&!req.headers.has('cookie')&&!req.headers.has('authorization')){
+                    const state=resolveStateDb({env:env as unknown as Record<string,string|undefined>,host:'cloudflare',d1Binding:env.DB,hyperdriveBinding:env.HYPERDRIVE});
+                    const list=await renderReviewedPublicationList(state.runner,'_root',req,{authenticated:false});
+                    if(list&&list.status!==404)return list;
+                }
             }
             if((env as any).FRONTBASE_BOOTSTRAP==='native'){bootstrapHost??=createNativeCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             if((env as any).FRONTBASE_BOOTSTRAP==='1'){bootstrapHost??=createCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}

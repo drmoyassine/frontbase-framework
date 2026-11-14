@@ -1,3 +1,4 @@
+import {publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import {templateRoute} from './template-route.js';
 import {publicationPaths} from './publication-version.js';
 import {z} from 'zod';
@@ -30,7 +31,7 @@ const entry=z.object({id:hash,blockId:id,path:z.array(id).min(1).max(20),version
  *  per-unit missing/outdated decision taken at prepare: 'block' refuses non-draft units, 'source-fallback'
  *  omits them and renders fresh source for them (and for units whose fingerprint changed since). */
 const releaseSchema=z.object({version:z.literal(1),tenant:id,project:id,sourceLocale:locale,locale,siteHash:hash,sourceHash:hash,configHash:hash,
-    path:id,policy:z.object({missing:z.enum(['block','source-fallback']),outdated:z.enum(['block','source-fallback'])}).strict().optional(),
+    path:publicationPathSchema,policy:z.object({missing:z.enum(['block','source-fallback']),outdated:z.enum(['block','source-fallback'])}).strict().optional(),
     pageId:id,catalog:z.array(entry).min(1).max(502),reviewer:id,reviewedAt:z.string().datetime()}).strict();
 const pointerSchema=z.object({hash,generation:z.number().int().positive()}).strict();
 const surfaceHash=async(path:string)=>publicationHash({kind:'page',path});
@@ -459,4 +460,43 @@ export function projectHomepageLocale(capture:Awaited<ReturnType<typeof captureH
     }};mark(layout.content);
     const meta=(key:string)=>textByIdentity.get(JSON.stringify(stableIdentity({blockId:'$meta',path:[key]})));
     return {...capture.result,page:{...capture.result.page,title:meta('title')??capture.result.page.title,description:meta('description')??capture.result.page.description,layout}};
+}
+
+/** Private operator projection only. This never writes publication pointers.
+ * The exporter must fence projected results against the eventual REAL pointers,
+ * and separately revalidate the unmodified reads before completing its bundle.
+ */
+export async function createPrivateLocalePublicationOverlay(db:DbRunner,tenant:string,siteHash:string,hashes:unknown){
+    const requested=z.array(hash).max(20000).parse(hashes);
+    if(!requested.length)return ()=>null;
+    const planned=new Map<string,string>();
+    await mapLimit(requested,async digest=>{
+        const release=await readHomepageRelease(db,tenant,digest);
+        if(!release||release.siteHash!==siteHash)throw Error('private_locale_source_mismatch');
+        const key=await activeKey(release.locale,release.path);
+        const current=await readHomepagePointer(db,tenant,release.locale,release.path);
+        if(planned.has(key))throw Error('private_locale_duplicate');
+        planned.set(key,JSON.stringify(current?.hash===digest?current:{hash:digest,generation:(current?.generation??0)+1}));
+    });
+    const registryRows=await db.query('SELECT key,value FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?) ORDER BY key',[tenant,HOMEPAGE_ACTIVE_PREFIX+'%',SURFACE_ACTIVE_PREFIX+'%']);
+    const registry=new Map(registryRows.map(row=>[String(row.key),row]));
+    for(const [key,value] of planned)registry.set(key,{key,value});
+    const ordered=[...registry].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([,row])=>row);
+    return (sql:string,params:unknown[],rows:Record<string,unknown>[]):Record<string,unknown>[]|null=>{
+        if(params[0]!==tenant)return null;
+        const registryParams=params[1]===HOMEPAGE_ACTIVE_PREFIX+'%'&&params[2]===SURFACE_ACTIVE_PREFIX+'%';
+        if(registryParams&&sql==='SELECT COUNT(*) AS n FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?)'&&params.length===3)return [{n:ordered.length}];
+        if(registryParams&&sql==='SELECT key,value FROM settings WHERE tenant_slug = ? AND (key LIKE ? OR key LIKE ?) ORDER BY key LIMIT ? OFFSET ?'&&params.length===5)return ordered.slice(Number(params[4]),Number(params[4])+Number(params[3]));
+        if(sql==='SELECT value FROM settings WHERE tenant_slug = ? AND key = ?'&&params.length===2){
+            const value=planned.get(String(params[1]));return value===undefined?null:[{value}];
+        }
+        if(sql==='SELECT key,value FROM settings WHERE tenant_slug = ? AND key >= ? AND key < ? ORDER BY key'&&params.length===3){
+            const matches=[...planned].filter(([key])=>key>=String(params[1])&&key<String(params[2]));
+            if(!matches.length)return null;
+            const result=new Map(rows.map(row=>[String(row.key),row]));
+            for(const [key,value] of matches)result.set(key,{key,value});
+            return [...result].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([,row])=>row);
+        }
+        return null;
+    };
 }

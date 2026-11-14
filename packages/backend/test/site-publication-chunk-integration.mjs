@@ -16,7 +16,7 @@ import {SitePublicationStore} from '../dist/compat/site-publication-store.js';
 import {SitePublicationManifestStore} from '../dist/compat/site-publication-manifest.js';
 import {SitePublicationReviewStore} from '../dist/compat/site-publication-review-store.js';
 import {createChunkDirectoryQueries} from '../dist/compat/site-publication-chunk-queries.js';
-import {renderReviewedSitePublication} from '../dist/compat/site-publication-serving.js';
+import {renderReviewedSitePublication,renderReviewedPublicationList} from '../dist/compat/site-publication-serving.js';
 import {captureRouteInventory} from '../dist/compat/capture-route-inventory.js';
 
 // Disposable control + canonical state. No owner credentials or real content/activation.
@@ -165,6 +165,10 @@ assert.equal((await publicPage('/explore/?type=arbitrary')).status,200); // Defa
 const listQuery={componentId:'institutions',versionId:'programs',page:0,pageSize:12,sortColumn:'title',direction:'desc',filters:[]};
 const listRequest=input=>new Request('https://study-in-usa.com/explore/?type=program',{headers:{'X-Frontbase-List':encodeURIComponent(JSON.stringify(input))}});
 const listResult=await renderReviewedSitePublication(db,'alpha',listRequest(listQuery));assert.equal(listResult.status,200);const listBody=await listResult.json();assert.equal(listBody.rows.length,12);assert.equal(listBody.total,121);assert.equal(listBody.rows[0].title,'Program 121');assert.ok(!JSON.stringify(listBody).includes('PRIVATE_'));assert.ok(listBody.rows.every(row=>row.body===undefined));
+const earlyList=await renderReviewedPublicationList(db,'alpha',listRequest(listQuery),{authenticated:false});assert.deepEqual(await earlyList.json(),listBody,'list-only entry preserves full publication semantics');
+assert.equal(await renderReviewedPublicationList(db,'alpha',new Request('https://study-in-usa.com/explore/'),{authenticated:false}),null);
+assert.equal((await renderReviewedPublicationList(db,'alpha',listRequest({...listQuery,versionId:'not-a-version'}),{authenticated:false})).status,403);
+
 const filtered=await renderReviewedSitePublication(db,'alpha',listRequest({...listQuery,filters:[{column:'title',op:'eq',value:'Program 120'}]}));assert.equal((await filtered.json()).total,1);
 assert.equal((await renderReviewedSitePublication(db,'alpha',listRequest({...listQuery,componentId:'not-a-page-element'}))).status,404);
 assert.equal((await renderReviewedSitePublication(db,'alpha',listRequest({...listQuery,versionId:'not-a-version'}))).status,403);

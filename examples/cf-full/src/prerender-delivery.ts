@@ -12,7 +12,7 @@ export async function prerenderKey(path:string):Promise<string>{
 type Reader={query(sql:string,params:unknown[]):Promise<Record<string,unknown>[]>};
 type Assets={fetch(request:Request):Promise<Response>};
 const completeBundles=new WeakMap<Assets,Set<string>>();
-export type RenderProof={version:1;origin:string;path:string;siteHash:string;owner:string;checks:{sql:string;params:unknown[];signature:string}[];headers:[string,string][];bodyHash:string};
+export type RenderProof={version:1;origin:string;path:string;siteHash:string;owner:string;status?:number;checks:{sql:string;params:unknown[];signature:string}[];headers:[string,string][];bodyHash:string};
 const hash=/^[a-f0-9]{64}$/;
 export function signatureSql(sql:string):string {
     if(!/^SELECT\s/i.test(sql.trim())||sql.includes(';'))throw Error('prerender_read_required');
@@ -54,7 +54,7 @@ export async function deliverPrerender(request:Request,assets:Assets,openDb:()=>
         if(!descriptor.ok)return unavailable();
         const raw=await descriptor.text();if(raw.length>262144)return unavailable();
         const proof=JSON.parse(raw) as RenderProof;
-        if(proof.version!==1||proof.origin!==url.origin||proof.path!==path||proof.siteHash!==siteHash||!proof.owner||!hash.test(proof.bodyHash)||!Array.isArray(proof.checks)||proof.checks.length>128||!Array.isArray(proof.headers))return unavailable();
+        if(proof.version!==1||proof.origin!==url.origin||proof.path!==path||proof.siteHash!==siteHash||!proof.owner||!hash.test(proof.bodyHash)||!Array.isArray(proof.checks)||proof.checks.length>128||!Array.isArray(proof.headers)||![200,301].includes(proof.status??200))return unavailable();
         if(!proof.checks.every(c=>typeof c.sql==='string'&&Array.isArray(c.params)&&hash.test(c.signature)))return unavailable();
         if(!await verifyRenderProof(openDb(),proof))return unavailable();
         const body=await assets.fetch(new Request(new URL(PRERENDER_PREFIX+siteHash+'/'+proof.bodyHash+'.html',url.origin)));
@@ -64,7 +64,7 @@ export async function deliverPrerender(request:Request,assets:Assets,openDb:()=>
         // The source pointer generation can change on rollback without changing this immutable hash.
         headers.delete('x-site-generation');
         headers.set('cache-control','no-store');headers.set('x-frontbase-render','pre-rendered');headers.set('x-content-type-options','nosniff');
-        if(request.method==='HEAD'){await body.body?.cancel();return new Response(null,{status:200,headers});}
-        return new Response(body.body,{status:200,headers});
+        if(request.method==='HEAD'){await body.body?.cancel();return new Response(null,{status:proof.status??200,headers});}
+        return new Response(body.body,{status:proof.status??200,headers});
     }catch{return unavailable();}
 }

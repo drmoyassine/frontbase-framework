@@ -11,6 +11,9 @@ const module=new URL('../dist/compat/translation-homepage.js',import.meta.url),s
 // that disables one layer must also disable the other, or the redundancy masks it and the gate
 // proves nothing. The optional 6th tuple element is a second [url,from,to] patch applied together.
 const faults=[
+ ['private locale source fence',module,'release.siteHash !== siteHash','false','translation-page-publication.mjs'],
+ ['private locale tenant fence',module,'release.tenant !== tenant','false','translation-page-publication.mjs'],
+ ['private locale duplicate fence',module,'if (planned.has(key))','if (false)','translation-page-publication.mjs'],
  ['configured target locale',module,'!config.targetLocales.includes(target)','false'],
  ['field revision fence',module,'prior.value.token !== e.token','false'],
  ['activation CAS',module,'JSON.stringify(current) !== JSON.stringify(pointerSchema.nullable().parse(expected))','false'],
@@ -46,4 +49,4 @@ for(const[name,url,from,to,suite='translation-homepage.mjs',extra]of faults){
  for(const[u]of patches)assert.equal(readFileSync(u,'utf8'),originals.get(u.href));
  console.log('caught:',name);
 }
-console.log('translation-homepage: nineteen in-memory faults caught; source unchanged');
+console.log(`translation-homepage: ${faults.length} in-memory faults caught; source unchanged`);

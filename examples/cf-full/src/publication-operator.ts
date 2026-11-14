@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {setTimeout as delay} from 'node:timers/promises';
 import {createConfiguredNode} from './node-runtime.js';
-import {renderReviewedSitePublication} from '@frontbase/backend';
+import {renderReviewedSitePublication,createPrivateLocalePublicationOverlay} from '@frontbase/backend';
 import {prerenderKey,signatureSql,type RenderProof} from './prerender-delivery.js';
 import SW_BUNDLE from 'virtual:sw-bundle';
 import type {DbRunner} from '@frontbase/edge-infra';
@@ -50,9 +50,17 @@ try {
         if(!access.ok||!(await access.json() as {review?:unknown}).review)throw Error('Reviewed administrator-accessible capture required');
         const owner='_root';
         if(env.FRONTBASE_DEPLOYMENT_MODE==='cloud')throw Error('Pre-render export is self-hosted only');
+        const initialChecks=new Map<string,RenderProof['checks'][number]>();
+        const readOverlay=async(sql:string,params:unknown[]=[])=>{
+            const result=await readState(`SELECT fb_snapshot.rows, encode(sha256(convert_to(fb_snapshot.rows::text,'UTF8')),'hex') AS signature FROM (SELECT COALESCE(jsonb_agg(to_jsonb(fb_row)), '[]'::jsonb) AS rows FROM (${sql}) fb_row) fb_snapshot`,params);
+            if(!result[0]||!Array.isArray(result[0].rows)||typeof result[0].signature!=='string')throw Error('Private locale read unavailable');
+            initialChecks.set(JSON.stringify([sql,params]),{sql,params,signature:result[0].signature});
+            return result[0].rows as Record<string,unknown>[];
+        };
+        const localeOverlay=await createPrivateLocalePublicationOverlay({query:readOverlay,exec:async()=>{throw Error('Private export cannot write');}},owner,input.hash,input.localeHashes??[]);
         await mkdir(outputFile,{recursive:false,mode:0o700});
         const output=join(outputFile,'__frontbase_prerender',input.hash);await mkdir(output,{recursive:true,mode:0o700});
-        const snapshots=new Map<string,{rows:Record<string,unknown>[];check:RenderProof['checks'][number]}>();
+        const snapshots=new Map<string,{rows:Record<string,unknown>[];check:RenderProof['checks'][number];baseline:RenderProof['checks'][number]}>();
         let completed=0;
         const renderPath=async(path:unknown)=>{
             if(typeof path!=='string'||!path.startsWith('/')||path.startsWith('//')||new URL(path,origin).origin!==origin||path.includes('#'))throw Error('Invalid export path');
@@ -66,18 +74,28 @@ try {
                 signatureSql(sql); // refuse a non-read query before interpolation
                 const rows=await readState(`SELECT fb_snapshot.rows, encode(sha256(convert_to(fb_snapshot.rows::text,'UTF8')),'hex') AS signature FROM (SELECT COALESCE(jsonb_agg(to_jsonb(fb_row)), '[]'::jsonb) AS rows FROM (${sql}) fb_row) fb_snapshot`,params);
                 const row=rows[0];if(!row||!Array.isArray(row.rows)||typeof row.signature!=='string')throw Error('Snapshot read failed');
-                const check={sql,params,signature:row.signature};
+                const baseline={sql,params,signature:row.signature};
+                const projected=localeOverlay(sql,params,row.rows as Record<string,unknown>[]);
+                const signature=projected?(await readState("SELECT encode(sha256(convert_to(?::jsonb::text,'UTF8')),'hex') AS signature",[JSON.stringify(projected)]))[0]?.signature:row.signature;
+                if(typeof signature!=='string')throw Error('Private locale signature unavailable');
+                const check={sql,params,signature};
                 if(snapshots.has(identity)&&snapshots.get(identity)!.check.signature!==check.signature)throw Error('Publication changed during parallel export');
-                dependencies.set(identity,check);snapshots.set(identity,{rows:row.rows as Record<string,unknown>[],check});
-                return structuredClone(row.rows) as Record<string,unknown>[];
+                dependencies.set(identity,check);snapshots.set(identity,{rows:projected??row.rows as Record<string,unknown>[],check,baseline});
+                return structuredClone(projected??row.rows) as Record<string,unknown>[];
             }};
             // The renderer's existing branding/menu resolvers use this same
             // runner too, so their state reads are included in the proof.
             const response=await recording.run(runner,()=>renderReviewedSitePublication(runner,owner,new Request(new URL(path,origin)),{swBundle:SW_BUNDLE,resolveAudience:async()=>({authenticated:false})}));
-            if(!response||response.status!==200||response.headers.has('set-cookie')||response.headers.get('x-site-version')!==input.hash)throw Error('Export refused for '+path+' (status '+response?.status+')');
+            if(!response||![200,301].includes(response.status)||response.headers.has('set-cookie')||response.headers.get('x-site-version')!==input.hash)throw Error('Export refused for '+path+' (status '+response?.status+')');
             const html=await response.text(),bodyHash=await prerenderKey(html);
+            const expectedLanguage=input.expectedLanguages?.[path];
+            if(expectedLanguage!==undefined){
+                if(typeof expectedLanguage!=='string'||!/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(expectedLanguage))throw Error('Invalid expected language');
+                const actual=html.match(/<html\b[^>]*\blang=["']([^"']+)["']/i)?.[1];
+                if(actual!==expectedLanguage||response.headers.get('content-language')&&response.headers.get('content-language')!==expectedLanguage)throw Error('Export language mismatch for '+path);
+            }
             const checks=[...dependencies.values()];if(checks.length>128)throw Error('Export dependency limit exceeded');
-            const proof:RenderProof={version:1,origin,path,siteHash:input.hash,owner,checks,headers:[...response.headers],bodyHash};
+            const proof:RenderProof={version:1,origin,path,siteHash:input.hash,owner,status:response.status,checks,headers:[...response.headers],bodyHash};
             const serialized=JSON.stringify(proof);if(serialized.length>262144)throw Error('Export proof limit exceeded');
             await writeFile(join(output,bodyHash+'.html'),html,{mode:0o600});
             await writeFile(join(output,await prerenderKey(path)+'.json'),serialized,{flag:'wx',mode:0o600});
@@ -93,7 +111,7 @@ try {
         const failure=jobs.find(job=>job.status==='rejected');if(failure?.status==='rejected')throw failure.reason;
         // Revalidate each distinct dependency once, after ALL routes are rendered.
         // The complete marker is deliberately absent on a failed/partial export.
-        const captured=[...snapshots.values()].map(snapshot=>snapshot.check);
+        const captured=[...initialChecks.values(),...[...snapshots.values()].map(snapshot=>snapshot.baseline)];
         for(let offset=0;offset<captured.length;offset+=32){
             const batch=captured.slice(offset,offset+32),params:unknown[]=[];
             const queries=batch.map(check=>{params.push(check.signature,...check.params);return `SELECT signature = ? AS valid FROM (${signatureSql(check.sql)}) fb_check`;});

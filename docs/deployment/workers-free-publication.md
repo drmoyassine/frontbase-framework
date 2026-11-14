@@ -20,6 +20,8 @@ Preparation/read/preview/review request bodies are the existing site-publication
 
 Export input is `{ "hash": "<reviewed capture SHA-256>", "paths": ["/", "/explore/?type=program"] }`. Include every intended locale, route and query variant explicitly. Unsupported paths, non-200 responses, state changes during rendering and incomplete review refuse the export. No source publication or locale publication pointer is changed by export. Four renders overlap independent reads with request-local dependency recording. Transient reads receive at most three attempts; writes never receive this retry. Conflicting snapshots abort, and any failed export lacks its completion receipt.
 
+For a coordinated private bilingual export, add `localeHashes` containing the prepared locale release hashes. The operator validates their source and tenant, projects their future pointers in memory and leaves the database pointers unchanged. The completion check validates the original state; each delivery proof requires the projected pointers to actually be published. A missing or different published locale still returns 503. `expectedLanguages` can map each requested HTML path to its expected language so a source-language fallback cannot accidentally count as a translated-page pass. Redirects retain their reviewed 301 response.
+
 ## Delivery contract
 
 The completed export contains `__frontbase_prerender/<capture hash>/` with per-request descriptors, content-addressed HTML and `complete.json`. Copy this complete tree into the example's configured private asset build directory and set `FRONTBASE_PRERENDER_RELEASE` to its hash. Keep `run_worker_first = true`; bypassing the Worker would bypass publication checks and expose internal assets. Never host the export directory through a public static server.
@@ -31,7 +33,7 @@ Responses retain their captured security and language headers, declare `no-store
 ## Current acceptance limits
 
 - Only self-hosted PostgREST state is implemented; managed-cloud tenants and other state adapters are not qualified.
-- Six production-sized English route classes measured 2–3 ms Worker CPU. Full bilingual, interactive and responsive acceptance is still open.
+- Six production-sized English route classes measured 1–4 ms Worker CPU. Unexported directory search and pagination measured 131–359 ms on the isolated Free-plan Worker, despite returning 200; they are not qualified against the 10 ms budget. Bilingual export and interactive acceptance are separate gates.
 - This is no proof of Postgres throughput: dependency signatures impose database work on every public request.
 - Export cannot be published by itself. Retain the existing guarded publication and locale compare-and-swap flow after private acceptance; do not directly write pointers.
 

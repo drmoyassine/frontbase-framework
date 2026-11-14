@@ -20,6 +20,8 @@ response=await deliverPrerender(request('/ar/',undefined,'HEAD'),assets,()=>db,s
 for(const patch of [{origin:'https://another.invalid'},{path:'/en/'},{siteHash:'d'.repeat(64)},{headers:[['set-cookie','secret=x'],['x-site-version',siteHash]]}]){
  descriptor={...proof,...patch};response=await deliverPrerender(request(),assets,()=>({query:async()=>[{valid:true}]}),siteHash);assert.equal(response.status,503);
 }
+descriptor={...proof,status:301,headers:[...proof.headers,['location','/ar/new/']]};
+response=await deliverPrerender(request(),assets,()=>db,siteHash);assert.equal(response.status,301);assert.equal(response.headers.get('location'),'/ar/new/');
 descriptor=proof;
 response=await deliverPrerender(request(),assets,()=>({query:async()=>{throw Error('offline');}}),siteHash);assert.equal(response.status,503);
 assert.throws(()=>signatureSql('DELETE FROM settings'),/read_required/);

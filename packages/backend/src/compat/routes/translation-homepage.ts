@@ -1,3 +1,4 @@
+import {publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import {TranslationGenerationStore} from '../translation-generation.js';
 import {z} from 'zod';
 import type {Hono} from 'hono';
@@ -12,7 +13,7 @@ import {localeDirection} from '@frontbase/edge-core/localization';
 
 function reviewCode(error:unknown){const codes=new Set(['translation_storage_unavailable','homepage_source_unavailable','translation_read_unavailable','localized_interactive_list_not_supported','localized_live_table_not_supported']);const code=error instanceof Error&&codes.has(error.message)?error.message:'unavailable';return code;}
 async function body(request:Request){const reader=request.body?.getReader();if(!reader)throw Error();let size=0,text='';const decoder=new TextDecoder();while(true){const chunk=await reader.read();if(chunk.done)break;size+=chunk.value.byteLength;if(size>400000){await reader.cancel();throw Error();}text+=decoder.decode(chunk.value,{stream:true});}return JSON.parse(text+decoder.decode());}
-const pagePath=z.string().regex(/^\/(?:[A-Za-z0-9._~!$&'()*+,;=@%-]+\/)*$/).max(160);
+const pagePath=publicationPathSchema;
 const sourceHash=z.string().regex(/^[a-f0-9]{64}$/).optional();
 const policySchema=z.object({missing:z.enum(['block','source-fallback']),outdated:z.enum(['block','source-fallback'])}).strict();
 /** Registered under the existing administrator-only/no-store translation batch middleware. */

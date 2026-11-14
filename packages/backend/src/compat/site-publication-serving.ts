@@ -53,11 +53,7 @@ export async function resolveReviewedSitePublication(db:DbRunner,owner:string,re
 export async function renderReviewedSitePublication(db:DbRunner,owner:string,request:Request,options:{swBundle?:string;liveQuery?:PublishedLiveQuery;resolveAudience?:(owner:string,request:Request)=>Promise<import('@frontbase/edge-core/menus').VerifiedMenuAudience>}={}):Promise<Response|null> {
     if(!['GET','HEAD'].includes(request.method))throw new Error('publication_method_invalid');
     const audience=options.resolveAudience?await options.resolveAudience(owner,request).catch(()=>({authenticated:false})):null;
-    // The list fetch honors the URL's locale: the page's own release localizes query and text,
-    // so a hydrated standard list agrees with the localized SSR around it.
-    let listRequest:Awaited<ReturnType<typeof localizedListRequest>>=null;
-    if(request.headers.has('X-Frontbase-List'))try{listRequest=await localizedListRequest(db,owner,new URL(request.url).pathname,options.liveQuery);}catch{return new Response(JSON.stringify({error:'list_unavailable'}),{status:503,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});}
-    const listResponse=await publicationListResponse(db,owner,request,audience,listRequest??undefined,options.liveQuery);if(listResponse)return listResponse;
+    const listResponse=await renderReviewedPublicationList(db,owner,request,audience,options.liveQuery);if(listResponse)return listResponse;
     let localeResult:Awaited<ReturnType<typeof resolveHomepageLanguageRequest>>=null;
     try{if(!audience?.authenticated)localeResult=await resolveHomepageLanguageRequest(db,owner,request,options.liveQuery);}catch(error){
         if(!(error instanceof PublicationRequestError))reportReadFailure('localized-page',error);
@@ -112,4 +108,16 @@ export async function renderReviewedSitePublication(db:DbRunner,owner:string,req
         headers.set('X-Robots-Tag','noindex, nofollow');
         return new Response(request.method==='HEAD'?null:'Site unavailable',{status:503,headers});
     }
+}
+
+/** List-only entry shares the exact reviewed binding, locale and permission checks.
+ * Hosts may invoke it before CMS initialization for anonymous published requests.
+ */
+export async function renderReviewedPublicationList(db:DbRunner,owner:string,request:Request,audience:import('@frontbase/edge-core/menus').VerifiedMenuAudience|null,liveQuery?:PublishedLiveQuery):Promise<Response|null>{
+    if(!['GET','HEAD'].includes(request.method))throw Error('publication_method_invalid');
+    // The list fetch honors the URL's locale: the page's own release localizes query and text,
+    // so a hydrated standard list agrees with the localized SSR around it.
+    let listRequest:Awaited<ReturnType<typeof localizedListRequest>>=null;
+    if(request.headers.has('X-Frontbase-List'))try{listRequest=await localizedListRequest(db,owner,new URL(request.url).pathname,liveQuery);}catch{return new Response(JSON.stringify({error:'list_unavailable'}),{status:503,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});}
+    return publicationListResponse(db,owner,request,audience,listRequest??undefined,liveQuery);
 }

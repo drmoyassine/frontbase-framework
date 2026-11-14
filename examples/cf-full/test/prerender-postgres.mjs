@@ -30,5 +30,15 @@ try {
  assert.equal(await verifyRenderProof(db,proof),true);
  sql("DELETE FROM settings WHERE key='site_publication:active:v1';");
  assert.equal(await verifyRenderProof(db,proof),false,'private capture is not public');
+ // A future locale pointer is a serving condition, never a publication operation.
+ sql(`INSERT INTO settings VALUES ('tenant-a','site_publication:active:v1','{"hash":"${hash}","generation":1}');`);
+ const plannedRows=[{value:JSON.stringify({hash:'d'.repeat(64),generation:1})}];
+ const plannedSignature=(await db.query("SELECT encode(sha256(convert_to(?::jsonb::text,'UTF8')),'hex') AS signature",[JSON.stringify(plannedRows)]))[0].signature;
+ const futureProof={...proof,checks:[{sql:query,params:[owner,'translation_homepage:active:v1:ar'],signature:plannedSignature}]};
+ assert.equal(await verifyRenderProof(db,futureProof),false,'private locale pointer must not serve');
+ sql(inlinePgParams('INSERT INTO settings VALUES (?,?,?)',[owner,'translation_homepage:active:v1:ar',plannedRows[0].value])+';');
+ assert.equal(await verifyRenderProof(db,futureProof),true,'only the exact published locale pointer opens delivery');
+ sql("UPDATE settings SET value='changed' WHERE key='translation_homepage:active:v1:ar';");
+ assert.equal(await verifyRenderProof(db,futureProof),false,'locale replacement invalidates previous assets');
  console.log('PostgreSQL proof: SHA-256, parameter order, tenant isolation, invalidation, private fence passed');
 }finally{if(started)docker(['rm','-f',name]);}
