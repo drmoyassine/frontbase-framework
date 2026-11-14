@@ -30,7 +30,7 @@ export async function localizedListRequest(db:DbRunner,tenant:string,path:string
     if(exact?.release){
         if(exact.release.policy?.outdated!=='source-fallback'){
             const current=await captureHomepage(db,tenant,new Request('https://locale-validation.invalid'+stripped),liveQuery,stripped);
-            if(current.active.pointer.hash!==exact.release.siteHash||current.sourceHash!==exact.release.sourceHash)throw Error('locale_unavailable');
+            if(current.source.hash!==exact.release.siteHash||current.sourceHash!==exact.release.sourceHash)throw Error('locale_unavailable');
         }
         return {locale:prefix,path:stripped,catalog:exact.release.catalog};
     }
@@ -104,7 +104,7 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     type LiveEntry=PublishedLocalePointerEntry&{pointer:{hash:string;generation:number};release:NonNullable<PublishedLocalePointerEntry['release']>};
     const liveOf=(item:PublishedLocalePointerEntry|null):LiveEntry|null=>item&&!item.corrupt&&item.release?item as LiveEntry:null;
     const sourceUrl=new URL(request.url);if(matched)sourceUrl.pathname=stripped;
-    const context=await createPageCapture(db,tenant,request,liveQuery),active=context.active;
+    const context=await createPageCapture(db,tenant,request,liveQuery),active=context.active!;
     const captures=new Map<string,Awaited<ReturnType<typeof captureHomepage>>>();
     // Listing releases resolve through localized queries: their fresh released titles drive the
     // registry (search/sort/totals) and standard-list reads beside the per-unit text join.

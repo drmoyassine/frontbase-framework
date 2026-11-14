@@ -1,0 +1,67 @@
+# Study in USA Cloudflare deployment — 2026-11-11
+
+Cloudflare Worker: [study-in-usa-frontbase](https://study-in-usa-frontbase.frontbase.workers.dev).
+Source: clean Git archive of main `3f93ea284563dcfa6569b52a861c957194537a3a`, frozen lockfile, workspace build passed. Live Cloudflare version after enabling the existing OAuth relay: `85d804f9-1170-4a98-9aaf-a6a6380a48e9`. CLI deployment; no DNS, custom domain, Git integration or traffic cutover.
+
+- **State**: dedicated [self-hosted PostgREST state endpoint](https://frontbase-studygram-state.4ky7uo.easypanel.host), database `frontbase_state`, exact application schema `studygram-state`, invoker-only RPCs in the state endpoint's `public` API profile. Verified the live schema and installation ownership marker. The application reaches Postgres over HTTPS and has no D1 binding. The separate translations endpoint and original database's reserved `public` were outside the change.
+- **Binding continuity**: `APP_DB_POSTGREST_RPC_SCHEMA=public`, `APP_DB_POSTGREST_RPC_PREFIX=fb_state_2c657c9735825ff9d07802bd_`, `FRONTBASE_INSTALLATION_ID=0a5ed5aa-f487-45f5-8a8e-36086f1efa74`. Preserve the Worker secrets on upgrades, including its existing session secret, state token and relay registration key. Never recreate the schema or regenerate the session secret for a routine upgrade.
+- **Owner and templates**: the normal first-run and login APIs returned 200; a fresh login using the password recovered from the Windows-user-encrypted handoff also returned 200. First-run setup is closed. Study in USA site identity saved. Booking for X installed six editable drafts: Homepage, Explore, Blog, Institution detail, Program detail and Blog article. Anonymous datasource listing returned 401. Root returned 200; this does not prove live content publication.
+- **Supabase**: the existing Studygram DB project `uwzosvzynnpbxpnwqgkm` reports healthy. Content uses the separate Supabase/PostgREST datasource path. The production relay receiver proof and authenticated Supabase authorization start both returned 200. The private content views deny public access, and no Supabase grant or datasource is installed yet. After owner consent, choose the existing project and validate reads from the intended institution, program and article collections before preparing site publication. No source grants, policies or records were changed.
+
+The Windows password handoff is under the local profile and is intentionally outside Git. No credential values or private setup links appear here.
+
+Read-only Supabase inspection found the existing institution and program views now include multiple countries. The institution view has 754 total rows, 243 with USA country ID 22. Bind with the explicit USA filter and approved article source, then verify routing before publication.
+
+## November 13 — Studygram DB connected
+
+The owner completed Supabase OAuth. The retained grant discovers Studygram DB and another project. Supabase labeled the account after the first project, so the datasource explicitly selects Studygram DB by ref `uwzosvzynnpbxpnwqgkm`. The saved datasource passed its HTTPS connection test and table discovery. No Supabase schema bootstrap ran.
+
+Site configuration revision 2 scopes institutions, programs, cities and editorial documents by USA country ID 22. Private previews passed for all four collections. Program preview joins to the scoped institution and city, and a direct probe for the Caribbean program path returned zero rows. The article query also checks the Study in USA source origin.
+
+Bulk publication refused four Caribbean-origin program URLs despite their USA metadata. A second check found SVG logos that the publication media contract rejects. A private candidate with Washington State University and four linked programs prepared and rendered successfully. Homepage, Explore, the institution route and all four program routes returned HTTP 200. No release is active. Full publication still requires resolving the conflicting records and unsupported logos and bringing over or reviewing article approvals in this installation.
+
+Cloudflare deployment used Wrangler credentials outside the app. No Cloudflare management grant was saved in Connected Accounts. Frontbase state is a Worker runtime binding, and this CLI installation does not currently expose it through the in-app deployment bindings panel.
+
+## November 14 — post-upgrade datasource and publication plan
+
+PR #11 merged at `77f5e207`. The Study-in-USA Worker is running version `6451e8cf-39ae-4ec3-bd13-126d825931fb`. All 15 bindings were retained, including the `studygram-state` runtime binding. In the authenticated production console, the existing Studygram DB datasource listed 83 tables and views. Data Inspector read `institutions` (754 records) and `programs` (46,540 records) through its saved `public` schema. Those are source totals. Revision 2 applies the USA scope separately during publication. No datasource, source records or publication settings changed during this check.
+
+### Remaining work in order
+
+1. **Resolve the four conflicting program routes.** Compare their Caribbean-origin WordPress URLs with the linked institution, city and country. Correct a mapping only where the source supports the USA route. Otherwise exclude the record from the USA release and record the disposition. Recheck the scoped route inventory for foreign-origin paths and duplicate routes.
+2. **Resolve rejected SVG logos.** Identify the logos that block preparation. Use approved PNG or WebP renditions, or an explicit approved omission where a replacement is unavailable. Rerun the media check on the full candidate.
+3. **Reconcile article approvals.** Match this installation's article identities and snapshots to the existing WordPress pilot approvals. Carry forward approvals where the source and content match. Review any changed or unmatched snapshots before including them.
+4. **Prepare and review a full private release.** Build it from the corrected USA-scoped configuration. Verify route counts and exclusions, homepage and Explore, institution/program detail pages, blog index and articles, internal links, redirects, canonical URLs and sitemap. Verify English and the Arabic routes included in the candidate, including language switching and mobile layouts. Keep the Washington State University rehearsal as evidence of the smaller candidate only.
+5. **Publish the reviewed candidate on the Worker and verify it publicly.** Record the candidate and rollback reference before activation. Check the same public route and locale samples after publication. Handle any production domain or traffic cutover as a separate operation after Worker verification.
+
+Next executable task: inspect the four rejected program records and produce a source-backed correction or exclusion for each.
+
+## Full publication acceptance — in progress
+
+Trace the four refused program routes and media, reconcile article snapshots, and verify a private English and Arabic release before changing the public pointer.
+
+### Catalog repair and private English verification
+
+- The four program records 46192–46195 link to St. George’s University, Grenada (278), and their original URLs are on study-in-caribbean.com. The dedicated USA Worker publication views exclude them and keep the shared catalog records and existing staging views intact.
+- The scoped institution/program views substitute the previously converted ELS PNG for 48 SVG references. The existing asset returned HTTP 200 with image/png. Scoped counts are 18 institutions, 293 programs and 17 linked cities, with no duplicate catalog paths or dangling institution links. Anonymous and authenticated Supabase roles cannot select the new views.
+- Worker configuration revision 4 uses those three private views. Private catalog manifest 4a7da358ad8f3f58e34076fe2871c81872c57f6800f111ee8d65418d328af0fe was recoverable through the authenticated read API even though full preparation returned 422. All 313 English catalog previews returned 200, declared English, sent noindex, and contained no study-in-caribbean.com link. This manifest has zero articles and was never activated.
+- Arabic is now configured as a target locale. Translation storage is unset and no locale releases exist on this installation. The current locale preview derives from an active reviewed source capture. A private rehearsal with the full source and isolated translation storage is still needed before production publication.
+### Editorial reconciliation and full-release blocker
+
+- All 957 articles matched their existing reviewed WordPress snapshots and now have revision-4 approvals in this Worker. Match checks covered identity, URL, title, excerpt, body, locale, byline, publication instant, cover and alt text.
+- The full local rehearsal resolved all 1,271 English routes with the deployed code, layouts, catalog and reconciled approvals. Expected manifest 4c7dc4b4590ba3a6a246e0e5f0eb63778df01371e0bf149d58c464806cb0c726 has 29 chunks. Live full preparation returns 422 and the manifest read returns 404.
+- Publication batching repair claimed for this deployment. Preserve approval fingerprints, tenant filters, immutable chunks and index verification while reducing the number of HTTPS state calls. The live failure is still unconfirmed until reproduced or cleared on the Worker.
+
+- The batching candidate passed workspace build/check, bundle no-leak check, and the publication chunk, manifest and integration suites. The integration suite exercised review/activation and 10,049 captured programs. Cloudflare version 00e96412-800d-49fe-848d-a4ea2ace4729 retained all 15 bindings but returned 503 during full preparation and subsequent administrator sign-in. Rolled back to 6451e8cf-39ae-4ec3-bd13-126d825931fb and verified sign-in, private catalog read and a null public pointer. The batching patch remains local and uncommitted. The 503 cause is unconfirmed.
+- Next, reproduce the new build against an isolated Cloudflare Worker using the same HTTP state adapter, qualify sign-in and full capture before redeploying, then configure separate translation storage and review the exact source in an isolated private rehearsal. Publish only after the English and Arabic route, link, language-switcher, sitemap and responsive checks pass.
+- Mutation coverage for the batching patch is pending. The initial immutable-retry mutation matched the new batch statement while the existing gate exercised the single-chunk write. The single-write mutation now targets its exact statement, and the manifest test also exercises corrupt-row refusal through the batch path.
+
+### Isolated Cloudflare reproduction and bilingual verification
+
+Claimed November 14. Scope: reproduce the 503 with disposable Cloudflare and PostgREST state, bind the existing translation endpoint to a separate Study-in-USA translation project identity, and keep production publication pending until private bilingual checks pass.
+
+- Production translation storage revision 1 points to the existing native PostgREST translations protocol with its own project identity. Direct capability, app connection test, settings save and post-save read all returned 200. No translation release or public site pointer changed.
+- Disposable Cloudflare Worker 2caa7bdb-9a9a-48d7-9bff-078e3ac5e69c passed first administrator setup and sign-in with isolated real PostgreSQL/PostgREST state. It prepared and reviewed 18 synthetic institutions, 293 programs and 957 articles, and six representative private pages returned 200 and noindex. The pointer remained null. The fixture Worker, tunnel and local containers were removed. The original sign-in 503 did not reproduce.
+- The private translation review/save/prepare/render endpoints accept an explicitly selected reviewed source hash. The normal tenant guard, translation fingerprints and review checks still apply. A candidate's locale can render privately with noindex before its source is active. Publishing still uses the active reviewed source and the existing pointer compare-and-swap.
+- Production runtime candidate 94024b2f-1a23-41ab-bd9c-5e273b41a057 initially passed administrator sign-in, private catalog read and the 15-binding fingerprint. Full preparation returned HTTP 503. Subsequent login returned a Cloudflare HTML Error 1102 (CPU-time limit), Ray a5a1c0985a88ce99-KWI at 00:03 UTC. Restored 6451e8cf-39ae-4ec3-bd13-126d825931fb to 100%. Verified administrator access, catalog candidate, null public pointer and retained translation storage after rollback.
+- The isolated result proves the batched path at the same record counts. It does not reproduce the production CPU failure or represent the full real layouts and articles. Next, instrument the production-equivalent capture with the same layout and approval byte sizes and separate cold login from full-capture timings. Then verify the exact English and Arabic drafts privately before publication. No production publication or DNS cutover occurred.

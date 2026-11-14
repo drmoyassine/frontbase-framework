@@ -16,6 +16,10 @@ export class SitePublicationReviewStore {
         const active=await new SitePublicationStore(this.db,this.tenant).activeVersion();
         return active&&await this.receipt(active.pointer.hash)?active:null;
     }
+    async reviewedVersion(hash:string){
+        const artifact=await new SitePublicationStore(this.db,this.tenant).getVersion(hash);
+        return artifact&&await this.receipt(hash)?{hash,artifact}:null;
+    }
     private async receipt(hash:string){
         const rows=await this.db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',[this.tenant,this.key(hash)]);
         if(!rows.length)return null;

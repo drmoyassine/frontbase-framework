@@ -36,13 +36,20 @@ export function packPublicationChunks(collection: PublicationCollection, input: 
     const result: PublicationChunk[] = [];
     let pending: typeof records = [];
     const make = (rows: typeof records) => ({ schemaVersion: 1, kind: 'directory-record-chunk', collection, records: rows });
+    // The canonical array adds one comma between records. Measure each record
+    // once, including its UTF-8 encoding, to bound work on edge hosts.
+    const envelopeBytes = bytes(make([]));
+    let pendingBytes = envelopeBytes;
     for (const row of records) {
-        if (pending.length && (pending.length === 48 || bytes(make([...pending, row])) > PUBLICATION_CHUNK_BYTES)) {
-            result.push(parsePublicationChunk(make(pending))); pending = [];
+        const rowBytes = bytes(row);
+        if (envelopeBytes + rowBytes > PUBLICATION_CHUNK_BYTES) throw new Error('publication_chunk_too_large');
+        if (pending.length === 48 || pendingBytes + rowBytes + Number(pending.length > 0) > PUBLICATION_CHUNK_BYTES) {
+            result.push(parsePublicationChunk(make(pending)));
+            pending = [];
+            pendingBytes = envelopeBytes;
         }
+        pendingBytes += rowBytes + Number(pending.length > 0);
         pending.push(row);
-        // A single oversized record must fail, never be silently dropped.
-        if (bytes(make(pending)) > PUBLICATION_CHUNK_BYTES) throw new Error('publication_chunk_too_large');
     }
     if (pending.length) result.push(parsePublicationChunk(make(pending)));
     return result;
@@ -57,8 +64,10 @@ export class SitePublicationChunkStore {
         const rows = await this.db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',
             [this.tenant, `site_publication:chunk:v1:${reference.hash}`]);
         if (!rows.length) return null;
+        return this.parseStored(reference, String(rows[0]!.value));
+    }
+    private async parseStored(reference: PublicationChunkReference, raw: string) {
         try {
-            const raw = String(rows[0]!.value);
             if (new TextEncoder().encode(raw).byteLength > PUBLICATION_CHUNK_BYTES) throw new Error();
             // Integrity metrics are measured on the STORED content, not on parsePublicationChunk's
             // return value: the record schemas evolve (e.g. nullable defaults added), and a
@@ -74,6 +83,43 @@ export class SitePublicationChunkStore {
                 || bytes(stored) !== reference.bytes || await publicationHash(stored) !== reference.hash) throw new Error();
             return chunk;
         } catch { throw new Error('publication_chunk_unavailable'); }
+    }
+    async readBatch(references: PublicationChunkReference[]): Promise<PublicationChunk[]> {
+        const chunks: PublicationChunk[] = [];
+        for (const batch of this.batches(references)) {
+            const keys = batch.map(reference => `site_publication:chunk:v1:${reference.hash}`);
+            const rows = await this.db.query(`SELECT key, value FROM settings WHERE tenant_slug = ? AND key IN (${keys.map(() => '?').join(',')})`, [this.tenant, ...keys]);
+            const values = new Map(rows.map(row => [String(row.key), String(row.value)]));
+            if (values.size !== rows.length || rows.some(row => !keys.includes(String(row.key)))) throw new Error('publication_chunk_unavailable');
+            for (const reference of batch) {
+                const raw = values.get(`site_publication:chunk:v1:${reference.hash}`);
+                if (raw === undefined) throw new Error('publication_manifest_chunk_missing');
+                chunks.push(await this.parseStored(reference, raw));
+            }
+        }
+        return chunks;
+    }
+    private *batches<T extends {bytes:number}>(entries: T[]) {
+        let batch: T[] = [], size = 0;
+        for (const entry of entries) {
+            if (batch.length === 16 || size + entry.bytes > 2 * PUBLICATION_CHUNK_BYTES) {
+                yield batch;
+                batch = [];
+                size = 0;
+            }
+            batch.push(entry);
+            size += entry.bytes;
+        }
+        if (batch.length) yield batch;
+    }
+    async insertBatch(chunks: PublicationChunk[], references: PublicationChunkReference[], now: string) {
+        const entries = chunks.map((chunk, index) => ({...references[index]!, value: stableStringify(chunk)}));
+        for (const batch of this.batches(entries)) {
+            const rows = batch.map(() => '(?,?,?,?)').join(',');
+            const params = batch.flatMap(entry => [this.tenant, `site_publication:chunk:v1:${entry.hash}`, entry.value, now]);
+            const changed = await this.db.exec(`INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES ${rows} ON CONFLICT(tenant_slug, key) DO NOTHING`, params);
+            if (!Number.isInteger(changed) || changed < 0 || changed > batch.length) throw new Error('publication_write_result_invalid');
+        }
     }
     async put(input: PublicationChunk, now: string): Promise<PublicationChunkReference> {
         const chunk = parsePublicationChunk(input);

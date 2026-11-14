@@ -110,16 +110,18 @@ export function localizedTitleIndex(release:z.infer<typeof releaseSchema>|null,m
     const indexTitles=new Map<string,string>(manifest.index.map(row=>[`${row.collection}:${row.id}`,row.title] as const));
     return {titles:freshLocalizedIndexTitles(release.catalog,indexTitles),catalog:release.catalog};
 }
-export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string){
-    const context=await createPageCapture(db,tenant,request,liveQuery);
+export async function captureHomepage(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,path:string='/',sourceUrl?:URL,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string,siteHash?:string){
+    const context=await createPageCapture(db,tenant,request,liveQuery,siteHash);
     return context.capture(path,sourceUrl,localizedTitles,recordsLocale);
 }
-/** One request, one verified active publication; no authorization or DB bytes survive the request. */
-export async function createPageCapture(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery){
-    const active=await new SitePublicationReviewStore(db,tenant).reviewedActiveVersion();
-    if(!active||active.artifact.schemaVersion!==2)throw Error('reviewed_homepage_required');
-    const manifest=active.artifact;
-    return {active,capture:async(path:string,sourceUrl?:URL,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string)=>{
+/** One request, one reviewed source version. Explicit versions are supplied only by private routes. */
+export async function createPageCapture(db:DbRunner,tenant:string,request:Request,liveQuery?:PublishedLiveQuery,siteHash?:string){
+    const reviews=new SitePublicationReviewStore(db,tenant);
+    const active=siteHash?null:await reviews.reviewedActiveVersion();
+    const source=siteHash?await reviews.reviewedVersion(siteHash):active&&{hash:active.pointer.hash,artifact:active.artifact};
+    if(!source||source.artifact.schemaVersion!==2)throw Error('reviewed_homepage_required');
+    const manifest=source.artifact;
+    return {source,active,capture:async(path:string,sourceUrl?:URL,localizedTitles?:LocalizedQueryPlan,recordsLocale?:string)=>{
     const page=manifest.staticPages?.find(candidate=>candidate.originalPath===path);
     // Template listing pages resolve with their request parameters (explore type/q/page); static pages never carry them.
     const listing=page?undefined:manifest.templates.find(template=>['directory','article-index'].includes(template.role)
@@ -132,7 +134,7 @@ export async function createPageCapture(db:DbRunner,tenant:string,request:Reques
     // since live-data slice 2 — static pages' live lists too (full-dataset localized
     // sort/filter). Review/prepare captures never receive a plan, so release hashes stay
     // deterministic.
-    const result=await resolvePublicationVersionPage(manifest,active.pointer.hash,tenant,db,new Request(new URL(!page&&sourceUrl?.search?path+sourceUrl.search:path,request.url)),{authenticated:false},liveQuery,localizedTitles,page?undefined:recordsLocale);
+    const result=await resolvePublicationVersionPage(manifest,source.hash,tenant,db,new Request(new URL(!page&&sourceUrl?.search?path+sourceUrl.search:path,request.url)),{authenticated:false},liveQuery,localizedTitles,page?undefined:recordsLocale);
     if(!result)throw Error('homepage_unavailable');
     const layout=homepageDisplayLayout(result.page.layout as unknown as PageLayoutData);
     const baseFields=homepageDisplayFields(layout) as (DisplayField&{menu?:MenuRef})[];
@@ -146,10 +148,10 @@ export async function createPageCapture(db:DbRunner,tenant:string,request:Reques
     // Hash the identity→text pairs in canonical identity order: rendered row order must not invalidate a release.
     const sorted=fields.map(field=>{const identity=stableIdentity(field);return {key:JSON.stringify(identity),pair:[identity,field.text]};}).sort((a,b)=>a.key<b.key?-1:a.key>b.key?1:0);
     const sourceHash=await publicationHash(sorted.map(item=>item.pair));
-    return {active,result,layout,fields,sourceHash,pageId:target.pageId,path,templateListing:!!listing};
+    return {source,result,layout,fields,sourceHash,pageId:target.pageId,path,templateListing:!!listing};
     }};
 }
-async function reviewContext(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery:PublishedLiveQuery|undefined,path:string,batchReview:boolean){
+async function reviewContext(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery:PublishedLiveQuery|undefined,path:string,batchReview:boolean,siteHash?:string){
     locale.parse(target);const config=(await new TranslationGenerationStore(db,tenant).get()).configuration;
     if(!config||!config.targetLocales.includes(target))throw Error('configured_locale_required');
     const storage=await configuredTranslationStorage(host,db,tenant),identity=await configuredTranslationStorageIdentity(host,db,tenant);
@@ -158,13 +160,13 @@ async function reviewContext(host:TranslationBatchHost,db:DbRunner,tenant:string
     // Precise translation-surface refusals (e.g. an interactive live list) pass through under
     // their own code; everything else stays an opaque source-unavailable so internals never
     // leak through the review surface.
-    const capture=await captureHomepage(db,tenant,request,liveQuery,path).catch((error:unknown)=>{if(error instanceof Error&&['localized_interactive_list_not_supported','localized_live_table_not_supported'].includes(error.message))throw error;throw Error('homepage_source_unavailable');});
+    const capture=await captureHomepage(db,tenant,request,liveQuery,path,undefined,undefined,undefined,siteHash).catch((error:unknown)=>{if(error instanceof Error&&['localized_interactive_list_not_supported','localized_live_table_not_supported'].includes(error.message))throw error;throw Error('homepage_source_unavailable');});
     const configHash=await publicationHash({identity,sourceLocale:config.sourceLocale,targetLocales:config.targetLocales});
-    const token=await publicationHash({site:capture.active.pointer.hash,source:capture.sourceHash,config:configHash,path});
+    const token=await publicationHash({site:capture.source.hash,source:capture.sourceHash,config:configHash,path});
     return {storage,config,capture,configHash,token};
 }
-async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery,path:string='/',additionalRecords:DisplayField[]=[],batchReview=false,requested?:Set<string>){
-    const {storage,config,capture,configHash,token}=await reviewContext(host,db,tenant,request,target,liveQuery,path,batchReview);
+async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery,path:string='/',additionalRecords:DisplayField[]=[],batchReview=false,requested?:Set<string>,siteHash?:string){
+    const {storage,config,capture,configHash,token}=await reviewContext(host,db,tenant,request,target,liveQuery,path,batchReview,siteHash);
     const page=await host.pagesFor(tenant).get(capture.pageId);
     const sourceFields=capture.fields.concat(await supplementTemplateRecords(db,tenant,request,capture));
     for(const field of additionalRecords){if(!field.record)throw Error('record_identity_required');const existing=sourceFields.find(candidate=>JSON.stringify(stableIdentity(candidate))===JSON.stringify(stableIdentity(field)));if(existing){if(existing.text!==field.text)throw Error('source_changed');}else sourceFields.push(field);}
@@ -203,7 +205,7 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
  *  identities already stamped on the page keep their single page-bound unit. Serve joins stay in memory.
  *  Bounded hard at 500 total fields. */
 async function supplementTemplateRecords(db:DbRunner,tenant:string,request:Request,capture:Awaited<ReturnType<typeof captureHomepage>>){
-    const manifest=capture.active.artifact;
+    const manifest=capture.source.artifact;
     if(!capture.templateListing||manifest.schemaVersion!==2)return[];
     const template=manifest.templates.find(candidate=>candidate.pageId===capture.pageId);
     const listed=template?directoryLayoutQueries(template.layout as unknown as PageLayoutData).map(query=>query.binding.queryId).filter(queryId=>directoryListCollections[queryId]):[];
@@ -242,17 +244,17 @@ async function readFields(s:Session){
     if(ids.length){const rows=await s.persistence.readMany(s.scope,ids,s.locale);ids.forEach((id,index)=>snapshots.set(id,rows[index]!));}
     return mapLimit(s.fields,async f=>({f,...await readField(s,f,snapshots.get(f.unitId))}));
 }
-export async function reviewHomepage(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery,path:string='/'){
-    const s=await session(host,db,tenant,request,target,liveQuery,path,[],true),fields=(await readFields(s).catch(()=>{throw Error('translation_read_unavailable');})).map(item=>item.value);
-    return translationHomepageReviewSchema.parse({locale:target,sourceLocale:s.config.sourceLocale,token:s.token,siteHash:s.capture.active.pointer.hash,fields,complete:fields.every(f=>f.state==='draft'),active:await readHomepagePointer(db,tenant,target,s.path),path:s.path});
+export async function reviewHomepage(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,liveQuery?:PublishedLiveQuery,path:string='/',siteHash?:string){
+    const s=await session(host,db,tenant,request,target,liveQuery,path,[],true,undefined,siteHash),fields=(await readFields(s).catch(()=>{throw Error('translation_read_unavailable');})).map(item=>item.value);
+    return translationHomepageReviewSchema.parse({locale:target,sourceLocale:s.config.sourceLocale,token:s.token,siteHash:s.capture.source.hash,fields,complete:fields.every(f=>f.state==='draft'),active:await readHomepagePointer(db,tenant,target,s.path),path:s.path});
 }
-export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,input:unknown,liveQuery?:PublishedLiveQuery){
-    const body=translationHomepageSaveSchema.parse(input),path=body.path??'/';let s:Session;try{s=await session(host,db,tenant,request,body.locale,liveQuery,path,[],true,new Set(body.entries.map(e=>e.id)));}catch{throw Error('homepage_review_unavailable');}
+export async function saveHomepageTranslations(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,input:unknown,liveQuery?:PublishedLiveQuery,siteHash?:string){
+    const body=translationHomepageSaveSchema.parse(input),path=body.path??'/';let s:Session;try{s=await session(host,db,tenant,request,body.locale,liveQuery,path,[],true,new Set(body.entries.map(e=>e.id)),siteHash);}catch{throw Error('homepage_review_unavailable');}
     if(body.token!==s.token)throw Error('source_changed');
     const current=new Map((await readFields(s)).map(item=>[item.f.id,item]));
     const pending=await mapLimit(body.entries,async e=>{const prior=current.get(e.id);if(!prior)throw Error('unknown_field');const field=prior.f;if(prior.value.token!==e.token)throw Error('revision_changed');return{e,field,display:translationDisplayText(field.text,e.text),...prior};});
     await writeHomepageDrafts(s,pending);
-    const latest=await captureHomepage(db,tenant,request,liveQuery,path);if(latest.sourceHash!==s.capture.sourceHash||latest.active.pointer.hash!==s.capture.active.pointer.hash)throw Error('source_changed');
+    const latest=await captureHomepage(db,tenant,request,liveQuery,path,undefined,undefined,undefined,siteHash);if(latest.sourceHash!==s.capture.sourceHash||latest.source.hash!==s.capture.source.hash)throw Error('source_changed');
     return {saved:pending.length};
 }
 async function writeHomepageDrafts(s:Session,pending:{field:Session['fields'][number];display:string;snapshot:Awaited<ReturnType<typeof readField>>['snapshot']}[]){
@@ -292,7 +294,7 @@ export async function publishFrontendTranslationEdits(host:TranslationBatchHost,
     }
     if(verifyRecords)await verifyRecords();
     assertNoIdentityCollision(catalog);
-    const release=releaseSchema.parse({...published,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,catalog,reviewer,reviewedAt:now});
+    const release=releaseSchema.parse({...published,siteHash:s.capture.source.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,catalog,reviewer,reviewedAt:now});
     const digest=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await versionKeyFor(path,digest),JSON.stringify(release),now]);
     await activateHomepageLocale(host,db,tenant,request,digest,pointer,now,liveQuery);return {hash:digest,saved:pending.length};
 }
@@ -303,12 +305,12 @@ export function assertNoIdentityCollision(catalog:(IdentifiedField&{sourceText?:
     for(const field of catalog){const key=JSON.stringify(stableIdentity(field)),text=field.sourceText??'';
         if(seen.has(key)&&seen.get(key)!==text)throw Error('translation_identity_collision');
         seen.set(key,text);}}
-export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,expectedToken:string,reviewer:string,now:string,liveQuery?:PublishedLiveQuery,path:string='/',policy:{missing:'block'|'source-fallback';outdated:'block'|'source-fallback'}={missing:'block',outdated:'block'}){
-    const s=await session(host,db,tenant,request,target,liveQuery,path);
+export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunner,tenant:string,request:Request,target:string,expectedToken:string,reviewer:string,now:string,liveQuery?:PublishedLiveQuery,path:string='/',policy:{missing:'block'|'source-fallback';outdated:'block'|'source-fallback'}={missing:'block',outdated:'block'},siteHash?:string){
+    const s=await session(host,db,tenant,request,target,liveQuery,path,[],false,undefined,siteHash);
     // The locale router owns every /{locale}/… URL once any release for that locale is active, so
     // preparing a release whose prefix the source publication still claims (records, static pages,
     // routes or redirect endpoints) would let activation silently shadow those source URLs.
-    const reserved=[...publicationPaths(s.capture.active.artifact),...(s.capture.active.artifact.schemaVersion===2?(s.capture.active.artifact.redirects??[]).flatMap(alias=>[alias.from,alias.to]):[])];
+    const reserved=[...publicationPaths(s.capture.source.artifact),...(s.capture.source.artifact.schemaVersion===2?(s.capture.source.artifact.redirects??[]).flatMap(alias=>[alias.from,alias.to]):[])];
     if(reserved.some(path=>{let route:string;try{route=decodeURIComponent(path).replace(/\/$/,'')||'/';}catch{return false;}return route===`/${target}`||route.startsWith(`/${target}/`);}))throw Error('locale_route_collision');
     if(s.token!==expectedToken)throw Error('review_changed');
     // Template listing pages render parameterized request variations, so only the per-unit join
@@ -327,10 +329,10 @@ export async function prepareHomepageLocale(host:TranslationBatchHost,db:DbRunne
     }
     const catalog=read.filter(item=>item.value.state==='draft'&&item.snapshot.head).map(item=>({id:item.f.id,blockId:item.f.blockId,path:item.f.path,...(item.f.versionId?{versionId:item.f.versionId}:{}),...(item.f.fieldKey?{fieldKey:item.f.fieldKey}:{}),...(item.f.record?{record:{connectionId:item.f.record.connectionId,collection:item.f.record.collection,key:item.f.record.key}}:{}),...(item.f.menu?{menu:item.f.menu}:{}),sourceFingerprint:item.f.fingerprint,sourceText:item.f.text,text:item.snapshot.head!.text,revisionId:item.snapshot.head!.revisionId,unitId:item.f.unitId}));
     assertNoIdentityCollision(catalog);
-    const release=releaseSchema.parse({version:1,tenant,project:s.scope.projectId,sourceLocale:s.config.sourceLocale,locale:target,siteHash:s.capture.active.pointer.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,path:s.path,policy,pageId:s.capture.pageId,catalog,reviewer,reviewedAt:now});
+    const release=releaseSchema.parse({version:1,tenant,project:s.scope.projectId,sourceLocale:s.config.sourceLocale,locale:target,siteHash:s.capture.source.hash,sourceHash:s.capture.sourceHash,configHash:s.configHash,path:s.path,policy,pageId:s.capture.pageId,catalog,reviewer,reviewedAt:now});
     const hash=await publicationHash(release);await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[tenant,await versionKeyFor(s.path,hash),JSON.stringify(release),now]);
     if(!await readHomepageRelease(db,tenant,hash))throw Error();
-    return {hash,previewUrl:'/api/project/translation-batches/homepage/preview/?hash='+hash,expected:await readHomepagePointer(db,tenant,target,s.path)};
+    return {hash,previewUrl:'/api/project/translation-batches/homepage/preview/?hash='+hash+(siteHash?'&siteHash='+siteHash:''),expected:await readHomepagePointer(db,tenant,target,s.path)};
 }
 export async function readHomepagePointer(db:DbRunner,tenant:string,target:string,path:string='/'){const value=await raw(db,tenant,await activeKey(target,path));return value?pointerSchema.parse(JSON.parse(value)):null;}
 export async function readHomepageRelease(db:DbRunner,tenant:string,hash:string){for(const key of ['translation_homepage:version:v1:'+hash,'translation_surface:version:v1:'+hash]){const value=await raw(db,tenant,key);if(!value)continue;const release=releaseSchema.parse(JSON.parse(value));if(release.tenant!==tenant||await publicationHash(release)!==hash)throw Error('locale_release_invalid');return release;}return null;}
@@ -339,7 +341,7 @@ export async function activateHomepageLocale(host:TranslationBatchHost,db:DbRunn
     if(s.configHash!==release.configHash||s.storage.scope.projectId!==release.project)throw Error('prepared_locale_changed');
     // Per-unit releases serve a fresh per-unit join, so site/source drift between prepare and
     // publish does not block (re-)activation; strict releases keep the whole-source gate.
-    if(release.policy?.outdated!=='source-fallback'&&(s.capture.active.pointer.hash!==release.siteHash||s.capture.sourceHash!==release.sourceHash))throw Error('prepared_locale_changed');
+    if(release.policy?.outdated!=='source-fallback'&&(s.capture.source.hash!==release.siteHash||s.capture.sourceHash!==release.sourceHash))throw Error('prepared_locale_changed');
     if(release.catalog.length){const batch=release.catalog,revisions=await s.storage.persistence.readRevisions(s.storage.scope,batch.map(field=>({unitId:field.unitId,revisionId:field.revisionId})),release.locale);
         batch.forEach((field,index)=>{const revision=revisions[index];if(!revision||revision.text!==field.text||revision.sourceFingerprint!==field.sourceFingerprint)throw Error('revision_unavailable');});}
     const prior=await raw(db,tenant,await activeKey(release.locale,release.path)),current=prior?pointerSchema.parse(JSON.parse(prior)):null;
@@ -435,7 +437,7 @@ export function projectHomepageLocale(capture:Awaited<ReturnType<typeof captureH
     // outdated dimension switches freshness to a per-unit join across source drift.
     const perUnit=release.policy?.outdated==='source-fallback';
     const partial=perUnit||release.policy?.missing==='source-fallback';
-    if(!perUnit&&(capture.active.pointer.hash!==release.siteHash||capture.sourceHash!==release.sourceHash))throw Error('locale_source_outdated');
+    if(!perUnit&&(capture.source.hash!==release.siteHash||capture.sourceHash!==release.sourceHash))throw Error('locale_source_outdated');
     // Per-unit freshness: released text joins onto the live capture only where the recorded source
     // text still matches; changed/removed units fall back to fresh source instead of poisoning the release.
     const sourceNow=new Map<string,string>();

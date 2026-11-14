@@ -21,19 +21,36 @@ const pages=new PagesStore(f.db,tenant);await pages.create({name:'Homepage',slug
 const store=new SitePublicationManifestStore(f.db,tenant),header={configurationRevision:1,configuration:config,templates:[],staticPages:[{pageId,title:'Home',description:'Study abroad',originalPath:'/',layout},{pageId:'00000000-0000-4000-8000-000000000021',title:'Privacy',description:'Source policy',originalPath:'/privacy/',layout}],redirects:[{from:'/old-privacy/',to:'/privacy/'}]};
 const baseHash=await store.prepare(header,{cities:[],institutions:[],programs:[],articles:[]},now),reviews=new SitePublicationReviewStore(f.db,tenant);
 await reviews.approve({hash:baseHash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Fixture homepage reviewed'},'reviewer',now);
-await reviews.activate(baseHash,null,now);
+
 let auth=true,role='owner',owner=tenant;
 const app=await createCompatApp({makeRunner:()=>f.db,sessionSecret:'allowance-private-fixture',now:()=>now,externalFetch:f.host.externalFetch,resolvePrincipal:async()=>({user:auth?{id:'editor',role}:null,tenant:owner})});
 const root='/api/project/translation-batches/homepage/';
 async function call(path,body,status=200){const r=await app.request('https://site.test'+root+path,{method:body?'POST':'GET',headers:{'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});assert.equal(r.status,status,await r.clone().text());const value=await r.json();assert.doesNotMatch(JSON.stringify(value),/PRIVATE_|serviceKey|data\.example/);return value;}
 const html=async path=>{const r=await renderReviewedSitePublication(f.db,tenant,new Request('https://site.test'+path));return {status:r?.status,headers:r?.headers,text:await r?.text()};};
 try{
- await call('review/?locale=fr',undefined,422);const before=f.calls.length,workspace=await call('workspace/');let review=workspace.review;assert.ok(workspace.locales.includes('ar'));assert.deepEqual(f.calls.slice(before).map(c=>c.body.p_operation),['read-many'],'opening the workspace uses exactly one translation-storage operation');assert.equal(review.complete,false);assert.ok(review.fields.some(f=>f.source==='Explore your next chapter'));assert.ok(review.fields.some(f=>f.source==='What would you like to study?'));assert.ok(review.fields.some(f=>f.source==='Institutions'));assert.equal((await html('/ar/')).status,404);assert.equal(new JSDOM((await html('/')).text).window.document.querySelector('[data-fb-locale]'),null);
- await call('prepare/',{locale:'ar',token:review.token,approveTranslations:true},409);
- const original=(await pages.get(pageId)).layout_data;
- for(let i=0;i<review.fields.length;i+=16)await call('save/',{locale:'ar',token:review.token,entries:review.fields.slice(i,i+16).map(field=>({id:field.id,token:field.token,text:'عربي '+field.source}))});
- const stale=review;review=await call('review/?locale=ar');assert.equal(review.complete,true);assert.equal((await pages.get(pageId)).layout_data,original);assert.equal(f.aiCalls(),0);
- await call('save/',{locale:'ar',token:stale.token,entries:[{id:stale.fields[0].id,token:stale.fields[0].token,text:'stale'}]},409);
+ const selected='siteHash='+baseHash;
+ await call('review/?locale=ar',undefined,422);
+ await call('review/?locale=ar&siteHash='+'0'.repeat(64),undefined,422);
+ auth=false;await call('review/?locale=ar&'+selected,undefined,401);auth=true;
+ owner='beta';await call('review/?locale=ar&'+selected,undefined,422);owner=tenant;
+ const originalLayout=(await pages.get(pageId)).layout_data;
+ let privateReview=await call('review/?locale=ar&'+selected);
+ await call('prepare/',{locale:'ar',token:privateReview.token,approveTranslations:true,siteHash:baseHash},409);
+ for(let i=0;i<privateReview.fields.length;i+=16)await call('save/?'+selected,{locale:'ar',token:privateReview.token,entries:privateReview.fields.slice(i,i+16).map(field=>({id:field.id,token:field.token,text:'عربي '+field.source}))});
+ privateReview=await call('review/?locale=ar&'+selected);assert.equal(privateReview.complete,true);
+ assert.equal((await pages.get(pageId)).layout_data,originalLayout);
+ const privateRelease=await call('prepare/',{locale:'ar',token:privateReview.token,approveTranslations:true,siteHash:baseHash});
+ await call('publish/',{hash:privateRelease.hash,expected:null,approveTranslations:true},409);
+ const privatePreview=await app.request('https://site.test'+privateRelease.previewUrl);assert.equal(privatePreview.status,200);
+ assert.equal(privatePreview.headers.get('x-robots-tag'),'noindex, nofollow');
+ const privateDocument=new JSDOM(await privatePreview.text()).window.document;
+ assert.equal(privateDocument.documentElement.lang,'ar');assert.equal(privateDocument.documentElement.dir,'rtl');
+ assert.equal((await app.request('https://site.test'+privateRelease.previewUrl.replace(baseHash,'0'.repeat(64)))).status,409);
+ auth=false;assert.equal((await app.request('https://site.test'+privateRelease.previewUrl)).status,401);auth=true;
+ await reviews.activate(baseHash,null,now);
+ await call('review/?locale=fr',undefined,422);const before=f.calls.length,workspace=await call('workspace/');let review=workspace.review;assert.ok(workspace.locales.includes('ar'));assert.deepEqual(f.calls.slice(before).map(c=>c.body.p_operation),['read-many'],'opening the workspace uses exactly one translation-storage operation');assert.equal(review.complete,true);assert.ok(review.fields.some(f=>f.source==='Explore your next chapter'));assert.ok(review.fields.some(f=>f.source==='What would you like to study?'));assert.ok(review.fields.some(f=>f.source==='Institutions'));assert.equal((await html('/ar/')).status,404);assert.equal(new JSDOM((await html('/')).text).window.document.querySelector('[data-fb-locale]'),null);
+ assert.equal(f.aiCalls(),0);
+ await call('save/',{locale:'ar',token:review.token,entries:[{id:review.fields[0].id,token:'0'.repeat(64),text:'stale'}]},409);
  await call('prepare/',{locale:'ar',token:review.token,approveTranslations:false},409);const prepared=await call('prepare/',{locale:'ar',token:review.token,approveTranslations:true});assert.equal((await html('/ar/')).status,404,'prepare must not publish');
  const preview=await app.request('https://site.test'+prepared.previewUrl);assert.equal(preview.status,200);assert.match(await preview.text(),/عربي/);
  await call('publish/',{hash:prepared.hash,expected:prepared.expected,approveTranslations:false},409);await call('publish/',{hash:prepared.hash,expected:prepared.expected,approveTranslations:true});

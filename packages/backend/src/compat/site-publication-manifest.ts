@@ -94,9 +94,11 @@ export const sitePublicationManifestSchema = z.object({ schemaVersion: z.literal
     for (const [role, collection] of [['directory', 'institutions'], ['directory', 'programs'], ['institution', 'institutions'],
         ['program', 'programs'], ['article-index', 'articles'], ['article', 'articles'], ['editorial','pages']])
         if (populations.get(collection!) && !roles.has(role!)) fail('missing_template_role');
+    const editorialRevisions=new Map(manifest.index.filter(row=>row.collection==='articles'||row.collection==='pages')
+        .map(row=>[JSON.stringify([row.collection==='pages'?'page':'article',row.id]),row.revision]));
     const approvalKeys=new Set<string>();
     for(const ref of manifest.approvals??[]){const key=JSON.stringify([ref.contentRole,ref.id]);
-        if(approvalKeys.has(key) || !manifest.index.some(row=>row.collection===(ref.contentRole==='page'?'pages':'articles') && row.id===ref.id && row.revision===ref.revision))fail('invalid_editorial_approval');
+        if(approvalKeys.has(key) || editorialRevisions.get(key)!==ref.revision)fail('invalid_editorial_approval');
         approvalKeys.add(key);
     }
 });
@@ -157,14 +159,19 @@ export class SitePublicationManifestStore {
         const manifest = sitePublicationManifestSchema.parse({ ...header,sourceBindings:sourceBindings(header.configuration), schemaVersion: 2, runtimeVersion: 'directory-chunks-v1',
             chunks: references, index: packed.flatMap((chunk, i) => indexChunk(chunk, references[i]!)) });
         await assertOutsidePublishedLocaleRoutes(this.db, this.tenant, manifestLocaleRouteExposures(manifest));
-        for (const chunk of packed) await this.chunks.put(chunk, now);
+        if (this.db.dialect === 'postgres') {
+            await this.chunks.insertBatch(packed, references, now);
+            await this.verify(manifest);
+        } else {
+            for (const chunk of packed) await this.chunks.put(chunk, now);
+        }
         const hash = await publicationHash(manifest);
         const changed = await this.db.exec('INSERT INTO settings (tenant_slug, key, value, updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO NOTHING',
             [this.tenant, `site_publication:manifest:v2:${hash}`, stableStringify(manifest), now]);
         if (changed !== 0 && changed !== 1) throw new Error('publication_write_result_invalid');
         const persisted = await this.get(hash);
         if (!persisted) throw new Error('publication_manifest_unavailable');
-        await this.verify(persisted);
+        if (this.db.dialect !== 'postgres') await this.verify(persisted);
         return hash;
     }
     async get(hash: string): Promise<SitePublicationManifest | null> {
@@ -194,12 +201,24 @@ export class SitePublicationManifestStore {
         if (!manifest.chunks.some(chunk => stableStringify(chunk) === stableStringify(reference))) throw new Error('publication_manifest_chunk_mismatch');
         const chunk = await this.chunks.get(reference);
         if (!chunk) throw new Error('publication_manifest_chunk_missing');
-        const expected = manifest.index.filter(row => row.chunkHash === reference.hash).sort((a,b) => a.position - b.position);
-        if (stableStringify(indexChunk(chunk, reference)) !== stableStringify(expected)) throw new Error('publication_manifest_index_mismatch');
+        this.verifyIndex(manifest, reference, chunk);
         return chunk;
     }
+    private verifyIndex(manifest: SitePublicationManifest, reference: PublicationChunkReference, chunk: PublicationChunk) {
+        const expected = manifest.index.filter(row => row.chunkHash === reference.hash).sort((a,b) => a.position - b.position);
+        if (stableStringify(indexChunk(chunk, reference)) !== stableStringify(expected)) throw new Error('publication_manifest_index_mismatch');
+    }
     async verify(input: SitePublicationManifest): Promise<void> {
+        await this.readVerifiedChunks(input);
+    }
+    async readVerifiedChunks(input: SitePublicationManifest, hashes?: ReadonlySet<string>): Promise<Map<string, PublicationChunk>> {
         const manifest = sitePublicationManifestSchema.parse(input);
-        for (const reference of manifest.chunks) await this.loadVerifiedChunk(manifest, reference);
+        const refs = hashes ? manifest.chunks.filter(ref => hashes.has(ref.hash)) : manifest.chunks;
+        const chunks = await this.chunks.readBatch(refs);
+        return new Map(refs.map((ref, index) => {
+            const chunk = chunks[index]!;
+            this.verifyIndex(manifest, ref, chunk);
+            return [ref.hash, chunk];
+        }));
     }
 }

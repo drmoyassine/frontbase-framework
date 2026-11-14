@@ -5,7 +5,7 @@ if (!buildPackage('@frontbase/backend') || runGate(dir, 'test/site-publication-c
 for (const [label, find, replacement] of [
     ['chunk content hash', 'await publicationHash(stored) !== reference.hash', 'false'],
     ['chunk owner isolation', 'WHERE tenant_slug = ? AND key = ?', 'WHERE ? IS NOT NULL AND key = ?'],
-    ['chunk immutable retry', 'ON CONFLICT(tenant_slug, key) DO NOTHING', 'ON CONFLICT(tenant_slug, key) DO UPDATE SET value = excluded.value'],
+    ['chunk immutable retry', 'VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO NOTHING', 'VALUES (?,?,?,?) ON CONFLICT(tenant_slug, key) DO UPDATE SET value = excluded.value'],
     // Reintroduces the 2026-10-22 drill finding: measuring bytes on the schema-transformed
     // parse output instead of the stored serialization breaks every pre-default legacy chunk.
     ['chunk stored-content integrity', 'bytes(stored) !== reference.bytes', 'bytes(chunk) !== reference.bytes'],

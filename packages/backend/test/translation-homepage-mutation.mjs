@@ -14,7 +14,7 @@ const faults=[
  ['configured target locale',module,'!config.targetLocales.includes(target)','false'],
  ['field revision fence',module,'prior.value.token !== e.token','false'],
  ['activation CAS',module,'JSON.stringify(current) !== JSON.stringify(pointerSchema.nullable().parse(expected))','false'],
- ['outdated locale refusal',serving,'if (selected && !await isFresh(selected))','if (false)','translation-homepage.mjs',[module,'if (!perUnit && (capture.active.pointer.hash !== release.siteHash || capture.sourceHash !== release.sourceHash))','if (false && (capture.active.pointer.hash !== release.siteHash || capture.sourceHash !== release.sourceHash))']],
+ ['outdated locale refusal',serving,'if (selected && !await isFresh(selected))','if (false)','translation-homepage.mjs',[module,'if (!perUnit && (capture.source.hash !== release.siteHash || capture.sourceHash !== release.sourceHash))','if (false && (capture.source.hash !== release.siteHash || capture.sourceHash !== release.sourceHash))']],
  ['explicit review consent',route,'approveTranslations: z.literal(true)','approveTranslations: z.boolean()'],
  ['deactivation CAS',module,'JSON.stringify(pointerSchema.parse(JSON.parse(prior))) !== JSON.stringify(pointerSchema.nullable().parse(expected))','false','translation-page-publication.mjs'],
  ['per-unit freshness join',module,'field.sourceText === undefined || sourceNow.get(JSON.stringify(stableIdentity(field))) === field.sourceText','true','translation-page-publication.mjs'],
