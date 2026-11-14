@@ -531,6 +531,10 @@ for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/sessi
     });
 }
 
+for (const [entry,outfile] of [['src/publication-operator.ts','publication-operator.mjs'],['src/prerender-delivery.ts','prerender-delivery.mjs']]) {
+    await esbuild.build({...shared,platform:'node',packages:'external',target:'node22',entryPoints:[entry],outfile:join(here,'operator-dist',outfile),minify:false,plugins:[inlineSwPlugin,consoleShellPlugin,inlineClientPlugin,bootstrapAssetPlugin]});
+}
+
 // Local-only Cloud browser fixture. Keep it OUTSIDE dist/: wrangler's
 // find_additional_modules uploads every .mjs there, and this provider-double
 // server must never ship with the Worker.

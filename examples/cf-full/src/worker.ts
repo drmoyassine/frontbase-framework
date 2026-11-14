@@ -899,6 +899,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     return app;
 }
 
+import {deliverPrerender,isPrivateRenderPath} from './prerender-delivery.js';
 let readyEngine: Hono | undefined;
 let currentCtx: ExecutionContext | null = null;
 let bootstrapHost:any;
@@ -906,6 +907,13 @@ let bootstrapHost:any;
 const worker = {
     async fetch(req: Request, env: CmsEnv, ctx: ExecutionContext): Promise<Response> {
         try {
+            // Internal asset proofs are never public URLs, including when this mode is off.
+            if(isPrivateRenderPath(new URL(req.url).pathname))return new Response('Not found',{status:404});
+            const renderHash=(env as unknown as Record<string,string|undefined>).FRONTBASE_PRERENDER_RELEASE;
+            if(renderHash&&env.ASSETS&&env.FRONTBASE_DEPLOYMENT_MODE!=='cloud'){
+                const rendered=await deliverPrerender(req,env.ASSETS,()=>resolveStateDb({env:env as unknown as Record<string,string|undefined>,host:'cloudflare',d1Binding:env.DB,hyperdriveBinding:env.HYPERDRIVE}).runner,renderHash);
+                if(rendered)return rendered;
+            }
             if((env as any).FRONTBASE_BOOTSTRAP==='native'){bootstrapHost??=createNativeCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             if((env as any).FRONTBASE_BOOTSTRAP==='1'){bootstrapHost??=createCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             // Self-host uses the shared persisted resolver after migrations.

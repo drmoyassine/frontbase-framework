@@ -5,6 +5,8 @@
     "type": "module",
     "scripts": {
         "build": "node build.mjs",
+        "publication:operator": "node operator-dist/publication-operator.mjs",
+        "test:prerender": "node test/prerender-delivery.mjs && node test/prerender-postgres.mjs && node test/prerender-mutation.mjs",
         "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
         "e2e:cloud": "node build.mjs && playwright test -c e2e/cloud.config.ts",
         "e2e:quality": "node build.mjs && playwright test -c e2e/pilot-quality/quality.config.ts",

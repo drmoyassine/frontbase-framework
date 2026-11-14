@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+const {deliverPrerender,prerenderKey,verifyRenderProof,signatureSql}=await import(process.env.FRONTBASE_PRERENDER_TEST_MODULE??new URL('../operator-dist/prerender-delivery.mjs',import.meta.url).href);
+const siteHash='a'.repeat(64),bodyHash='b'.repeat(64),origin='https://fixture.invalid';
+const proof={version:1,origin,path:'/ar/',siteHash,owner:'tenant-a',checks:[{sql:'SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',params:['tenant-a','locale'],signature:'c'.repeat(64)}],bodyHash,headers:[['content-type','text/html'],['x-site-version',siteHash],['content-language','ar']]};
+let valid=true,reads=0,htmlReads=0,descriptor=proof;
+const db={query:async(sql,params)=>{reads++;assert.match(sql,/bool_and\(valid\)/);assert.deepEqual(params,['tenant-a','site_publication:active:v1',siteHash,'c'.repeat(64),'tenant-a','locale']);return [{valid}];}};
+const key=await prerenderKey('/ar/');
+const assets={fetch:async req=>{const path=new URL(req.url).pathname;if(path.endsWith('/complete.json'))return Response.json({version:1,origin,hash:siteHash,routes:1});if(path.endsWith(key+'.json'))return Response.json(descriptor);if(path.endsWith(bodyHash+'.html')){htmlReads++;return new Response('<html lang="ar" dir="rtl">اختبار</html>');}return new Response('',{status:404});}};
+const request=(path='/ar/',headers,method='GET')=>new Request(origin+path,{headers,method});
+let response=await deliverPrerender(request(),assets,()=>db,siteHash);
+assert.equal(response.status,200);assert.equal(response.headers.get('content-language'),'ar');assert.match(await response.text(),/dir="rtl"/);assert.equal(reads,1);
+valid=false;response=await deliverPrerender(request(),assets,()=>db,siteHash);assert.equal(response.status,503);assert.equal(htmlReads,1,'stale proof must not read HTML');
+valid=true;const before=reads;
+for(const headers of [{cookie:'frontbase_session=x'},{authorization:'Bearer x'},{'x-frontbase-list':'1'}])assert.equal(await deliverPrerender(request('/ar/',headers),assets,()=>db,siteHash),null);
+assert.equal(reads,before,'personalized and list requests bypass the static path');
+assert.equal(await deliverPrerender(request('/ar/?q=other'),assets,()=>db,siteHash),null,'query variants never reuse the default HTML');
+response=await deliverPrerender(request('/__frontbase_prerender/secret.json'),assets,()=>db,siteHash);assert.equal(response.status,404);
+for(const path of ['/%5f_frontbase_prerender/secret.json','/__frontbase_prerender%2fsecret.json'])assert.equal((await deliverPrerender(request(path),assets,()=>db,siteHash)).status,404);
+response=await deliverPrerender(request('/ar/',undefined,'HEAD'),assets,()=>db,siteHash);assert.equal(response.status,200);assert.equal(await response.text(),'');
+for(const patch of [{origin:'https://another.invalid'},{path:'/en/'},{siteHash:'d'.repeat(64)},{headers:[['set-cookie','secret=x'],['x-site-version',siteHash]]}]){
+ descriptor={...proof,...patch};response=await deliverPrerender(request(),assets,()=>({query:async()=>[{valid:true}]}),siteHash);assert.equal(response.status,503);
+}
+descriptor=proof;
+response=await deliverPrerender(request(),assets,()=>({query:async()=>{throw Error('offline');}}),siteHash);assert.equal(response.status,503);
+assert.throws(()=>signatureSql('DELETE FROM settings'),/read_required/);
+assert.throws(()=>signatureSql('SELECT 1; DELETE FROM settings'),/read_required/);
+assert.equal(await verifyRenderProof(db,proof),true);
+response=await deliverPrerender(request(),{fetch:async()=>new Response('',{status:404})},()=>db,siteHash);assert.equal(response.status,503,'partial export cannot be served');
+response=await deliverPrerender(request(),{fetch:async()=>Response.json({version:1,origin,hash:siteHash,routes:1},{status:404})},()=>db,siteHash);assert.equal(response.status,503,'failed asset response is not a valid completion receipt');
+console.log('pre-render delivery: fresh/stale/tenant-origin/query/auth/HEAD/error fences passed');

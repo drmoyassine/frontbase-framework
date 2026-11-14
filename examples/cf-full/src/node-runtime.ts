@@ -19,7 +19,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { s3StorageProvider, bullmqDriver } from '@frontbase/edge-infra';
+import { s3StorageProvider, bullmqDriver, type DbRunner } from '@frontbase/edge-infra';
 import { createNodeHttpTransport } from '@frontbase/edge-infra/node-http';
 import { parseEnvServices, envServiceDescriptor, ENV_CARD_LABELS } from '@frontbase/backend';
 import { createDiskAssets } from './assets-disk.js';
@@ -38,7 +38,7 @@ const CONSOLE_ROOT = join(here, '..', 'console-dist');
 const assets = createDiskAssets(CONSOLE_ROOT);
 
 // ── runtime env ─────────────────────────────────────────────────────────────
-export async function createConfiguredNode(env: Record<string,string|undefined>) {
+export async function createConfiguredNode(env: Record<string,string|undefined>, options:{wrapRunner?:(runner:DbRunner)=>DbRunner}={}) {
 // SESSION_SECRET is OPTIONAL: when absent, the engine generates a strong
 // secret on first boot and persists it in the state DB (resolveSessionSecret)
 // — on the default file:/data/app.db volume it survives every restart. Setting
@@ -93,7 +93,7 @@ const engine = await createCmsEngine({
     resend:env.RESEND_API_KEY?{apiKey:env.RESEND_API_KEY,from:env.RESEND_FROM}:undefined,
     publicOrigin:env.FRONTBASE_PUBLIC_ORIGIN,
     providerOAuthEnv:env,
-    runner: stateDb.runner,
+    runner: options.wrapRunner?.(stateDb.runner)??stateDb.runner,
     translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
     sessionSecret: SESSION_SECRET,
     setupToken: env.SETUP_TOKEN || undefined,

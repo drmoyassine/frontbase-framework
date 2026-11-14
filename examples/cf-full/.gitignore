@@ -1,4 +1,5 @@
 dist/
+operator-dist/
 .wrangler/
 .native-build-*/
 node_modules/
