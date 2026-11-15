@@ -40,7 +40,7 @@ export interface EngineOptions {
     /** Console API sub-router, mounted at /api/console (Phase 2). */
     console?: Hono;
     /** Request/capture-bound document metadata. Empty favicon explicitly disables host lookup. */
-    document?: Pick<ShellOptions, 'faviconUrl' | 'language' | 'direction' | 'alternates' | 'canonicalUrl' | 'robots' | 'openGraph' | 'localesAlternate'>;
+    document?: Pick<ShellOptions, 'frontendEditing' | 'faviconUrl' | 'language' | 'direction' | 'alternates' | 'canonicalUrl' | 'robots' | 'openGraph' | 'localesAlternate'>;
     /** Resolve a published page by URL path. When set, dynamic CMS pages override
      *  the baked manifest (the manifest becomes a last-resort fallback). Injected
      *  by the host so the engine stays DB-blind. Returns null when no such page.
@@ -80,8 +80,10 @@ export function enforceScope(q: RegisteredQuery, principal: Principal): { status
     }
 }
 
+type ResolvedPageOptions = Pick<EngineOptions, 'manifest' | 'environment' | 'document' | 'swBundle' | 'observeComponent' | 'interpolations'>;
+
 /** Deterministic template context — timestamps come from the manifest, never Date.now(). */
-function buildContext(page: PageEntry, path: string, records: Record<string, unknown>[], opts: EngineOptions, user:Record<string,unknown>|null=null): TemplateContext {
+function buildContext(page: PageEntry, path: string, records: Record<string, unknown>[], opts: ResolvedPageOptions, user:Record<string,unknown>|null=null): TemplateContext {
     return {
         page: {
             id: page.slug, title: page.title, url: path, slug: page.slug,
@@ -119,6 +121,37 @@ function toHtmlPageData(page: PageEntry, path: string): HtmlPageData & { isHomep
         layoutData: page.layout,
         isHomepage: path === '/',
     } as HtmlPageData & { isHomepage: boolean };
+}
+
+/** Render after the host has resolved the route, authorization and data. */
+export async function renderResolvedPageDocument(
+    page: PageEntry, request: Request, opts: ResolvedPageOptions,
+    user: Record<string, unknown> | null = null, records: Record<string, unknown>[] = [],
+): Promise<string> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const { environment } = opts;
+    const renderContext = buildContext(page, path, records, opts, user);
+    renderContext.url = Object.fromEntries(url.searchParams);
+    const hasVersions=(nodes:typeof page.layout.content):boolean=>nodes.some(node=>!!node.versions?.length||hasVersions(node.children??[]));
+    const publicPage = hasVersions(page.layout.content) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;
+    const body = await renderPage(publicPage.layout, renderContext, opts.observeComponent,opts.interpolations);
+    const html = renderDocument(publicPage, body, {
+        environment,
+        registerServiceWorker: environment === 'edge' && !!opts.swBundle,
+        // Same resolver the gated branch and navbarFavicon use — the host
+        // decides (product: project settings faviconUrl || default icon).
+        faviconUrl: (opts.document?.faviconUrl ?? await engineConfig().resolveFaviconUrl(request)) || undefined,
+        frontendEditing: opts.document?.frontendEditing,
+        language: opts.document?.language,
+        direction: opts.document?.direction,
+        alternates: opts.document?.alternates,
+        canonicalUrl: opts.document?.canonicalUrl,
+        robots: opts.document?.robots,
+        openGraph: opts.document?.openGraph,
+        localesAlternate: opts.document?.localesAlternate,
+    });
+    return html;
 }
 
 export function createEngine(opts: EngineOptions): Hono {
@@ -269,25 +302,8 @@ export function createEngine(opts: EngineOptions): Hono {
                 tenant: principal.tenant,
             });
         }
-        const renderContext = buildContext(page, path, records, opts, await opts.resolveConditionUser?.(c.req.raw).catch(()=>null)??null);
-        renderContext.url = Object.fromEntries(new URL(c.req.url).searchParams);
-        const hasVersions=(nodes:typeof page.layout.content):boolean=>nodes.some(node=>!!node.versions?.length||hasVersions(node.children??[]));
-        const publicPage = hasVersions(page.layout.content) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;
-        const body = await renderPage(publicPage.layout, renderContext, opts.observeComponent,opts.interpolations);
-        const html = renderDocument(publicPage, body, {
-            environment,
-            registerServiceWorker: environment === 'edge' && !!opts.swBundle,
-            // Same resolver the gated branch and navbarFavicon use — the host
-            // decides (product: project settings faviconUrl || default icon).
-            faviconUrl: (opts.document?.faviconUrl ?? await engineConfig().resolveFaviconUrl(c.req.raw)) || undefined,
-            language: opts.document?.language,
-            direction: opts.document?.direction,
-            alternates: opts.document?.alternates,
-            canonicalUrl: opts.document?.canonicalUrl,
-            robots: opts.document?.robots,
-            openGraph: opts.document?.openGraph,
-            localesAlternate: opts.document?.localesAlternate,
-        });
+        const user = await opts.resolveConditionUser?.(c.req.raw).catch(() => null) ?? null;
+        const html = await renderResolvedPageDocument(page, c.req.raw, opts, user, records);
         return c.html(html, 200, {
             'x-rendered-by': environment,
             'Cache-Control': 'no-cache, no-store, must-revalidate',

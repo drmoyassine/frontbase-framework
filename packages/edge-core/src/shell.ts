@@ -15,6 +15,7 @@ import type { PageEntry } from './manifest.js';
 import { escapeHtml, HYDRATE_VERSION } from './ssr/htmlDocument.js';
 
 export interface ShellOptions {
+    frontendEditing?: boolean;
     environment: string;
     /** Emit the /sw.js registration script (edge path only — the handover). */
     registerServiceWorker: boolean;
@@ -74,6 +75,6 @@ ${bodyHtml.includes('data-fb-image-fallback')?`<script>${imageFallbackScript()}<
 ${behaviors}
 <script type="module" src="/static/react/hydrate.js?v=${HYDRATE_VERSION}"></script>
 ${swRegistration}
-</body>
+${opts.frontendEditing ? '<script src="/api/frontend-edit/script.js" defer></script>' : ''}</body>
 </html>`;
 }

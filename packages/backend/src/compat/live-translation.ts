@@ -31,34 +31,58 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
     const menuFields=options.menuFields??[],claimed=new Set(menuFields.map(field=>JSON.stringify([field.blockId,field.path])));
     const fields=[...homepageDisplayFields(layout,options.plan).filter(field=>!claimed.has(JSON.stringify([field.blockId,field.path]))),...menuFields];
     if(fields.length>500)throw Error('live_translation_surface_limit');
-    const identified=await Promise.all(fields.map(async field=>{
-        const unit=displayTranslationUnit(field,options.scope,options.pageId,options.sourceLocale);
-        // Identities contain scope and resource keys only, never text or translation values.
-        const key=JSON.stringify([options.scope,unit.resource]);
-        let id=identityIds.get(key);
-        if(!id){
-            id=await translationUnitId(options.scope,unit.resource);
-            if(identityIds.size>=2048)identityIds.delete(identityIds.keys().next().value!);
-            identityIds.set(key,id);
+    const pendingIds = new Map<string, Promise<string>>();
+    const identified = fields.map(field => {
+        const unit = displayTranslationUnit(field, options.scope, options.pageId, options.sourceLocale);
+        // Cache identities only. Current source and translated text stay request-local.
+        const key = JSON.stringify([options.scope, unit.resource]);
+        const cached = identityIds.get(key);
+        if (cached) return { field, unit, id: cached };
+        let pending = pendingIds.get(key);
+        if (!pending) {
+            pending = translationUnitId(options.scope, unit.resource).then(id => {
+                if (identityIds.size >= 2048) identityIds.delete(identityIds.keys().next().value!);
+                identityIds.set(key, id);
+                return id;
+            });
+            pendingIds.set(key, pending);
         }
-        return {field,id,unit};
-    }));
-    const ids=[...new Set(identified.map(field=>field.id))];
-    const rows=ids.length?await (options.reader.readCurrentMany?.(options.scope,ids,options.locale)??options.reader.readMany(options.scope,ids,options.locale)):[];
-    if(rows.length!==ids.length)throw Error('live_translation_response_invalid');
-    const byId=new Map(ids.map((id,index)=>[id,rows[index]!]));
-    const values=new Map<string,string>();
-    await Promise.all(identified.map(async({field,id,unit})=>{
-        const current=byId.get(id),source=current?.source,head=current?.head;
-        if(!head||!source)return;
-        if(head.scope.tenantId!==options.scope.tenantId||head.scope.projectId!==options.scope.projectId
-            ||source.unit.scope.tenantId!==options.scope.tenantId||source.unit.scope.projectId!==options.scope.projectId
-            ||head.unitId!==id||head.locale!==options.locale)throw Error('live_translation_scope_mismatch');
-        const fingerprint=await messageSourceFingerprint(unit);
-        if(source.fingerprint!==fingerprint||head.sourceFingerprint!==fingerprint||head.sourceVersion!==source.sourceVersion
-            ||head.contextFingerprint!==source.contextFingerprint)return;
-        values.set(JSON.stringify([field.blockId,field.versionId??'default',field.path]),translationDisplayText(field.text,head.text));
-    }));
+        return { field, unit, id: pending };
+    });
+    const resolvedIds = pendingIds.size ? await Promise.all(identified.map(entry => entry.id)) : identified.map(entry => entry.id as string);
+    const ids = [...new Set(resolvedIds)];
+    const rows = ids.length
+        ? await (options.reader.readCurrentMany?.(options.scope, ids, options.locale) ?? options.reader.readMany(options.scope, ids, options.locale))
+        : [];
+    if (rows.length !== ids.length) throw Error('live_translation_response_invalid');
+    const byId = new Map(ids.map((id, index) => [id, rows[index]!]));
+    const values = new Map<string, string>();
+    const fingerprints = new Map<string, Promise<string>>();
+    const patchWork: (() => Promise<void>)[] = [];
+    for (const [index, { field, unit }] of identified.entries()) {
+        const id = resolvedIds[index]!;
+        const current = byId.get(id), source = current?.source, head = current?.head;
+        if (!head || !source) continue;
+        if (head.scope.tenantId !== options.scope.tenantId || head.scope.projectId !== options.scope.projectId
+            || source.unit.scope.tenantId !== options.scope.tenantId || source.unit.scope.projectId !== options.scope.projectId
+            || head.unitId !== id || head.locale !== options.locale) throw Error('live_translation_scope_mismatch');
+        if (head.sourceFingerprint !== source.fingerprint || head.sourceVersion !== source.sourceVersion
+            || head.contextFingerprint !== source.contextFingerprint) continue;
+        patchWork.push(async () => {
+            // All display units share locale, plain format, segmenter and placeholders.
+            // Validate/digest once for the same unit and source text within this request.
+            const fingerprintKey = JSON.stringify([id, field.text]);
+            let fingerprint = fingerprints.get(fingerprintKey);
+            if (!fingerprint) {
+                fingerprint = messageSourceFingerprint(unit);
+                fingerprints.set(fingerprintKey, fingerprint);
+            }
+            if (await fingerprint === source.fingerprint) {
+                values.set(JSON.stringify([field.blockId, field.versionId ?? 'default', field.path]), translationDisplayText(field.text, head.text));
+            }
+        });
+    }
+    if (patchWork.length) await Promise.all(patchWork.map(patch => patch()));
     options.resolvedFields?.(fields.map(field=>{
         const text=values.get(JSON.stringify([field.blockId,field.versionId??'default',field.path]));
         return text===undefined?field:{...field,text};

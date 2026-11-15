@@ -1,12 +1,22 @@
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {QueryRegistry} from '@frontbase/compiler';
 import type {PageLayoutData,PageEntry,EngineOptions} from '@frontbase/edge-core';
-import {directoryLayoutQueries,projectDirectoryRecords,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectTemplatePresentation,projectDirectoryBrowsing,landingQueryParams} from '@frontbase/edge-core/directory/configuration';
+import {compileDirectoryProjection,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectTemplatePresentation,projectDirectoryBrowsing,landingQueryParams} from '@frontbase/edge-core/directory/configuration';
 import {publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import {localeDirection} from '@frontbase/edge-core/localization';
 import {projectPublicationListRows,type PublishedLiveQuery,type LiveListRequest} from './publication-list-source.js';
 import {templatePolicyPresentation} from './template-policy-runtime.js';
 import type {LiveLayoutPublication} from './live-layout-publication.js';
+
+const directoryPlans = new WeakMap<PageLayoutData, ReturnType<typeof compileDirectoryProjection>>();
+
+function directoryPlan(layout: PageLayoutData) {
+    let plan = directoryPlans.get(layout);
+    if (plan) return plan;
+    plan = compileDirectoryProjection(layout);
+    if (Object.isFrozen(layout)) directoryPlans.set(layout, plan);
+    return plan;
+}
 
 export class LivePageRequestError extends Error{}
 export type LiveRoute={role:'institution'|'program'|'article'|'editorial';row:Record<string,unknown>};
@@ -49,9 +59,12 @@ export async function resolveLiveLayoutPage(
         const query=reader.queries[id];if(!query)throw Error('live_query_unavailable');
         return query.execute(params,{tenant:owner,request,user});
     };
-    const layout=template.layout as unknown as PageLayoutData;
+    const authored = template.layout as unknown as PageLayoutData;
+    const layout = publication.siteBindingsCompiled ? authored : projectSharedDirectoryPreview(authored, c);
+    const plan = directoryPlan(layout);
     const records=new Map<string,Record<string,unknown>[]>(),inactive=new Set<string>();
-    await Promise.all(directoryLayoutQueries(layout).map(async query=>{
+    const count = listing ? read('directory.' + (listing === 'article-index' ? 'article' : type) + '.count', { q: search, match, sort, limit }) : undefined;
+    const [countRows] = await Promise.all([count, ...plan.queries.map(async query=>{
         const [,collection,mode]=query.binding.queryId.split('.');
         if(listing==='directory'&&mode==='list'&&['institution','program'].includes(collection!)&&collection!==type){inactive.add(query.id);return;}
         if(mode==='detail'&&route&&collection===(role==='editorial'?'page':role)){records.set(query.id,[row!]);return;}
@@ -64,9 +77,8 @@ export async function resolveLiveLayoutPage(
             records.set(query.id,parent);return;
         }
         records.set(query.id,(await read(query.binding.queryId,params)).slice(0,mode==='detail'?1:Number(params.limit)));
-    }));
-    const prune=(nodes:PageLayoutData['content']):PageLayoutData['content']=>nodes.filter(node=>!inactive.has(node.id)).map(node=>({...node,...(node.children?{children:prune(node.children)}:{})}));
-    let projected=projectDirectoryRecords(publication.siteBindingsCompiled?{...layout,content:prune(layout.content)}:projectSharedDirectoryPreview({...layout,content:prune(layout.content)},c),records,{locale});
+    })]);
+    let projected = plan.project(records, { locale, inactive });
     const sourceQuery:PublishedLiveQuery=async(scopedOwner,binding,query)=>{
         if(scopedOwner!==owner||binding.dataSourceId!=='frontbase:publication')throw Error('live_source_refused');
         const collection=({institutions:'institution',programs:'program',articles:'article'} as Record<string,string>)[binding.tableName];
@@ -84,10 +96,8 @@ export async function resolveLiveLayoutPage(
         return {rows:rows.slice(0,size),total:Number(count[0]!.total)};
     };
     projected=await projectPublicationListRows(projected,db,owner,request,user,reader.liveQuery,undefined,context,{sourceQuery,list});
-    if(listing){
-        const collection=listing==='article-index'?'article':type;
-        const count=await read('directory.'+collection+'.count',{q:search,match,sort,limit});
-        const total=Number(count[0]!.total);
+    if(listing && countRows){
+        const total=Number(countRows[0]!.total);
         projected=projectDirectoryBrowsing(projected,[{path,locale,collection:listing==='directory'?type as 'institution'|'program':null,q:search,page,sort:sort as 'title-asc'|'title-desc',match:match as 'contains'|'startsWith'|'equals',pageSize:limit,total,hasNext:offset+limit<total&&offset+limit<=19999,searchEnabled:c.browsing.search}]);
     }
     projected=projectRelativeSiteLinks(projectTemplatePresentation(projected,c),c.site.origin);

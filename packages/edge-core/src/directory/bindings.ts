@@ -49,9 +49,18 @@ export function validateSiteBinding(node: PageComponent): void {
 }
 
 /** Validate saved nodes without fetching rows. Avoid nested query multiplication. */
-export function directoryLayoutQueries(layout: PageLayoutData): { id: string; binding: DirectoryQueryBinding }[] {
+type DirectoryQuery = { id: string; binding: DirectoryQueryBinding };
+type DirectoryInstructions = {
+    queries: DirectoryQuery[];
+    records: Map<PageComponent, z.infer<typeof directoryRecordBindingSchema>>;
+    controls: Map<PageComponent, z.infer<typeof directoryBrowsingSchema>>;
+};
+function compileDirectoryInstructions(layout: PageLayoutData): DirectoryInstructions {
     if(layout?.root?.directoryLanding!==undefined)landingRootSchema.parse(layout.root.directoryLanding);
-    const requests: { id: string; binding: DirectoryQueryBinding }[] = []; let visited = 0, browsing = 0;
+    const requests: DirectoryQuery[] = [];
+    const records: DirectoryInstructions['records'] = new Map();
+    const controls: DirectoryInstructions['controls'] = new Map();
+    let visited = 0, browsing = 0;
     const walk = (nodes: PageComponent[], inQuery = false, depth = 0, articleQuery = false) => {
         if (depth > 20) throw new Error('directory_template_depth');
         for (const node of nodes) {
@@ -64,7 +73,7 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
             }
             if(props.templateMenu!==undefined){z.object({version:z.literal(1)}).strict().parse(props.templateMenu);if(node.type!=='Container'||inQuery||layout.root?.directoryLanding===undefined)throw new Error('invalid_template_component');}
             validateDirectoryBrowsing(node, inQuery);
-            if(props.directoryControls !== undefined){directoryBrowsingSchema.parse(props.directoryControls);if(node.type!=='Repeater'||inQuery||props.directoryQuery===undefined)throw new Error('invalid_repeater_controls');}
+            if(props.directoryControls !== undefined){controls.set(node, directoryBrowsingSchema.parse(props.directoryControls));if(node.type!=='Repeater'||inQuery||props.directoryQuery===undefined)throw new Error('invalid_repeater_controls');}
             if (props.directoryBrowsing !== undefined && (++browsing > 1 || !['directory', 'article-index'].includes(String((layout.root?.siteConfiguration as {role?:string} | undefined)?.role)))) throw new Error('invalid_directory_browsing_role');
             validateSiteBinding(node);
             if (props.directoryQuery !== undefined) {
@@ -77,6 +86,7 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
             if (props.recordBindings !== undefined) {
                 if (!inQuery) throw new Error('record_binding_without_query');
                 const record = directoryRecordBindingSchema.parse(props.recordBindings);
+                records.set(node, record);
                 if (record.text && !['Text', 'Heading', 'Paragraph', 'Link'].includes(node.type)
                     || record.format && record.text !== 'publishedAt'
                     || record.altFallback && (node.type !== 'Image' || record.alt !== 'coverAlt')
@@ -89,7 +99,11 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
             walk(node.children || [], inQuery || props.directoryQuery !== undefined, depth + 1, articleQuery || isArticle);
         }
     };
-    walk(layout?.content || []); return requests;
+    walk(layout?.content || []);
+    return { queries: requests, records, controls };
+}
+export function directoryLayoutQueries(layout: PageLayoutData): DirectoryQuery[] {
+    return compileDirectoryInstructions(layout).queries;
 }
 
 const literal = (value: unknown) => typeof value === 'string' ? value.replace(/\{(?=[{%])/g, '{\u200b') : '';
@@ -131,19 +145,39 @@ function formatEditorialDate(value: unknown, locale?: string): string {
  *  localization surface extraction keys their text to the shared record unit instead of rendered
  *  position — transient projection state only, refused in authored layouts and never persisted. */
 export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, records: Map<string, Record<string, unknown>[]>, options: { locale?: string } = {}): T {
-    directoryLayoutQueries(layout);
-    // Every row uses the same authored binding. Validate it once per projection,
-    // not once per rendered row; never cache records or cross-request authority.
-    const recordBindings = new Map<unknown, z.infer<typeof directoryRecordBindingSchema>>();
-    const ownControls = (nodes: PageComponent[]): boolean => nodes.some(node=>node.props?.directoryControls!==undefined || ownControls(node.children||[]));
-    const controlsOwned=ownControls(layout.content);
+    return projectCompiledDirectory(layout, compileDirectoryInstructions(layout), records, options);
+}
+
+/** A compiled projector is bound to an immutable authored tree. It receives only
+ * current rows and the request's inactive branch IDs, never replacement bindings. */
+export function compileDirectoryProjection<T extends PageLayoutData>(layout: T) {
+    const instructions = compileDirectoryInstructions(layout);
+    const queries = Object.freeze(instructions.queries.map(query =>
+        Object.freeze({ id: query.id, binding: Object.freeze({ ...query.binding, params: Object.freeze({ ...query.binding.params }) }) })));
+    const project = (records: Map<string, Record<string, unknown>[]>, options: { locale?: string; inactive?: ReadonlySet<string> } = {}) =>
+        projectCompiledDirectory(layout, instructions, records, options);
+    return { queries, project };
+}
+
+function projectCompiledDirectory<T extends PageLayoutData>(
+    layout: T,
+    instructions: DirectoryInstructions,
+    records: Map<string, Record<string, unknown>[]>,
+    options: { locale?: string; inactive?: ReadonlySet<string> },
+): T {
+    const queries = new Map(instructions.queries.map(query => [query.id, query.binding]));
+    const inactive = options.inactive;
+    const controlsOwned = [...instructions.controls.keys()].some(node => !inactive?.has(node.id));
+    const visible = (nodes: PageComponent[]) => inactive?.size ? nodes.filter(node => !inactive.has(node.id)) : nodes;
     let projected = 0;
     const walk = (node: PageComponent, row?: Record<string, unknown>, index = 0, collection?: string): PageComponent => {
         if (++projected > 4000) throw new Error('directory_projection_size');
         const props = { ...node.props }; const query = props.directoryQuery;
         if(controlsOwned && props.directoryBrowsing!==undefined)return {...node,props:{},styles:{display:'none'},children:[]};
         if (query !== undefined) {
-            const parsed = directoryQueryBindingSchema.parse(query); const rows = records.get(node.id);
+            const parsed = queries.get(node.id);
+            if (!parsed) throw new Error('invalid_directory_query_component');
+            const rows = records.get(node.id);
             if (!rows || rows.length > (parsed.queryId.endsWith('.list') ? 48 : 1)) throw new Error('directory_records_unavailable');
             const { directoryQuery: _query, directoryControls: controls, ...rest } = props;
             const list = parsed.queryId.endsWith('.list'); const columns = Math.min(4, Math.max(1, Number(props.columns) || 3));
@@ -153,10 +187,10 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
             // patterns, page language); only a control-less list keeps a projected fallback text.
             const projected: PageComponent = { ...node, type: 'Container', props: rest,
                 ...(list ? { styles: { gap: '24px', ...node.styles } } : {}),
-                children: rows.length ? rows.flatMap((record, i) => (node.children || []).map(child => walk(child, record, i, rowCollection)))
+                children: rows.length ? rows.flatMap((record, i) => visible(node.children || []).map(child => walk(child, record, i, rowCollection)))
                     : controls === undefined ? [{ id: `${node.id}-empty`, type: 'Text', props: { text: 'No records matched this preview.' } }] : [] };
             if(list && controls !== undefined){
-                const options=directoryBrowsingSchema.parse(controls),position=options.paginationPosition||'top';
+                const options=instructions.controls.get(node)!,position=options.paginationPosition||'top';
                 const top:PageComponent={id:`${node.id}-controls`,type:'Container',props:{directoryBrowsing:{...options,pagination:options.pagination && position!=='bottom'}}};
                 const bottom:PageComponent={id:`${node.id}-pagination`,type:'Container',props:{directoryBrowsing:{...options,tabs:false,search:false,sorting:false,filters:false,recordCount:false}}};
                 return {...node,type:'Container',props:{},styles:{},children:[top,{...projected,id:`${node.id}-records`},...(options.pagination && position!=='top'?[bottom]:[])]};
@@ -166,8 +200,7 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
         const id = index ? `${node.id}-preview-${index}` : node.id;
         const { recordBindings: _bindings, ...rest } = props;
         if (props.recordBindings !== undefined) {
-            let b = recordBindings.get(props.recordBindings);
-            if (!b) { b = directoryRecordBindingSchema.parse(props.recordBindings); recordBindings.set(props.recordBindings, b); }
+            const b = instructions.records.get(node)!;
             if (!row) throw new Error('record_context_unavailable');
             if (b.blocks) { const children = projectEditorialBody(row.body, id); projected += children.reduce((n,c) => n + 1 + (c.children?.length ?? 0), 0); if (projected > 4000) throw new Error('directory_projection_size'); return { ...node, id, props: rest, children }; }
             if (b.text) {
@@ -198,7 +231,7 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
                 rest.translationSources = recordColumns;
             }
         }
-        return { ...node, id, props: rest, ...(node.children ? { children: node.children.map(child => walk(child, row, index, collection)) } : {}) };
+        return { ...node, id, props: rest, ...(node.children ? { children: visible(node.children).map(child => walk(child, row, index, collection)) } : {}) };
     };
-    return { ...layout, content: layout.content.map(node => walk(node)) };
+    return { ...layout, content: visible(layout.content).map(node => walk(node)) };
 }

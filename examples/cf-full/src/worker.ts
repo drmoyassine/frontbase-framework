@@ -639,8 +639,12 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         enrichLayout: (layout, req) => enrichWithDatasources(hostTenantFor(req) ?? '_root', layout),
     });
 
+    const liveDocuments = new WeakSet<Request>();
     const app = new Hono();
-    app.use('*',async(c,next)=>{await next();c.res=await withFrontendEditor(c.res,c.req.raw);});
+    app.use('*', async (c, next) => {
+        await next();
+        if (!liveDocuments.has(c.req.raw)) c.res = await withFrontendEditor(c.res, c.req.raw);
+    });
 
     // engineConfig() state is MODULE-GLOBAL, and edge-core render paths read it
     // at request time. A process hosting more than one engine — production is
@@ -889,13 +893,16 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         const tenant = hostTenantFor(c.req.raw);
         if (cloud && !tenant && hostKindOf(c.req.raw, cloud.baseDomain, cloud.appLabel) !== 'foreign') return next();
         const live=await renderLiveLayoutPublication(opts.runner,tenant??'_root',c.req.raw,{
-            swBundle:SW_BUNDLE,liveQuery:publicLiveQuery,
+            swBundle:SW_BUNDLE,liveQuery:publicLiveQuery,frontendEditing:true,
             host:{syncFor:owner=>new SyncStore(opts.runner,owner,enrichCipher),
                 accountConfigFor:datasourceAccountConfigFor(enrichPhase2For,()=>new Date().toISOString()),
                 externalFetch:opts.externalFetch??globalThis.fetch},
             resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true),
         });
-        if(live)return live;
+        if (live) {
+            liveDocuments.add(c.req.raw);
+            return live;
+        }
         return next();
     });
 

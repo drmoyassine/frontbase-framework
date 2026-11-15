@@ -138,3 +138,29 @@ Node 22 full workspace check/build, focused compiled display/interpolation, publ
 Remaining work is explicit: isolate and measure request-time identity/fingerprint validation, response parsing, generic SSR and cold publication-load validation independently; move further immutable work out of the request only where equivalent safety checks can be proven. The current projection reduces validation work but still receives the existing full batch RPC payload. It is not a compact-wire protocol or a fully precompiled HTML renderer. No record snapshot or stale-value cache is an acceptable workaround.
 
 Compatibility review also found that malformed JSON literals admitted by the legacy simple-binding grammar could throw during compilation. The compiler now declines those expressions and preserves the existing evaluator path; regression cases cover invalid numbers and string escapes. This final compatibility-only change requires no provider, schema or credential migration. The isolated CPU receipt above predates this narrow invalid-literal fallback; no performance improvement is attributed to it.
+
+
+### Request CPU stage measurements and shared renderer changes
+
+The baseline replay on isolated version `a6d29f2e-9ef4-4e7b-a0a6-abea6207a542` reproduced the issue (English 9 ms median and 26 ms maximum, Arabic 13 ms median and 32 ms maximum). Cloudflare's profile endpoint returned 10393 even with replay traffic; its tail supplied per-invocation measurements but no function attribution. Local Node 22 stage measurements use elapsed time with preloaded fixture data and no network. Median of five repeated batches, milliseconds per operation:
+
+| Stage | Baseline | Candidate |
+| --- | ---: | ---: |
+| Directory checks and projection | 1.464 | 1.195 |
+| Directory rendering, identical HTML | 3.205 | 2.154 |
+| JSON parsing, 100 populated translation heads | 1.550 | — |
+| Runtime schema validation, 100 populated translation heads | 4.121 | — |
+| Source fingerprint, 100 distinct populated fields | 11.116 | — |
+
+These are targeted local measurements, not a breakdown of Cloudflare billed CPU or an assertion that the deployment has 100 translated fields on each page.
+
+Reuse compiled directory projection instructions for each loaded immutable layout. Schedule the independent listing count with initial reads. Projects and record queries remain tenant scoped. The shared renderer executes synchronous components without per-node scheduling and retains async execution for Liquid, visibility, and provider-dependent components. Request-local translation identity and fingerprint reuse retains freshness checks; stale heads are refused before hashing. Navigation rewrites copy only affected branches.
+
+First candidate `422be7e5-fec0-49c8-ab6c-740e6be6a34c` passed 108 requests including both live edit paths and source changes with an unchanged publication. English CPU samples n=29, median 9 ms, max 28 ms, 7 over 10 ms; Arabic n=22, median 10.5 ms, max 27 ms, 11 over 10 ms. Baseline and candidate tails are incomplete and not a paired cold/warm benchmark. Both fixtures were removed. Directory mutation suite passed all 16 controls.
+
+The follow-up removes per-request construction of an engine router for an already resolved public document. It invokes the existing shared document renderer after resolving the same scoped route, settings, audience, and live data. The Cloudflare host emits the frontend editor script in that document shell so it can avoid decoding and rewriting its HTML response. Existing engine routes retain their own authorization and query-scope checks.
+
+
+The final direct-render version `28dfe23d-7f0e-4479-a43d-3163317c894a` passed 108 HTTP requests, including current source mutation, English and Arabic frontend edits, unchanged layout pointer, and exactly one editor script per tested page. No Error 1102 was observed. The test Worker and its disposable fixtures were removed. Tail samples were English n=28, median 6.5 ms, max 25 ms, 4 over 10 ms, and Arabic n=27, median 12 ms, max 28 ms, 15 over 10 ms. Arabic overages were concentrated on home, Explore, blog index and longer articles. This does not establish Workers Free CPU headroom. Production was not promoted.
+
+Final Node 22 workspace build and check, full edge-core functional suite, live layout suite and frontend editing suite passed. Directory mutation controls passed 16/16 on the unchanged directory implementation before the final renderer wiring. The end-to-end CPU attribution remains open because the Cloudflare function profile was unavailable. The local measurements establish specific avoidable costs, while the hosted replays establish that removing them did not close the CPU gate. The current saved head payload still uses the existing RPC contract.

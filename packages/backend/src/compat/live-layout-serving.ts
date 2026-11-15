@@ -1,6 +1,6 @@
 import {displayPlanInterpolations} from '@frontbase/edge-core/localization';
 import type {DbRunner} from '@frontbase/edge-infra';
-import {createEngine,directProvider,audienceConditionUser,type PageLayoutData} from '@frontbase/edge-core';
+import {renderResolvedPageDocument,audienceConditionUser,type PageLayoutData} from '@frontbase/edge-core';
 import type {VerifiedMenuAudience} from '@frontbase/edge-core/menus';
 import {LiveLayoutPublicationStore,liveDisplayPlan} from './live-layout-publication.js';
 import type {LiveLayoutPublication,LiveLayoutPointer} from './live-layout-publication.js';
@@ -22,7 +22,7 @@ import {livePageSettings} from './live-page-settings.js';
 import {readProjectSettings} from './assets.js';
 
 export interface LiveLayoutServingOptions{
-    host:LiveLayoutHost;liveQuery:PublishedLiveQuery;swBundle?:string;
+    host:LiveLayoutHost;liveQuery:PublishedLiveQuery;swBundle?:string;frontendEditing?:boolean;
     /** Supplied only by the authenticated private preview route, never visitor input. */
     prepared?:{pointer:LiveLayoutPointer;layout:LiveLayoutPublication};
     resolveAudience?(owner:string,request:Request):Promise<VerifiedMenuAudience>;
@@ -106,15 +106,20 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const description=policy.values.description||String(policy.record.summary??resolved.page.description??'');
         resolved.page={...resolved.page,title,description};
         if(resolved.document.openGraph)resolved.document={...resolved.document,openGraph:{...resolved.document.openGraph,title,description}};
-        const manifest={version:active.pointer.hash,pages:{[url.pathname]:{...resolved.page,layout:layout as PageLayoutData}},queries:{}};
+        const page = { ...resolved.page, layout };
+        const manifest = { version: active.pointer.hash, pages: {}, queries: {} };
         const branding=await readProjectSettings(settings,owner);
-        const document={...resolved.document,faviconUrl:typeof branding.faviconUrl==='string'&&branding.faviconUrl?branding.faviconUrl:'/static/icon.png'};
-        const engine=createEngine({interpolations:displayPlanInterpolations(liveDisplayPlan(publication,resolved.sourcePageId)),manifest,data:directProvider(manifest),environment:'edge',document,swBundle:options.swBundle,resolveConditionUser:async()=>audienceConditionUser(audience)});
-        const response=await engine.fetch(new Request(request.url,{method:'GET'}));
-        const output=new Headers(response.headers);for(const [key,value]of headers)output.set(key,value);
-        output.set('Content-Language',locale);
-        if(request.method==='HEAD')await response.body?.cancel();
-        return new Response(request.method==='HEAD'?null:response.body,{status:response.status,headers:output});
+        const document={...resolved.document,frontendEditing:options.frontendEditing,faviconUrl:typeof branding.faviconUrl==='string'&&branding.faviconUrl?branding.faviconUrl:'/static/icon.png'};
+        const html = await renderResolvedPageDocument(page, request, {
+            manifest, environment: 'edge', document, swBundle: options.swBundle,
+            interpolations: displayPlanInterpolations(liveDisplayPlan(publication, resolved.sourcePageId)),
+        }, audienceConditionUser(audience));
+        headers.set('Content-Language', locale);
+        headers.set('Content-Type', 'text/html; charset=UTF-8');
+        headers.set('x-rendered-by', 'edge');
+        headers.set('Pragma', 'no-cache');
+        headers.set('Expires', '0');
+        return new Response(request.method === 'HEAD' ? null : html, { headers });
     }catch(error){
         const invalid=error instanceof LivePageRequestError;
         if(!invalid)reportReadFailure('live-page',error);
