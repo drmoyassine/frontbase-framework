@@ -154,11 +154,36 @@ export function cloneBlockTree<T extends VersionedBlock>(nodes: T[], makeId: () 
         }
         if (Array.isArray(value)) return value.map(child => clone(child));
         if (!value || typeof value !== 'object') return value;
+        // Deeply frozen style/visibility subtrees carry no remappable element ids and
+        // are treated as read-only by every renderer (frozen store artifacts already
+        // flow through the same renderers uncloned). Sharing them lets each row clone
+        // reuse the frozen-object CSS memoization instead of recomputing declarations
+        // per row per request. Unfrozen builder drafts keep the full copy.
+        if (sharedImmutableKeys.has(key) && immutableSubtree(value)) return value;
         const result=Object.fromEntries(Object.entries(value).map(([name, child]) => [name, name==='id'&&components.has(value)?ids.get(String(child))??child:clone(child, name)]));
         if(templateIdentity&&components.has(value))result.props={...result.props,_templateSourceId:value.props?._templateSourceId??value.id};
         return result;
     };
     return clone(nodes);
+}
+
+const sharedImmutableKeys=new Set(['styles','stylesData','visibility']);
+const verifiedImmutableSubtrees=new WeakSet<object>();
+/** True only for deeply frozen plain data; verified once per distinct object. */
+function immutableSubtree(value:unknown):boolean{
+    if(!value||typeof value!=='object'||Array.isArray(value)||!Object.isFrozen(value))return false;
+    if(verifiedImmutableSubtrees.has(value))return true;
+    const seen=new Set<object>();
+    const check=(input:unknown):boolean=>{
+        if(!input||typeof input!=='object')return true;
+        if(seen.has(input))return true;
+        if(!Object.isFrozen(input))return false;
+        seen.add(input);
+        return Object.values(input).every(child=>check(child));
+    };
+    if(!check(value))return false;
+    verifiedImmutableSubtrees.add(value);
+    return true;
 }
 
 export function overrideBlockField<T extends VersionedBlock>(node: T, versionId: string, group: 'props' | 'styles', field: string, value: unknown, reset = false): T {

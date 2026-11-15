@@ -38,6 +38,27 @@ assert.equal(publicRecords[0].children.length,1);assert.equal(publicRecords[0].c
 const source=[{id:'parent',type:'Container',children:[{id:'child',type:'Link',props:{href:'#parent',actionBindings:[{targetId:'child'}]}}],versions:[{id:'alt',name:'Alt',overrides:{children:[{id:'other',type:'Text'}]}}]}];
 let next=0;const cloned=cloneBlockTree(source,()=>`new-${++next}`);validateBlockVersions(cloned);
 assert.equal(cloned[0].children[0].props.href,'#new-1');assert.equal(cloned[0].children[0].props.actionBindings[0].targetId,'new-2');assert.equal(cloned[0].versions[0].id,'alt');
+// Deeply frozen published style/visibility subtrees are shared by reference so row
+// clones reuse the frozen-object CSS memoization; ids and props are still cloned.
+const frozenTemplate=[{id:'tpl',type:'Card',props:{title:'Row',actionBindings:[{targetId:'tpl'}]},styles:{color:'blue'},stylesData:{version:1,values:{color:'blue'},viewportOverrides:{mobile:{color:'red'}}},visibility:{mobile:true,tablet:false,desktop:true},children:[{id:'tpl-title',type:'Heading',props:{text:'{{ record.title }}'}}]}];
+for(const freeze of [frozenTemplate[0],frozenTemplate[0].styles,frozenTemplate[0].stylesData,frozenTemplate[0].stylesData.values,frozenTemplate[0].stylesData.viewportOverrides,frozenTemplate[0].stylesData.viewportOverrides.mobile,frozenTemplate[0].visibility])Object.freeze(freeze);
+let row=0;const rowClone=cloneBlockTree(frozenTemplate,()=>`row-${++row}`,true)[0];
+assert.equal(rowClone.styles,frozenTemplate[0].styles,'frozen styles shared by reference');
+assert.equal(rowClone.stylesData,frozenTemplate[0].stylesData,'frozen stylesData shared by reference');
+assert.equal(rowClone.visibility,frozenTemplate[0].visibility,'frozen visibility shared by reference');
+assert.notEqual(rowClone.props,frozenTemplate[0].props,'props stay cloned for id remapping');
+assert.equal(rowClone.props.actionBindings[0].targetId,'row-1','remappable id strings inside props still remap');
+assert.equal(rowClone.id,'row-1');assert.equal(rowClone.children[0].id,'row-2');
+assert.equal(rowClone.children[0].props.text,'{{ record.title }}');
+assert.equal(JSON.stringify(frozenTemplate),JSON.stringify([{id:'tpl',type:'Card',props:{title:'Row',actionBindings:[{targetId:'tpl'}]},styles:{color:'blue'},stylesData:{version:1,values:{color:'blue'},viewportOverrides:{mobile:{color:'red'}}},visibility:{mobile:true,tablet:false,desktop:true},children:[{id:'tpl-title',type:'Heading',props:{text:'{{ record.title }}'}}]}]),'source tree untouched');
+// Partially or unfrozen subtrees keep the full copy: builder drafts never share.
+const draft=[{id:'draft',type:'Card',styles:{color:'blue'},visibility:{mobile:true,tablet:true,desktop:true},children:[]}];
+let dup=0;const draftClone=cloneBlockTree(draft,()=>`dup-${++dup}`)[0];
+assert.notEqual(draftClone.styles,draft[0].styles);assert.notEqual(draftClone.visibility,draft[0].visibility);
+// A shallow-frozen styles object with a mutable interior is NOT shareable.
+const shallow={id:'shallow',type:'Card',styles:Object.freeze({color:'blue',inner:{deeper:true}}),children:[]};
+const shallowClone=cloneBlockTree([shallow],()=>'s1')[0];
+assert.notEqual(shallowClone.styles,shallow.styles,'partially frozen subtrees keep the full copy');
 const context={user:{role:'reader'},url:{type:'program'},local:{},app:{},system:{},visitor:{},page:{},session:{},cookies:{}};
 const html=await renderPage({content:[{id:'heading',type:'Heading',props:{text:'Institutions'},versions:[{id:'programs',name:'Programs',when:'url.type == "program"',overrides:{props:{text:'Programs'}}}]}]},context);
 assert.ok(html.includes('data-block-active="programs"'));assert.ok(html.includes('<template data-block-version="default"'));
