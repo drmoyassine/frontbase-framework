@@ -1612,7 +1612,15 @@ The shared `mountBindingsForm` becomes a multi-step wizard (State Database requi
 Recorded limitation, not an accepted gap to hide: the native zero-state worker holds no server-side copy of the actor's Supabase grant (it passes once through activation into the installed worker), so the native wizard connects the project chosen at OAuth time and takes the schema name inline; the full project/schema dropdowns live in the hosted setup wizard and console today. Read-only project/schema discovery endpoints exist on the hosted bootstrap and console surfaces; extending listing to native installations requires relay-protocol work and is follow-up, not shipped behavior.
 
 
-## 2026-11-14 Workers Free publication preparation — owner-directed
+## 2026-11-15 live-only data serving — supersedes content snapshots
+
+The owner directs: “deprecate snapshots completely. All data serving is live.” Publish layout and binding/access configuration; resolve database records and translations live through existing adapters. Record edits, new eligible records and deletions must not require site preparation or republication. This includes articles, detail routes, SEO, relationships, counts, search and pagination.
+
+The November 14 content-capture/pre-render direction and its compiled record HTML/index extension below are superseded. Preserve layout version history and existing translation/source data. Historical content captures may remain for migration/audit, never serving or fallback. Keep tenant/access restrictions and explicit live-read failures. Workers Free remains required; previous snapshot CPU receipts are not evidence for the replacement.
+
+Implementation and migration are open. See [the live-serving plan](../plans/live-data-serving-20261115.md). No completed live-only deployment is claimed.
+
+## 2026-11-14 Workers Free publication preparation — superseded November 15
 
 Keep Study-in-USA on Workers Free. Run expensive publication preparation, approval validation and HTML rendering in an authenticated self-hosted Node operator, reusing the existing engine and stores. An opt-in pre-render entry may serve immutable HTML only after checking the published source identity and exact render dependencies. Deployment assets must stay behind the Worker; unreviewed/private output is not a public static site. This retains the one-engine architecture and does not introduce a required hosted control plane.
 

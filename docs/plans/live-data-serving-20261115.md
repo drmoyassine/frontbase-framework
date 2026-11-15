@@ -62,6 +62,13 @@ The full Worker local CPU profile identified repeated structured-cloning of the 
 
 Further changes use copy-on-write translation projection and bounded locale normalization. Frozen-input, nested-row, inherited Block Version and unchanged-reference tests pass. Node 22 full workspace check/build, the full edge-core suite, all live-layout tests, and translation HTTP/localization mutation controls pass. A fresh isolated measurement is running; production has not been promoted.
 
+
+Latest verification (November 15): `ff0c9271` caches only fully validated, immutable authored menu definitions; every request still reads tenant-owned menu presence/raw bytes and evaluates the current audience. All six menu mutation gates, Node 22 workspace check/build, and the rebuilt bundle no-leak check pass. Cloudflare's dashboard confirms Workers Free; no plan change was made.
+
+Isolated version `ae173200-8ab1-45e6-b287-8acc17bc549e` passed home, list/search/pagination, details and long articles in English/Arabic, plus both frontend record-edit flows with the same layout pointer. No Error 1102 occurred. Warm English sampled 6–13 ms and Arabic 6–14 ms; cold Arabic reached 36 ms. This does not meet the strict CPU acceptance gate. The fixture Worker and database were removed. The next profile targets remaining costs rather than treating HTTP 200 as qualification.
+
+Production remains on `6451e8cf-39ae-4ec3-bd13-126d825931fb`. Non-active version `dc64dfe7-3cfa-4f0f-ae10-0f89761587a6` passed five real-data EN/AR private routes. Read-only editorial inventory found 957 approved article records; no source status migration or active layout publication has occurred.
+
 ## Next executable work
 
 Finish and measure the CPU repairs, retire remaining legacy capture authoring dependencies, migrate only eligible reviewed article source statuses, run security/conformance gates, privately verify the full English/Arabic release, then commit/push/deploy/publish and verify Study-in-USA. Production remains unchanged until these checks pass. No general-release or Workers Free acceptance claim is made yet.
