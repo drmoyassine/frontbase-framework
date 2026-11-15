@@ -8,6 +8,7 @@ import {composeMenuRegions} from '@frontbase/edge-core/menu-components';
 const db=sqliteRunner(':memory:');await migrateUp(db);const now='2026-10-13T15:00:00Z',store=new MenusSnapshotStore(db,'owner'),draft=new MenusStore(db,'owner');
 const menu=createMenuDefinition('shared-header','header');menu.items=[{id:'private-item',label:'PRIVATE_LABEL',href:'/private-target/',audience:{authentication:'authenticated',contactTypes:['student'],permissionLevels:['reader']},children:[]}];
 const first=await draft.save([menu],0,now),hash=await store.prepare(first,now);assert.equal(await store.prepare(first,now),hash);assert.equal(await new MenusSnapshotStore(db,'foreign').get(hash),null);
+const immutableMenu=await store.get(hash);assert.throws(()=>{immutableMenu.menus[0].design.brand='CACHE_MUTATION';},TypeError);
 await draft.save([{...menu,name:'Edited',design:{...menu.design,brand:'NEW_DRAFT_BRAND'}}],1,now);assert.deepEqual(await store.get(hash),first);
 const original={root:{},content:[{id:'page-content',type:'Text',props:{text:'Body'}}]},anonymous=composeMenuRegions(original,resolveMenuRegions(first,'page','/',null),null);
 assert.ok(!JSON.stringify(anonymous).includes('PRIVATE_LABEL'));assert.ok(!JSON.stringify(anonymous).includes('private-target'));assert.ok(!JSON.stringify(anonymous).includes('NEW_DRAFT_BRAND'));
