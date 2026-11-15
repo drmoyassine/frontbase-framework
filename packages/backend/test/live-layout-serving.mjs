@@ -54,6 +54,12 @@ for(const forbidden of ['records','index','chunks','catalog','approvals']){
 }
 const seeded=structuredClone(plan);seeded.templates[0].layout.content[0].props.initialRows=[{title:'Frozen'}];
 assert.equal(liveLayoutPublicationSchema.safeParse(seeded).success,false,'hydrated content refused');
+// Reusing a compiled definition must never retain a previous request's runner.
+const firstRunner=createLiveDirectoryQueries(configuration,'one','sqlite',async()=>[{total:1}]);
+const secondRunner=createLiveDirectoryQueries(configuration,'one','sqlite',async()=>[{total:2}]);
+assert.deepEqual(await firstRunner['directory.institution.count'].execute({},{tenant:'one'}),[{total:1}]);
+assert.deepEqual(await secondRunner['directory.institution.count'].execute({},{tenant:'one'}),[{total:2}]);
+await assert.rejects(()=>secondRunner['directory.institution.count'].execute({},{tenant:'two'}),/principal/);
 const queries=createLiveDirectoryQueries(configuration,'one','sqlite',(sql,params)=>db.query(sql,params));
 await assert.rejects(()=>queries['directory.institution.list'].execute({},{tenant:'other'}),/principal/);
 const authoring=createDirectoryQueries(configuration,'one','sqlite',(sql,params)=>db.query(sql,params));

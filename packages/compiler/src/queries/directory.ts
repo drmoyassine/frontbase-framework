@@ -1,7 +1,7 @@
 import {directorySources} from '@frontbase/edge-core/directory/configuration';
 import { z } from 'zod';
 import { directoryConfigurationSchema, directoryConfigurationReadiness, parseEditorialBody, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
-import { defineQueries, type QueryRegistry } from './defineQueries.js';
+import { defineQueries, type QueryRegistry, type QueryDef, type QueryContext } from './defineQueries.js';
 import { sitePublicationArtifactSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
 
 const roles = ['institution', 'program', 'city', 'article', 'page'] as const;
@@ -40,12 +40,14 @@ export function createLiveDirectoryQueries(input:DirectoryConfiguration,owner:st
 }
 
 // Compiled configuration only: never credentials, query results or request identities.
-const liveConfigurations=new Map<string,{configuration:DirectoryConfiguration;sources:ReturnType<typeof directorySources>}>();
+type DirectoryRead=(sql:string,params:unknown[])=>Promise<Record<string,unknown>[]>;
+type DirectoryPlan=Record<string,Omit<QueryDef,'execute'>&{execute:(raw:Record<string,unknown>,ctx:QueryContext,read:DirectoryRead)=>Promise<Record<string,unknown>[]>}>;
+const liveConfigurations=new Map<string,{configuration:DirectoryConfiguration;sources:ReturnType<typeof directorySources>;plans:Map<string,DirectoryPlan>}>();
 function liveConfiguration(input:DirectoryConfiguration){
     const key=JSON.stringify(input),cached=liveConfigurations.get(key);if(cached)return cached;
     const configuration=directoryConfigurationSchema.parse(input);
     if(directoryConfigurationReadiness(configuration).length)throw Error('directory_configuration_incomplete');
-    const compiled={configuration,sources:directorySources(configuration)};
+    const compiled={configuration,sources:directorySources(configuration),plans:new Map<string,DirectoryPlan>()};
     if(key.length<=65536){if(liveConfigurations.size>=16)liveConfigurations.delete(liveConfigurations.keys().next().value!);liveConfigurations.set(key,compiled);}
     return compiled;
 }
@@ -59,7 +61,12 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
     const quote = (name: string) => { if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new Error('invalid_mapping'); return `"${name}"`; };
     const sources = compiled?.sources??directorySources(c);
     const city = sources.city, institution = sources.institution;
-    const registry: QueryRegistry = {};
+    // Cache only validated compiler definitions. Runners, credentials, principals and
+    // rows are injected per call and are never retained in this plan cache.
+    const planKey=JSON.stringify([owner,dialect]);
+    let registry=compiled?.plans.get(planKey);
+    if(!registry){
+    registry={} as DirectoryPlan;
     for (const role of roles) for (const mode of (authoring?['list','detail']:['list','detail','count','routes']) as ('list'|'detail'|'count'|'routes')[]) {
         if (role === 'city' && mode === 'detail') continue; // cities have no preserved-path mapping yet
         if(role==='city'&&mode==='routes')continue;
@@ -69,7 +76,7 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
             ? (Number(!!p.path)+Number(p.id!==undefined)===1) && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined && p.sort === undefined && p.match === undefined
             : p.path === undefined && p.id===undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);
         registry[`directory.${role}.${mode}`] = { scope: 'tenant', ttlSeconds: 0, params: paramsSchema,
-            execute: async (raw, ctx) => {
+            execute: async (raw, ctx, query) => {
                 if (ctx.tenant !== owner || authoring&&!ctx.user) throw new Error('principal_context_required');
                 const p = paramsSchema.parse(raw);
                 const values: unknown[] = []; const bind = (v: unknown) => { values.push(v); return dialect === 'postgres' ? `$${values.length}` : '?'; };
@@ -106,7 +113,11 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
                 })));
             } };
     }
-    return defineQueries(registry);
+    if(compiled){if(compiled.plans.size>=8)compiled.plans.delete(compiled.plans.keys().next().value!);compiled.plans.set(planKey,registry);}
+    }
+    return defineQueries(Object.fromEntries(Object.entries(registry).map(([id,definition])=>[id,{
+        ...definition,execute:(raw:Record<string,unknown>,ctx:QueryContext)=>definition.execute(raw,ctx,query),
+    }])));
 }
 
 /** Same registered-query boundary over an immutable, already-reviewed capture. */
