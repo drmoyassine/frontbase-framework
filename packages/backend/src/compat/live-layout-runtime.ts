@@ -33,7 +33,7 @@ export interface LivePageReader{
 export async function resolveLiveLayoutPage(
     publication:LiveLayoutIndex,version:string,owner:string,db:DbRunner,request:Request,
     reader:LivePageReader,locale=publication.configuration.site.locale,user:Record<string,unknown>|null=null,list?:LiveListRequest, loadLayout?:LoadLiveLayout,
-):Promise<{sourcePageId:string;authored:PageLayoutData;displayPlan?:Awaited<ReturnType<LoadLiveLayout>>['displayPlan'];page:PageEntry;document:NonNullable<EngineOptions['document']>;record:Record<string,unknown>;context:Record<string,unknown>}|null>{
+):Promise<{sourcePageId:string;authored:PageLayoutData;displayPlan?:Awaited<ReturnType<LoadLiveLayout>>['displayPlan'];translationIds?:Awaited<ReturnType<LoadLiveLayout>>['translationIds'];page:PageEntry;document:NonNullable<EngineOptions['document']>;record:Record<string,unknown>;context:Record<string,unknown>}|null>{
     if(!owner||!publication.locales.includes(locale))throw Error('live_page_context_required');
     const url=new URL(request.url),path=url.pathname,c=publication.configuration;
     if(!publicationPathSchema.safeParse(path).success)return null;
@@ -80,7 +80,7 @@ export async function resolveLiveLayoutPage(
         }
         records.set(query.id,(await read(query.binding.queryId,params)).slice(0,mode==='detail'?1:Number(params.limit)));
     })]);
-    let projected = plan.project(records, { locale, inactive });
+    let projected = plan.project(records, { locale, inactive, liveDetailRecords: true });
     const sourceQuery:PublishedLiveQuery=async(scopedOwner,binding,query)=>{
         if(scopedOwner!==owner||binding.dataSourceId!=='frontbase:publication')throw Error('live_source_refused');
         const collection=({institutions:'institution',programs:'program',articles:'article'} as Record<string,string>)[binding.tableName];
@@ -106,7 +106,7 @@ export async function resolveLiveLayoutPage(
     const presentation=templatePolicyPresentation(projected,row,row?context.collection+':'+row.id:'',locale,context);
     const title=presentation.values.title||String(row?.title??template.title),description=presentation.values.description||String(row?.summary??template.description);
     const canonicalUrl=new URL(locale===c.site.locale?path:'/'+locale+path,c.site.origin).href;
-    return {sourcePageId:template.pageId,authored,displayPlan:artifact?.displayPlan,record:presentation.record,context,
+    return {sourcePageId:template.pageId,authored,displayPlan:artifact?.displayPlan,translationIds:artifact?.translationIds,record:presentation.record,context,
         page:{title,description,slug:path.slice(1),layout:presentation.layout},
         document:{language:locale,direction:localeDirection(locale),canonicalUrl,robots:url.search||presentation.values.indexing==='noindex'?'noindex, follow':'index, follow',
             openGraph:{title,description,url:canonicalUrl,type:role==='article'?'article':'website',siteName:c.site.name,locale}}};

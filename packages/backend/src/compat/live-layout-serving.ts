@@ -85,7 +85,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
                 configuredTranslationStorage(options.host,settings,owner),
                 captureMenuFields(settings,owner,template,layout),
             ]);
-            layout=await localizeLiveLayout(layout,{scope:storage.scope,pageId:resolved.sourcePageId,sourceLocale,locale,reader:storage.persistence,menuFields,plan:displayPlan,resolvedFields:fields=>{localizedFields=fields;}});
+            layout=await localizeLiveLayout(layout,{scope:storage.scope,pageId:resolved.sourcePageId,sourceLocale,locale,reader:storage.persistence,menuFields,plan:displayPlan,identityPlan:resolved.translationIds,resolvedFields:fields=>{localizedFields=fields;}});
         }
         layout=addHomepageLanguageLinks(layout,sourceLocale,publication.locales.filter(code=>code!==sourceLocale),locale,sourceUrl.pathname+url.search,[publication.configuration.site.origin,url.origin]);
         if(surface)return surface({layout,pageId:resolved.sourcePageId,locale,sourceLocale,version:active.pointer.hash});

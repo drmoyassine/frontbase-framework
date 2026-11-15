@@ -35,6 +35,8 @@ export const currentTranslationValueSchema=z.object({
 export type CurrentTranslationValue=z.infer<typeof currentTranslationValueSchema>;
 /** Page readers consume this port; single-unit persistence implementations stay compatible. */
 export interface TranslationBatchReader {
+    /** Current values keyed by unit ID. Units without a head are omitted. */
+    readCurrentHeads?(scope: LocalizationScope, unitIds: string[], locale: string): Promise<Map<string, CurrentTranslationValue>>;
     readCurrentMany?(scope:LocalizationScope,unitIds:string[],locale:string):Promise<CurrentTranslationValue[]>;
     /** One bounded, ordered snapshot per requested unit; missing units retain their position. */
     readMany(scope: LocalizationScope, unitIds: string[], locale?: string): Promise<TranslationSnapshot[]>;

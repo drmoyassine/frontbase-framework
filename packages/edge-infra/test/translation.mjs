@@ -47,12 +47,16 @@ const f=await fixture();try{
  assert.equal(direct[0].head.text,snapshot.head.text);
  assert.equal(direct[66].head,null);
  assert.equal(reads.length,3,'sparse lookup sends one HTTP request');
+ const heads = await batch.readCurrentHeads(scope, ids, 'ar');
+ assert.deepEqual(heads, new Map([[f.source.unitId, direct[0]]]));
+ assert.equal(reads.length, 4, 'public lookup sends one request and returns only present heads');
  sparseStatus='legacy';
- assert.deepEqual(await batch.readCurrentMany(scope,ids,'ar'),direct);
- assert.equal(reads.length,5,'legacy RPC fallback preserves behavior');
+ assert.deepEqual(await batch.readCurrentMany(scope, ids, 'ar'), direct);
+ assert.deepEqual(await batch.readCurrentHeads(scope, ids, 'ar'), heads);
+ assert.equal(reads.length, 8, 'legacy RPC fallback preserves both projections');
  sparseStatus='failed';
- await assert.rejects(batch.readCurrentMany(scope,ids,'ar'),/translation_rpc_failed/);
- assert.equal(reads.length,6,'permission failure does not fall back');
+ await assert.rejects(batch.readCurrentHeads(scope, ids, 'ar'), /translation_rpc_failed/);
+ assert.equal(reads.length, 9, 'permission failure does not fall back');
 
  console.log('translation batch reads PASS: one scoped HTTP request for 67 fields, isolated revision lookup');
 }finally{f.close();}

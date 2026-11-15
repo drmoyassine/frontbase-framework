@@ -34,6 +34,9 @@ export const directoryRecordBindingSchema = z.object({
 export const directoryListCollections: Record<string, 'institutions' | 'programs' | 'cities' | 'articles'> = {
     'directory.institution.list': 'institutions', 'directory.program.list': 'programs',
     'directory.city.list': 'cities', 'directory.article.list': 'articles' };
+const liveDetailRecordCollections: Readonly<Record<string,string>> = Object.freeze({
+    'directory.institution.detail':'institutions', 'directory.program.detail':'programs', 'directory.article.detail':'articles',
+});
 /** Record text columns a list row may own as a translatable unit — dates and plain bodies never do. */
 const stampableRecordColumns = new Set(['title', 'summary', 'coverAlt', 'byline']);
 
@@ -154,7 +157,7 @@ export function compileDirectoryProjection<T extends PageLayoutData>(layout: T) 
     const instructions = compileDirectoryInstructions(layout);
     const queries = Object.freeze(instructions.queries.map(query =>
         Object.freeze({ id: query.id, binding: Object.freeze({ ...query.binding, params: Object.freeze({ ...query.binding.params }) }) })));
-    const project = (records: Map<string, Record<string, unknown>[]>, options: { locale?: string; inactive?: ReadonlySet<string> } = {}) =>
+    const project = (records: Map<string, Record<string, unknown>[]>, options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean } = {}) =>
         projectCompiledDirectory(layout, instructions, records, options);
     return { queries, project };
 }
@@ -163,7 +166,7 @@ function projectCompiledDirectory<T extends PageLayoutData>(
     layout: T,
     instructions: DirectoryInstructions,
     records: Map<string, Record<string, unknown>[]>,
-    options: { locale?: string; inactive?: ReadonlySet<string> },
+    options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean },
 ): T {
     const queries = new Map(instructions.queries.map(query => [query.id, query.binding]));
     const inactive = options.inactive;
@@ -182,7 +185,10 @@ function projectCompiledDirectory<T extends PageLayoutData>(
             const { directoryQuery: _query, directoryControls: controls, ...rest } = props;
             const list = parsed.queryId.endsWith('.list'); const columns = Math.min(4, Math.max(1, Number(props.columns) || 3));
             if (list) rest.className = `${typeof rest.className === 'string' ? rest.className : ''} ${props.layout === 'list' ? 'flex flex-col' : `grid grid-cols-1 ${columns > 1 ? 'md:grid-cols-2' : ''} ${columns > 2 ? `lg:grid-cols-${Math.floor(columns)}` : ''}`} gap-6`;
-            const rowCollection = directoryListCollections[parsed.queryId];
+            // Live detail fields use the same record unit/edit destination as list fields.
+            // Retain positional identities when reading older, reviewed locale publications.
+            const rowCollection = directoryListCollections[parsed.queryId]
+                ?? (options.liveDetailRecords ? liveDetailRecordCollections[parsed.queryId] : undefined);
             // With browsing controls the empty hint renders from the browsing labels (released
             // patterns, page language); only a control-less list keeps a projected fallback text.
             const projected: PageComponent = { ...node, type: 'Container', props: rest,

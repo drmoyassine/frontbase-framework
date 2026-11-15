@@ -1,11 +1,13 @@
 import {z} from 'zod';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {stableStringify} from '@frontbase/compiler/manifest';
-import {directoryConfigurationSchema,liveViewBindings,projectSharedDirectoryPreview} from '@frontbase/edge-core/directory/configuration';
+import {directoryConfigurationSchema,liveViewBindings,projectSharedDirectoryPreview,projectTemplatePresentation} from '@frontbase/edge-core/directory/configuration';
 import {publicationTemplateSchema,publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import type {PageLayoutData} from '@frontbase/edge-core';
 import {compileDisplaySurfacePlan,type DisplaySurfacePlan} from '@frontbase/edge-core/localization';
 import {publicationHash,publicationBytesHash} from './publication-hash.js';
+import {compileTranslationIds,translationIdentityPlanSchema,type TranslationIdentityPlan} from './live-translation-identities.js';
+import {TranslationStorageStore} from './translation-storage.js';
 
 const hash=z.string().regex(/^[a-f0-9]{64}$/);
 const locale=z.string().regex(/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
@@ -44,7 +46,7 @@ export type LiveLayoutPublication=z.infer<typeof liveLayoutPublicationSchema>;
 type Template = LiveLayoutPublication['templates'][number];
 type StaticPage = LiveLayoutPublication['staticPages'][number];
 type LayoutReference<T> = Omit<T, 'layout'> & { artifact: string };
-type LayoutArtifact = { version: 1; layout: PageLayoutData; displayPlan: DisplaySurfacePlan };
+type LayoutArtifact = { version: 1; layout: PageLayoutData; displayPlan: DisplaySurfacePlan; translationIds?:TranslationIdentityPlan };
 const manifestSchema = z.object({
     format: z.literal('live-layout-index-v1'),
     schemaVersion: z.literal(3), runtimeVersion: z.literal('live-layout-v1'), siteBindingsCompiled: z.literal(true),
@@ -62,6 +64,7 @@ const artifactEnvelope = z.object({
         const plan = value as DisplaySurfacePlan | null;
         return !!plan && plan.version === 1 && Array.isArray(plan.nodes) && Array.isArray(plan.programs) && Array.isArray(plan.interpolations);
     }),
+    translationIds:translationIdentityPlanSchema.optional(),
 }).strict();
 export type LoadLiveLayout = (reference: {pageId: string} & ({layout: unknown} | {artifact: string})) => Promise<LayoutArtifact>;
 const pointerSchema=z.object({hash,generation:z.number().int().positive().max(Number.MAX_SAFE_INTEGER)}).strict();
@@ -174,9 +177,29 @@ export class LiveLayoutPublicationStore{
         const templates=parsed.templates.map(compile),staticPages=parsed.staticPages.map(compile);
         const displayPlans=Object.fromEntries([...templates,...staticPages].map(page=>[page.pageId,compileDisplaySurfacePlan(page.layout as unknown as PageLayoutData)]));
         const validated = liveLayoutPublicationSchema.parse({...parsed,siteBindingsCompiled:true,templates,staticPages,displayPlans});
+        const projectId=validated.locales.some(code=>code!==validated.configuration.site.locale)
+            ?await new TranslationStorageStore(this.db,this.owner).get().then(settings=>settings.projectId,error=>{
+                // Invalid translation settings should not prevent publishing the source layout.
+                if(error instanceof Error&&error.message==='translation_storage_unavailable')return null;
+                throw error;
+            }):null;
         const indexPage = async <T extends Template | StaticPage>(page: T) => {
             const {layout, ...metadata} = page;
-            const raw = stableStringify({version: 1, layout, displayPlan: displayPlans[page.pageId]});
+            const displayPlan=displayPlans[page.pageId]!;
+            let translationIds:TranslationIdentityPlan|undefined;
+            if(projectId){
+                try{
+                    translationIds=await compileTranslationIds(projectTemplatePresentation(layout as unknown as PageLayoutData,validated.configuration),
+                        displayPlan,{tenantId:this.owner,projectId},page.pageId);
+                }catch(error){
+                    // Compatibility layouts that only fail derived presentation validation
+                    // must still be storable. Rendering already validates their presentation.
+                    if(!(error instanceof z.ZodError))throw error;
+                }
+            }
+            let raw = stableStringify({version: 1, layout, displayPlan, translationIds});
+            // Preserve the existing size allowance for layout/binding content.
+            if (translationIds && raw.length > 4_000_000) raw = stableStringify({version: 1, layout, displayPlan});
             if (raw.length > 4_000_000) throw Error('layout_artifact_size');
             const artifact = await bytesHash(raw);
             await this.save(artifactKey(artifact), raw, now);

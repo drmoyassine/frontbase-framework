@@ -1,43 +1,51 @@
 import type {PageLayoutData} from '@frontbase/edge-core';
 import {homepageDisplayLayout,homepageDisplayFields,applyHomepageDisplayFields,translationUnitId,messageSourceFingerprint,
-    type DisplaySurfacePlan,type DisplayField,type MessageUnit,type LocalizationScope,type TranslationBatchReader} from '@frontbase/edge-core/localization';
+    type CurrentTranslationValue,type DisplaySurfacePlan,type DisplayField,type MessageUnit,type LocalizationScope,type TranslationBatchReader} from '@frontbase/edge-core/localization';
 import {translationDisplayText} from './translation-inputs.js';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {TranslationLifecycle} from '@frontbase/edge-core/localization';
 import {configuredTranslationStorage,type TranslationStorageHost} from './translation-storage.js';
+import {displayFieldKey,displayTranslationUnit,preparedTranslationIds,type LiveDisplayField,type TranslationIdentityPlan} from './live-translation-identities.js';
+
+export {displayTranslationUnit,type LiveDisplayField} from './live-translation-identities.js';
 
 const identityIds=new Map<string,string>();
-
-export type LiveDisplayField=DisplayField&{menu?:{menuId:string;path:string[]}};
-/** Same stable resource identities as the existing page/record/menu translation writer. */
-export function displayTranslationUnit(field:LiveDisplayField,scope:LocalizationScope,pageId:string,sourceLocale:string):MessageUnit{
-    const resource=field.menu
-        ?{kind:'component' as const,documentId:'app-menus',blockId:field.menu.menuId,versionId:'default',propertyPath:field.menu.path}
-        :field.record
-        ?{kind:'record' as const,connectionId:field.record.connectionId,collection:field.record.collection,key:field.record.key,propertyPath:[field.fieldKey??field.path.at(-1)??'']}
-        :{kind:'component' as const,documentId:pageId,blockId:field.blockId,versionId:field.versionId??'default',propertyPath:field.path};
-    return {version:1,scope,resource,sourceLocale,format:'plain',text:field.text,segmenterVersion:1,placeholders:[]};
-}
 
 /** Bounded current-head read. No page release, capture hash, pinned revision or saved text fallback.
  * Source edits immediately invalidate stale translations while retaining their history in storage. */
 export async function localizeLiveLayout(input:PageLayoutData,options:{
     scope:LocalizationScope;pageId:string;sourceLocale:string;locale:string;
-    reader:Pick<TranslationBatchReader,'readMany'|'readCurrentMany'>;menuFields?:LiveDisplayField[];plan?:DisplaySurfacePlan;
+    reader:Pick<TranslationBatchReader,'readMany'|'readCurrentMany'|'readCurrentHeads'>;menuFields?:LiveDisplayField[];plan?:DisplaySurfacePlan;identityPlan?:TranslationIdentityPlan;
     resolvedFields?:(fields:LiveDisplayField[])=>void;
 }):Promise<PageLayoutData>{
     const layout=homepageDisplayLayout(input);
     if(options.locale===options.sourceLocale)return layout;
-    const menuFields=options.menuFields??[],claimed=new Set(menuFields.map(field=>JSON.stringify([field.blockId,field.path])));
-    const fields=[...homepageDisplayFields(layout,options.plan).filter(field=>!claimed.has(JSON.stringify([field.blockId,field.path]))),...menuFields];
+    const menuFields=options.menuFields??[];
+    let fields:LiveDisplayField[]=homepageDisplayFields(layout,options.plan);
+    if(menuFields.length){
+        const claimed=new Set(menuFields.map(field=>JSON.stringify([field.blockId,field.path])));
+        fields=fields.filter(field=>!claimed.has(JSON.stringify([field.blockId,field.path]))).concat(menuFields);
+    }
     if(fields.length>500)throw Error('live_translation_surface_limit');
+    if(!fields.length){options.resolvedFields?.(fields);return layout;}
+    const prepared=preparedTranslationIds(options.identityPlan,options.scope,options.pageId);
     const pendingIds = new Map<string, Promise<string>>();
-    const identified = fields.map(field => {
+    const groups=new Map<string,number|number[]>();
+    const group=(id:string,index:number)=>{
+        const existing=groups.get(id);
+        if(existing===undefined)groups.set(id,index);
+        else if(typeof existing==='number')groups.set(id,[existing,index]);
+        else existing.push(index);
+    };
+    const pendingFields:Promise<void>[]=[];
+    for(const [index,field] of fields.entries()){
+        const compiled=!field.menu&&!field.record&&prepared?.get(displayFieldKey(field));
+        if(compiled){group(compiled,index);continue;}
         const unit = displayTranslationUnit(field, options.scope, options.pageId, options.sourceLocale);
         // Cache identities only. Current source and translated text stay request-local.
         const key = JSON.stringify([options.scope, unit.resource]);
         const cached = identityIds.get(key);
-        if (cached) return { field, unit, id: cached };
+        if (cached){group(cached,index);continue;}
         let pending = pendingIds.get(key);
         if (!pending) {
             pending = translationUnitId(options.scope, unit.resource).then(id => {
@@ -47,47 +55,53 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
             });
             pendingIds.set(key, pending);
         }
-        return { field, unit, id: pending };
-    });
-    const resolvedIds = pendingIds.size ? await Promise.all(identified.map(entry => entry.id)) : identified.map(entry => entry.id as string);
-    const ids = [...new Set(resolvedIds)];
-    const rows = ids.length
-        ? await (options.reader.readCurrentMany?.(options.scope, ids, options.locale) ?? options.reader.readMany(options.scope, ids, options.locale))
-        : [];
-    if (rows.length !== ids.length) throw Error('live_translation_response_invalid');
-    const byId = new Map(ids.map((id, index) => [id, rows[index]!]));
+        pendingFields.push(pending.then(id=>group(id,index)));
+    }
+    if(pendingFields.length)await Promise.all(pendingFields);
+    const ids=[...groups.keys()];
+    let heads:Map<string,CurrentTranslationValue>;
+    if(options.reader.readCurrentHeads)heads=await options.reader.readCurrentHeads(options.scope,ids,options.locale);
+    else{
+        // The compatibility adapter still uses ordered slots. Condense them once.
+        const rows=await (options.reader.readCurrentMany?.(options.scope,ids,options.locale)??options.reader.readMany(options.scope,ids,options.locale));
+        if(rows.length!==ids.length)throw Error('live_translation_response_invalid');
+        heads=new Map();
+        for(const [index,row] of rows.entries())if(row.head&&row.source)heads.set(ids[index]!,row);
+    }
+    if(!heads.size){options.resolvedFields?.(fields);return layout;}
     const values = new Map<string, string>();
-    const fingerprints = new Map<string, Promise<string>>();
-    const patchWork: (() => Promise<void>)[] = [];
-    for (const [index, { field, unit }] of identified.entries()) {
-        const id = resolvedIds[index]!;
-        const current = byId.get(id), source = current?.source, head = current?.head;
-        if (!head || !source) continue;
+    const translated:DisplayField[]=[];
+    const resolved=options.resolvedFields&&fields.slice();
+    const patchWork:Promise<void>[]=[];
+    for (const [id,{head,source}] of heads) {
+        const indexes=groups.get(id);
+        if(indexes===undefined||!head||!source)throw Error('live_translation_response_invalid');
         if (head.scope.tenantId !== options.scope.tenantId || head.scope.projectId !== options.scope.projectId
             || source.unit.scope.tenantId !== options.scope.tenantId || source.unit.scope.projectId !== options.scope.projectId
             || head.unitId !== id || head.locale !== options.locale) throw Error('live_translation_scope_mismatch');
         if (head.sourceFingerprint !== source.fingerprint || head.sourceVersion !== source.sourceVersion
             || head.contextFingerprint !== source.contextFingerprint) continue;
-        patchWork.push(async () => {
-            // All display units share locale, plain format, segmenter and placeholders.
-            // Validate/digest once for the same unit and source text within this request.
-            const fingerprintKey = JSON.stringify([id, field.text]);
-            let fingerprint = fingerprints.get(fingerprintKey);
-            if (!fingerprint) {
-                fingerprint = messageSourceFingerprint(unit);
-                fingerprints.set(fingerprintKey, fingerprint);
+        // Matching occurrences of the same unit can share the current source proof.
+        const fingerprints=new Map<string,Promise<string>>();
+        for(const index of typeof indexes==='number'?[indexes]:indexes){
+            const field=fields[index]!;
+            let fingerprint=fingerprints.get(field.text);
+            if(!fingerprint){
+                fingerprint=messageSourceFingerprint(displayTranslationUnit(field,options.scope,options.pageId,options.sourceLocale));
+                fingerprints.set(field.text,fingerprint);
             }
-            if (await fingerprint === source.fingerprint) {
-                values.set(JSON.stringify([field.blockId, field.versionId ?? 'default', field.path]), translationDisplayText(field.text, head.text));
-            }
-        });
+            patchWork.push(fingerprint.then(current=>{
+                if(current!==source.fingerprint)return;
+                const text=translationDisplayText(field.text,head.text);
+                translated.push(field);
+                values.set(displayFieldKey(field),text);
+                if(resolved)resolved[index]={...field,text};
+            }));
+        }
     }
-    if (patchWork.length) await Promise.all(patchWork.map(patch => patch()));
-    options.resolvedFields?.(fields.map(field=>{
-        const text=values.get(JSON.stringify([field.blockId,field.versionId??'default',field.path]));
-        return text===undefined?field:{...field,text};
-    }));
-    return values.size?applyHomepageDisplayFields(layout,values,{partial:true,fields}):layout;
+    if (patchWork.length) await Promise.all(patchWork);
+    if(resolved)options.resolvedFields?.(resolved);
+    return values.size?applyHomepageDisplayFields(layout,values,{partial:true,fields:translated}):layout;
 }
 
 /** Existing revision/CAS adapter, without creating or publishing a page catalog. */

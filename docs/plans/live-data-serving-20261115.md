@@ -181,3 +181,26 @@ Isolated Workers Free version `0adb7408-c289-4b70-b6d1-6dfde776805b` passed all 
 
 Workspace type checks, the Worker build, live layout and editor tests, translation transport and adapter tests, and the five HTTP adapter mutation controls passed. Cold-store coverage verifies selection of exactly one artifact, tamper refusal, and legacy publication readability. The revised lookup is confirmed to cut payload size, but the hosted data do not establish enough CPU headroom for production.
 The semantic article mutation gate also passed, detecting removal of the executable-property refusal.
+
+### Precomputed translation identities and sparse rendering
+
+New bilingual layout artifacts include stable IDs for authored display fields. The IDs use the existing writer algorithm and match only the published page and current tenant/translation project. Records and managed menus still resolve their IDs from live inputs. Artifacts without the optional identity plan, including earlier split releases, still work. Existing publications gain precomputed IDs when their layouts are next prepared; record/translation changes require no layout preparation. To roll back to a Worker predating these IDs, restore a compatible previous publication pointer before changing the Worker version.
+
+The current-head adapter returns a map containing only existing heads. The renderer patches those fields only, while retaining the source and context freshness checks and the fallback source text. Dense reads remain available to older callers and servers; the sparse HTTP path uses the existing batch RPC upgrade. New live detail projections carry the same record identity as lists, so editing a detail title routes English to the source datasource and Arabic to its translation record. Older reviewed locale publications keep their original projection behavior.
+
+The captured Study-in-USA layouts produced 47 prepared IDs on the homepage, nine on Explore, and four to six on each index or detail template. These are publication counts, not the count of current records or saved translations.
+
+Workers Free replay `0a7e29a7-be46-4baa-a27f-cdac2c99d291`: 72 requests through nine representative routes in English and Arabic. Every page returned HTTP 200; no Error 1102 occurred. Cloudflare reported CPU for all 72. Cold requests forced both the layout index and selected artifact out of the in-memory caches in the same Worker; this measures layout-cache misses, not isolate startup.
+
+| Locale | Layout cache | Requests | Median CPU | Max CPU | Over 10 ms |
+| --- | --- | ---: | ---: | ---: | ---: |
+| English | Warm | 18 | 7 ms | 15 ms | 3 |
+| English | Cold | 18 | 9 ms | 16 ms | 5 |
+| Arabic | Warm | 18 | 10 ms | 19 ms | 7 |
+| Arabic | Cold | 18 | 13 ms | 18 ms | 13 |
+
+The documented Free limit is 10 ms per HTTP request. Repeated cold Arabic overruns, along with warm homepage overruns, block production promotion. Keep live records and translations; isolate cold artifact decoding and validation from request-time projection and HTML rendering in the next CPU comparison. The existing production Worker still responds to its health probe (HTTP 200). No production pointer, Worker version or translation schema was changed.
+
+Live edit verification on disposable Workers Free version `980583f3-ab25-4678-85d7-bdcf9b1483f0` passed: a direct source change appeared on reload; an English frontend edit updated the source row; an Arabic frontend edit updated the localized view and left the English row unchanged; a later source change hid the now-stale Arabic head. The publication hash stayed unchanged. The earlier fixture intentionally refused the write when the exposed table lacked a primary key; this run exercised the existing write guard with a keyed table. Both replay Workers and their disposable state were removed.
+
+Node 22 workspace build and type checks, the final affected package/Worker builds, edge-core functional tests, backend live layout and frontend editing tests, and the sparse adapter/HTTP bridge tests passed. The adapter mutation suite passed, including scope and key mismatch refusals. This completes the identity and sparse-rendering changes; the Workers Free CPU gate remains open.
