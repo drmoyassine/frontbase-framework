@@ -77,16 +77,24 @@ export function addHomepageLanguageLinks(input:PageLayoutData,sourceLocale:strin
     const links=homepageLanguageLinks(sourceLocale,locales.slice(0,15),current,sourcePath);
     const home=current===sourceLocale?'/':`/${current}/`;
     // Copy changed authored nodes, without deep-cloning every hydrated record.
-    const walk=(nodes:PageLayoutData['content']):PageLayoutData['content']=>nodes.map(node=>{
-        let result=node;
-        if(node.type==='Navbar'){
-            const labels=node.props?.localeLabels as Record<string,unknown>|undefined,logo=node.props?.logo as Record<string,unknown>|undefined;
-            result={...node,props:{...node.props,languageSwitcher:links,localeLabels:{...labels,language:typeof labels?.language==='string'?labels.language:current==='ar'?'\u0627\u0644\u0644\u063a\u0629':'Language'},...(logo?.link==='/'?{logo:{...logo,link:home}}:{})}};
+    const walk=(nodes:PageLayoutData['content']):PageLayoutData['content']=>{
+        let output:PageLayoutData['content']|undefined;
+        for(let i=0;i<nodes.length;i++){
+            const node=nodes[i]!;
+            let result=node;
+            if(node.type==='Navbar'){
+                const labels=node.props?.localeLabels as Record<string,unknown>|undefined,logo=node.props?.logo as Record<string,unknown>|undefined;
+                result={...node,props:{...node.props,languageSwitcher:links,localeLabels:{...labels,language:typeof labels?.language==='string'?labels.language:current==='ar'?'\u0627\u0644\u0644\u063a\u0629':'Language'},...(logo?.link==='/'?{logo:{...logo,link:home}}:{})}};
+            }
+            if(node.type==='Footer')result={...node,props:{...node.props,logoHref:home}};
+            if(node.children){
+                const children=walk(node.children);
+                if(children!==node.children)result={...result,children};
+            }
+            if(result!==node){output??=nodes.slice();output[i]=result;}
         }
-        if(node.type==='Footer')result={...node,props:{...node.props,logoHref:home}};
-        if(node.children)result={...result,children:walk(node.children)};
-        return result;
-    });
+        return output??nodes;
+    };
     const layout={...input,content:walk(input.content)};
     if(current!==sourceLocale){const projected=localizeNavigationProps(layout,current,origins);projected.root={...projected.root,localeNavigation:{locale:current,origins}};return projected;}
     return layout;

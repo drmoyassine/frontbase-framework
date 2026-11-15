@@ -1,5 +1,5 @@
 import {relativeSiteHref} from '../directory/navigation.js';
-import {localizePublicHref} from '../localization/navigation.js';
+import {createPublicHrefLocalizer} from '../localization/navigation.js';
 import {evaluateCondition,conditionUsesClient,contextReader,resolveValue,valueUsesClient} from '../conditions.js';
 /**
  * LiquidJS template-resolution helpers.
@@ -20,18 +20,45 @@ import type { TemplateContext } from './lib/context.js';
 export async function resolveProps(props: Record<string, unknown> | undefined, context: TemplateContext): Promise<Record<string, unknown>> {
     return resolvePropsValue(props, context);
 }
-export function resolvePropsValue(props: Record<string, unknown> | undefined, context: TemplateContext,programs?:ReadonlyMap<string,CompiledInterpolation>,recordScopes?:WeakMap<object,Record<string,any>>): Record<string, unknown> | Promise<Record<string, unknown>> {
+export function propHrefResolver(app: TemplateContext['app'] | undefined): ((href: string) => string) | undefined {
+    const origin = app?.siteNavigationOrigin;
+    const locale = app?.navigationLocale;
+    const origins = app?.navigationOrigins;
+    const localize = typeof locale === 'string' && Array.isArray(origins) ? createPublicHrefLocalizer(locale, origins) : undefined;
+    if (typeof origin === 'string') {
+        if (localize) return href => localize(relativeSiteHref(href, origin) as string);
+        return href => relativeSiteHref(href, origin) as string;
+    }
+    return localize;
+}
+
+function resolveNavigation(props: Record<string, unknown>, navigate: ((href: string) => string) | undefined): Record<string, unknown> {
+    if (navigate) {
+        if (typeof props.href === 'string') props.href = navigate(props.href);
+        if (typeof props.pageUrl === 'string') props.pageUrl = navigate(props.pageUrl);
+    }
+    return props;
+}
+
+export function resolvePropsValue(
+    props: Record<string, unknown> | undefined,
+    context: TemplateContext,
+    programs?: ReadonlyMap<string, CompiledInterpolation>,
+    recordScopes?: WeakMap<object, Record<string, any>>,
+    navigate: ((href: string) => string) | undefined = propHrefResolver(context.app),
+): Record<string, unknown> | Promise<Record<string, unknown>> {
     if (!props) return {};
     const resolved: Record<string, unknown> = {};
-    const pending: Promise<void>[] = [];
+    let pending: Promise<void>[] | undefined;
     let scope: Record<string, any> | undefined;
     const assign = (key: string, value: unknown) => {
-        if (value instanceof Promise) pending.push(value.then(result => { resolved[key] = result; }));
+        if (value instanceof Promise) (pending ??= []).push(value.then(result => { resolved[key] = result; }));
         else resolved[key] = value;
     };
-    for (const [key, value] of Object.entries(props)) {
+    for (const key of Object.keys(props)) {
+        const value = props[key];
         if (key === 'actionBindings' && Array.isArray(value) && context.record) {
-            const actions = value.map(action => action && typeof action === 'object' && !Array.isArray(action) ? resolvePropsValue(action, context,programs,recordScopes) : action);
+            const actions = value.map(action => action && typeof action === 'object' && !Array.isArray(action) ? resolvePropsValue(action, context, programs, recordScopes, navigate) : action);
             assign(key, actions.some(action => action instanceof Promise) ? Promise.all(actions) : actions);
         } else if (typeof value === 'string' && (value.includes('{{') || value.includes('{%'))) {
             if(!scope){
@@ -51,19 +78,10 @@ export function resolvePropsValue(props: Record<string, unknown> | undefined, co
                     if (alternatives && alternatives.length > 1) resolved._imageFallbackSrc = resolveBinding(alternatives.slice(1).join(' || '), scope);
                 }
             } catch (error) { resolved[key] = failed(error); }
-        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) assign(key, resolvePropsValue(value as Record<string, unknown>, context,programs,recordScopes));
+        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) assign(key, resolvePropsValue(value as Record<string, unknown>, context, programs, recordScopes, navigate));
         else resolved[key] = value;
     }
-    const finish = () => {
-        for (const key of ['href', 'pageUrl']) if (typeof resolved[key] === 'string') {
-            const origin = context.app?.siteNavigationOrigin;
-            if (typeof origin === 'string') resolved[key] = relativeSiteHref(resolved[key], origin);
-            const locale = context.app?.navigationLocale, origins = context.app?.navigationOrigins;
-            if (typeof locale === 'string' && Array.isArray(origins)) resolved[key] = localizePublicHref(String(resolved[key]), locale, origins);
-        }
-        return resolved;
-    };
-    return pending.length ? Promise.all(pending).then(finish) : finish();
+    return pending ? Promise.all(pending).then(() => resolveNavigation(resolved, navigate)) : resolveNavigation(resolved, navigate);
 }
 
 /**

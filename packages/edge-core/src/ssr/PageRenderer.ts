@@ -38,7 +38,7 @@ export type { PageComponent, PageLayoutData } from './types.js';
 
 import type { PageComponent, PageLayoutData } from './types.js';
 import { classifyComponent } from './classification.js';
-import { resolvePropsValue, resolveHiddenFiltersSSR } from './resolve.js';
+import { propHrefResolver, resolvePropsValue, resolveHiddenFiltersSSR } from './resolve.js';
 import { evaluateVisibilityCondition, applyClientVisibilityInjection, clientVisibilityAttributes } from './visibility.js';
 import { applyNavbarFavicon } from './navbarFavicon.js';
 import { resolveRootStyles } from './rootStyles.js';
@@ -53,7 +53,7 @@ import { renderLandingComponent } from './landingDispatcher.js';
  * NOW ASYNC due to LiquidJS template resolution.
  */
 export type ComponentRenderObserver=(component:PageComponent,html:string,context:TemplateContext)=>void;
-type RenderBudget={remaining:number;observe?:ComponentRenderObserver;interpolations?:ReadonlyMap<string,CompiledInterpolation>;recordScopes?:WeakMap<object,Record<string,any>>};
+type RenderBudget={remaining:number;observe?:ComponentRenderObserver;interpolations?:ReadonlyMap<string,CompiledInterpolation>;recordScopes?:WeakMap<object,Record<string,any>>;navigate?: ReturnType<typeof propHrefResolver>};
 type RenderResult = string | Promise<string>;
 const emptyStyles=Object.freeze({});
 const mergedStyles=new WeakMap<object,WeakMap<object,Record<string,unknown>>>();
@@ -129,7 +129,7 @@ function renderComponentImpl(component: PageComponent, context: TemplateContext,
 
     const renderVisible = (isClientSideCondition: boolean, visibilityResult: boolean): RenderResult => {
         if (!isClientSideCondition && !visibilityResult) return '';
-        const propsValue = resolvePropsValue(props, context, budget.interpolations, budget.recordScopes);
+        const propsValue = resolvePropsValue(props, context, budget.interpolations, budget.recordScopes, budget.navigate);
         const renderResolved = (resolvedProps: Record<string, unknown>): RenderResult => {
             if (type === 'Navbar' && resolvedProps.logo) {
                 const favicon = typeof context.app?.faviconUrl === 'string' ? context.app.faviconUrl : undefined;
@@ -291,7 +291,7 @@ export async function renderPage(
     const { rootStyle, rootClass } = resolveRootStyles(rootProps);
 
     // Render all top-level components (async) - wrapped for proper block layout
-    const budget:RenderBudget = { remaining: 20000, observe,interpolations,recordScopes:new WeakMap() };
+    const budget:RenderBudget = { remaining: 20000, observe,interpolations,recordScopes:new WeakMap(), navigate: propHrefResolver(context.app) };
     const contentHtml = await joinRendered(layoutData.content.map(component => renderComponent(component, context, budget)));
 
     // Community Edition Badge Injection

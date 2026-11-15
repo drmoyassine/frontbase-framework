@@ -223,3 +223,36 @@ The replay also verified that newly written rows show up on a never-run search a
 A separate control on an initialized and migrated disposable installation (Worker version `129cce5f-0639-4772-8ebc-80280f85eb51`) measured `/health` at 35 ms CPU on invocation one and 1 ms on invocation two of the same isolate. Neither response rendered a page. This isolates a first-request startup cost; it does not attribute the remainder of the other isolates' numbers by subtraction. The current Worker initializes the full CMS before handling public URLs. Next, profile that setup and test a smaller public serving entry for initialized installations that reuses the same auth, scoped adapters and renderer. Independently reduce warm homepage/search rendering, since their requests also exceeded budget. Continue to require first-invocation and first-time-search evidence with current data and HTML caching off before promotion.
 
 Node 22 workspace check/build and the Worker no-leak build passed. The edge-core, live-layout and targeted style tests passed, including fifteen byte-parity and fourteen WYSIWYG cases. All five template landing mutation controls detected their broken guarantees.
+
+### Platform versus Frontbase initialization
+
+This comparison separates the CPU used to load the bundle from work the application does before answering an HTTP request. It uses a minimal Worker, the full Frontbase bundle answering before CMS initialization, and normal Frontbase health on migrated disposable state.
+
+The three-arm disposable replay used matched Worker settings and witnessed each recorded cold invocation as ordinal one. Cloudflare reports CPU in whole milliseconds; zero means below the reporting resolution. Wrangler deployment startup validation is a separate metric from the handler's invocation CPU.
+
+| Health specimen | Fresh invocation CPU (ms) | Paired warm CPU (ms) | Wrangler startup validation (ms) |
+| --- | --- | --- | --- |
+| Minimal Worker | 0, 0 | 0, 0 | 1, 1 |
+| Full Frontbase bundle, before CMS init | 0, 0, 0 | 0 | 70, 72 |
+| Normal Frontbase health, migrated state | 37, 73, 64 | 1 | 64, 114 |
+
+All twelve HTTP probes returned 200. Two repeats were observed on new isolates and classified as fresh instead of warm. The fixture Worker and database were removed. Loading the full module adds startup-validation work; running the CMS boot on the first handler invocation is the avoidable cost that the minimal and before-CMS arms do not show.
+
+The Cloudflare self-host entry now attempts direct live rendering for anonymous GETs on its configured public origin when the exact migration ledger is current and an explicit session secret is present. It uses the same live renderer and scoped adapters as the full CMS. Health, setup, privileged or session-bound requests, managed cloud tenants, and pending administrator/provider imports keep the original startup path. Where a page needs the compatibility Saved View handler, that handler initializes lazily and retains its normal guards. Missing publication or unproven readiness keeps the normal path. No public HTML, rows, or translation heads are cached by the new entry.
+
+The warmer render path also reuses URL normalization within one render, avoids copying unchanged element properties and keeps untouched branches of the language switcher tree. In a paired Node 22 benchmark on the captured Arabic homepage, the first two changes improved median projection plus render from 3.734 ms to 3.421 ms (8.4%) over eight alternating batches of 550 renders. HTML was byte-identical and a current-row edit appeared in the output. The benchmark measures local projection and rendering only.
+
+Same-artifact Cloudflare replay (built Worker SHA-256 `dee820969875b2f03266c157596ce4e4baf7d70245dde17ed516be304e27b2cf`). A harmless cookie forced the full CMS arm without signing the visitor in. Version rotations and isolate invocation counters separated first requests from warm repeats. Entries are observed CPU in milliseconds, not percentiles.
+
+| Request | Direct, fresh | Direct, warm | Full CMS, fresh | Full CMS, warm |
+| --- | ---: | ---: | ---: | ---: |
+| English homepage | 43 | 10 | 140 | 17 |
+| Arabic homepage | 60, 84 | 21 | 81 | 13 |
+| New English program search | 64 | 12 | 65 | 7 |
+| New Arabic program search | 91 | 15 | 107, 100 | 13 |
+
+All 18 requests returned HTTP 200 and HTML with `Cache-Control: no-store`. The paired documents matched byte for byte on all four routes. The CMS boot log was absent in the direct arm and present on the full arm's first requests. Ten fresh and eight warm observations show a clear removal of CMS startup work, especially in the English homepage pair. They do not establish a consistent percentage improvement across routes. The remaining cold render exceeds the Free limit, and some warm requests still exceed it. Keep production unchanged and profile the first live render separately from CMS startup before another promotion attempt.
+
+Node 22 workspace build and type checks passed, along with the edge-core suite, fifteen byte-parity cases, backend live layout/translation checks, and the host startup, session and state tests. The tenant matrix passed 175/175; action navigation and state resolver mutation checks detected all three and two faults respectively.
+
+The same isolated Worker verified a direct database update, a new English search and a new Arabic search, an English frontend edit written to its source row, and an Arabic frontend edit written only to its translation. Changing the source afterward correctly hid the stale Arabic translation. The publication hash stayed unchanged; all reads served current data without HTML caching. The disposable Worker and database were removed. No production deployment or publication was changed.

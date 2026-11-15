@@ -17,10 +17,24 @@ for(const locale of [undefined,'ar']){
 }
 
 // Locale projection preserves the authored document and unrelated current rows.
-const {localizeNavigationProps}=await import('../dist/localization/navigation.js');
+const {createPublicHrefLocalizer,localizeNavigationProps,localizePublicHref}=await import('../dist/localization/navigation.js');
 const original={props:{href:'/campus/',image:{src:'/photo.jpg'},nested:{action:{pageUrl:'/apply/'}},languageSwitcher:[{href:'/'}]},rows:[{title:'Current title'}]};
 const before=JSON.stringify(original),localized=localizeNavigationProps(original,'ar',['https://source.test']);
 assert.equal(localized.props.href,'/ar/campus/');assert.equal(localized.props.nested.action.pageUrl,'/ar/apply/');
 assert.equal(localized.props.image.src,'/photo.jpg');assert.equal(localized.props.languageSwitcher[0].href,'/');
 assert.equal(JSON.stringify(original),before,'localizing one request does not mutate shared authoring input');
 assert.deepEqual(localized.rows,original.rows);
+
+for (const origins of [['https://source.test'], ['https://source.test/path', 'https://source.test'], ['invalid']]) {
+    const localize = createPublicHrefLocalizer('ar', origins);
+    for (const href of [
+        '/', '/courses/?q=live+search#results', '/ar//courses/', '/api/records?q=x', '/static/icon.png',
+        '/courses/../public/', '/%2e%2e/public/', '/courses?#', '/courses?tags=a;b', '/courses/#الدراسة',
+        '/path\n', '/path\\section', '//external.test/path', 'https://other.test/path',
+        'https://user:password@source.test/path', '/program?term=%D8%B9',
+    ]) {
+        const expected = localizePublicHref(href, 'ar', origins);
+        assert.equal(localize(href), expected, href);
+        assert.equal(localize(href), expected, 'repeated ' + href);
+    }
+}

@@ -10,20 +10,45 @@ export function localizePublicHref(href:string,locale:string,origins:string[]):s
     if(path===`/${locale}`||path.startsWith(`/${locale}/`))return path+url.search+url.hash;
     return `/${locale}${path}`+url.search+url.hash;
 }
+
+const navigationKeys = new Set(['href','link','target','action','path','originalPath','detailPath','ctaHref','ctaLink','secondaryCtaLink','pageUrl']);
+// This grammar needs no URL normalization. Dot segments, encoded path segments,
+// empty query/fragment delimiters and complex URLs go through the normal parser.
+const canonicalRelativeHref = /^(\/(?!\/)[\w/~\-]*)(?:\?[\w%~&=+.,\-]+)?(?:#[\w~.\-]+)?$/;
+const internalPath = /^\/(?:api|frontbase-admin|static|assets)(?:\/|$)/;
+
+/** Reuse URL work within one projection or render. The caller owns the lifetime. */
+export function createPublicHrefLocalizer(locale: string, origins: string[]): (href: string) => string {
+    const localizedRoot = localizePublicHref('/', locale, origins);
+    const prefix = localizedRoot === '/' ? '' : localizedRoot.slice(0, -1);
+    const memo = new Map<string, string>();
+    return href => {
+        const cached = memo.get(href);
+        if (cached !== undefined) return cached;
+        const path = prefix && canonicalRelativeHref.exec(href)?.[1];
+        const result = path
+            ? internalPath.test(path) || path === prefix || path.startsWith(localizedRoot) ? href : prefix + href
+            : localizePublicHref(href, locale, origins);
+        if (memo.size < 512 && href.length <= 2048) memo.set(href, result);
+        return result;
+    };
+}
+
 /** Project only navigation values. Never rewrite content, image sources, bindings or secrets. */
 export function localizeNavigationProps<T>(input:T,locale:string,origins:string[]):T {
-    const keys=new Set(['href','link','target','action','path','originalPath','detailPath','ctaHref','ctaLink','secondaryCtaLink','pageUrl']);
+    const localize = createPublicHrefLocalizer(locale, origins);
     const walk=(value:unknown,key=''):unknown=>{
         if(key==='languageSwitcher')return value;
-        if(typeof value==='string')return keys.has(key)&&!value.includes('{{')?localizePublicHref(value,locale,origins):value;
+        if(typeof value==='string')return navigationKeys.has(key)&&!value.includes('{{')?localize(value):value;
         if(Array.isArray(value)){
             let result:unknown[]|undefined;
             for(let i=0;i<value.length;i++){const next=walk(value[i],key);if(next!==value[i]){result??=value.slice();result[i]=next;}}
             return result??value;
         }
         if(value&&typeof value==='object'){
+            const values = value as Record<string, unknown>;
             let result:Record<string,unknown>|undefined;
-            for(const [k,v]of Object.entries(value)){const next=walk(v,k);if(next!==v){result??={...value};result[k]=next;}}
+            for(const k of Object.keys(values)){const v=values[k],next=walk(v,k);if(next!==v){result??={...values};result[k]=next;}}
             return result??value;
         }
         return value;
