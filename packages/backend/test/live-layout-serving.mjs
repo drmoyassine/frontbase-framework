@@ -41,6 +41,27 @@ const options={host,liveQuery:async()=>{throw Error('unexpected view');}};
 let response=await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),options);
 assert.equal(response.status,200);assert.equal(response.headers.get('X-Frontbase-Data'),'live');
 assert.match(await response.text(),/First title/);
+const fetchKeys = [];
+const cold = {
+ dialect: db.dialect,
+ query: (sql, params) => { if (params?.[0] === 'one') fetchKeys.push(...params.slice(1)); return db.query(sql, params); },
+ exec: (sql, params) => db.exec(sql, params),
+};
+const coldResult = await renderLiveLayoutPublication(cold,'one',new Request('https://live.example/first/'),options);
+assert.equal(coldResult.status,200);
+assert.equal(fetchKeys.filter(key=>String(key).startsWith('live_layout:index:')).length,1);
+const fetchedArtifacts=fetchKeys.filter(key=>String(key).startsWith('live_layout:artifact:'));
+assert.equal(fetchedArtifacts.length,1,'a cold request loads only its selected artifact');
+const corrupt = {...cold, query:async (sql, params) => {
+ const rows = await cold.query(sql, params);
+ return params?.[1] === fetchedArtifacts[0] ? rows.map(row=>({...row,value:row.value+' '})) : rows;
+}};
+assert.equal((await renderLiveLayoutPublication(corrupt,'one',new Request('https://live.example/first/'),options)).status,503,'tampered artifact fails closed');
+const {publicationHash}=await import('../dist/compat/publication-hash.js');
+const legacy=await publicationHash(plan);
+await db.exec('INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?)',['one','live_layout:version:v1:'+legacy,JSON.stringify(plan),'2026-11-15T00:00:00Z']);
+assert.deepEqual(await store.get(legacy),plan,'pre-split releases remain readable');
+
 const withEditor = await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),{...options,frontendEditing:true});
 assert.equal((await withEditor.text()).match(/\/api\/frontend-edit\/script\.js/g)?.length,1,'live document emits the editor once');
 const head = await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/',{method:'HEAD'}),options);

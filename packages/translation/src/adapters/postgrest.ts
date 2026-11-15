@@ -9,6 +9,8 @@ export type TranslationRpcOperation = 'capabilities' | 'read-many' | 'read-revis
     | 'ready-jobs' | 'claim' | 'renew' | 'dispatch' | 'fail' | 'cancel';
 /** Host-injected authenticated HTTP client. No SQL, socket or credential lookup in the engine. */
 export interface TranslationRpcTransport {
+    /** undefined means the installed batch RPC predates sparse reads. */
+    readCurrent?(scope: LocalizationScope, input: {unitIds:string[];locale:string}): Promise<unknown>;
     call(operation: TranslationRpcOperation, scope: LocalizationScope, input: Record<string, unknown>): Promise<unknown>;
 
 }
@@ -57,6 +59,26 @@ export class PostgrestTranslationJobPersistence implements TranslationJobPersist
         const keys=z.array(translationRevisionSchema.shape.unitId).min(1).max(500).parse(units);
         const {scope,locale}=parsePersistenceKey(scopeInput,keys[0]!,localeInput);
         if(new Set(units).size!==units.length)throw Error('translation_rpc_key_mismatch');
+        if (this.transport.readCurrent && locale) {
+            let sparse: unknown;
+            try { sparse = await this.transport.readCurrent(scope, {unitIds: keys, locale}); }
+            catch { throw Error('translation_rpc_failed'); }
+            if (sparse !== undefined) {
+                const rows = z.array(z.object({unitId:id,snapshot:currentTranslationValueSchema}).strict()).max(keys.length).parse(sparse);
+                const permitted = new Set(keys);
+                const byId = new Map<string, CurrentTranslationValue>();
+                for (const {unitId, snapshot} of rows) {
+                    const {source, head, version} = snapshot;
+                    if (!permitted.has(unitId) || byId.has(unitId) || !source || !head || version < 1
+                        || head.unitId !== unitId || head.locale !== locale) throw Error('translation_rpc_key_mismatch');
+                    owner(source.unit.scope, scope);
+                    owner(head.scope, scope);
+                    byId.set(unitId, snapshot);
+                }
+                const empty = Object.freeze({version:0, source:null, head:null});
+                return keys.map(key => byId.get(key) ?? empty);
+            }
+        }
         const raw=await this.request('read-many',scope,{unitIds:units,locale});
         const rows=z.array(z.object({unitId:id,snapshot:currentTranslationValueSchema}).strict()).length(units.length).parse(raw);
         return rows.map((row,index)=>{

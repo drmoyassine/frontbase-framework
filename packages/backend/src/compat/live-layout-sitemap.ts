@@ -1,9 +1,9 @@
-import type {LiveLayoutPublication} from './live-layout-publication.js';
+import type {LiveLayoutIndex} from './live-layout-publication.js';
 import type {LivePageReader} from './live-layout-runtime.js';
 
 const xml=(value:string)=>value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[char]!));
 /** Small live shards avoid reading or serializing the entire database on a Free Worker. */
-export async function liveLayoutSitemap(layout:LiveLayoutPublication,reader:LivePageReader,owner:string,request:Request):Promise<Response|null>{
+export async function liveLayoutSitemap(layout:LiveLayoutIndex,reader:LivePageReader,owner:string,request:Request):Promise<Response|null>{
     const url=new URL(request.url),origin=layout.configuration.site.origin;
     if(url.pathname==='/robots.txt')return new Response('User-agent: *\nAllow: /\nSitemap: '+new URL('/sitemap.xml',origin).href+'\n',{headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
     const match=/^\/sitemap-live-(static|institution|program|article|page)-(\d+)\.xml$/.exec(url.pathname);

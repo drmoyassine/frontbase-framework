@@ -6,7 +6,7 @@ import {publicationPathSchema} from '@frontbase/edge-core/directory/publication'
 import {localeDirection} from '@frontbase/edge-core/localization';
 import {projectPublicationListRows,type PublishedLiveQuery,type LiveListRequest} from './publication-list-source.js';
 import {templatePolicyPresentation} from './template-policy-runtime.js';
-import type {LiveLayoutPublication} from './live-layout-publication.js';
+import type {LiveLayoutIndex, LoadLiveLayout} from './live-layout-publication.js';
 
 const directoryPlans = new WeakMap<PageLayoutData, ReturnType<typeof compileDirectoryProjection>>();
 
@@ -31,9 +31,9 @@ export interface LivePageReader{
 /** Rendering input contains the published structure plus request-local current records.
  * Neither route selection nor list membership consults a content publication/catalog. */
 export async function resolveLiveLayoutPage(
-    publication:LiveLayoutPublication,version:string,owner:string,db:DbRunner,request:Request,
-    reader:LivePageReader,locale=publication.configuration.site.locale,user:Record<string,unknown>|null=null,list?:LiveListRequest,
-):Promise<{sourcePageId:string;page:PageEntry;document:NonNullable<EngineOptions['document']>;record:Record<string,unknown>;context:Record<string,unknown>}|null>{
+    publication:LiveLayoutIndex,version:string,owner:string,db:DbRunner,request:Request,
+    reader:LivePageReader,locale=publication.configuration.site.locale,user:Record<string,unknown>|null=null,list?:LiveListRequest, loadLayout?:LoadLiveLayout,
+):Promise<{sourcePageId:string;authored:PageLayoutData;displayPlan?:Awaited<ReturnType<LoadLiveLayout>>['displayPlan'];page:PageEntry;document:NonNullable<EngineOptions['document']>;record:Record<string,unknown>;context:Record<string,unknown>}|null>{
     if(!owner||!publication.locales.includes(locale))throw Error('live_page_context_required');
     const url=new URL(request.url),path=url.pathname,c=publication.configuration;
     if(!publicationPathSchema.safeParse(path).success)return null;
@@ -59,7 +59,9 @@ export async function resolveLiveLayoutPage(
         const query=reader.queries[id];if(!query)throw Error('live_query_unavailable');
         return query.execute(params,{tenant:owner,request,user});
     };
-    const authored = template.layout as unknown as PageLayoutData;
+    const artifact = loadLayout ? await loadLayout(template) : undefined;
+    const authored = artifact?.layout ?? ('layout' in template ? template.layout as unknown as PageLayoutData : undefined);
+    if (!authored) throw Error('published_layout_artifact_unavailable');
     const layout = publication.siteBindingsCompiled ? authored : projectSharedDirectoryPreview(authored, c);
     const plan = directoryPlan(layout);
     const records=new Map<string,Record<string,unknown>[]>(),inactive=new Set<string>();
@@ -104,7 +106,7 @@ export async function resolveLiveLayoutPage(
     const presentation=templatePolicyPresentation(projected,row,row?context.collection+':'+row.id:'',locale,context);
     const title=presentation.values.title||String(row?.title??template.title),description=presentation.values.description||String(row?.summary??template.description);
     const canonicalUrl=new URL(locale===c.site.locale?path:'/'+locale+path,c.site.origin).href;
-    return {sourcePageId:template.pageId,record:presentation.record,context,
+    return {sourcePageId:template.pageId,authored,displayPlan:artifact?.displayPlan,record:presentation.record,context,
         page:{title,description,slug:path.slice(1),layout:presentation.layout},
         document:{language:locale,direction:localeDirection(locale),canonicalUrl,robots:url.search||presentation.values.indexing==='noindex'?'noindex, follow':'index, follow',
             openGraph:{title,description,url:canonicalUrl,type:role==='article'?'article':'website',siteName:c.site.name,locale}}};

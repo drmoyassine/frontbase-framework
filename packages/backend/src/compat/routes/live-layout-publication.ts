@@ -26,7 +26,7 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
         await next();
     });
     app.get('/api/project/live-layout/',async c=>{
-        const active=await new LiveLayoutPublicationStore(db,c.get('tenant')).active();
+        const active=await new LiveLayoutPublicationStore(db,c.get('tenant')).activeForServing();
         const draft=await new SiteConfigurationStore(db,c.get('tenant')).get();
         const generation=await new TranslationGenerationStore(db,c.get('tenant')).get();
         const source=draft?.configuration.site.locale??'en';
@@ -37,8 +37,8 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
             const id=hash.parse(c.req.query('hash')),path=c.req.query('path')??'/';
             if(path.length>2048||!path.startsWith('/')||path.startsWith('//')||/[\\\u0000-\u0020]/.test(path))return c.json({detail:'Invalid preview path'},422);
             const url=new URL(path,c.req.url);if(url.origin!==new URL(c.req.url).origin)return c.json({detail:'Invalid preview path'},422);
-            const layout=await new LiveLayoutPublicationStore(db,c.get('tenant')).get(id);if(!layout)return c.json({detail:'Prepared layout not found'},404);
-            const response=await renderLiveLayoutPublication(db,c.get('tenant'),new Request(url,{headers:c.req.raw.headers}),{host,liveQuery:publishedLiveQuery(request=>app.fetch(request)),prepared:{pointer:{hash:id,generation:1},layout}});
+            const release=await new LiveLayoutPublicationStore(db,c.get('tenant')).open(id);if(!release)return c.json({detail:'Prepared layout not found'},404);
+            const response=await renderLiveLayoutPublication(db,c.get('tenant'),new Request(url,{headers:c.req.raw.headers}),{host,liveQuery:publishedLiveQuery(request=>app.fetch(request)),prepared:{pointer:{hash:id,generation:1},...release}});
             if(!response)return c.json({detail:'Prepared page unavailable'},404);
             const headers=new Headers(response.headers);headers.set('X-Robots-Tag','noindex, nofollow');
             return new Response(response.body,{status:response.status,headers});
@@ -90,7 +90,7 @@ export function registerSnapshotRetirement(app:Hono<{Variables:ConsoleAuthVars}>
         const action=new URL(c.req.url).pathname.slice(root.length);
         if(['state/','history/','versions/'].includes(action)&&c.req.method==='GET')return next();
         if(root.includes('site-configuration')&&action==='read/'&&c.req.method==='POST')return next();
-        const active=await new LiveLayoutPublicationStore(db,c.get('tenant')).active();
+        const active=await new LiveLayoutPublicationStore(db,c.get('tenant')).activeForServing();
         if(!active)return next();
         c.header('Cache-Control','no-store');
         if(root.includes('homepage')&&action==='workspace/'&&c.req.method==='GET')return c.json({mode:'live',locales:active.layout.locales,sourceLocale:active.layout.configuration.site.locale});

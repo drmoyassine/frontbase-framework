@@ -1,10 +1,11 @@
+import {isValidatedEditorialBody} from '@frontbase/edge-core/directory/configuration';
 import {createLiveDirectoryQueries} from '@frontbase/compiler/queries/directory';
 import {datasourceRunner,dialectOf} from '../db/datasource-runner.js';
 import {mergeAccountConfig,type AccountConfigFor} from './providers/merge-account.js';
 import type {CompatFetch} from './external-http.js';
 import type {SyncStore} from './sync-store.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
-import type {LiveLayoutPublication} from './live-layout-publication.js';
+import type {LiveLayoutIndex} from './live-layout-publication.js';
 import type {LivePageReader,LiveRoute} from './live-layout-runtime.js';
 import {liveQueryBatch} from './live-query-batch.js';
 
@@ -16,7 +17,7 @@ export interface LiveLayoutHost{
 
 /** Called with an owned published layout, never a browser-provided table/configuration.
  * Resolves the same current encrypted account and guarded datasource adapter as the builder. */
-export async function liveLayoutReader(host:LiveLayoutHost,owner:string,layout:LiveLayoutPublication,liveQuery:PublishedLiveQuery):Promise<LivePageReader>{
+export async function liveLayoutReader(host:LiveLayoutHost,owner:string,layout:LiveLayoutIndex,liveQuery:PublishedLiveQuery):Promise<LivePageReader>{
     if(!owner)throw Error('layout_owner_required');
     const source=await host.syncFor(owner).getDatasource(layout.configuration.datasourceId);
     if(!source)throw Error('live_datasource_unavailable');
@@ -33,7 +34,12 @@ export async function liveLayoutReader(host:LiveLayoutHost,owner:string,layout:L
             const key=JSON.stringify([id,params]);
             let result=pending.get(key);
             if(!result){result=execute(params,context);pending.set(key,result);}
-            return result.then(rows=>structuredClone(rows));
+            return result.then(rows => rows.map(row => {
+                // Validated editorial data is deeply frozen and can be shared safely.
+                if (!isValidatedEditorialBody(row.body)) return structuredClone(row);
+                const {body, ...fields} = row;
+                return {...structuredClone(fields), body};
+            }));
         };
     }
     return {queries,liveQuery,close:()=>runner.close?.(),resolveRoute:async path=>{

@@ -44,8 +44,22 @@ export const editorialDocumentSchema = z.object({ id: z.string().uuid(), revisio
 }).strict();
 export type EditorialDocument = z.infer<typeof editorialDocumentSchema>;
 export type EditorialEdit = z.infer<typeof editorialEditSchema>;
-export function parseEditorialBody(value: unknown): z.infer<typeof editorialBodySchema> {
-    return editorialBodySchema.parse(typeof value === 'string' ? JSON.parse(value) : value);
+type EditorialBody = z.infer<typeof editorialBodySchema>;
+const validatedBodies = new WeakSet<EditorialBody>();
+export function isValidatedEditorialBody(value: unknown): value is EditorialBody {
+    return Array.isArray(value) && validatedBodies.has(value as EditorialBody);
+}
+export function parseEditorialBody(value: unknown): EditorialBody {
+    if (isValidatedEditorialBody(value)) return value;
+    const body = editorialBodySchema.parse(typeof value === 'string' ? JSON.parse(value) : value);
+    for (const block of body) {
+        for (const run of block.runs) Object.freeze(run);
+        Object.freeze(block.runs);
+        Object.freeze(block);
+    }
+    Object.freeze(body);
+    validatedBodies.add(body);
+    return body;
 }
 const literal = (text: string) => text.replace(/\{(?=[{%])/g, '{\u200b');
 /** Conversion data becomes existing safe primitives; no HTML/Liquid execution. */

@@ -80,6 +80,21 @@ try {
     const {currentTranslationValueSchema}=await import('../dist/revisions.js');
     assert.deepEqual(await batched.readCurrentMany(scope,moreIds,'ar'),expected.map(value=>currentTranslationValueSchema.parse(value)));
     await assert.rejects(batched.readCurrentMany(scope,[f.source.unitId,f.source.unitId],'ar'),/key_mismatch/);
+    const currentEntry={unitId:f.source.unitId,snapshot:currentTranslationValueSchema.parse(expected[0])};
+    let returned=[currentEntry], sparseReads=0;
+    const sparse=new PostgrestTranslationJobPersistence({
+        async call(){throw Error('Unexpected dense lookup');},
+        async readCurrent(){sparseReads++;return returned;},
+    });
+    assert.deepEqual(await sparse.readCurrentMany(scope,moreIds,'ar'),expected.map(value=>currentTranslationValueSchema.parse(value)));
+    assert.equal(sparseReads,1);
+    returned=[];
+    assert.deepEqual(await sparse.readCurrentMany(scope,[f.source.unitId],'ar'),[{version:0,source:null,head:null}]);
+    returned=[currentEntry,currentEntry];
+    await assert.rejects(sparse.readCurrentMany(scope,moreIds,'ar'),/key_mismatch/);
+    returned=[{...currentEntry,unitId:'f'.repeat(64)}];
+    await assert.rejects(sparse.readCurrentMany(scope,moreIds,'ar'),/key_mismatch/);
+
 
     assert.deepEqual(await f.store.readMany(scope,moreIds,'ar'),expected);
     assert.deepEqual(await f.store.readMany({...scope,tenantId:'foreign'},[f.source.unitId],'ar'),[{version:0,source:null,head:null}]);

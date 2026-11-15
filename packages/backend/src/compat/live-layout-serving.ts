@@ -3,7 +3,7 @@ import type {DbRunner} from '@frontbase/edge-infra';
 import {renderResolvedPageDocument,audienceConditionUser,type PageLayoutData} from '@frontbase/edge-core';
 import type {VerifiedMenuAudience} from '@frontbase/edge-core/menus';
 import {LiveLayoutPublicationStore,liveDisplayPlan} from './live-layout-publication.js';
-import type {LiveLayoutPublication,LiveLayoutPointer} from './live-layout-publication.js';
+import type {LiveLayoutIndex,LoadLiveLayout,LiveLayoutPointer} from './live-layout-publication.js';
 import {liveLayoutReader,type LiveLayoutHost} from './live-layout-reader.js';
 import {resolveLiveLayoutPage,LivePageRequestError} from './live-layout-runtime.js';
 import {liveListRequestSchema,type PublishedLiveQuery,type LiveListRequest} from './publication-list-source.js';
@@ -24,7 +24,7 @@ import {readProjectSettings} from './assets.js';
 export interface LiveLayoutServingOptions{
     host:LiveLayoutHost;liveQuery:PublishedLiveQuery;swBundle?:string;frontendEditing?:boolean;
     /** Supplied only by the authenticated private preview route, never visitor input. */
-    prepared?:{pointer:LiveLayoutPointer;layout:LiveLayoutPublication};
+    prepared?:{pointer:LiveLayoutPointer;layout:LiveLayoutIndex;loadLayout?:LoadLiveLayout};
     resolveAudience?(owner:string,request:Request):Promise<VerifiedMenuAudience>;
 }
 export interface LiveLayoutSurface{layout:PageLayoutData;pageId:string;locale:string;sourceLocale:string;version:string}
@@ -45,7 +45,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
     const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     let close:(()=>void|Promise<void>)|undefined;
     try{
-        const active=options.prepared??await new LiveLayoutPublicationStore(db,owner).active();if(!active)return null;
+        const active=options.prepared??await new LiveLayoutPublicationStore(db,owner).activeForServing();if(!active)return null;
         if(!['GET','HEAD'].includes(request.method))return new Response(null,{status:405,headers});
         headers.set('X-Frontbase-Data','live');headers.set('X-Site-Version',active.pointer.hash);
         const publication=active.layout,url=new URL(request.url),sourceLocale=publication.configuration.site.locale;
@@ -65,14 +65,15 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const redirect=publication.redirects.find(item=>item.from===sourceUrl.pathname);
         if(redirect){
             const target=new URL(redirect.to,sourceUrl);
-            const exists=await resolveLiveLayoutPage(publication,active.pointer.hash,owner,db,new Request(target),reader,locale,audienceConditionUser(audience));
+            const exists=await resolveLiveLayoutPage(publication,active.pointer.hash,owner,db,new Request(target),reader,locale,audienceConditionUser(audience),undefined,active.loadLayout);
             if(!exists)return new Response('Not found',{status:404,headers});
             headers.set('Location',(locale===sourceLocale?'':'/'+locale)+redirect.to+url.search);
             return new Response(null,{status:301,headers});
         }
-        const resolved=await resolveLiveLayoutPage(publication,active.pointer.hash,owner,db,sourceRequest,reader,locale,audienceConditionUser(audience),list);
+        const resolved=await resolveLiveLayoutPage(publication,active.pointer.hash,owner,db,sourceRequest,reader,locale,audienceConditionUser(audience),list,active.loadLayout);
         if(!resolved)return new Response(request.method==='HEAD'?null:'Not found',{status:404,headers});
-        const template=[...publication.staticPages,...publication.templates].find(page=>page.pageId===resolved.sourcePageId)!;
+        const template = { layout: resolved.authored };
+        const displayPlan = resolved.displayPlan ?? liveDisplayPlan(publication as Parameters<typeof liveDisplayPlan>[0], resolved.sourcePageId);
         const menuHash=(resolved.page.layout.root?.appMenus as {hash?:unknown}|undefined)?.hash;
         const settings=await livePageSettings(db,owner,['project','frontend_copy:active:v1',...(locale!==sourceLocale?['translation_storage:v1']:[]),
             ...(typeof menuHash==='string'&&/^[a-f0-9]{64}$/.test(menuHash)?['app_menus:publication:v1:'+menuHash]:[])]);
@@ -84,7 +85,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
                 configuredTranslationStorage(options.host,settings,owner),
                 captureMenuFields(settings,owner,template,layout),
             ]);
-            layout=await localizeLiveLayout(layout,{scope:storage.scope,pageId:resolved.sourcePageId,sourceLocale,locale,reader:storage.persistence,menuFields,plan:liveDisplayPlan(publication,resolved.sourcePageId),resolvedFields:fields=>{localizedFields=fields;}});
+            layout=await localizeLiveLayout(layout,{scope:storage.scope,pageId:resolved.sourcePageId,sourceLocale,locale,reader:storage.persistence,menuFields,plan:displayPlan,resolvedFields:fields=>{localizedFields=fields;}});
         }
         layout=addHomepageLanguageLinks(layout,sourceLocale,publication.locales.filter(code=>code!==sourceLocale),locale,sourceUrl.pathname+url.search,[publication.configuration.site.origin,url.origin]);
         if(surface)return surface({layout,pageId:resolved.sourcePageId,locale,sourceLocale,version:active.pointer.hash});
@@ -112,7 +113,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const document={...resolved.document,frontendEditing:options.frontendEditing,faviconUrl:typeof branding.faviconUrl==='string'&&branding.faviconUrl?branding.faviconUrl:'/static/icon.png'};
         const html = await renderResolvedPageDocument(page, request, {
             manifest, environment: 'edge', document, swBundle: options.swBundle,
-            interpolations: displayPlanInterpolations(liveDisplayPlan(publication, resolved.sourcePageId)),
+            interpolations: displayPlanInterpolations(displayPlan),
         }, audienceConditionUser(audience));
         headers.set('Content-Language', locale);
         headers.set('Content-Type', 'text/html; charset=UTF-8');
