@@ -26,6 +26,8 @@ import { engineConfig, type Principal } from './config.js';
 export type Environment = 'edge' | 'service-worker' | 'builder';
 
 export interface EngineOptions {
+    /** Trusted publication-time binding instructions; never loaded from visitor input. */
+    interpolations?:ReadonlyMap<string,import('./liquid-core/sync.js').CompiledInterpolation>;
     /** Trusted offline compiler hook. Never populated from a manifest or request. */
     observeComponent?:import('./ssr/PageRenderer.js').ComponentRenderObserver;
     /** Host-verified minimal visitor context; never the console principal. */
@@ -271,7 +273,7 @@ export function createEngine(opts: EngineOptions): Hono {
         renderContext.url = Object.fromEntries(new URL(c.req.url).searchParams);
         const hasVersions=(nodes:typeof page.layout.content):boolean=>nodes.some(node=>!!node.versions?.length||hasVersions(node.children??[]));
         const publicPage = hasVersions(page.layout.content) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;
-        const body = await renderPage(publicPage.layout, renderContext, opts.observeComponent);
+        const body = await renderPage(publicPage.layout, renderContext, opts.observeComponent,opts.interpolations);
         const html = renderDocument(publicPage, body, {
             environment,
             registerServiceWorker: environment === 'edge' && !!opts.swBundle,

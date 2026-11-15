@@ -24,6 +24,15 @@ const failed={readMany:async()=>{throw Error('storage failed');}};
 await assert.rejects(()=>text(layout,{...options,reader:failed}),/storage failed/,'no saved translation fallback');
 const foreign={readMany:async(...args)=>{const rows=await reader.readMany(...args);rows[0].head.scope.tenantId='other';return rows;}};
 await assert.rejects(()=>text(layout,{...options,reader:foreign}),/scope_mismatch/);
+
+const {currentTranslationValueSchema}=await import('../../translation/dist/revisions.js');
+let currentReads=0;
+const currentReader={readMany:async()=>{throw Error('duplicate full read');},readCurrentMany:async(...args)=>{currentReads++;return (await reader.readMany(...args)).map(row=>currentTranslationValueSchema.parse(row));}};
+assert.equal(await text(layout,{...options,reader:currentReader}),'ابدأ دراستك هنا');assert.equal(currentReads,1,'one current translation read per page');
+for(const field of ['sourceVersion','sourceFingerprint','contextFingerprint']){
+ const changedHead={...currentReader,readCurrentMany:async(...args)=>{const rows=await currentReader.readCurrentMany(...args);if(rows[0].head)rows[0].head[field]=field==='sourceVersion'?999:'f'.repeat(64);return rows;}};
+ assert.equal(await text(layout,{...options,reader:changedHead}),'Study here',field+' freshness check preserved in public projection');
+}
 database.close();
 console.log('live translation: current heads, source freshness, tenant isolation, source locale and unavailable-store refusal PASS');
 

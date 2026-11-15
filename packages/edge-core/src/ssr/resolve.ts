@@ -7,7 +7,7 @@ import {evaluateCondition,conditionUsesClient,contextReader,resolveValue,valueUs
  */
 
 import { liquid } from './lib/liquid.js';
-import {isSimpleInterpolation,renderSync,bindingAlternatives,resolveBinding,bindingContext} from '../liquid-core/sync.js';
+import {renderCompiledInterpolation,type CompiledInterpolation,isSimpleInterpolation,renderSync,bindingAlternatives,resolveBinding,bindingContext} from '../liquid-core/sync.js';
 import type { TemplateContext } from './lib/context.js';
 
 /**
@@ -20,7 +20,7 @@ import type { TemplateContext } from './lib/context.js';
 export async function resolveProps(props: Record<string, unknown> | undefined, context: TemplateContext): Promise<Record<string, unknown>> {
     return resolvePropsValue(props, context);
 }
-export function resolvePropsValue(props: Record<string, unknown> | undefined, context: TemplateContext): Record<string, unknown> | Promise<Record<string, unknown>> {
+export function resolvePropsValue(props: Record<string, unknown> | undefined, context: TemplateContext,programs?:ReadonlyMap<string,CompiledInterpolation>,recordScopes?:WeakMap<object,Record<string,any>>): Record<string, unknown> | Promise<Record<string, unknown>> {
     if (!props) return {};
     const resolved: Record<string, unknown> = {};
     const pending: Promise<void>[] = [];
@@ -31,20 +31,27 @@ export function resolvePropsValue(props: Record<string, unknown> | undefined, co
     };
     for (const [key, value] of Object.entries(props)) {
         if (key === 'actionBindings' && Array.isArray(value) && context.record) {
-            const actions = value.map(action => action && typeof action === 'object' && !Array.isArray(action) ? resolvePropsValue(action, context) : action);
+            const actions = value.map(action => action && typeof action === 'object' && !Array.isArray(action) ? resolvePropsValue(action, context,programs,recordScopes) : action);
             assign(key, actions.some(action => action instanceof Promise) ? Promise.all(actions) : actions);
         } else if (typeof value === 'string' && (value.includes('{{') || value.includes('{%'))) {
-            scope ??= bindingContext({ ...context, ...((context as Record<string, any>).system || {}) });
+            if(!scope){
+                const base={...context,...((context as Record<string,any>).system||{})},record=base.record;
+                const cached=record&&typeof record==='object'?recordScopes?.get(record):undefined;
+                const normalized:Record<string,any>=cached?{...base,record:cached}:bindingContext(base);
+                scope=normalized;
+                if(!cached&&record&&typeof record==='object'&&normalized.record)recordScopes?.set(record,normalized.record);
+            }
             const failed = (error: unknown) => { console.error(`Template error in prop "${key}":`, error); return value; };
             try {
-                assign(key, isSimpleInterpolation(value) ? renderSync(value, scope) : liquid.parseAndRender(value, scope).catch(failed));
+                const compiled=programs?.get(value);
+                assign(key, compiled?renderCompiledInterpolation(compiled,scope):isSimpleInterpolation(value) ? renderSync(value, scope) : liquid.parseAndRender(value, scope).catch(failed));
                 if (key === 'src' && props.fallbackOnError === true) {
                     const expression = value.match(/^\s*\{\{([^{}]+)\}\}\s*$/)?.[1];
                     const alternatives = expression ? bindingAlternatives(expression) : null;
                     if (alternatives && alternatives.length > 1) resolved._imageFallbackSrc = resolveBinding(alternatives.slice(1).join(' || '), scope);
                 }
             } catch (error) { resolved[key] = failed(error); }
-        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) assign(key, resolvePropsValue(value as Record<string, unknown>, context));
+        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) assign(key, resolvePropsValue(value as Record<string, unknown>, context,programs,recordScopes));
         else resolved[key] = value;
     }
     const finish = () => {

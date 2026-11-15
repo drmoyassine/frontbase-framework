@@ -1,7 +1,8 @@
+import {displayPlanInterpolations} from '@frontbase/edge-core/localization';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {createEngine,directProvider,audienceConditionUser,type PageLayoutData} from '@frontbase/edge-core';
 import type {VerifiedMenuAudience} from '@frontbase/edge-core/menus';
-import {LiveLayoutPublicationStore} from './live-layout-publication.js';
+import {LiveLayoutPublicationStore,liveDisplayPlan} from './live-layout-publication.js';
 import type {LiveLayoutPublication,LiveLayoutPointer} from './live-layout-publication.js';
 import {liveLayoutReader,type LiveLayoutHost} from './live-layout-reader.js';
 import {resolveLiveLayoutPage,LivePageRequestError} from './live-layout-runtime.js';
@@ -11,7 +12,7 @@ import {contextReader,evaluateCondition} from '@frontbase/edge-core/conditions';
 import {templatePolicyPresentation,localizedPolicyRecord} from './template-policy-runtime.js';
 import {resolveAppMenuLayout} from './menus-runtime.js';
 import {configuredTranslationStorage} from './translation-storage.js';
-import {localizeLiveLayout} from './live-translation.js';
+import {localizeLiveLayout,type LiveDisplayField} from './live-translation.js';
 import {captureMenuFields} from './translation-homepage.js';
 import {addHomepageLanguageLinks} from './translation-homepage-serving.js';
 import {projectFrontendCopy} from './frontend-copy.js';
@@ -77,12 +78,13 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
             ...(typeof menuHash==='string'&&/^[a-f0-9]{64}$/.test(menuHash)?['app_menus:publication:v1:'+menuHash]:[])]);
         let layout=await resolveAppMenuLayout(settings,owner,resolved.page.layout,sourceUrl.pathname,audience,publication.configuration.site.name,resolved.sourcePageId);
         layout=(await projectFrontendCopy(settings,owner,resolved.sourcePageId,layout,locale,false)).layout;
+        let localizedFields:LiveDisplayField[]|undefined;
         if(locale!==sourceLocale){
             const [storage,menuFields]=await Promise.all([
                 configuredTranslationStorage(options.host,settings,owner),
                 captureMenuFields(settings,owner,template,layout),
             ]);
-            layout=await localizeLiveLayout(layout,{scope:storage.scope,pageId:resolved.sourcePageId,sourceLocale,locale,reader:storage.persistence,menuFields});
+            layout=await localizeLiveLayout(layout,{scope:storage.scope,pageId:resolved.sourcePageId,sourceLocale,locale,reader:storage.persistence,menuFields,plan:liveDisplayPlan(publication,resolved.sourcePageId),resolvedFields:fields=>{localizedFields=fields;}});
         }
         layout=addHomepageLanguageLinks(layout,sourceLocale,publication.locales.filter(code=>code!==sourceLocale),locale,sourceUrl.pathname+url.search,[publication.configuration.site.origin,url.origin]);
         if(surface)return surface({layout,pageId:resolved.sourcePageId,locale,sourceLocale,version:active.pointer.hash});
@@ -98,7 +100,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
             headers.set('Content-Type','application/json');headers.set('Content-Language',locale);
             return new Response(JSON.stringify(result??{error:'list_not_available'}),{status:result?200:404,headers});
         }
-        const localizedRecord=locale===sourceLocale||resolved.context.recordId===undefined?resolved.record:localizedPolicyRecord(layout,resolved.record,resolved.context);
+        const localizedRecord=locale===sourceLocale||resolved.context.recordId===undefined?resolved.record:localizedPolicyRecord(layout,resolved.record,resolved.context,localizedFields);
         const policy=templatePolicyPresentation(layout,localizedRecord,resolved.context.recordId?resolved.context.collection+':'+resolved.context.recordId:'',locale,resolved.context);
         const title=policy.values.title||String(policy.record.title??resolved.page.title);
         const description=policy.values.description||String(policy.record.summary??resolved.page.description??'');
@@ -107,7 +109,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const manifest={version:active.pointer.hash,pages:{[url.pathname]:{...resolved.page,layout:layout as PageLayoutData}},queries:{}};
         const branding=await readProjectSettings(settings,owner);
         const document={...resolved.document,faviconUrl:typeof branding.faviconUrl==='string'&&branding.faviconUrl?branding.faviconUrl:'/static/icon.png'};
-        const engine=createEngine({manifest,data:directProvider(manifest),environment:'edge',document,swBundle:options.swBundle,resolveConditionUser:async()=>audienceConditionUser(audience)});
+        const engine=createEngine({interpolations:displayPlanInterpolations(liveDisplayPlan(publication,resolved.sourcePageId)),manifest,data:directProvider(manifest),environment:'edge',document,swBundle:options.swBundle,resolveConditionUser:async()=>audienceConditionUser(audience)});
         const response=await engine.fetch(new Request(request.url,{method:'GET'}));
         const output=new Headers(response.headers);for(const [key,value]of headers)output.set(key,value);
         output.set('Content-Language',locale);

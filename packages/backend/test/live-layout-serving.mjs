@@ -48,6 +48,13 @@ const immutable=await store.get(id);
 assert.throws(()=>{immutable.configuration.site.name='Changed';},TypeError,'cached authored layout cannot be mutated');
 assert.throws(()=>{immutable.templates[0].layout.content[0].props.initialRows=[];},TypeError,'records cannot be attached to cached authored nodes');
 assert.equal((await store.get(id)).configuration.site.name,'Live site');
+assert.equal(immutable.displayPlans[templates[0].pageId].version,1,'publication persists display instructions');
+const alteredPlan=structuredClone(immutable);
+alteredPlan.displayPlans[templates[0].pageId].programs[0].columns.push('private_secret');
+assert.equal(liveLayoutPublicationSchema.safeParse(alteredPlan).success,false,'arbitrary display plan cannot expose an unbound column');
+const {liveDisplayPlan}=await import('../dist/compat/live-layout-publication.js');
+assert.equal(liveDisplayPlan(plan,templates[0].pageId),liveDisplayPlan(plan,templates[0].pageId),'legacy plan compiled once without changing publication');
+
 
 for(const forbidden of ['records','index','chunks','catalog','approvals']){
  assert.equal(liveLayoutPublicationSchema.safeParse({...plan,[forbidden]:[]}).success,false,forbidden+' cannot enter layout contract');

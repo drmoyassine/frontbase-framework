@@ -1,7 +1,7 @@
 import type { PageLayoutData, PageComponent } from '../ssr/types.js';
 import { applyBlockVersion } from '../block-versions.js';
 import {templateRecordFields} from '../directory/live-list.js';
-import {resolvePath} from '../liquid-core/sync.js';
+import {resolvePath,compileInterpolation,type CompiledInterpolation} from '../liquid-core/sync.js';
 
 export const homepageSearchLabels = { region:'Find study options', collection:'Explore', collectionAria:'Search collection', programs:'Programs', institutions:'Institutions', question:'What would you like to study?', placeholder:'Search by program or institution title', searchAria:'Search titles', submit:'Search' };
 export const homepageHeroLabels = { region:'Study options', eyebrow:'Explore your next chapter', controls:'Hero slideshow controls', previous:'Previous image', next:'Next image', pause:'Pause slideshow', resume:'Resume slideshow', slideStatus:'{index} / {count}' };
@@ -105,11 +105,93 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
     };
     return {...input,root:{...input.root,localeMessages:{poweredBy:'Powered by Frontbase',signOut:'Sign Out'}},content:walk(input.content)};
 }
-export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
+
+/** Serializable display instructions only: no current rows or translated values. */
+export interface DisplayNodeProgram {
+    text:boolean;
+    fields:string[];
+    nested:{path:string[];keys:string[];enabled?:string}[];
+    columns:string[];
+}
+export interface DisplaySurfacePlan {version:1;nodes:[string,string,number][];programs:DisplayNodeProgram[];interpolations:[string,CompiledInterpolation][]}
+function compileDisplayNode(node:PageComponent):DisplayNodeProgram{
+    const p=node.props??{};
+    const program:DisplayNodeProgram={text:textTypes.has(node.type),fields:['alt','ariaLabel','placeholder'],nested:[],columns:[]};
+    const nested=(path:string[],keys:string[],enabled?:string)=>program.nested.push({path,keys,...(enabled?{enabled}:{})});
+    if(node.type==='Navbar'){
+        nested(['logo'],['text']);nested(['menuItems'],['label']);
+        for(const key of ['primaryButton','secondaryButton'])nested([key],['text'],key);
+        nested(['localeLabels'],Object.keys(homepageNavLabels));
+    }
+    if(node.type==='Footer'){program.fields.push('logoText','description','copyright');nested(['columns'],['title','text']);}
+    // These props are produced by the existing runtime projections. Their paths
+    // are fixed instructions; only their current values are read at request time.
+    nested(['templateSearchState','labels'],Object.keys(homepageSearchLabels));
+    nested(['templateMenuLabels'],Object.keys(templateMenuLabels),'templateMenu');
+    nested(['directoryBrowsingState','0','labels'],Object.keys(directoryBrowsingLabels));
+    if(['Repeater','DataTable','Grid','Card'].includes(node.type)){
+        nested(['localeLabels'],Object.keys(listComponentLabels));
+        nested(['controls'],['searchLabel','searchPlaceholder','label']);
+        nested(['binding','presentation'],['searchLabel','searchPlaceholder','loadingText','emptyText','errorText']);
+        nested(['binding','columnOverrides'],['displayName','label']);
+        nested(['binding','frontendFilters'],['label']);
+            const displayOnly=['Repeater','Card'].includes(node.type)&&!!node.children?.length;
+            const columns=new Set<string>(displayOnly?[]:['title','summary','coverAlt',...(Array.isArray((p.binding as any)?.columnOrder)?(p.binding as any).columnOrder:[])]);
+            // Only authored display properties admit editable/translatable record fields.
+            // Field selection, URLs, conditions, keys and arbitrary row columns are not display copy.
+            const find=(children:PageComponent[])=>{for(const child of children){
+                if(child.props?.binding||child.binding)continue;
+                const display=Object.fromEntries(Object.entries(child.props??{}).filter(([key])=>['content','text','label','alt','ariaLabel'].includes(key)));
+                for(const field of templateRecordFields([{...child,props:display,children:undefined,versions:undefined,visibilityCondition:undefined}]))columns.add(field);
+                if(child.children)find(child.children);
+            }};find(node.children??[]);
+        program.columns=[...columns].filter(key=>key!=='id');
+    }
+    return program;
+}
+export function compileDisplaySurfacePlan(layout:PageLayoutData):DisplaySurfacePlan{
+    const nodes:DisplaySurfacePlan['nodes']=[],programs:DisplayNodeProgram[]=[],programIds=new Map<string,number>(),interpolations=new Map<string,CompiledInterpolation>();
+    const programId=(node:PageComponent)=>{const program=compileDisplayNode(node),key=JSON.stringify(program),existing=programIds.get(key);if(existing!==undefined)return existing;const index=programs.length;programs.push(program);programIds.set(key,index);return index;};
+    const compileValues=(value:unknown):void=>{
+        if(typeof value==='string'&&value.includes('{{')){const program=compileInterpolation(value);if(program)interpolations.set(value,program);}
+        else if(Array.isArray(value))value.forEach(compileValues);
+        else if(value&&typeof value==='object')Object.values(value).forEach(compileValues);
+    };
+    const visit=(list:PageComponent[],version='default')=>{for(const node of list){
+        nodes.push([node.id,version,programId(node)]);compileValues(node.props);
+        if(node.children)visit(node.children,version);
+        for(const alternative of node.versions??[]){
+            nodes.push([node.id,alternative.id,programId(applyBlockVersion(node as any,alternative.id))]);compileValues(alternative.overrides.props);
+            if(alternative.overrides.children)visit(alternative.overrides.children as PageComponent[],alternative.id);
+        }
+    }};visit(layout.content);
+    return {version:1,nodes,programs,interpolations:[...interpolations]};
+}
+const interpolationPrograms=new WeakMap<DisplaySurfacePlan,ReadonlyMap<string,CompiledInterpolation>>();
+export function displayPlanInterpolations(plan:DisplaySurfacePlan):ReadonlyMap<string,CompiledInterpolation>{
+    let result=interpolationPrograms.get(plan);if(!result){result=new Map(plan.interpolations);interpolationPrograms.set(plan,result);}return result;
+}
+const displayPrograms=new WeakMap<DisplaySurfacePlan,Map<string,DisplayNodeProgram>>();
+const generatedPrograms=new Map<string,DisplayNodeProgram>();
+const nestedKeys=new WeakMap<object,Set<string>>();
+function operationKeys(operation:{keys:string[]}):Set<string>{let keys=nestedKeys.get(operation);if(!keys){keys=new Set(operation.keys);nestedKeys.set(operation,keys);}return keys;}
+function displayProgram(plan:DisplaySurfacePlan,node:PageComponent,version?:string):DisplayNodeProgram{
+    let programs=displayPrograms.get(plan);
+    if(!programs){programs=new Map(plan.nodes.map(([id,variant,program])=>[JSON.stringify([id,variant]),plan.programs[program]!]));displayPrograms.set(plan,programs);}
+    const id=node.id.replace(/-preview-\d+$/,'');
+    const found=programs.get(JSON.stringify([node.id,version??'default']))??programs.get(JSON.stringify([id,version??'default']));
+    if(found)return found;
+    // Editorial runs, empty-state text and managed menu nodes are generated by
+    // trusted projections, not authored bindings. Use a fixed component program.
+    let generated=generatedPrograms.get(node.type);
+    if(!generated){generated=compileDisplayNode({id:'generated',type:node.type,props:{}});generatedPrograms.set(node.type,generated);}
+    return generated;
+}
+export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfacePlan=compileDisplaySurfacePlan(layout)):DisplayField[]{
     const result:DisplayField[]=[];
     // Per-node display surfaces, shared by the Default tree and every alternative's effective shape.
     const extractNode=(node:PageComponent,versionId:string|undefined):DisplayField[]=>{
-        const collected:DisplayField[]=[],p=node.props??{},base=['props'],stamped=stampedRecord(p);
+        const collected:DisplayField[]=[],p=node.props??{},base=['props'],stamped=stampedRecord(p),program=displayProgram(plan,node,versionId);
         const emit=(path:string[],value:unknown,label:string,record?:DisplayRecord,fieldKey?:string)=>{
             if(typeof value==='string'&&value.length>12000)throw Error('locale_text_limit');
             if(typeof value!=='string'||!value.trim()||/\{\{|@\{/.test(value)||/^(?:https?:|mailto:|tel:|\/)/.test(value))return;
@@ -125,35 +207,18 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
         const nested=(value:any,path:string[],keys:Set<string>)=>{if(Array.isArray(value)){value.forEach((v,i)=>nested(v,[...path,String(i)],keys));return;}if(value&&typeof value==='object'){for(const [k,v]of Object.entries(value)){if(keys.has(k))emit([...path,k],v,k);else if(v&&typeof v==='object')nested(v,[...path,k],keys);}}};
         // Date-bound record text carries `translationLiteral` (projection marker): it is
         // locale-formatted output re-rendered in the page language at serve time — never a unit.
-        if(textTypes.has(node.type)){const key=['content','text','value','label'].find(k=>typeof p[k]==='string'&&!!p[k]);if(key&&!/\{\{|@\{/.test(String(p[key]))&&p.translationLiteral===undefined){const origin=stamped&&stamped.columns.has(key)?stamped:undefined;if(origin){const column=origin.columns.get(key)!;emit([...base,key],p[key],`Record ${origin.record.collection} / ${column}`,origin.record,column);}else emit([...base,key],p[key],node.type);}}
-        for(const key of ['alt','ariaLabel','placeholder']){const origin=stamped&&stamped.columns.has(key)?stamped:undefined;if(origin){const column=origin.columns.get(key)!;emit([...base,key],p[key],`Record ${origin.record.collection} / ${column}`,origin.record,column);}else emit([...base,key],p[key],key);}
-        if(node.type==='Navbar'){
-            nested(p.logo,[...base,'logo'],new Set(['text']));nested(p.menuItems,[...base,'menuItems'],new Set(['label']));
-            for(const key of ['primaryButton','secondaryButton'])if((p[key] as any)?.enabled!==false)nested(p[key],[...base,key],new Set(['text']));
-            nested(p.localeLabels,[...base,'localeLabels'],new Set(Object.keys(homepageNavLabels)));
+        if(program.text){const key=['content','text','value','label'].find(k=>typeof p[k]==='string'&&!!p[k]);if(key&&!/\{\{|@\{/.test(String(p[key]))&&p.translationLiteral===undefined){const origin=stamped&&stamped.columns.has(key)?stamped:undefined;if(origin){const column=origin.columns.get(key)!;emit([...base,key],p[key],`Record ${origin.record.collection} / ${column}`,origin.record,column);}else emit([...base,key],p[key],node.type);}}
+        for(const key of program.fields){const origin=stamped&&stamped.columns.has(key)?stamped:undefined;if(origin){const column=origin.columns.get(key)!;emit([...base,key],p[key],`Record ${origin.record.collection} / ${column}`,origin.record,column);}else emit([...base,key],p[key],key);}
+        for(const operation of program.nested){
+            if(operation.enabled==='templateMenu'&&!p.templateMenu)continue;
+            if(operation.enabled&&operation.enabled!=='templateMenu'&&(p[operation.enabled] as any)?.enabled===false)continue;
+            let value:unknown=p;
+            for(const key of operation.path)value=value&&typeof value==='object'?Object.getOwnPropertyDescriptor(value,key)?.value:undefined;
+            nested(value,[...base,...operation.path],operationKeys(operation));
         }
-        if(node.type==='Footer'){for(const key of ['logoText','description','copyright'])emit([...base,key],p[key],key);nested(p.columns,[...base,'columns'],new Set(['title','text']));}
-        if(p.templateSearchState)nested((p.templateSearchState as any).labels,[...base,'templateSearchState','labels'],new Set(Object.keys(homepageSearchLabels)));
-        if(p.templateMenu)nested(p.templateMenuLabels,[...base,'templateMenuLabels'],new Set(Object.keys(templateMenuLabels)));
-        if(Array.isArray(p.directoryBrowsingState))nested((p.directoryBrowsingState[0] as any)?.labels,[...base,'directoryBrowsingState','0','labels'],new Set(Object.keys(directoryBrowsingLabels)));
         if(Array.isArray(p.templateHeroState))p.templateHeroState.forEach((state:any,i)=>{for(const key of ['heading','introduction'])emit([...base,'templateHeroState',String(i),'settings',key],state.settings[key],key);nested(state.settings.slides,[...base,'templateHeroState',String(i),'settings','slides'],new Set(['alt']));nested(state.labels,[...base,'templateHeroState',String(i),'labels'],new Set(Object.keys(homepageHeroLabels)));});
         if(['Repeater','DataTable','Grid','Card'].includes(node.type)&&(Array.isArray(p.initialRows)||p.binding||node.binding)){
-            nested(p.localeLabels,[...base,'localeLabels'],new Set(Object.keys(listComponentLabels)));
-            nested(p.controls,[...base,'controls'],new Set(['searchLabel','searchPlaceholder','label']));
-            nested((p.binding as any)?.presentation,[...base,'binding','presentation'],new Set(['searchLabel','searchPlaceholder','loadingText','emptyText','errorText']));
-            nested((p.binding as any)?.columnOverrides,[...base,'binding','columnOverrides'],new Set(['displayName','label']));
-            nested((p.binding as any)?.frontendFilters,[...base,'binding','frontendFilters'],new Set(['label']));
-            const displayOnly=['Repeater','Card'].includes(node.type)&&!!node.children?.length;
-            const columns=new Set<string>(displayOnly?[]:['title','summary','coverAlt',...(Array.isArray((p.binding as any)?.columnOrder)?(p.binding as any).columnOrder:[])]);
-            // Only authored display properties admit editable/translatable record fields.
-            // Field selection, URLs, conditions, keys and arbitrary row columns are not display copy.
-            const find=(children:PageComponent[])=>{for(const child of children){
-                if(child.props?.binding||child.binding)continue;
-                const display=Object.fromEntries(Object.entries(child.props??{}).filter(([key])=>['content','text','label','alt','ariaLabel'].includes(key)));
-                for(const field of templateRecordFields([{...child,props:display,children:undefined,versions:undefined,visibilityCondition:undefined}]))columns.add(field);
-                if(child.children)find(child.children);
-            }};find(node.children??[]);
-            if(Array.isArray(p.initialRows))p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of columns)if(key!=='id'){
+            if(Array.isArray(p.initialRows))p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of program.columns)if(key!=='id'){
                 const raw=resolvePath({record:row},'record.'+key),value=typeof raw==='number'&&Number.isFinite(raw)||typeof raw==='boolean'?String(raw):Array.isArray(raw)&&raw.every(value=>typeof value==='string')?raw.join(','):raw;
                 emit([...base,'initialRows',String(i),key],value,`Record ${String(row.id??i)} / ${key}`,record);
             }});
@@ -197,12 +262,30 @@ function mergeVersionValue(base:unknown,override:Record<string,unknown>,path:str
 }
 /** `partial` keeps source values wherever the map has no entry — the explicit per-unit
  *  missing/outdated fallback used by per-unit locale releases (never silently partial elsewhere). */
-export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<string,string>,opts?:{partial?:boolean}):PageLayoutData{
-    const copy=(nodes:PageComponent[]):PageComponent[]=>nodes.map(node=>({...node,props:{...node.props},
-        ...(node.children?{children:copy(node.children)}:{}),
-        ...(node.versions?{versions:node.versions.map(version=>({...version,overrides:{...version.overrides,
-            ...(version.overrides.props?{props:{...version.overrides.props}}:{}),
-            ...(version.overrides.children?{children:copy(version.overrides.children as PageComponent[])}:{})}}))}:{})}));
+export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<string,string>,opts?:{partial?:boolean;fields?:readonly DisplayField[]}):PageLayoutData{
+    const fields=opts?.fields??homepageDisplayFields(input);
+    const changedBlocks=new Set(fields.filter(field=>values.has(JSON.stringify([field.blockId,field.versionId??'default',field.path]))).map(field=>field.blockId));
+    const copy=(nodes:PageComponent[]):PageComponent[]=>{
+        let changed=false;
+        const result=nodes.map(node=>{
+            const own=changedBlocks.has(node.id),children=node.children?copy(node.children):undefined;
+            let versions=node.versions;
+            if(versions){
+                let altered=own;
+                const projected=versions.map(version=>{
+                    const before=version.overrides.children as PageComponent[]|undefined,after=before?copy(before):before;
+                    if(!own&&before===after)return version;
+                    altered=true;
+                    return {...version,overrides:{...version.overrides,...(version.overrides.props?{props:{...version.overrides.props}}:{}),...(after?{children:after}:{})}};
+                });
+                if(altered)versions=projected;
+            }
+            if(!own&&children===node.children&&versions===node.versions)return node;
+            changed=true;
+            return {...node,...(own?{props:{...node.props}}:{}),...(children?{children}:{}),...(versions?{versions}:{})};
+        });
+        return changed?result:nodes;
+    };
     const layout={...input,root:{...input.root},content:copy(input.content)},owned=new Map<string,{node:PageComponent;containerVersion?:string}>(),byBlock=new Map<string,{node:PageComponent;containerVersion?:string}>();
     const walk=(list:PageComponent[],containerVersion?:string)=>{for(const node of list){
         if(byBlock.has(node.id))throw Error('duplicate_component');
@@ -210,7 +293,7 @@ export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<strin
         if(node.children)walk(node.children,containerVersion);
         for(const version of node.versions??[])if(version.overrides.children)walk(version.overrides.children as PageComponent[],version.id);
     }};walk(layout.content);
-    for(const field of homepageDisplayFields(layout)){
+    for(const field of fields){
         const text=values.get(JSON.stringify([field.blockId,field.versionId??'default',field.path]));
         if(text===undefined){if(opts?.partial)continue;throw Error('translation_coverage_incomplete');}
         if(field.blockId==='$root'){mergeVersionValue(input.root,layout.root,field.path,text);continue;}

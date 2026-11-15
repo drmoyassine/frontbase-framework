@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { renderDataComponent } from '../dist/ssr/components/data.js';
 import { renderDirectoryBrowsing } from '../dist/ssr/components/directoryBrowsing.js';
-import { homepageDisplayLayout, homepageDisplayFields } from '../dist/localization/surfaces.js';
+import { homepageDisplayLayout, homepageDisplayFields, applyHomepageDisplayFields } from '../dist/localization/surfaces.js';
 
 // Task 7 slice C: pin what list components actually render on localized published pages.
 // Pure SSR Repeaters stay server-only; interactive lists retain localized hydration.
@@ -94,3 +94,40 @@ assert.equal(bindingProps.text,'{{ record.title }}');
 const liquidProps={text:'{% if record.available %}Open{% else %}Closed{% endif %}'};
 assert.deepEqual(await resolvePropsValue(liquidProps,{record:{available:true}}),{text:'Open'});
 assert.deepEqual(await resolvePropsValue(liquidProps,{record:{available:false}}),{text:'Closed'});
+
+// Publication instructions contain bindings, never request records or translations.
+const {compileDisplaySurfacePlan}=await import('../dist/localization/surfaces.js');
+const authored={root:{},content:[{id:'cards',type:'Repeater',props:{binding:{dataSourceId:'db',tableName:'programs'}},children:[
+ {id:'title',type:'Heading',props:{text:'{{ record.title }}'}},
+ {id:'city',type:'Text',props:{text:'{{ record.institution.city }}'}},
+ {id:'link',type:'Link',props:{text:'View',href:'{{ record.secret }}'}}
+]}]};
+const compiled=JSON.parse(JSON.stringify(compileDisplaySurfacePlan(authored)));
+const currentLayout=structuredClone(authored);
+currentLayout.content[0].props.initialRows=[{id:1,title:'First',institution:{city:'City'},secret:'not display'}];
+const compiledFields=homepageDisplayFields(currentLayout,compiled);
+assert.deepEqual(compiledFields,homepageDisplayFields(currentLayout),'compiled and existing display identities agree');
+assert.ok(!JSON.stringify(compiled).includes('First'));
+assert.ok(!compiledFields.some(field=>field.text==='not display'));
+currentLayout.content[0].props.initialRows[0].title='Changed';
+assert.ok(homepageDisplayFields(currentLayout,compiled).some(field=>field.text==='Changed'),'compiled instructions reread current values');
+const untouched={id:'untouched',type:'Text',props:{text:'Unchanged'}};
+const patchInput={root:{},content:[{id:'change',type:'Text',props:{text:'Before'}},untouched]};
+const patchFields=homepageDisplayFields(patchInput);
+const changedField=patchFields.find(field=>field.blockId==='change');
+const patch=applyHomepageDisplayFields(patchInput,new Map([[JSON.stringify(['change','default',changedField.path]),'After']]),{partial:true,fields:patchFields});
+assert.equal(patch.content[1],untouched,'translation application preserves untouched subtrees');
+assert.equal(patch.content[0].props.text,'After');assert.equal(patchInput.content[0].props.text,'Before');
+
+const {compileInterpolation,renderCompiledInterpolation,renderSync}=await import('../dist/liquid-core/sync.js');
+const expressions=['{{ record.title }}','At {{ record["institution.city"] }}','{{ record.image || record.institution.image || "none" }}','{{ false || "yes" }}','{{ 0 || 12 }}','{{ null || "none" }}',"{{ 'literal' }}"];
+for(const expression of expressions)for(const record of [{},{title:'New',institution:{city:'Nested',image:'cover'}},{title:'Changed','institution.city':'Flat',image:''}]){
+ const compiledExpression=compileInterpolation(expression);assert.ok(compiledExpression);
+ assert.equal(renderCompiledInterpolation(compiledExpression,{record}),renderSync(expression,{record}),'same safe grammar and current values');
+}
+assert.equal(compileInterpolation('{{ record.constructor }}'),null,'prototype access never compiles');
+assert.equal(compileInterpolation('{% if record.title %}yes{% endif %}'),null,'full Liquid keeps its existing execution path');
+const {displayPlanInterpolations}=await import('../dist/localization/surfaces.js');
+assert.equal(resolvePropsValue(authored.content[0].children[0].props,{record:{title:'Latest'}},displayPlanInterpolations(compiled)).text,'Latest');
+
+for(const expression of ['{{ 01 }}','{{ "\\q" }}'])assert.equal(compileInterpolation(expression),null,'legacy invalid literals keep the existing noncompiled path');

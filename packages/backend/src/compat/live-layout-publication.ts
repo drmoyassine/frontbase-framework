@@ -4,6 +4,7 @@ import {stableStringify} from '@frontbase/compiler/manifest';
 import {directoryConfigurationSchema,liveViewBindings,projectSharedDirectoryPreview} from '@frontbase/edge-core/directory/configuration';
 import {publicationTemplateSchema,publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import type {PageLayoutData} from '@frontbase/edge-core';
+import {compileDisplaySurfacePlan,type DisplaySurfacePlan} from '@frontbase/edge-core/localization';
 import {publicationHash} from './publication-hash.js';
 
 const hash=z.string().regex(/^[a-f0-9]{64}$/);
@@ -12,6 +13,7 @@ const staticPage=publicationTemplateSchema.omit({role:true}).extend({originalPat
 /** Layout and access configuration only. No record values, membership index or pinned translations. */
 export const liveLayoutPublicationSchema=z.object({
     schemaVersion:z.literal(3),runtimeVersion:z.literal('live-layout-v1'),siteBindingsCompiled:z.literal(true).optional(),
+    displayPlans:z.record(z.custom<DisplaySurfacePlan>()).optional(),
     configuration:directoryConfigurationSchema,
     templates:z.array(publicationTemplateSchema).max(7),
     staticPages:z.array(staticPage).max(1000),
@@ -34,7 +36,9 @@ export const liveLayoutPublicationSchema=z.object({
     // Keep this contract independent of the old record-capture validator and its catalog.
     for(const page of [...value.templates,...value.staticPages]){
         try{liveViewBindings(page.layout as unknown as PageLayoutData);}catch{fail('invalid_live_binding');}
+        if(value.displayPlans&&stableStringify(value.displayPlans[page.pageId])!==stableStringify(compileDisplaySurfacePlan(page.layout as unknown as PageLayoutData)))fail('invalid_display_plan');
     }
+    if(value.displayPlans&&Object.keys(value.displayPlans).length!==new Set([...value.templates,...value.staticPages].map(page=>page.pageId)).size)fail('invalid_display_plan');
 });
 export type LiveLayoutPublication=z.infer<typeof liveLayoutPublicationSchema>;
 const pointerSchema=z.object({hash,generation:z.number().int().positive().max(Number.MAX_SAFE_INTEGER)}).strict();
@@ -73,7 +77,9 @@ export class LiveLayoutPublicationStore{
     async prepare(input:LiveLayoutPublication,now:string){
         const parsed=liveLayoutPublicationSchema.parse(input);
         const compile=<T extends {layout:unknown}>(page:T):T=>({...page,layout:projectSharedDirectoryPreview(page.layout as PageLayoutData,parsed.configuration)});
-        const layout=liveLayoutPublicationSchema.parse({...parsed,siteBindingsCompiled:true,templates:parsed.templates.map(compile),staticPages:parsed.staticPages.map(compile)}),id=await publicationHash(layout);
+        const templates=parsed.templates.map(compile),staticPages=parsed.staticPages.map(compile);
+        const displayPlans=Object.fromEntries([...templates,...staticPages].map(page=>[page.pageId,compileDisplaySurfacePlan(page.layout as unknown as PageLayoutData)]));
+        const layout=liveLayoutPublicationSchema.parse({...parsed,siteBindingsCompiled:true,templates,staticPages,displayPlans}),id=await publicationHash(layout);
         await this.db.exec('INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[this.owner,versionKey(id),stableStringify(layout),now]);
         if(!await this.get(id))throw Error('layout_write_failed');
         return id;
@@ -95,4 +101,19 @@ export class LiveLayoutPublicationStore{
         if(changed!==0&&changed!==1)throw Error('layout_write_result_invalid');
         return changed===1?next:null;
     }
+}
+
+// Legacy immutable publications derive instructions once; stored hashes remain valid.
+const derivedPlans=new WeakMap<LiveLayoutPublication,Map<string,DisplaySurfacePlan>>();
+export function liveDisplayPlan(publication:LiveLayoutPublication,pageId:string):DisplaySurfacePlan{
+    if(publication.displayPlans?.[pageId])return publication.displayPlans[pageId]!;
+    let cache=derivedPlans.get(publication);
+    if(!cache){cache=new Map();derivedPlans.set(publication,cache);}
+    let plan=cache.get(pageId);
+    if(!plan){
+        const page=[...publication.templates,...publication.staticPages].find(page=>page.pageId===pageId);
+        if(!page)throw Error('unknown_layout_page');
+        plan=compileDisplaySurfacePlan(page.layout as unknown as PageLayoutData);cache.set(pageId,plan);
+    }
+    return plan;
 }

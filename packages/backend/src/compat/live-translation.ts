@@ -1,6 +1,6 @@
 import type {PageLayoutData} from '@frontbase/edge-core';
 import {homepageDisplayLayout,homepageDisplayFields,applyHomepageDisplayFields,translationUnitId,messageSourceFingerprint,
-    type DisplayField,type MessageUnit,type LocalizationScope,type TranslationBatchReader} from '@frontbase/edge-core/localization';
+    type DisplaySurfacePlan,type DisplayField,type MessageUnit,type LocalizationScope,type TranslationBatchReader} from '@frontbase/edge-core/localization';
 import {translationDisplayText} from './translation-inputs.js';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {TranslationLifecycle} from '@frontbase/edge-core/localization';
@@ -23,12 +23,13 @@ export function displayTranslationUnit(field:LiveDisplayField,scope:Localization
  * Source edits immediately invalidate stale translations while retaining their history in storage. */
 export async function localizeLiveLayout(input:PageLayoutData,options:{
     scope:LocalizationScope;pageId:string;sourceLocale:string;locale:string;
-    reader:Pick<TranslationBatchReader,'readMany'>;menuFields?:LiveDisplayField[];
+    reader:Pick<TranslationBatchReader,'readMany'|'readCurrentMany'>;menuFields?:LiveDisplayField[];plan?:DisplaySurfacePlan;
+    resolvedFields?:(fields:LiveDisplayField[])=>void;
 }):Promise<PageLayoutData>{
     const layout=homepageDisplayLayout(input);
     if(options.locale===options.sourceLocale)return layout;
     const menuFields=options.menuFields??[],claimed=new Set(menuFields.map(field=>JSON.stringify([field.blockId,field.path])));
-    const fields=[...homepageDisplayFields(layout).filter(field=>!claimed.has(JSON.stringify([field.blockId,field.path]))),...menuFields];
+    const fields=[...homepageDisplayFields(layout,options.plan).filter(field=>!claimed.has(JSON.stringify([field.blockId,field.path]))),...menuFields];
     if(fields.length>500)throw Error('live_translation_surface_limit');
     const identified=await Promise.all(fields.map(async field=>{
         const unit=displayTranslationUnit(field,options.scope,options.pageId,options.sourceLocale);
@@ -43,7 +44,7 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
         return {field,id,unit};
     }));
     const ids=[...new Set(identified.map(field=>field.id))];
-    const rows=ids.length?await options.reader.readMany(options.scope,ids,options.locale):[];
+    const rows=ids.length?await (options.reader.readCurrentMany?.(options.scope,ids,options.locale)??options.reader.readMany(options.scope,ids,options.locale)):[];
     if(rows.length!==ids.length)throw Error('live_translation_response_invalid');
     const byId=new Map(ids.map((id,index)=>[id,rows[index]!]));
     const values=new Map<string,string>();
@@ -58,7 +59,11 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
             ||head.contextFingerprint!==source.contextFingerprint)return;
         values.set(JSON.stringify([field.blockId,field.versionId??'default',field.path]),translationDisplayText(field.text,head.text));
     }));
-    return values.size?applyHomepageDisplayFields(layout,values,{partial:true}):layout;
+    options.resolvedFields?.(fields.map(field=>{
+        const text=values.get(JSON.stringify([field.blockId,field.versionId??'default',field.path]));
+        return text===undefined?field:{...field,text};
+    }));
+    return values.size?applyHomepageDisplayFields(layout,values,{partial:true,fields}):layout;
 }
 
 /** Existing revision/CAS adapter, without creating or publishing a page catalog. */

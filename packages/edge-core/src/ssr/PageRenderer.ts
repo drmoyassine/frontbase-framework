@@ -1,3 +1,4 @@
+import type {CompiledInterpolation} from '../liquid-core/sync.js';
 import {publicationPageContext} from '../template-policy.js';
 import {bindingWithTemplateFields} from '../directory/live-list.js';
 import {publicConditionContext, contextReader} from '../conditions.js';
@@ -52,7 +53,7 @@ import { renderLandingComponent } from './landingDispatcher.js';
  * NOW ASYNC due to LiquidJS template resolution.
  */
 export type ComponentRenderObserver=(component:PageComponent,html:string,context:TemplateContext)=>void;
-type RenderBudget={remaining:number;observe?:ComponentRenderObserver};
+type RenderBudget={remaining:number;observe?:ComponentRenderObserver;interpolations?:ReadonlyMap<string,CompiledInterpolation>;recordScopes?:WeakMap<object,Record<string,any>>};
 function renderComponent(component:PageComponent,context:TemplateContext,budget:RenderBudget={remaining:20000}):Promise<string>{
     const rendered=renderComponentImpl(component,context,budget),source=component.props?._templateSourceId;
     if(!budget.observe&&(typeof source!=='string'||!!component.versions?.length))return rendered;
@@ -111,7 +112,7 @@ async function renderComponentImpl(
         }
     }
 
-    const propsValue = resolvePropsValue(props, context);
+    const propsValue = resolvePropsValue(props, context,budget.interpolations,budget.recordScopes);
     let resolvedProps = propsValue instanceof Promise ? await propsValue : propsValue;
 
     // If client-side condition, pass data-show-if and set initial display style if false
@@ -244,7 +245,8 @@ function runtimeFeatures(value:unknown,found={versions:false,conditions:false}):
 export async function renderPage(
     layoutData: PageLayoutData,
     context: TemplateContext,
-    observe?:ComponentRenderObserver
+    observe?:ComponentRenderObserver,
+    interpolations?:ReadonlyMap<string,CompiledInterpolation>
 ): Promise<string> {
     if (!layoutData || !layoutData.content) {
         return '<div class="fb-empty">No content</div>';
@@ -263,7 +265,7 @@ export async function renderPage(
     const { rootStyle, rootClass } = resolveRootStyles(rootProps);
 
     // Render all top-level components (async) - wrapped for proper block layout
-    const budget:RenderBudget = { remaining: 20000, observe };
+    const budget:RenderBudget = { remaining: 20000, observe,interpolations,recordScopes:new WeakMap() };
     const contentHtml = (await Promise.all(
         layoutData.content.map(component => renderComponent(component, context, budget))
     )).join('');
