@@ -81,11 +81,15 @@ export function materializeElementSettings(layout:PageLayoutData,configuration:{
     });
     return {...layout,root:{...layout.root,elementSettingsVersion:1},content:walk(layout.content)};
 }
-export function landingQueryParams(layout:PageLayoutData,id:string,params:Record<string,unknown>):Record<string,unknown>{
-    const settings=landingState(layout)?.settings;if(!settings)return params;
+export function landingQueryLimit(layout: PageLayoutData, id: string, settings: TemplateSettings | undefined): number | undefined {
+    if (!settings) return undefined;
     const find=(nodes:PageComponent[]):PageComponent|undefined=>{for(const n of nodes){if(n.id===id)return n;const found=n.children&&find(n.children);if(found)return found;}return undefined;};
     const node=find(layout.content),role=node?.props?.templateList;
-    return role==='program'||role==='article'?{...params,limit:role==='program'?settings.programCount:settings.articleCount}:params;
+    return role === 'program' ? settings.programCount : role === 'article' ? settings.articleCount : undefined;
+}
+export function landingQueryParams(layout:PageLayoutData,id:string,params:Record<string,unknown>):Record<string,unknown>{
+    const limit = landingQueryLimit(layout, id, landingState(layout)?.settings);
+    return limit === undefined ? params : {...params, limit};
 }
 const literal=(s:string)=>s.replace(/\{(?=[{%])/g,'{\u200b');
 const hsl=(hex:string)=>{const [r,g,b]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255) as [number,number,number];const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min,l=(max+min)/2;let h=0,s=0;if(d){s=d/(1-Math.abs(2*l-1));h=max===r?((g-b)/d)%6:max===g?(b-r)/d+2:(r-g)/d+4;h=(h*60+360)%360;}return `${h.toFixed(2)} ${(s*100).toFixed(2)}% ${(l*100).toFixed(2)}%`;};
@@ -125,8 +129,19 @@ function compileLandingPresentation(s: TemplateSettings) {
 }
 
 /** Settings live in the saved homepage, separately from approved source content. */
-export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, configuration:{site:{name:string;destination?:string};routes:{directory:string;blog:string};browsing:{defaultCollection:string}}, inherited?:TemplateSettings):T {
-    const state = landingState(layout);
+type TemplateConfiguration = {site:{name:string;destination?:string};routes:{directory:string;blog:string};browsing:{defaultCollection:string}};
+export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, configuration:TemplateConfiguration, inherited?:TemplateSettings):T {
+    return projectLandingPresentation(layout, configuration, landingState(layout), inherited);
+}
+
+/** Construct the presentation counterpart of a digest-verified publication plan. */
+export function publishedLandingPresentation(settings: TemplateSettings | undefined, heroes: WeakSet<object>) {
+    const state = settings ? { settings } : undefined;
+    return <T extends PageLayoutData>(layout: T, configuration: TemplateConfiguration): T =>
+        projectLandingPresentation(layout, configuration, state, undefined, heroes);
+}
+
+function projectLandingPresentation<T extends PageLayoutData>(layout: T, configuration: TemplateConfiguration, state: LandingState | undefined, inherited?: TemplateSettings, heroes?: WeakSet<object>): T {
     const s = state?.settings ?? (inherited ? templateSettingsSchema.parse(inherited) : undefined);
     if (!s) return layout;
     const presentation = state ? (state.presentation ??= compileLandingPresentation(s)) : compileLandingPresentation(s);
@@ -141,7 +156,10 @@ export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, 
         if(props.templateLink==='institutions')props.href=configuration.routes.directory+'?type=institution';
         if(props.templateLink==='programs')props.href=configuration.routes.directory+'?type=program';
         // Like browsing state, a tuple keeps public copy out of recursive Liquid resolution.
-        if(props.templateHero!==undefined)props.templateHeroState=[{settings:templateSettingsSchema.shape.hero.parse((props.templateHero as any)?.settings??s.hero),palette,destination:configuration.site.destination??''}];
+        if(props.templateHero!==undefined){
+            if (heroes?.has(props.templateHero as object)) props.templateHeroState=[{settings:(props.templateHero as any)?.settings??s.hero,palette,destination:configuration.site.destination??''}];
+            else props.templateHeroState=[{settings:templateSettingsSchema.shape.hero.parse((props.templateHero as any)?.settings??s.hero),palette,destination:configuration.site.destination??''}];
+        }
         if(props.templateSearch!==undefined)props.templateSearchState={path:configuration.routes.directory,collection:(props.templateSearch as any)?.defaultCollection??(configuration.browsing.defaultCollection==='program'?'program':'institution')};
         const styles=styleProjection(node.styles,props.templateStyle);
         return {...node,props,styles,...(node.children?{children:node.children.map(walk).filter((n):n is PageComponent=>!!n)}:{})};

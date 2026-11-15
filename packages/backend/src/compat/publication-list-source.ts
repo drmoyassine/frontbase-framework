@@ -148,16 +148,34 @@ export async function readLocalizedLiveList(owner:string,binding:Record<string,a
     return {rows,total:filtered.length};
 }
 
+function hasPublicationListBinding(nodes:PageComponent[]):boolean{
+    for(const node of nodes){
+        if(node.props?.binding||node.binding)return true;
+        if(node.children&&hasPublicationListBinding(node.children))return true;
+        for(const {overrides} of node.versions??[]){
+            if(overrides.props?.binding||overrides.binding)return true;
+            if(overrides.children&&hasPublicationListBinding(overrides.children as PageComponent[]))return true;
+        }
+    }
+    return false;
+}
+
 /** Resolve only the selected source for initial HTML; alternatives stay query-free. The optional
  *  catalog localizes pinned publication reads (query + returned text) and gives live views
  *  full-dataset localized sort/filter semantics (readLocalizedLiveList); without a catalog live
  *  views keep coherent source semantics. */
 export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[],pageContext:Record<string,unknown>={},liveOnly?:{sourceQuery:PublishedLiveQuery;list?:LiveListRequest}):Promise<PageLayoutData>{
     if(liveOnly&&catalog)throw Error('content_catalog_deprecated');
+    const {publicationRecordContext:_authoredContext,...root}=layout.root??{};
+    const scopedLayout={...layout,root:{...root,...(pageContext.recordId!==undefined?{publicationRecordContext:pageContext}:{})}};
+    // Directory queries already projected these live rows. Only a Saved View
+    // binding needs the async tree projection below.
+    if(liveOnly&&!hasPublicationListBinding(layout.content))return scopedLayout;
     const url=new URL(request.url),read=contextReader({url:Object.fromEntries(url.searchParams),user,page:pageContext});
-    const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>Promise.all(nodes.map(async node=>{
+    const projectNode=async(node:PageComponent):Promise<PageComponent>=>{
         if(liveOnly&&node.visibilityCondition&&!evaluateCondition(node.visibilityCondition,read))return node;
-        const versionId=selectBlockVersion(node,read),effective=applyBlockVersion(node,versionId);let binding=effective.props?.binding?bindingWithTemplateFields(effective.props.binding as any,[...effective.children??[],...(effective.type==='Card'&&layout.root?.templatePolicy?[{id:'$template-policy-fields',type:'Text',props:{templatePolicy:layout.root.templatePolicy}}]:[])]):undefined;
+        const versionId=selectBlockVersion(node,read),effective=node.versions?.length?applyBlockVersion(node,versionId):node;
+        let binding=effective.props?.binding?bindingWithTemplateFields(effective.props.binding as any,[...effective.children??[],...(effective.type==='Card'&&layout.root?.templatePolicy?[{id:'$template-policy-fields',type:'Text',props:{templatePolicy:layout.root.templatePolicy}}]:[])]):undefined;
         if(binding&&effective.type==='Card'&&layout.root?.templatePolicy){const fields=templateRecordFields([{id:'$template-policy',type:'Text',props:{templatePolicy:layout.root.templatePolicy}}]);binding={...binding,columnOrder:[...new Set([...binding.columnOrder??[],...fields])]};}
         let result=node;
         if(binding?.source?.kind==='publication'||binding&&!binding.source){
@@ -186,12 +204,18 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
         const activeVersion=result.versions?.find(version=>version.id===versionId);
         if(activeVersion?.overrides.children){
             const children=await walk(activeVersion.overrides.children as PageComponent[]);
-            result={...result,versions:result.versions?.map(version=>version.id===versionId?{...version,overrides:{...version.overrides,children}}:version)};
-        }else if(result.children)result={...result,children:await walk(result.children)};
+            if(children!==activeVersion.overrides.children)result={...result,versions:result.versions?.map(version=>version.id===versionId?{...version,overrides:{...version.overrides,children}}:version)};
+        }else if(result.children){
+            const children=await walk(result.children);
+            if(children!==result.children)result={...result,children};
+        }
         return result;
-    }));
-    const {publicationRecordContext:_authoredContext,...root}=layout.root??{};
-    return {...layout,root:{...root,...(pageContext.recordId!==undefined?{publicationRecordContext:pageContext}:{})},content:await walk(layout.content)};
+    };
+    const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>{
+        const projected=await Promise.all(nodes.map(projectNode));
+        return projected.every((node,index)=>node===nodes[index])?nodes:projected;
+    };
+    return {...scopedLayout,content:await walk(layout.content)};
 }
 
 /** Same public page/host boundary, exact reviewed element binding; no arbitrary datasource access.

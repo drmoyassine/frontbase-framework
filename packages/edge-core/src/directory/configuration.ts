@@ -1,4 +1,5 @@
-import {directorySources} from './source-contract.js';
+import {parseDirectorySourceConfiguration} from './source-contract.js';
+export {immutableDirectoryConfiguration} from './source-contract.js';
 import { z } from 'zod';
 export {liveViewBindingSchema,liveViewBindings} from './live-list.js';
 export { projectRelativeSiteLinks } from './navigation.js';
@@ -6,7 +7,7 @@ export { templateSettingsSchema, landingRootSchema, defaultTemplateSettings, rea
 export { createEducationLanding } from './landing.js';
 import { siteBindingsSchema, validateSiteBinding } from './bindings.js';
 export { siteBindingsSchema } from './bindings.js';
-export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, compileDirectoryProjection, directoryListCollections, projectDirectoryRecords, type DirectoryQueryBinding } from './bindings.js';
+export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, compileDirectoryProjection, compilePublishedDirectoryProjection, restorePublishedDirectoryProjection, directoryListCollections, projectDirectoryRecords, type DirectoryQueryBinding, type PublishedDirectoryProjectionPlan } from './bindings.js';
 export { editorialBodySchema, isValidatedEditorialBody, parseEditorialBody, projectEditorialBody } from './editorial.js';
 export { directoryBrowsingSchema, directoryBrowsingStateSchema, projectDirectoryBrowsing, type DirectoryBrowsingState } from './browsing.js';
 
@@ -124,10 +125,22 @@ export function directoryConfigurationIssues(value: unknown): string[] {
 export {migrateExploreRepeater,standardPublicationQueries,publicationListSourceSchema} from './standard-repeater.js';
 export {materializeElementSettings} from './template-settings.js';
 export function directoryConfigurationReadiness(value: unknown): string[] {
-    const parsed = directoryConfigurationSchema.safeParse(value);
-    if (!parsed.success) return directoryConfigurationIssues(value);
-    const c = parsed.data;
-    const sources = directorySources(c);
+    try {
+        return directoryConfigurationGaps(parseDirectorySourceConfiguration(value));
+    } catch (error) {
+        if (!(error instanceof z.ZodError)) throw error;
+        return error.issues.map(issue => issue.path.join('.') || 'configuration');
+    }
+}
+
+/** The query compiler receives complete configuration and source mappings from one strict parse. */
+export function requireDirectorySourceConfiguration(value: unknown) {
+    const resolved = parseDirectorySourceConfiguration(value);
+    if (directoryConfigurationGaps(resolved).length) throw Error('directory_configuration_incomplete');
+    return resolved;
+}
+
+function directoryConfigurationGaps({configuration: c, sources}: ReturnType<typeof parseDirectorySourceConfiguration>): string[] {
     const missing: string[] = [];
     for (const key of ['name', 'origin'] as const) if (!c.site[key]) missing.push(`site.${key}`);
     if (!c.datasourceId) missing.push('datasourceId');
@@ -145,7 +158,8 @@ export function directoryConfigurationReadiness(value: unknown): string[] {
         const r = sources[role];
         if (!r.fieldMapping.id || !r.fieldMapping.title || !r.fieldMapping.originalPath || !r.filter.column || r.filter.value === '') missing.push(`collections.${role}`);
     }
-    if (sources.article.tableName && (!sources.article.fieldMapping.contentRole || !sources.article.fieldMapping.sourceOrigin || !sources.article.fieldMapping.body)) missing.push('collections.article.editorial');
+    const article = sources.article;
+    if (article.tableName && (!article.fieldMapping.contentRole || !article.fieldMapping.sourceOrigin || !article.fieldMapping.body)) missing.push('collections.article.editorial');
     return missing;
 }
 /** Actionable authoring diagnostics over the existing publication admission checks.

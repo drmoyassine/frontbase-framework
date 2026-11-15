@@ -126,3 +126,14 @@ assert.equal(JSON.stringify(immutable),immutableBefore);
 assert.equal(immutableProjected.content[0].props.initialRows[0].title,'عربي Original');
 assert.equal(immutableProjected.content[0].props.initialRows[0].nested,immutable.content[0].props.initialRows[0].nested);
 assert.equal(immutableProjected.content[0].props.controls.searchLabel,'عربي Find');
+
+// A sparse patch still checks identity uniqueness outside the changed branch.
+const ambiguous={content:[
+    {id:'copy',type:'Text',props:{text:'Original'}},
+    {id:'other',type:'Container',props:{},children:[{id:'reused',type:'Text',props:{}}],
+        versions:[{id:'alternative',overrides:{children:[{id:'reused',type:'Text',props:{}}]}}]},
+]};
+const firstField={blockId:'copy',path:['props','text'],text:'Original',label:'Text'};
+assert.throws(()=>applyHomepageDisplayFields(ambiguous,valuesFor([firstField]),{partial:true,fields:[firstField]}),/duplicate_component/);
+const missing={...firstField,blockId:'missing'};
+assert.throws(()=>applyHomepageDisplayFields(immutable,valuesFor([missing]),{partial:true,fields:[missing]}),/unknown_component/);

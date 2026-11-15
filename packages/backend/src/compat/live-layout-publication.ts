@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {stableStringify} from '@frontbase/compiler/manifest';
-import {directoryConfigurationSchema,liveViewBindings,projectSharedDirectoryPreview,projectTemplatePresentation} from '@frontbase/edge-core/directory/configuration';
+import {directoryConfigurationSchema,immutableDirectoryConfiguration,liveViewBindings,projectSharedDirectoryPreview,projectTemplatePresentation,compilePublishedDirectoryProjection,type PublishedDirectoryProjectionPlan} from '@frontbase/edge-core/directory/configuration';
 import {publicationTemplateSchema,publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import type {PageLayoutData} from '@frontbase/edge-core';
 import {compileDisplaySurfacePlan,type DisplaySurfacePlan} from '@frontbase/edge-core/localization';
@@ -46,11 +46,11 @@ export type LiveLayoutPublication=z.infer<typeof liveLayoutPublicationSchema>;
 type Template = LiveLayoutPublication['templates'][number];
 type StaticPage = LiveLayoutPublication['staticPages'][number];
 type LayoutReference<T> = Omit<T, 'layout'> & { artifact: string };
-type LayoutArtifact = { version: 1; layout: PageLayoutData; displayPlan: DisplaySurfacePlan; translationIds?:TranslationIdentityPlan };
+type LayoutArtifact = { version: 1; layout: PageLayoutData; displayPlan: DisplaySurfacePlan; translationIds?:TranslationIdentityPlan; directoryPlan?:PublishedDirectoryProjectionPlan };
 const manifestSchema = z.object({
     format: z.literal('live-layout-index-v1'),
     schemaVersion: z.literal(3), runtimeVersion: z.literal('live-layout-v1'), siteBindingsCompiled: z.literal(true),
-    configuration: directoryConfigurationSchema,
+    configuration: z.unknown().transform(immutableDirectoryConfiguration),
     templates: z.array(publicationTemplateSchema.omit({layout:true}).extend({artifact:hash})).max(7),
     staticPages: z.array(staticPage.omit({layout:true}).extend({artifact:hash})).max(1000),
     locales: z.array(locale).min(1).max(40),
@@ -65,10 +65,21 @@ const artifactEnvelope = z.object({
         return !!plan && plan.version === 1 && Array.isArray(plan.nodes) && Array.isArray(plan.programs) && Array.isArray(plan.interpolations);
     }),
     translationIds:translationIdentityPlanSchema.optional(),
+    directoryPlan:z.custom<PublishedDirectoryProjectionPlan>(value=>!!value&&typeof value==='object'&&(value as PublishedDirectoryProjectionPlan).version===1).optional(),
 }).strict();
 export type LoadLiveLayout = (reference: {pageId: string} & ({layout: unknown} | {artifact: string})) => Promise<LayoutArtifact>;
-const pointerSchema=z.object({hash,generation:z.number().int().positive().max(Number.MAX_SAFE_INTEGER)}).strict();
-export type LiveLayoutPointer=z.infer<typeof pointerSchema>;
+export type LiveLayoutPointer={hash:string;generation:number};
+/** This hot boundary has only two JSON fields. Keep the exact strict schema
+ * contract without initializing the general schema interpreter on every fresh
+ * isolate. Authoring and persisted-pointer readers use the same decoder. */
+function liveLayoutPointer(value:unknown):LiveLayoutPointer{
+    if(!value||typeof value!=='object'||Array.isArray(value))throw Error('layout_pointer_invalid');
+    const pointer=value as Record<string,unknown>,keys=Object.keys(pointer);
+    if(keys.length!==2||!Object.hasOwn(pointer,'hash')||!Object.hasOwn(pointer,'generation')
+        ||typeof pointer.hash!=='string'||!/^[a-f0-9]{64}$/.test(pointer.hash)
+        ||!Number.isSafeInteger(pointer.generation)||Number(pointer.generation)<=0)throw Error('layout_pointer_invalid');
+    return {hash:pointer.hash,generation:pointer.generation as number};
+}
 export const LIVE_LAYOUT_ACTIVE='live_layout:active:v1';
 const versionKey=(value:string)=>'live_layout:version:v1:'+hash.parse(value);
 const manifestKey = (id: string) => 'live_layout:index:v1:' + hash.parse(id);
@@ -186,6 +197,7 @@ export class LiveLayoutPublicationStore{
         const indexPage = async <T extends Template | StaticPage>(page: T) => {
             const {layout, ...metadata} = page;
             const displayPlan=displayPlans[page.pageId]!;
+            const directoryPlan=compilePublishedDirectoryProjection(layout as unknown as PageLayoutData);
             let translationIds:TranslationIdentityPlan|undefined;
             if(projectId){
                 try{
@@ -197,8 +209,9 @@ export class LiveLayoutPublicationStore{
                     if(!(error instanceof z.ZodError))throw error;
                 }
             }
-            let raw = stableStringify({version: 1, layout, displayPlan, translationIds});
+            let raw = stableStringify({version: 1, layout, displayPlan, translationIds, directoryPlan});
             // Preserve the existing size allowance for layout/binding content.
+            if (raw.length > 4_000_000) raw = stableStringify({version: 1, layout, displayPlan, translationIds});
             if (translationIds && raw.length > 4_000_000) raw = stableStringify({version: 1, layout, displayPlan});
             if (raw.length > 4_000_000) throw Error('layout_artifact_size');
             const artifact = await bytesHash(raw);
@@ -219,22 +232,22 @@ export class LiveLayoutPublicationStore{
     async activeForServing() {
         const raw = await this.raw(LIVE_LAYOUT_ACTIVE);
         if (raw === null) return null;
-        const pointer = pointerSchema.parse(JSON.parse(raw));
+        const pointer = liveLayoutPointer(JSON.parse(raw));
         const release = await this.open(pointer.hash);
         if (!release) throw Error('published_layout_unavailable');
         return {pointer, ...release};
     }
     async active(){
         const raw=await this.raw(LIVE_LAYOUT_ACTIVE);if(raw===null)return null;
-        const pointer=pointerSchema.parse(JSON.parse(raw)),layout=await this.get(pointer.hash);
+        const pointer=liveLayoutPointer(JSON.parse(raw)),layout=await this.get(pointer.hash);
         if(!layout)throw Error('published_layout_unavailable');
         return {pointer,layout};
     }
     async publish(id:string,expected:LiveLayoutPointer|null,now:string){
         if(!await this.get(id))throw Error('published_layout_unavailable');
-        const raw=await this.raw(LIVE_LAYOUT_ACTIVE),current=raw===null?null:pointerSchema.parse(JSON.parse(raw));
+        const raw=await this.raw(LIVE_LAYOUT_ACTIVE),current=raw===null?null:liveLayoutPointer(JSON.parse(raw));
         if(stableStringify(current)!==stableStringify(expected))return null;
-        const next=pointerSchema.parse({hash:id,generation:(current?.generation??0)+1});
+        const next=liveLayoutPointer({hash:id,generation:(current?.generation??0)+1});
         const changed=raw===null
             ?await this.db.exec('INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[this.owner,LIVE_LAYOUT_ACTIVE,JSON.stringify(next),now])
             :await this.db.exec('UPDATE settings SET value = ?, updated_at = ? WHERE tenant_slug = ? AND key = ? AND value = ?',[JSON.stringify(next),now,this.owner,LIVE_LAYOUT_ACTIVE,raw]);

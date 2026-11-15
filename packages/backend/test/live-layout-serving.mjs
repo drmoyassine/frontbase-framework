@@ -11,6 +11,31 @@ import {createEngine,directProvider} from '@frontbase/edge-core';
 import {LiveLayoutPublicationStore,liveLayoutPublicationSchema} from '../dist/compat/live-layout-publication.js';
 import {resolveLiveLayoutPage} from '../dist/compat/live-layout-runtime.js';
 import {renderLiveLayoutPublication,resolveLiveLayoutSurface} from '../dist/compat/live-layout-serving.js';
+import {requestLiveLayoutHost} from '../dist/compat/live-layout-reader.js';
+
+let credentialVersion=1,connectionReads=0;
+const credentialHost={syncFor:owner=>({getDatasource:async id=>{
+ connectionReads++;return {id,kind:'supabase',config:{owner,credentialVersion}};
+}}),accountConfigFor:async()=>null,externalFetch:fetch};
+const pageHost=requestLiveLayoutHost(credentialHost);
+const [firstConnection,secondConnection]=await Promise.all([pageHost.syncFor('one').getDatasource('same'),pageHost.syncFor('one').getDatasource('same')]);
+assert.equal(connectionReads,1,'content and translations share one current datasource read');
+firstConnection.config.credentialVersion=99;
+assert.equal(secondConnection.config.credentialVersion,1,'consumers cannot mutate each other');
+assert.equal((await pageHost.syncFor('two').getDatasource('same')).config.owner,'two','memo is owner scoped');
+credentialVersion=2;
+assert.equal((await requestLiveLayoutHost(credentialHost).syncFor('one').getDatasource('same')).config.credentialVersion,2,'next page sees credential rotation');
+assert.equal(await requestLiveLayoutHost({...credentialHost,syncFor:()=>({getDatasource:async()=>null})}).syncFor('one').getDatasource('same'),null,'next page sees removed datasource');
+const adapterHost=Object.create(credentialHost);
+adapterHost.accountConfigFor=async()=>null;
+adapterHost.accountConfigFor.persistRefresh=async()=>({refreshed:true});
+adapterHost.externalFetch=async function(){assert.equal(this,undefined,'native fetch must remain a detached function');return new Response('ok');};
+const wrappedHost=requestLiveLayoutHost(adapterHost);
+assert.strictEqual(wrappedHost.accountConfigFor,adapterHost.accountConfigFor);
+assert.strictEqual(wrappedHost.externalFetch,adapterHost.externalFetch,'do not wrap native fetch with a changed receiver');
+assert.deepEqual(await wrappedHost.accountConfigFor.persistRefresh('one','account',{},{}),{refreshed:true},'credential-refresh persistence is retained');
+const fetchAdapter=wrappedHost.externalFetch;
+assert.equal(await (await fetchAdapter('https://example.com')).text(),'ok');
 
 const directory=await mkdtemp(join(tmpdir(),'frontbase-live-')),databaseUrl=pathToFileURL(join(directory,'state.db')).href;
 const db=sqliteRunner(databaseUrl);
@@ -44,7 +69,19 @@ assert.equal((await prior.loadLayout(prior.layout.staticPages[0])).translationId
 await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',[JSON.stringify({revision:1,projectId:'proof-project',configuration:null}),'one','translation_storage:v1']);
 const id=await store.prepare(plan,'2026-11-15T00:00:00Z');
 const pointer=await store.publish(id,null,'2026-11-15T00:00:00Z');assert.ok(pointer);
+for(const malformed of [null,[],{},[id,1],{hash:id},{hash:id,generation:'1'},{hash:id,generation:0},
+ {hash:id,generation:-1},{hash:id,generation:1.5},{hash:id,generation:Number.MAX_SAFE_INTEGER+1},
+ {hash:id.toUpperCase(),generation:1},{hash:id.slice(1),generation:1},{hash:id,generation:1,extra:true}]){
+ const badPointer={...db,query:async(sql,params)=>params?.[1]==='live_layout:active:v1'?[{value:JSON.stringify(malformed)}]:db.query(sql,params)};
+ await assert.rejects(()=>new LiveLayoutPublicationStore(badPointer,'one').activeForServing(),/layout_pointer_invalid/,'strict persisted-pointer bounds');
+}
+const maxPointer={...db,query:async(sql,params)=>params?.[1]==='live_layout:active:v1'?[{value:JSON.stringify({hash:id,generation:Number.MAX_SAFE_INTEGER})}]:db.query(sql,params)};
+assert.equal((await new LiveLayoutPublicationStore(maxPointer,'one').activeForServing()).pointer.generation,Number.MAX_SAFE_INTEGER);
+await assert.rejects(()=>new LiveLayoutPublicationStore(maxPointer,'one').publish(id,{hash:id,generation:Number.MAX_SAFE_INTEGER},'now'),/layout_pointer_invalid/,'generation cannot overflow');
 const open=await store.open(id),artifact=await open.loadLayout(open.layout.staticPages[0]);
+assert.equal(artifact.directoryPlan.version,1,'publication compiles directory and landing instructions');
+assert.ok(Object.isFrozen(artifact.directoryPlan));
+assert.ok(Object.isFrozen(open.layout.configuration.collections.program.fields));
 assert.deepEqual(artifact.translationIds.scope,{tenantId:'one',projectId:'proof-project'});
 assert.equal(artifact.translationIds.pageId,listPage.pageId);
 assert.ok(artifact.translationIds.entries.some(([key])=>key.includes('browse-heading')),'authoring compiles stable layout fields');
@@ -53,7 +90,13 @@ const host={syncFor:()=>({getDatasource:async()=>({id:'source',kind:'sqlite',con
 const options={host,liveQuery:async()=>{throw Error('unexpected view');}};
 let response=await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),options);
 assert.equal(response.status,200);assert.equal(response.headers.get('X-Frontbase-Data'),'live');
-assert.match(await response.text(),/First title/);
+const preparedHtml=await response.text();assert.match(preparedHtml,/First title/);
+const withoutDirectoryPlan={...options,prepared:{pointer,layout:open.layout,loadLayout:async page=>{
+ const {directoryPlan,...olderArtifact}=await open.loadLayout(page);return structuredClone(olderArtifact);
+}}};
+const olderResponse=await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),withoutDirectoryPlan);
+assert.equal(olderResponse.status,200);
+assert.equal(await olderResponse.text(),preparedHtml,'legacy artifacts without directory plans render identically');
 const fetchKeys = [];
 const cold = {
  dialect: db.dialect,

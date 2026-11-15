@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { languageConfigurationSchema, messageUnitSchema, translationRevisionSchema,
-    translationUnitId, messageSourceFingerprint, compareLocaleSitemapUrls,
+    translationUnitId, translationUnitIdForScope, messageSourceFingerprint, messageSourceFingerprintFromFields, compareLocaleSitemapUrls,
     extractRichTextSegments, applyRichTextTranslations } from '@frontbase/translation';
 
 const scope = { tenantId: 'owner-a', projectId: 'usa' };
@@ -29,6 +29,50 @@ assert.notEqual(sourceHash, await messageSourceFingerprint({ ...unit, placeholde
 assert.equal(unitId, await translationUnitId(scope, messageUnitSchema.parse({ ...unit, text: 'Edited source' }).resource));
 await assert.rejects(() => translationUnitId(scope, { ...resource, propertyPath: ['__proto__'] }));
 await assert.rejects(() => translationUnitId(scope, { ...resource, key: [{ column: 'id', value: 1 }, { column: 'id', value: 2 }] }));
+
+const mutableScope = { ...scope };
+const scopedUnitId = translationUnitIdForScope(mutableScope);
+mutableScope.tenantId = 'other-owner';
+mutableScope.projectId = 'other-project';
+const variants = [
+    resource,
+    { ...resource, key: resource.key.slice().reverse() },
+    { ...resource, key: [{ value: false, column: 'online' }, { value: -0, column: 'x' }, { value: 1e+22, column: 'number' }, { value: 'العربية\n😀', column: 'record' }] },
+    { kind: 'component', documentId: 'دليل', blockId: 'hero', propertyPath: ['image', 'alt'] },
+    { propertyPath: ['action', 'link'], kind: 'component', versionId: 'version-2', blockId: 'link', documentId: 'homepage' },
+    { messageId: 'عدد النتائج', kind: 'system', componentKind: 'Repeater' },
+];
+for (const variant of variants) {
+    const id = await scopedUnitId(variant);
+    assert.equal(id, await translationUnitId(scope, variant), 'Scoped and single IDs must use identical canonical bytes');
+    assert.notEqual(id, await translationUnitIdForScope(mutableScope)(variant), 'A factory snapshots its validated tenant and project');
+}
+assert.throws(() => translationUnitIdForScope({ ...scope, token: 'unknown-property' }));
+for (const invalid of [
+    { ...resource, propertyPath: ['__proto__'] },
+    { ...resource, key: [{ column: 'id', value: 1 }, { column: 'id', value: 2 }] },
+    { ...resource, key: [{ column: 'id', value: Infinity }] },
+    { ...resource, internal: true },
+]) await assert.rejects(() => scopedUnitId(invalid));
+
+const fingerprintFields = { sourceLocale: 'EN', format: 'plain', text: 'Apply to {$name} and {$region} 😀', segmenterVersion: 1, placeholders: ['region', 'name'] };
+const fieldsFingerprint = await messageSourceFingerprintFromFields(fingerprintFields);
+assert.equal(fieldsFingerprint, await messageSourceFingerprint({ ...unit, ...fingerprintFields }));
+assert.equal(fieldsFingerprint, await messageSourceFingerprintFromFields({ ...fingerprintFields, sourceLocale: 'en', placeholders: ['name', 'region'] }));
+assert.notEqual(fieldsFingerprint, await messageSourceFingerprintFromFields({ ...fingerprintFields, placeholders: ['name'] }));
+assert.notEqual(fieldsFingerprint, await messageSourceFingerprintFromFields({ ...fingerprintFields, segmenterVersion: 2 }));
+for (const invalid of [
+    { sourceLocale: 'en_invalid' },
+    { format: 'html' },
+    { text: 'x'.repeat(100001) },
+    { segmenterVersion: 0 },
+    { placeholders: ['same', 'same'] },
+    { placeholders: ['constructor'] },
+    { placeholders: Array.from({length:129}, (_, index) => 'field-' + index) },
+    { resource: unit.resource },
+]) await assert.rejects(() => messageSourceFingerprintFromFields({ ...fingerprintFields, ...invalid }));
+await assert.rejects(() => messageSourceFingerprint({ ...unit, resource: { ...unit.resource, propertyPath: ['__proto__'] } }));
+
 const draft = { version: 1, scope, unitId, revisionId: 'human-1', locale: 'ar', sourceFingerprint: sourceHash, text: 'قدّم طلبك', provenance: 'manual', expectedHead: null };
 assert.equal(translationRevisionSchema.safeParse({ ...draft, published: true }).success, false, 'Revision payload cannot self-publish');
 assert.equal(translationRevisionSchema.parse(draft).provenance, 'manual');

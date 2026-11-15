@@ -1,5 +1,5 @@
 import type {PageLayoutData} from '@frontbase/edge-core';
-import {homepageDisplayLayout,homepageDisplayFields,applyHomepageDisplayFields,translationUnitId,messageSourceFingerprint,
+import {homepageDisplayLayout,homepageDisplayFields,applyHomepageDisplayFields,translationUnitId,translationUnitIdForScope,messageSourceFingerprint,messageSourceFingerprintFromFields,
     type CurrentTranslationValue,type DisplaySurfacePlan,type DisplayField,type MessageUnit,type LocalizationScope,type TranslationBatchReader} from '@frontbase/edge-core/localization';
 import {translationDisplayText} from './translation-inputs.js';
 import type {DbRunner} from '@frontbase/edge-infra';
@@ -30,6 +30,7 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
     if(!fields.length){options.resolvedFields?.(fields);return layout;}
     const prepared=preparedTranslationIds(options.identityPlan,options.scope,options.pageId);
     const pendingIds = new Map<string, Promise<string>>();
+    let unitIdFor:ReturnType<typeof translationUnitIdForScope>|undefined;
     const groups=new Map<string,number|number[]>();
     const group=(id:string,index:number)=>{
         const existing=groups.get(id);
@@ -48,7 +49,7 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
         if (cached){group(cached,index);continue;}
         let pending = pendingIds.get(key);
         if (!pending) {
-            pending = translationUnitId(options.scope, unit.resource).then(id => {
+            pending = (unitIdFor??=translationUnitIdForScope(options.scope))(unit.resource).then(id => {
                 if (identityIds.size >= 2048) identityIds.delete(identityIds.keys().next().value!);
                 identityIds.set(key, id);
                 return id;
@@ -87,7 +88,9 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
             const field=fields[index]!;
             let fingerprint=fingerprints.get(field.text);
             if(!fingerprint){
-                fingerprint=messageSourceFingerprint(displayTranslationUnit(field,options.scope,options.pageId,options.sourceLocale));
+                // Identity was validated above (or compiled in the verified
+                // publication); freshness depends only on these current fields.
+                fingerprint=messageSourceFingerprintFromFields({sourceLocale:options.sourceLocale,format:'plain',text:field.text,segmenterVersion:1,placeholders:[]});
                 fingerprints.set(field.text,fingerprint);
             }
             patchWork.push(fingerprint.then(current=>{

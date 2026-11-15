@@ -1,7 +1,7 @@
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {QueryRegistry} from '@frontbase/compiler';
 import type {PageLayoutData,PageEntry,EngineOptions} from '@frontbase/edge-core';
-import {compileDirectoryProjection,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectTemplatePresentation,projectDirectoryBrowsing,landingQueryParams} from '@frontbase/edge-core/directory/configuration';
+import {compileDirectoryProjection,restorePublishedDirectoryProjection,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectDirectoryBrowsing,type PublishedDirectoryProjectionPlan} from '@frontbase/edge-core/directory/configuration';
 import {publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import {localeDirection} from '@frontbase/edge-core/localization';
 import {projectPublicationListRows,type PublishedLiveQuery,type LiveListRequest} from './publication-list-source.js';
@@ -10,10 +10,10 @@ import type {LiveLayoutIndex, LoadLiveLayout} from './live-layout-publication.js
 
 const directoryPlans = new WeakMap<PageLayoutData, ReturnType<typeof compileDirectoryProjection>>();
 
-function directoryPlan(layout: PageLayoutData) {
+function directoryPlan(layout: PageLayoutData,published?:PublishedDirectoryProjectionPlan) {
     let plan = directoryPlans.get(layout);
     if (plan) return plan;
-    plan = compileDirectoryProjection(layout);
+    plan = published ? restorePublishedDirectoryProjection(layout,published) : compileDirectoryProjection(layout);
     if (Object.isFrozen(layout)) directoryPlans.set(layout, plan);
     return plan;
 }
@@ -63,7 +63,7 @@ export async function resolveLiveLayoutPage(
     const authored = artifact?.layout ?? ('layout' in template ? template.layout as unknown as PageLayoutData : undefined);
     if (!authored) throw Error('published_layout_artifact_unavailable');
     const layout = publication.siteBindingsCompiled ? authored : projectSharedDirectoryPreview(authored, c);
-    const plan = directoryPlan(layout);
+    const plan = directoryPlan(layout,artifact?.directoryPlan);
     const records=new Map<string,Record<string,unknown>[]>(),inactive=new Set<string>();
     const count = listing ? read('directory.' + (listing === 'article-index' ? 'article' : type) + '.count', { q: search, match, sort, limit }) : undefined;
     const [countRows] = await Promise.all([count, ...plan.queries.map(async query=>{
@@ -71,7 +71,7 @@ export async function resolveLiveLayoutPage(
         if(listing==='directory'&&mode==='list'&&['institution','program'].includes(collection!)&&collection!==type){inactive.add(query.id);return;}
         if(mode==='detail'&&route&&collection===(role==='editorial'?'page':role)){records.set(query.id,[row!]);return;}
         const params:Record<string,unknown>=mode==='detail'?{path}:role==='static'
-            ?landingQueryParams(layout,query.id,{...query.binding.params,limit})
+            ?{...query.binding.params,limit:query.landingLimit??limit}
             :{q:search,sort,match,offset,limit,...(role==='institution'&&collection==='program'?{institutionId:row!.id}:{})};
         if(mode==='detail'&&role==='program'&&collection==='institution'){
             // A related parent comes from a live relationship lookup, never a saved catalog.
@@ -102,7 +102,7 @@ export async function resolveLiveLayoutPage(
         const total=Number(countRows[0]!.total);
         projected=projectDirectoryBrowsing(projected,[{path,locale,collection:listing==='directory'?type as 'institution'|'program':null,q:search,page,sort:sort as 'title-asc'|'title-desc',match:match as 'contains'|'startsWith'|'equals',pageSize:limit,total,hasNext:offset+limit<total&&offset+limit<=19999,searchEnabled:c.browsing.search}]);
     }
-    projected=projectRelativeSiteLinks(projectTemplatePresentation(projected,c),c.site.origin);
+    projected=projectRelativeSiteLinks(plan.projectPresentation(projected,c),c.site.origin);
     const presentation=templatePolicyPresentation(projected,row,row?context.collection+':'+row.id:'',locale,context);
     const title=presentation.values.title||String(row?.title??template.title),description=presentation.values.description||String(row?.summary??template.description);
     const canonicalUrl=new URL(locale===c.site.locale?path:'/'+locale+path,c.site.origin).href;

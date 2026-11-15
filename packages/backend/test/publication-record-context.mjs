@@ -29,4 +29,36 @@ await assert.rejects(()=>resolvePublicationVersionPage(manifest,hash,tenant,db,n
 const capture=await captureHomepage(db,tenant,request,live,'/campus/history/');assert.equal(capture.pageId,template('program').pageId);assert.ok(capture.fields.some(field=>field.text==='History live'&&field.record?.connectionId==='owned'));
 await assert.rejects(()=>captureHomepage(db,tenant,request,live,'/missing/'));
 const unscoped=await projectPublicationListRows({root:{publicationRecordContext:{recordId:999}},content:[]},db,tenant,request,null,live);assert.equal(unscoped.root.publicationRecordContext,undefined);
+
+const routeContext={recordId:20,parentId:10,collection:'programs'};
+const untouched={id:'title',type:'Heading',props:{text:'Current program'}};
+const authoredRoot={publicationRecordContext:{recordId:999},unrelated:'keep'};
+const withoutViews={root:authoredRoot,content:[untouched]};
+const noSource=()=>assert.fail('The request must not execute a legacy source query');
+const liveOnly={sourceQuery:noSource};
+const unbound=await projectPublicationListRows(withoutViews,db,tenant,request,null,live,undefined,routeContext,liveOnly);
+assert.strictEqual(unbound.content,withoutViews.content);
+assert.deepEqual(unbound.root,{publicationRecordContext:routeContext,unrelated:'keep'});
+const unboundWithoutRecord=await projectPublicationListRows(withoutViews,db,tenant,request,null,live,undefined,{},liveOnly);
+assert.deepEqual(unboundWithoutRecord.root,{unrelated:'keep'},'A published root cannot inject route identity');
+assert.equal(authoredRoot.publicationRecordContext.recordId,999);
+
+const when='url.type == "program"';
+const variantBinding={...binding,componentId:'version-view'};
+const alternateView={id:'alternate-view',type:'Repeater',props:{binding:{...binding,componentId:'alternate-view'}}};
+const withVariants={root:authoredRoot,content:[
+    untouched,
+    {id:'version-view',type:'Repeater',props:{},versions:[{id:'by-type',when,overrides:{props:{binding:variantBinding}}}]},
+    {id:'alternate-structure',type:'Container',props:{},versions:[{id:'by-type',when,overrides:{children:[alternateView]}}]},
+]};
+const beforeVariant=calls.length;
+const defaultView=await projectPublicationListRows(withVariants,db,tenant,request,null,live,undefined,routeContext,liveOnly);
+assert.equal(calls.length,beforeVariant,'Inactive Block Versions do not query their Saved Views');
+assert.strictEqual(defaultView.content,withVariants.content);
+const variantView=await projectPublicationListRows(withVariants,db,tenant,new Request(request.url+'?type=program'),null,live,undefined,routeContext,liveOnly);
+assert.equal(calls.length,beforeVariant+2,'Bindings in both variant props and variant children remain live');
+assert.strictEqual(variantView.content[0],untouched);
+assert.deepEqual(variantView.content[1].versions[0].overrides.props.initialRows,[{id:20,title:'History live'}]);
+assert.deepEqual(variantView.content[2].versions[0].overrides.children[0].props.initialRows,[{id:20,title:'History live'}]);
+assert.equal(withVariants.content[1].versions[0].overrides.props.initialRows,undefined);
 console.log('detail route binding: current/parent identity, anonymous selection, forged filter refusal, Arabic prefix and translation capture passed');

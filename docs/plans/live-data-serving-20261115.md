@@ -256,3 +256,50 @@ All 18 requests returned HTTP 200 and HTML with `Cache-Control: no-store`. The p
 Node 22 workspace build and type checks passed, along with the edge-core suite, fifteen byte-parity cases, backend live layout/translation checks, and the host startup, session and state tests. The tenant matrix passed 175/175; action navigation and state resolver mutation checks detected all three and two faults respectively.
 
 The same isolated Worker verified a direct database update, a new English search and a new Arabic search, an English frontend edit written to its source row, and an Arabic frontend edit written only to its translation. Changing the source afterward correctly hid the stale Arabic translation. The publication hash stayed unchanged; all reads served current data without HTML caching. The disposable Worker and database were removed. No production deployment or publication was changed.
+
+### First live render CPU — implementation and qualification
+
+Owner request: profile the remaining first render on fresh Workers, remove measured avoidable work, preserve live source/translation reads and no-store HTML, then qualify English/Arabic pages and first-time searches before production. Root owns backend publication/runtime code and evidence; startup_control owns isolated instrumentation and replay; warm_render owns translation/renderer work; fresh_proof owns directory instruction compilation. Existing unrelated diffs are preserved. Production promotion requires the requested CPU proof.
+
+The first candidate removed duplicate datasource resolution within a request, repeated configuration parses in the query factory, unnecessary Saved View projection when no binding exists, and repeated display-field indexing. The request-local datasource memo preserves the exact injected fetch function: an intermediate wrapper caused Workers' native fetch to reject its receiver, producing 503s. That candidate was rejected and the calling-convention regression was fixed before measurement. A failed response's lower CPU is never counted as a performance gain.
+
+Corrected intermediate Worker artifact `b2654190eaad63487acb16de66402cc4037d21b5fd041ced52df964d3340e78a` served all ten matrix reads with HTTP 200 and `no-store`. Its CPU gate still failed:
+
+| Request | Fresh isolate CPU (ms) | Same-isolate repeat (ms) |
+| --- | --- | --- |
+| English homepage | 36 | 9 |
+| Arabic homepage | 51, 95 | 16 |
+| New English program search | 37 | 8 |
+| New Arabic program search | 48, 89 | 11 |
+
+Separate stage cutoffs on the same artifact and Arabic search measured cumulative CPU: publication readiness/pointer/index 9 and 16 ms; plus datasource/adapter/audience 12 and 12 ms; plus current records/layout/projection 26 and 21 ms; through localization/navigation, before final SSR, 69 and 44 ms. A fully traced fresh render used 49 ms. These small, independent samples are not additive phase timings; subtracting them would confuse isolate variance with a causal stage cost. One full control missed its first Tail event and is excluded from cold acceptance.
+
+Fourteen fresh Node 22 replays with fixed real HTTP response bodies isolated synchronous early costs: manifest schema parse median 5.680 ms, pointer schema parse 2.139 ms, runner validation/construction 1.222 ms; ledger comparison, JSON decoding and recursive freeze were individually below 0.3 ms. An actual Arabic homepage localization call with 92 admitted fields and 47 prepared IDs spent 6.775 ms inventorying and 12.733 ms collecting dynamic IDs before the translation adapter read. These are local elapsed measurements, not billed Cloudflare CPU. CDP samples with scheduling/I/O gaps are not reported as exact CPU phase milliseconds.
+
+The final implementation addresses those boundaries:
+
+- Newly prepared layout artifacts contain directory instruction paths, effective landing-query limits and validated presentation references. Full authoring validation occurs during preparation; the owner-scoped digest and bounded frozen references are checked when restoring. Old publications compile their instructions as before. All six captured layouts produced identical projected data and HTML in 24 English/Arabic empty/populated-row cases; the six serialized plans add 911 bytes total.
+- The active-pointer decoder preserves its exact two-field grammar, lowercase digest and positive safe-integer bounds without initializing the generic schema interpreter. Publication configuration is parsed strictly once; only internally decoded, deeply immutable objects can reuse that validation. Frozen caller input still has to pass the schema.
+- Translation batches validate the shared scope once and retain strict per-resource validation. Current-head freshness validates only the fields actually covered by the source fingerprint, after identity, tenant, locale and context checks. Existing full-unit APIs remain strict. Independent comparisons matched 192 stable-ID cases and 576 fingerprint cases to the preceding implementation.
+- Sparse translation patches use one copy/identity walk, still reject duplicate/unknown components, and retain Block Version behavior. No current rows, credential selections, translation values or public HTML are cached. Arabic cold/repeat request counts fell from 9/6 to 8/5 by sharing one current datasource read within the request.
+
+The intermediate functional replay served the longest captured article in both languages, observed direct source edits and new searches, saved an English frontend edit to the source row, and saved an Arabic frontend edit only to translation storage. A later source edit invalidated the stale Arabic head. The publication pointer did not change and all public responses were `no-store`. Those functional results do not override the failed CPU gate. Both intermediate Workers returned HTTP 404 after removal; their Docker fixtures, networks and private temporary files were removed.
+
+Final Node 22 workspace build/check, complete edge-core and translation functional suites, compiler query tests, backend live-layout and frontend-edit suites, source-contract compatibility and mutation checks passed. Mutation evidence includes all 16 directory and five landing controls, eight translation localization controls, and five PostgREST adapter controls. The full-CMS Worker is 837.1 KiB gzip and passes the client no-leak build. Binary rollback after publishing a new `directoryPlan` requires restoring a prior compatible publication pointer; older strict artifact envelopes do not understand that optional field.
+
+Final hosted qualification completed against artifact `be8492c071f4084d35e892a216896e6227a87018d9b9198dc10bdce41ff5b0c1` on disposable Worker `frontbase-live-final-aedd3f3f`. Six prepared layouts contained the new directory instructions. All eleven reads returned HTTP 200, live data and `Cache-Control: no-store`, with no HTML-cache hit or CMS initialization log. Isolate identifiers and invocation ordinals distinguish fresh requests from paired repeats:
+
+| Request | Fresh isolate CPU (ms) | Same-isolate repeat (ms) |
+| --- | --- | --- |
+| English homepage | 35 | 11 |
+| Arabic homepage | 73 | 19 |
+| New English program search | 39 | 8 |
+| New Arabic program search | 86, 82 | 16 |
+
+All five fresh invocations and three of four paired repeats failed the strict below-10 ms criterion. The Arabic search repeat belongs to the 82 ms isolate. The longest article returned live English and Arabic HTML at 18 and 26 ms on invocations three and four; these are not fresh-isolate specimens. Small independent samples do not establish a reliable performance improvement over the intermediate run. HTTP 200 and absence of Error 1102 do not override the CPU gate.
+
+The final fixture also verified direct source changes and never-run searches, an English frontend edit saved to the source row, and an Arabic frontend edit saved to translation storage without changing the English row. A subsequent source edit invalidated the stale Arabic head. The publication pointer stayed unchanged throughout. The Worker was deleted and its former health URL independently returned 404; the exact Docker containers, network and private temporary files were removed. The operator evidence file is `final-live-matrix-aedd3f3f.json`. No Study-in-USA Worker, publication pointer, source record or credential was changed.
+
+Status: this implementation and its functional qualification are complete; Workers Free CPU acceptance and production promotion remain open. Commit and push the tested source and evidence to the private delivery branch; do not promote this artifact as meeting the owner's CPU requirement.
+
+Next executable work: isolate the remaining first-render costs in the final artifact, including publication decoding, current-row projection, generic SSR and Arabic inventory/identity lookup. The current directory plans do not compile the full HTML renderer. Local probes still show roughly 10 ms for cold Arabic identity collection after the scoped factory, versus roughly 0.38 ms warm; this cannot alone explain or fix the English overruns. A scoped resource-based current-head lookup and fuller publication-time renderer instructions are profiling candidates, not accepted performance claims. Any follow-up must preserve exact current-row/head authorization and freshness, compare output and failure behavior, and repeat fresh-isolate/no-cache qualification before production.

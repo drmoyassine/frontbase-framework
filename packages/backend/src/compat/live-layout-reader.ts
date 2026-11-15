@@ -15,6 +15,24 @@ export interface LiveLayoutHost{
     externalFetch:CompatFetch;
 }
 
+/** One page may use the same datasource for content and translations. Keep its
+ * current decrypted configuration only for that request; later requests must
+ * observe rotation, removal and owner changes. Each consumer gets its own copy. */
+export function requestLiveLayoutHost(host:LiveLayoutHost):LiveLayoutHost{
+    const sources=new Map<string,ReturnType<SyncStore['getDatasource']>>();
+    // Preserve the adapter functions and refresh hook exactly. In particular,
+    // Workers' native fetch rejects a wrapper that invokes it as a host method.
+    return {accountConfigFor:host.accountConfigFor,externalFetch:host.externalFetch,syncFor:owner=>({getDatasource:async id=>{
+        const key=JSON.stringify([owner,id]);
+        let pending=sources.get(key);
+        if(!pending){
+            pending=host.syncFor(owner).getDatasource(id);
+            if(sources.size<32)sources.set(key,pending);
+        }
+        return structuredClone(await pending);
+    }})};
+}
+
 /** Called with an owned published layout, never a browser-provided table/configuration.
  * Resolves the same current encrypted account and guarded datasource adapter as the builder. */
 export async function liveLayoutReader(host:LiveLayoutHost,owner:string,layout:LiveLayoutIndex,liveQuery:PublishedLiveQuery):Promise<LivePageReader>{

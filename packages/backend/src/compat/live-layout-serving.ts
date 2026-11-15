@@ -4,7 +4,7 @@ import {renderResolvedPageDocument,audienceConditionUser,type PageLayoutData} fr
 import type {VerifiedMenuAudience} from '@frontbase/edge-core/menus';
 import {LiveLayoutPublicationStore,liveDisplayPlan} from './live-layout-publication.js';
 import type {LiveLayoutIndex,LoadLiveLayout,LiveLayoutPointer} from './live-layout-publication.js';
-import {liveLayoutReader,type LiveLayoutHost} from './live-layout-reader.js';
+import {liveLayoutReader,requestLiveLayoutHost,type LiveLayoutHost} from './live-layout-reader.js';
 import {resolveLiveLayoutPage,LivePageRequestError} from './live-layout-runtime.js';
 import {liveListRequestSchema,type PublishedLiveQuery,type LiveListRequest} from './publication-list-source.js';
 import {applyBlockVersion,selectBlockVersion} from '@frontbase/edge-core/block-versions';
@@ -42,6 +42,7 @@ export async function renderLiveLayoutPublication(db:DbRunner,owner:string,reque
     return serveLiveLayout(db,owner,request,options);
 }
 async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:LiveLayoutServingOptions,surface?:(value:LiveLayoutSurface)=>Response):Promise<Response|null>{
+    const host=requestLiveLayoutHost(options.host);
     const headers=new Headers({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     let close:(()=>void|Promise<void>)|undefined;
     try{
@@ -57,7 +58,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const listHeader=request.headers.get('X-Frontbase-List');
         if(listHeader){try{if(listHeader.length>8192)throw Error();list=liveListRequestSchema.parse(JSON.parse(decodeURIComponent(listHeader)));}catch{throw new LivePageRequestError('invalid_list_request');}}
         const [reader,audience]=await Promise.all([
-            liveLayoutReader(options.host,owner,publication,options.liveQuery),
+            liveLayoutReader(host,owner,publication,options.liveQuery),
             options.resolveAudience?.(owner,request)??Promise.resolve({authenticated:false}),
         ]);
         close=reader.close;
@@ -82,7 +83,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         let localizedFields:LiveDisplayField[]|undefined;
         if(locale!==sourceLocale){
             const [storage,menuFields]=await Promise.all([
-                configuredTranslationStorage(options.host,settings,owner),
+                configuredTranslationStorage(host,settings,owner),
                 captureMenuFields(settings,owner,template,layout),
             ]);
             layout=await localizeLiveLayout(layout,{scope:storage.scope,pageId:resolved.sourcePageId,sourceLocale,locale,reader:storage.persistence,menuFields,plan:displayPlan,identityPlan:resolved.translationIds,resolvedFields:fields=>{localizedFields=fields;}});

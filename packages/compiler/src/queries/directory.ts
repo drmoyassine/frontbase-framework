@@ -1,6 +1,5 @@
-import {directorySources} from '@frontbase/edge-core/directory/configuration';
 import { z } from 'zod';
-import { directoryConfigurationSchema, directoryConfigurationReadiness, parseEditorialBody, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { requireDirectorySourceConfiguration, parseEditorialBody, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { defineQueries, type QueryRegistry, type QueryDef, type QueryContext } from './defineQueries.js';
 import { sitePublicationArtifactSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
 
@@ -42,12 +41,10 @@ export function createLiveDirectoryQueries(input:DirectoryConfiguration,owner:st
 // Compiled configuration only: never credentials, query results or request identities.
 type DirectoryRead=(sql:string,params:unknown[])=>Promise<Record<string,unknown>[]>;
 type DirectoryPlan=Record<string,Omit<QueryDef,'execute'>&{execute:(raw:Record<string,unknown>,ctx:QueryContext,read:DirectoryRead)=>Promise<Record<string,unknown>[]>}>;
-const liveConfigurations=new Map<string,{configuration:DirectoryConfiguration;sources:ReturnType<typeof directorySources>;plans:Map<string,DirectoryPlan>}>();
+const liveConfigurations=new Map<string,ReturnType<typeof requireDirectorySourceConfiguration>&{plans:Map<string,DirectoryPlan>}>();
 function liveConfiguration(input:DirectoryConfiguration){
     const key=JSON.stringify(input),cached=liveConfigurations.get(key);if(cached)return cached;
-    const configuration=directoryConfigurationSchema.parse(input);
-    if(directoryConfigurationReadiness(configuration).length)throw Error('directory_configuration_incomplete');
-    const compiled={configuration,sources:directorySources(configuration),plans:new Map<string,DirectoryPlan>()};
+    const compiled={...requireDirectorySourceConfiguration(input),plans:new Map<string,DirectoryPlan>()};
     if(key.length<=65536){if(liveConfigurations.size>=16)liveConfigurations.delete(liveConfigurations.keys().next().value!);liveConfigurations.set(key,compiled);}
     return compiled;
 }
@@ -56,10 +53,8 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
     query:(sql:string,params:unknown[])=>Promise<Record<string,unknown>[]>,authoring:boolean):QueryRegistry{
     if(!owner)throw Error('directory_configuration_incomplete');
     const compiled=authoring?null:liveConfiguration(input);
-    const c=compiled?.configuration??directoryConfigurationSchema.parse(input);
-    if(authoring&&directoryConfigurationReadiness(c).length)throw Error('directory_configuration_incomplete');
+    const {configuration:c,sources}=compiled??requireDirectorySourceConfiguration(input);
     const quote = (name: string) => { if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new Error('invalid_mapping'); return `"${name}"`; };
-    const sources = compiled?.sources??directorySources(c);
     const city = sources.city, institution = sources.institution;
     // Cache only validated compiler definitions. Runners, credentials, principals and
     // rows are injected per call and are never retained in this plan cache.
