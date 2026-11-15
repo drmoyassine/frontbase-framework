@@ -69,3 +69,28 @@ const hydration=JSON.parse(localizedDom.querySelector('[data-react-props]').data
 assert.deepEqual(hydration.initialRows,rows);assert.equal(hydration.initialTotal,1);assert.equal(hydration.mode,'edge');
 assert.equal(hydration.binding._localePath,'/ar/catalog/');
 console.log('list chrome surfaces PASS: pure SSR stability, interactive localization, translated loading shell and seed-preserving Table/Grid hydration');
+const frozenText=Object.freeze({id:'article-text',type:'Text',props:Object.freeze({text:'Current database text'})});
+const frozenNav=Object.freeze({id:'nav',type:'Navbar',props:Object.freeze({})});
+const frozenChildren=Object.freeze([frozenText]);
+const frozenContainer=Object.freeze({id:'article',type:'Container',children:frozenChildren});
+const frozenVersion=Object.freeze({id:'mobile',name:'Mobile',overrides:Object.freeze({children:Object.freeze([frozenNav,frozenText])})});
+const frozenInput=Object.freeze({root:Object.freeze({}),content:Object.freeze([frozenContainer,Object.freeze({id:'versioned',type:'Container',versions:Object.freeze([frozenVersion])})])});
+const normalizedFrozen=homepageDisplayLayout(frozenInput);
+assert.equal(normalizedFrozen.content[0],frozenContainer,'ordinary text subtree is reused without retaining it beyond this request');
+assert.equal(normalizedFrozen.content[1].versions[0].overrides.children[1],frozenText);
+assert.equal(normalizedFrozen.content[1].versions[0].overrides.children[0].props.localeLabels.language,'Language');
+assert.equal(frozenNav.props.localeLabels,undefined,'normalization must not mutate authored or shared inputs');
+assert.equal(homepageDisplayLayout({content:[{id:'fresh',type:'Text',props:{text:'Changed database text'}}]}).content[0].props.text,'Changed database text');
+// The renderer fast path and public async API must agree, including nested Actions
+// and full Liquid programs; no record values may carry into a later invocation.
+const {resolveProps,resolvePropsValue}=await import('../dist/ssr/resolve.js');
+const bindingProps={text:'{{ record.title }}',actionBindings:[{href:'/program/{{ record.id }}'}]};
+const firstContext={record:{title:'First program',id:'one'}};
+const direct=resolvePropsValue(bindingProps,firstContext);
+assert.equal(direct instanceof Promise,false);
+assert.deepEqual(direct,await resolveProps(bindingProps,firstContext));
+assert.equal(resolvePropsValue(bindingProps,{record:{title:'Updated program',id:'two'}}).text,'Updated program');
+assert.equal(bindingProps.text,'{{ record.title }}');
+const liquidProps={text:'{% if record.available %}Open{% else %}Closed{% endif %}'};
+assert.deepEqual(await resolvePropsValue(liquidProps,{record:{available:true}}),{text:'Open'});
+assert.deepEqual(await resolvePropsValue(liquidProps,{record:{available:false}}),{text:'Closed'});

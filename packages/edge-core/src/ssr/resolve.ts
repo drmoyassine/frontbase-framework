@@ -20,7 +20,7 @@ import type { TemplateContext } from './lib/context.js';
 export async function resolveProps(props: Record<string, unknown> | undefined, context: TemplateContext): Promise<Record<string, unknown>> {
     return resolvePropsValue(props, context);
 }
-function resolvePropsValue(props: Record<string, unknown> | undefined, context: TemplateContext): Record<string, unknown> | Promise<Record<string, unknown>> {
+export function resolvePropsValue(props: Record<string, unknown> | undefined, context: TemplateContext): Record<string, unknown> | Promise<Record<string, unknown>> {
     if (!props) return {};
     const resolved: Record<string, unknown> = {};
     const pending: Promise<void>[] = [];

@@ -37,7 +37,7 @@ export type { PageComponent, PageLayoutData } from './types.js';
 
 import type { PageComponent, PageLayoutData } from './types.js';
 import { classifyComponent } from './classification.js';
-import { resolveProps, resolveHiddenFiltersSSR } from './resolve.js';
+import { resolvePropsValue, resolveHiddenFiltersSSR } from './resolve.js';
 import { evaluateVisibilityCondition, applyClientVisibilityInjection, clientVisibilityAttributes } from './visibility.js';
 import { applyNavbarFavicon } from './navbarFavicon.js';
 import { resolveRootStyles } from './rootStyles.js';
@@ -111,7 +111,8 @@ async function renderComponentImpl(
         }
     }
 
-    let resolvedProps = await resolveProps(props, context);
+    const propsValue = resolvePropsValue(props, context);
+    let resolvedProps = propsValue instanceof Promise ? await propsValue : propsValue;
 
     // If client-side condition, pass data-show-if and set initial display style if false
     if (isClientSideCondition) {
@@ -125,7 +126,7 @@ async function renderComponentImpl(
     }
 
     // Special handling for Navbar with useProjectLogo or showIcon
-    resolvedProps = await applyNavbarFavicon(type, resolvedProps,
+    if (type === 'Navbar' && resolvedProps.logo) resolvedProps = await applyNavbarFavicon(type, resolvedProps,
         typeof context.app?.faviconUrl === 'string' ? context.app.faviconUrl : undefined);
 
     // Inject styles and className from component definition into resolvedProps

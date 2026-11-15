@@ -53,13 +53,19 @@ function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:M
 }
 /** Explicit display-only surface inventory. Never translates bindings, actions, SQL, URLs or identifiers. */
 export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
-    // Copy only the branches normalized below; records and bindings are read-only.
-    const copy=(nodes:PageComponent[]):PageComponent[]=>nodes.map(node=>({...node,props:{...node.props},
-        ...(node.children?{children:copy(node.children)}:{}),
-        ...(node.versions?{versions:node.versions.map(version=>({...version,overrides:{...version.overrides,...(version.overrides.children?{children:copy(version.overrides.children as PageComponent[])}:{})}}))}:{})}));
-    const layout={...input,content:copy(input.content)};
-    layout.root={...layout.root,localeMessages:{poweredBy:'Powered by Frontbase',signOut:'Sign Out'}};
-    const walk=(nodes:PageComponent[])=>{for(const node of nodes){const p=node.props??(node.props={});
+    // Normalize only chrome-bearing nodes. Ordinary article text and record fields
+    // remain request-local references instead of being copied in two full walks.
+    const walk=(nodes:PageComponent[]):PageComponent[]=>{
+      let changed=false;
+      const result=nodes.map(node=>{
+        const original=node.props??{};
+        const normalize=!!original.templateSearchState||original.templateMenu!==undefined
+            ||Array.isArray(original.directoryBrowsingState)&&!!original.directoryBrowsingState[0]
+            ||Array.isArray(original.templateHeroState)||node.type==='Navbar'
+            ||node.type==='Footer'&&!original.copyright
+            ||['Repeater','DataTable','Grid'].includes(node.type)&&(Array.isArray(original.initialRows)||original.binding||node.binding)
+            ||node.type==='Card'&&(original.binding||node.binding);
+        const p=normalize?{...original}:original;
         if(p.templateSearchState){const state={...p.templateSearchState as Record<string,unknown>};p.templateSearchState=state;state.labels={...homepageSearchLabels,...state.labels as object};}
         if(p.templateMenu!==undefined)p.templateMenuLabels={...templateMenuLabels,...p.templateMenuLabels as object};
         if(Array.isArray(p.directoryBrowsingState)&&p.directoryBrowsingState[0]){const state={...p.directoryBrowsingState[0] as Record<string,unknown>};p.directoryBrowsingState=[state,...p.directoryBrowsingState.slice(1)];state.labels={...directoryBrowsingLabels,...state.labels as object};}
@@ -79,10 +85,25 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
             if(node.type!=='Repeater'||interactive)p.localeLabels={...listComponentLabels,...p.localeLabels as object};
         }
         if(node.type==='Card'&&(p.binding||node.binding)){p.localeReadOnly=false;p.localeLabels={loading:listComponentLabels.loading,empty:listComponentLabels.empty,error:listComponentLabels.error,...p.localeLabels as object};}
-        if(node.children)walk(node.children);
-        // Alternative structures render through the same components; they need the same normalization.
-        for(const version of node.versions??[])if(version.overrides.children)walk(version.overrides.children as PageComponent[]);
-    }};walk(layout.content);return layout;
+        const children=node.children?walk(node.children):node.children;
+        let versions=node.versions;
+        if(versions){
+            let altered=false;
+            const projected=versions.map(version=>{
+                const before=version.overrides.children as PageComponent[]|undefined;
+                const after=before?walk(before):before;
+                if(after===before)return version;
+                altered=true;return {...version,overrides:{...version.overrides,children:after}};
+            });
+            if(altered)versions=projected;
+        }
+        if(!normalize&&children===node.children&&versions===node.versions)return node;
+        changed=true;
+        return {...node,...(normalize?{props:p}:{}),...(children?{children}:{}),...(versions?{versions}:{})};
+      });
+      return changed?result:nodes;
+    };
+    return {...input,root:{...input.root,localeMessages:{poweredBy:'Powered by Frontbase',signOut:'Sign Out'}},content:walk(input.content)};
 }
 export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
     const result:DisplayField[]=[];
