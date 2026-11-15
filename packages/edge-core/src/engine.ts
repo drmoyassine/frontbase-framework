@@ -269,7 +269,8 @@ export function createEngine(opts: EngineOptions): Hono {
         }
         const renderContext = buildContext(page, path, records, opts, await opts.resolveConditionUser?.(c.req.raw).catch(()=>null)??null);
         renderContext.url = Object.fromEntries(new URL(c.req.url).searchParams);
-        const publicPage = /"versions"/.test(JSON.stringify(page.layout)) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;
+        const hasVersions=(nodes:typeof page.layout.content):boolean=>nodes.some(node=>!!node.versions?.length||hasVersions(node.children??[]));
+        const publicPage = hasVersions(page.layout.content) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;
         const body = await renderPage(publicPage.layout, renderContext, opts.observeComponent);
         const html = renderDocument(publicPage, body, {
             environment,

@@ -53,13 +53,17 @@ function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:M
 }
 /** Explicit display-only surface inventory. Never translates bindings, actions, SQL, URLs or identifiers. */
 export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
-    const layout=structuredClone(input);
+    // Copy only the branches normalized below; records and bindings are read-only.
+    const copy=(nodes:PageComponent[]):PageComponent[]=>nodes.map(node=>({...node,props:{...node.props},
+        ...(node.children?{children:copy(node.children)}:{}),
+        ...(node.versions?{versions:node.versions.map(version=>({...version,overrides:{...version.overrides,...(version.overrides.children?{children:copy(version.overrides.children as PageComponent[])}:{})}}))}:{})}));
+    const layout={...input,content:copy(input.content)};
     layout.root={...layout.root,localeMessages:{poweredBy:'Powered by Frontbase',signOut:'Sign Out'}};
     const walk=(nodes:PageComponent[])=>{for(const node of nodes){const p=node.props??(node.props={});
-        if(p.templateSearchState){const state=p.templateSearchState as Record<string,unknown>;state.labels={...homepageSearchLabels,...state.labels as object};}
+        if(p.templateSearchState){const state={...p.templateSearchState as Record<string,unknown>};p.templateSearchState=state;state.labels={...homepageSearchLabels,...state.labels as object};}
         if(p.templateMenu!==undefined)p.templateMenuLabels={...templateMenuLabels,...p.templateMenuLabels as object};
-        if(Array.isArray(p.directoryBrowsingState)&&p.directoryBrowsingState[0]){const state=p.directoryBrowsingState[0] as Record<string,unknown>;state.labels={...directoryBrowsingLabels,...state.labels as object};}
-        if(Array.isArray(p.templateHeroState)){for(const state of p.templateHeroState as any[]){state.labels={...homepageHeroLabels,...state.labels};state.settings.heading=String(state.settings.heading).replaceAll('{destination}',String(state.destination));}}
+        if(Array.isArray(p.directoryBrowsingState)&&p.directoryBrowsingState[0]){const state={...p.directoryBrowsingState[0] as Record<string,unknown>};p.directoryBrowsingState=[state,...p.directoryBrowsingState.slice(1)];state.labels={...directoryBrowsingLabels,...state.labels as object};}
+        if(Array.isArray(p.templateHeroState)){p.templateHeroState=p.templateHeroState.map((state:any)=>({...state,settings:{...state.settings}}));for(const state of p.templateHeroState as any[]){state.labels={...homepageHeroLabels,...state.labels};state.settings.heading=String(state.settings.heading).replaceAll('{destination}',String(state.destination));}}
         if(node.type==='Navbar'){p.localeLabels={...homepageNavLabels,...p.localeLabels as object};}
         if(node.type==='Footer'&&!p.copyright)p.copyright=`© ${new Date().getFullYear()} All rights reserved.`;
         if(['Repeater','DataTable','Grid'].includes(node.type)&&(Array.isArray(p.initialRows)||p.binding||node.binding)){
@@ -137,11 +141,13 @@ export function homepageDisplayFields(layout:PageLayoutData):DisplayField[]{
     // Default-tree texts are the inheritance baseline: an alternative field equal to its
     // Default counterpart shares the Default unit instead of owning a duplicate.
     const defaults=new Map<string,string>();
+    const hasVersions=(nodes:PageComponent[]):boolean=>nodes.some(node=>!!node.versions?.length||!!node.children&&hasVersions(node.children));
+    const trackDefaults=hasVersions(layout.content);
     const adopt=(nodes:PageComponent[],versionId?:string)=>{
         for(const node of nodes){
             for(const field of extractNode(node,versionId)){
                 if(versionId){if(defaults.get(JSON.stringify([field.blockId,field.path]))===field.text)continue;}
-                else defaults.set(JSON.stringify([field.blockId,field.path]),field.text);
+                else if(trackDefaults)defaults.set(JSON.stringify([field.blockId,field.path]),field.text);
                 result.push(field);}
             if(node.children)adopt(node.children,versionId);
             // A field inherited from Default is skipped; an explicit override owns its own unit.
@@ -163,17 +169,20 @@ function mergeVersionValue(base:unknown,override:Record<string,unknown>,path:str
     for(let index=0;index<path.length;index++){
         const key=String(path[index]);
         if(index===path.length-1){target[key]=text;return;}
-        if(!target[key]||typeof target[key]!=='object'){
-            const inherited=source?.[key];
-            target[key]=inherited&&typeof inherited==='object'?structuredClone(inherited):{};
-        }
+        const inherited=target[key]&&typeof target[key]==='object'?target[key]:source?.[key];
+        target[key]=Array.isArray(inherited)?inherited.slice():inherited&&typeof inherited==='object'?{...inherited}:{};
         target=target[key] as Record<string,unknown>;source=source?.[key];
     }
 }
 /** `partial` keeps source values wherever the map has no entry — the explicit per-unit
  *  missing/outdated fallback used by per-unit locale releases (never silently partial elsewhere). */
 export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<string,string>,opts?:{partial?:boolean}):PageLayoutData{
-    const layout=structuredClone(input),owned=new Map<string,{node:PageComponent;containerVersion?:string}>(),byBlock=new Map<string,{node:PageComponent;containerVersion?:string}>();
+    const copy=(nodes:PageComponent[]):PageComponent[]=>nodes.map(node=>({...node,props:{...node.props},
+        ...(node.children?{children:copy(node.children)}:{}),
+        ...(node.versions?{versions:node.versions.map(version=>({...version,overrides:{...version.overrides,
+            ...(version.overrides.props?{props:{...version.overrides.props}}:{}),
+            ...(version.overrides.children?{children:copy(version.overrides.children as PageComponent[])}:{})}}))}:{})}));
+    const layout={...input,root:{...input.root},content:copy(input.content)},owned=new Map<string,{node:PageComponent;containerVersion?:string}>(),byBlock=new Map<string,{node:PageComponent;containerVersion?:string}>();
     const walk=(list:PageComponent[],containerVersion?:string)=>{for(const node of list){
         if(byBlock.has(node.id))throw Error('duplicate_component');
         const entry={node,containerVersion};byBlock.set(node.id,entry);owned.set(JSON.stringify([containerVersion??null,node.id]),entry);
@@ -183,7 +192,7 @@ export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<strin
     for(const field of homepageDisplayFields(layout)){
         const text=values.get(JSON.stringify([field.blockId,field.versionId??'default',field.path]));
         if(text===undefined){if(opts?.partial)continue;throw Error('translation_coverage_incomplete');}
-        if(field.blockId==='$root'){let target:any=layout.root;for(const key of field.path.slice(0,-1))target=target[key];target[field.path.at(-1)!]=text;continue;}
+        if(field.blockId==='$root'){mergeVersionValue(input.root,layout.root,field.path,text);continue;}
         const exact=field.versionId!==undefined?owned.get(JSON.stringify([field.versionId,field.blockId])):undefined;
         const entry=exact??byBlock.get(field.blockId);
         if(!entry)throw Error('unknown_component');
@@ -202,7 +211,7 @@ export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<strin
                     if(existing===field.text)mergeVersionValue(entry.node.props??{},override,field.path.slice(1),text);
                 }
             }
-            let target:any=entry.node;for(const key of field.path.slice(0,-1))target=target[key]??(target[key]={});target[field.path.at(-1)!]=text;
+            mergeVersionValue(entry.node,entry.node as unknown as Record<string,unknown>,field.path,text);
         }else{
             const version=entry.node.versions?.find(candidate=>candidate.id===field.versionId);
             if(!version||field.path[0]!=='props')throw Error('unknown_component');

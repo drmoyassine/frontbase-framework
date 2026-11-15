@@ -53,3 +53,7 @@ assert.equal(editorialSaveRequestSchema.safeParse({...request,content:{...conten
 const omitted={...content};delete omitted.coverUrl;assert.equal(editorialSaveRequestSchema.safeParse({...request,content:omitted}).success,false);
 
 const pageAdapter=editorialAdapter(config,{query:async(sql,args)=>{assert.equal(args[3],'page');return [row];},exec:async()=>0},'page');assert.equal((await pageAdapter.read(id)).contentRole,'page');
+
+assert.equal(await adapter.publish(id,1),true);
+const publication=calls.at(-1);assert.match(publication.sql,/SET status = 'published', revision = revision \+ 1/);assert.match(publication.sql,/AND revision = \$6/);assert.match(publication.sql,/AND EXISTS \(SELECT 1 FROM pg_catalog.pg_trigger/);assert.deepEqual(publication.params,[id,22,'https://usa.test','article','draft',1]);
+await assert.rejects(()=>editorialAdapter(config,{query:async()=>[],exec:async()=>1},'article','published').publish(id,1));

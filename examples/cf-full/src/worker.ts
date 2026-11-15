@@ -40,7 +40,7 @@ import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './stat
 import { resolveSessionSecret } from './session-secret.js';
 import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
 import { manifest } from './manifest.js';
-import { renderReviewedSitePublication,publishedLiveQuery } from '@frontbase/backend';
+import { publishedLiveQuery,renderLiveLayoutPublication,datasourceAccountConfigFor } from '@frontbase/backend';
 import {configuredMenuAudienceResolver} from '@frontbase/backend';
 import {resolveAppMenuLayout,readPublicSiteName} from '@frontbase/backend';
 import {projectSourceFrontendCopy,withFrontendEditor} from '@frontbase/backend';
@@ -881,15 +881,21 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     app.route('/', compatApp);
 
     const publicLiveQuery = publishedLiveQuery(request=>compatApp.fetch(request));
-    // Reviewed captures own public routes once active. Terminal failures never enter legacy fallback.
+    // Published structure owns live routes. No record-capture or exported-HTML fallback.
     app.get('*', async (c, next) => {
         const path = new URL(c.req.url).pathname;
         if (/^\/(?:api|frontbase-admin|frontbase-setup|builder|static|console|admin|setup)(?:\/|$)/i.test(path)
             || path === '/sw.js') return next();
         const tenant = hostTenantFor(c.req.raw);
         if (cloud && !tenant && hostKindOf(c.req.raw, cloud.baseDomain, cloud.appLabel) !== 'foreign') return next();
-        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE, liveQuery:publicLiveQuery, resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true) });
-        if (reviewed) return reviewed;
+        const live=await renderLiveLayoutPublication(opts.runner,tenant??'_root',c.req.raw,{
+            swBundle:SW_BUNDLE,liveQuery:publicLiveQuery,
+            host:{syncFor:owner=>new SyncStore(opts.runner,owner,enrichCipher),
+                accountConfigFor:datasourceAccountConfigFor(enrichPhase2For,()=>new Date().toISOString()),
+                externalFetch:opts.externalFetch??globalThis.fetch},
+            resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true),
+        });
+        if(live)return live;
         return next();
     });
 
@@ -899,8 +905,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     return app;
 }
 
-import {renderReviewedPublicationList} from '@frontbase/backend';
-import {deliverPrerender,isPrivateRenderPath} from './prerender-delivery.js';
+import {isPrivateRenderPath} from './prerender-delivery.js';
 let readyEngine: Hono | undefined;
 let currentCtx: ExecutionContext | null = null;
 let bootstrapHost:any;
@@ -910,16 +915,6 @@ const worker = {
         try {
             // Internal asset proofs are never public URLs, including when this mode is off.
             if(isPrivateRenderPath(new URL(req.url).pathname))return new Response('Not found',{status:404});
-            const renderHash=(env as unknown as Record<string,string|undefined>).FRONTBASE_PRERENDER_RELEASE;
-            if(renderHash&&env.ASSETS&&env.FRONTBASE_DEPLOYMENT_MODE!=='cloud'){
-                const rendered=await deliverPrerender(req,env.ASSETS,()=>resolveStateDb({env:env as unknown as Record<string,string|undefined>,host:'cloudflare',d1Binding:env.DB,hyperdriveBinding:env.HYPERDRIVE}).runner,renderHash);
-                if(rendered)return rendered;
-                if(req.method==='GET'&&req.headers.has('X-Frontbase-List')&&!req.headers.has('cookie')&&!req.headers.has('authorization')){
-                    const state=resolveStateDb({env:env as unknown as Record<string,string|undefined>,host:'cloudflare',d1Binding:env.DB,hyperdriveBinding:env.HYPERDRIVE});
-                    const list=await renderReviewedPublicationList(state.runner,'_root',req,{authenticated:false});
-                    if(list&&list.status!==404)return list;
-                }
-            }
             if((env as any).FRONTBASE_BOOTSTRAP==='native'){bootstrapHost??=createNativeCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             if((env as any).FRONTBASE_BOOTSTRAP==='1'){bootstrapHost??=createCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             // Self-host uses the shared persisted resolver after migrations.

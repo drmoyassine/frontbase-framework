@@ -11,6 +11,7 @@ export function formatLocalePattern(pattern: string, values: LocalePatternValues
     return pattern.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (token, name: string) => Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : token);
 }
 
+const pluralRules = new Map<string, Intl.PluralRules | null>();
 const localeShape = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
 
 /** Resolve a composed label for `count`: the exact `base.<category>` variant when the pattern
@@ -19,7 +20,14 @@ const localeShape = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
 export function pluralPatternLabel(labels: Readonly<Record<string, string>>, base: string, locale: string | undefined, count: number): string {
     let category: string | undefined;
     try {
-        if (locale && locale.length <= 35 && localeShape.test(locale) && Intl.PluralRules.supportedLocalesOf([locale]).length) category = new Intl.PluralRules(locale).select(count);
+        if (locale && locale.length <= 35 && localeShape.test(locale)) {
+            let rules = pluralRules.get(locale);
+            if (rules === undefined) {
+                rules = Intl.PluralRules.supportedLocalesOf([locale]).length ? new Intl.PluralRules(locale) : null;
+                if (pluralRules.size < 64) pluralRules.set(locale, rules);
+            }
+            category = rules?.select(count);
+        }
     } catch { /* unsupported/invalid locale uses the base pattern */ }
     return (category && labels[`${base}.${category}`]) ?? labels[base] ?? '';
 }

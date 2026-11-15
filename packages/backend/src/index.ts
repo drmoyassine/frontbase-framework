@@ -350,3 +350,6 @@ export {createProviderRelayClient,type ProviderRelayClientDeps} from './provider
 export {createProviderOAuthResources,type ProviderOAuthResourcesDeps} from './provider-oauth-resources.js';
 
 export { createPrivateLocalePublicationOverlay } from './compat/translation-homepage.js';
+export {LiveLayoutPublicationStore,liveLayoutPublicationSchema} from './compat/live-layout-publication.js';
+export {renderLiveLayoutPublication} from './compat/live-layout-serving.js';
+export {datasourceAccountConfigFor} from './compat/providers/merge-account.js';

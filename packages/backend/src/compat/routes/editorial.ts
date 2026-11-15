@@ -1,3 +1,4 @@
+import {z} from 'zod';
 import type { Hono } from 'hono';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { editorialReadRequestSchema, editorialSaveRequestSchema, editorialApprovalRequestSchema } from '@frontbase/edge-core/directory/configuration';
@@ -12,7 +13,8 @@ import { EditorialApprovalStore } from '../editorial-approval-store.js';
 
 export function registerEditorialRoutes(app: Hono<{ Variables: ConsoleAuthVars }>, control: DbRunner,
     storeFor: (tenant: string) => SyncStore, externalFetch: CompatFetch, accounts: AccountConfigFor, now: () => string): void {
-    for (const mode of ['read','save','approve'] as const) app.post(`/api/project/site-configuration/editorial/${mode}/`, async c => {
+    const publishRequest=editorialReadRequestSchema.extend({expectedDocumentRevision:z.number().int().positive()}).strict();
+    for (const mode of ['read','save','approve','publish'] as const) app.post(`/api/project/site-configuration/editorial/${mode}/`, async c => {
         c.header('Cache-Control','no-store');
         const user = c.get('principal').user as { role?: string; id?: string; sub?: string };
         if (!user?.role || !['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(user.role)) return c.json({ detail:'Article editing is unavailable' },403);
@@ -20,7 +22,7 @@ export function registerEditorialRoutes(app: Hono<{ Variables: ConsoleAuthVars }
         if (reader) { while (true) { const chunk=await reader.read(); if(chunk.done) break; size+=chunk.value.byteLength;
             if(size>262144) { await reader.cancel(); return c.json({detail:'Article request is too large'},413); } text+=decoder.decode(chunk.value,{stream:true}); } text+=decoder.decode(); }
         let input: unknown; try { input=JSON.parse(text); } catch { return c.json({detail:'Invalid article request'},422); }
-        const parsed=(mode==='read'?editorialReadRequestSchema:mode==='save'?editorialSaveRequestSchema:editorialApprovalRequestSchema).safeParse(input);
+        const parsed=(mode==='read'?editorialReadRequestSchema:mode==='save'?editorialSaveRequestSchema:mode==='publish'?publishRequest:editorialApprovalRequestSchema).safeParse(input);
         if(!parsed.success) return c.json({detail:'Invalid article request'},422);
         const request=parsed.data, tenant=c.get('tenant');
         const draft=await new SiteConfigurationStore(control,tenant).get();
@@ -28,11 +30,23 @@ export function registerEditorialRoutes(app: Hono<{ Variables: ConsoleAuthVars }
         const source=await storeFor(tenant).getDatasource(draft.configuration.datasourceId);
         if(!source) return c.json({detail:'Article datasource is unavailable'},403);
         if(!['supabase','postgres','neon'].includes(source.kind)) return c.json({detail:'Article editing requires the canonical Postgres editorial contract'},422);
+        let sourceDb:ReturnType<typeof datasourceRunner>|undefined;
         try {
-            const db=datasourceRunner(source.kind,await mergeAccountConfig(accounts,externalFetch,tenant,source.kind,source.config), externalFetch);
-            const adapter=editorialAdapter(draft.configuration,db,request.contentRole??'article');
+            const db=sourceDb=datasourceRunner(source.kind,await mergeAccountConfig(accounts,externalFetch,tenant,source.kind,source.config), externalFetch);
+            let adapter=editorialAdapter(draft.configuration,db,request.contentRole??'article');
+            if(mode==='read'||mode==='save'){if(!await adapter.read(request.id))adapter=editorialAdapter(draft.configuration,db,request.contentRole??'article','published');}
             const approvals = new EditorialApprovalStore(control,tenant);
             if(mode==='read') { const document=await adapter.read(request.id); return document?c.json({document,configurationRevision:draft.revision,approval:await approvals.get(document.id,document.revision,draft.revision),publicationAvailable:false}):c.json({detail:'Article is unavailable'},404); }
+            if(mode==='publish'){
+                const selected=publishRequest.parse(request),document=await adapter.read(selected.id);
+                if(!document||document.revision!==selected.expectedDocumentRevision)return c.json({detail:'Article changed; reload before publishing',code:'editorial_revision_conflict'},409);
+                const approval=await approvals.get(document.id,document.revision,draft.revision);
+                if(!approval)return c.json({detail:'Review this article before making it public'},409);
+                const reviewed=await approvals.snapshot(document.id,document.revision,draft,approval.fingerprint);
+                if(!reviewed||Object.entries(reviewed).some(([key,value])=>JSON.stringify(value)!==JSON.stringify((document as unknown as Record<string,unknown>)[key])))return c.json({detail:'Article changed since review'},409);
+                if(!await adapter.publish(document.id,document.revision))return c.json({detail:'Article changed; reload before publishing',code:'editorial_revision_conflict'},409);
+                return c.json({published:true,savedRevision:document.revision+1});
+            }
             if(mode==='approve') {
                 const approval = editorialApprovalRequestSchema.parse(request), reviewer = user.id ?? user.sub;
                 if (!reviewer) return c.json({detail:'Verified reviewer identity is required'},403);
@@ -45,6 +59,6 @@ export function registerEditorialRoutes(app: Hono<{ Variables: ConsoleAuthVars }
             const save=editorialSaveRequestSchema.parse(request);
             if(!await adapter.save(save.id,save.expectedDocumentRevision,save.content)) return c.json({detail:'Article changed or is unavailable; reload before saving',code:'editorial_revision_conflict'},409);
             return c.json({savedRevision:save.expectedDocumentRevision+1,publicationAvailable:false});
-        } catch { return c.json({detail:'Article operation failed. Check the canonical schema and saved connection.',code:'editorial_unavailable'},502); }
+        } catch { return c.json({detail:'Article operation failed. Check the canonical schema and saved connection.',code:'editorial_unavailable'},502); } finally { await sourceDb?.close?.(); }
     });
 }

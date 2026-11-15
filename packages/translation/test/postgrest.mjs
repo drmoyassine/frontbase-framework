@@ -72,6 +72,9 @@ try {
     assert.deepEqual(await batched.readMany({...scope,projectId:'other'},[f.source.unitId],'ar'),[{version:0,source:null,head:null}]);
     await assert.rejects(batched.readMany(scope,Array.from({length:501},()=>f.source.unitId),'ar'));
     await assert.rejects(batched.readMany(scope,[f.source.unitId,f.source.unitId],'ar'));
+    await assert.rejects(batched.readMany(scope,[f.source.unitId,'not-a-hash'],'ar'));
+    await assert.rejects(batched.readMany({...scope,tenantId:''},[f.source.unitId],'ar'));
+    await assert.rejects(batched.readMany(scope,[f.source.unitId],'not a locale'));
     const moreIds=[f.source.unitId,...Array.from({length:66},(_,i)=>i.toString(16).padStart(64,'0'))];
     const expected=await batched.readMany(scope,moreIds,'ar');
     assert.deepEqual(await f.store.readMany(scope,moreIds,'ar'),expected);

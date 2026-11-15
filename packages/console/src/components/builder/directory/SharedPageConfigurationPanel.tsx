@@ -1,6 +1,5 @@
 import {SiteConfigurationForm} from '@/components/dashboard/settings/shared/SiteConfigurationForm';
 import {ElementSettingsMigration} from '@/components/dashboard/settings/shared/ElementSettingsMigration';
-import {TemplateSettingsForm} from '@/components/dashboard/settings/shared/TemplateSettingsForm';
 import {recordLinksToActions,useSingleRecordCards,upgradeDetailPresentation} from '@/lib/builder/recordDetailTemplates';
 import {DetailTemplateStarter} from './DetailTemplateStarter';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -10,14 +9,13 @@ import { linkSharedConfiguration } from './linkSharedConfiguration';
 import { Button } from '@/components/ui/button';
 import { DirectoryQueryPreview } from './DirectoryQueryPreview';
 import { addDirectoryTemplate } from './addDirectoryTemplate';
-import { SitePreparationPanel } from './SitePreparationPanel';
+import { LiveLayoutPublicationPanel as SitePreparationPanel } from './LiveLayoutPublicationPanel';
 import { addDirectoryBrowsing, hasDirectoryBrowsing } from './addDirectoryBrowsing';
 import { TemplateSettingsEditor } from './TemplateSettingsEditor';
 
 export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenChange }: { page: Page; onChange: (layout: NonNullable<Page['layoutData']>) => void; onEditorialOpenChange?: (open:boolean)=>void }) {
     const [sharedOpen,setSharedOpen]=useState(false);
     const [maintenanceOpen,setMaintenanceOpen]=useState(false);
-    const [homepagePreparationOpen,setHomepagePreparationOpen]=useState(false);
     const [editorialOpen,setEditorialOpen]=useState(false);
     const handleEditorialOpen=useCallback((open:boolean)=>{setEditorialOpen(open);onEditorialOpenChange?.(open);},[onEditorialOpenChange]);
     const [draft, setDraft] = useState<SiteConfigurationDraft>();
@@ -45,7 +43,7 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
         <Button variant="outline" disabled={editorialOpen} aria-expanded={maintenanceOpen} onClick={()=>setMaintenanceOpen(value=>!value)}>Legacy layout maintenance</Button>
         {maintenanceOpen&&<ElementSettingsMigration/>}
     </div>;
-    if(landing)return <div className="space-y-4">{sharedControls}<p>Homepage template settings. Save the page draft, then prepare/review a version. Featured institutions are deferred.</p><TemplateSettingsEditor scope={page.layoutData?.root.elementSettingsVersion===1?'appearance':'all'} value={landing} onChange={settings=>{if(page.layoutData)onChange({...page.layoutData,root:{...page.layoutData.root,directoryLanding:{version:1,settings}}});}}/>{draft&&<SitePreparationPanel draft={draft}/>}<Button variant="outline" onClick={()=>setHomepagePreparationOpen(value=>!value)}>Prepare saved homepage from published content</Button>{homepagePreparationOpen&&<TemplateSettingsForm preparationOnly/>}</div>;
+    if(landing)return <div className="space-y-4">{sharedControls}<p>Save the page draft, then review and publish its layout. Connected records remain live.</p><TemplateSettingsEditor scope={page.layoutData?.root.elementSettingsVersion===1?'appearance':'all'} value={landing} onChange={settings=>{if(page.layoutData)onChange({...page.layoutData,root:{...page.layoutData.root,directoryLanding:{version:1,settings}}});}}/>{draft&&<SitePreparationPanel draft={draft}/>}</div>;
     return <div className="space-y-3">
         {sharedControls}
         <p>Link this page to project-wide settings. Your layout stays intact. Live publication is pending.</p>

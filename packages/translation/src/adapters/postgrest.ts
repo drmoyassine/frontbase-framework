@@ -38,8 +38,10 @@ export class PostgrestTranslationJobPersistence implements TranslationJobPersist
         return value;
     }
     async readMany(scopeInput: LocalizationScope, units: string[], localeInput?: string): Promise<TranslationSnapshot[]> {
-        const keys=z.array(id).min(1).max(500).parse(units).map(unit=>parsePersistenceKey(scopeInput,unit,localeInput));
-        const scope=keys[0]!.scope,locale=keys[0]!.locale;
+        // Every unit shares one scope/locale. Validate all hashes, but normalize
+        // the locale once rather than invoking Intl once per display field.
+        const keys=z.array(translationRevisionSchema.shape.unitId).min(1).max(500).parse(units);
+        const {scope,locale}=parsePersistenceKey(scopeInput,keys[0]!,localeInput);
         if(new Set(units).size!==units.length)throw Error('translation_rpc_key_mismatch');
         const raw=await this.request('read-many',scope,{unitIds:units,locale:locale??null});
         const rows=z.array(z.object({unitId:id,snapshot:translationSnapshotSchema}).strict()).length(units.length).parse(raw);

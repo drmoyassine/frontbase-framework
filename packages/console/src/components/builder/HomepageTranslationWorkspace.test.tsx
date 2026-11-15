@@ -7,6 +7,15 @@ const config={version:1,accountId:'ai',model:'openrouter/free',sourceLocale:'en'
 const field={id:'a'.repeat(64),label:'Heading',source:'Explore institutions',translation:null,state:'missing',token:'b'.repeat(64)};
 const base:any={locale:'ar',sourceLocale:'en',token:'c'.repeat(64),siteHash:'d'.repeat(64),fields:[field],complete:false,active:null};
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
+it('shows live editing guidance without snapshot preparation after migration',async()=>{
+ const fetcher=vi.fn(async()=>Response.json({mode:'live',locales:['en','ar'],sourceLocale:'en'}));vi.stubGlobal('fetch',fetcher);
+ render(<HomepageTranslationWorkspace onClose={()=>{}}/>);
+ await screen.findByRole('heading',{name:'Live translations'});
+ expect(screen.getByText('Active languages: en, ar')).toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'Publish language'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Preview language'})).toBeNull();
+ expect(fetcher).toHaveBeenCalledTimes(1);
+});
 it('keeps publication unavailable until complete coverage and saves only translation identities',async()=>{
  const fetcher=vi.fn(async(url:string,options?:RequestInit)=>Response.json(url.includes('/workspace/')?{locales:['ar'],review:base}:options?.method==='POST'?{saved:1}:base));vi.stubGlobal('fetch',fetcher);
  render(<HomepageTranslationWorkspace onClose={()=>{}}/>);await screen.findByText('0 / 1 fields translated · Not published');expect(fetcher.mock.calls.map(([url])=>url)).toEqual(['/api/project/translation-batches/homepage/workspace/']);expect(screen.getByRole('button',{name:'Publish language'})).toBeDisabled();expect(screen.getByRole('checkbox')).toBeDisabled();

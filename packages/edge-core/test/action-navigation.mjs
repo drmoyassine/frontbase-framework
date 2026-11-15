@@ -15,3 +15,12 @@ for(const locale of [undefined,'ar']){
  const hydrated=await renderBlock({id:'client-link',type:'Link',props:{text:'Record',actionBindings:[{trigger:'onClick',actionType:'openPage',config:{pageUrl:'{{ record.destination }}'}}]}},{...context(),...boot,record:{destination:'https://source.test/campus/'}});
  assert.ok(hydrated.includes('href="'+(locale?'/ar/campus/':'/campus/')+'"'),'hydrated record navigation keeps host and locale');
 }
+
+// Locale projection preserves the authored document and unrelated current rows.
+const {localizeNavigationProps}=await import('../dist/localization/navigation.js');
+const original={props:{href:'/campus/',image:{src:'/photo.jpg'},nested:{action:{pageUrl:'/apply/'}},languageSwitcher:[{href:'/'}]},rows:[{title:'Current title'}]};
+const before=JSON.stringify(original),localized=localizeNavigationProps(original,'ar',['https://source.test']);
+assert.equal(localized.props.href,'/ar/campus/');assert.equal(localized.props.nested.action.pageUrl,'/ar/apply/');
+assert.equal(localized.props.image.src,'/photo.jpg');assert.equal(localized.props.languageSwitcher[0].href,'/');
+assert.equal(JSON.stringify(original),before,'localizing one request does not mutate shared authoring input');
+assert.deepEqual(localized.rows,original.rows);

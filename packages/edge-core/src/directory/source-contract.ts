@@ -15,6 +15,11 @@ export function sourceBindings(input:DirectoryConfiguration):SourceBindings{
 const aliases=['id','title','originalPath','summary','body','cover','logo','gallery','cityId','institutionId','coverAlt','contentRole','sourceOrigin','byline','publishedAt'] as const;
 const directoryProjection=z.object(Object.fromEntries(aliases.map(key=>[key,identifier])) as Record<typeof aliases[number],typeof identifier>).catchall(identifier);
 function directoryProjectionSource(source:SourceBindings['bindings'][string]|undefined){if(!source)throw Error('record_source_unavailable');return {...source,fieldMapping:directoryProjection.parse(source.fieldMapping)};}
+/** Validate the complete configuration once for callers resolving several roles. */
+export function directorySources(input:DirectoryConfiguration){
+ const bindings=sourceBindings(input).bindings;
+ return Object.fromEntries(Object.entries(bindings).map(([role,source])=>[role,directoryProjectionSource(source)])) as Record<DirectoryRole,ReturnType<typeof directoryProjectionSource>>;
+}
 export function directorySource(input:DirectoryConfiguration,role:DirectoryRole){return directoryProjectionSource(sourceBindings(input).bindings[role]);}
 /** New snapshots carry explicit lineage; absence is the compatibility path for immutable old captures. */
 export function publicationSource(input:{configuration:DirectoryConfiguration;sourceBindings?:SourceBindings},role:DirectoryRole){

@@ -53,11 +53,14 @@ import { renderLandingComponent } from './landingDispatcher.js';
  */
 export type ComponentRenderObserver=(component:PageComponent,html:string,context:TemplateContext)=>void;
 type RenderBudget={remaining:number;observe?:ComponentRenderObserver};
-async function renderComponent(component:PageComponent,context:TemplateContext,budget:RenderBudget={remaining:20000}):Promise<string>{
-    const html=await renderComponentImpl(component,context,budget),source=component.props?._templateSourceId;
-    const output=html&&typeof source==='string'&&!component.versions?.length?`<div data-fb-template-source="${escapeHtml(source)}" data-fb-template-instance="${escapeHtml(component.id)}" style="display:contents">${html}</div>`:html;
-    budget.observe?.(component,output,context);
-    return output;
+function renderComponent(component:PageComponent,context:TemplateContext,budget:RenderBudget={remaining:20000}):Promise<string>{
+    const rendered=renderComponentImpl(component,context,budget),source=component.props?._templateSourceId;
+    if(!budget.observe&&(typeof source!=='string'||!!component.versions?.length))return rendered;
+    return rendered.then(html=>{
+        const output=html&&typeof source==='string'&&!component.versions?.length?`<div data-fb-template-source="${escapeHtml(source)}" data-fb-template-instance="${escapeHtml(component.id)}" style="display:contents">${html}</div>`:html;
+        budget.observe?.(component,output,context);
+        return output;
+    });
 }
 async function renderComponentImpl(
     component: PageComponent,
@@ -221,6 +224,18 @@ export async function renderBlock(component:PageComponent,context:TemplateContex
 // Style helpers are imported from ./styleHelpers.js:
 // buildInlineStyles, buildResponsiveCSS, buildVisibilityCSS, buildStyleString, buildClassName
 
+/** One traversal for the two runtime features; hydrated rows are never executable layout. */
+function runtimeFeatures(value:unknown,found={versions:false,conditions:false}):{versions:boolean;conditions:boolean}{
+    if(!value||typeof value!=='object'||found.versions&&found.conditions)return found;
+    if(Array.isArray(value)){for(const item of value)runtimeFeatures(item,found);return found;}
+    for(const key of Object.keys(value)){
+        if(key==='versions'){found.versions=true;found.conditions=true;return found;}
+        if(key==='visibilityCondition'||key==='hiddenFilters')found.conditions=true;
+        if(key!=='initialRows')runtimeFeatures((value as Record<string,unknown>)[key],found);
+    }
+    return found;
+}
+
 /**
  * Main entry point: Render a page layout to HTML.
  * NOW ASYNC due to LiquidJS template resolution.
@@ -233,7 +248,8 @@ export async function renderPage(
     if (!layoutData || !layoutData.content) {
         return '<div class="fb-empty">No content</div>';
     }
-    if (/"versions"/.test(JSON.stringify(layoutData.content))) validateBlockVersions(layoutData.content);
+    const features=runtimeFeatures(layoutData);
+    if (features.versions) validateBlockVersions(layoutData.content);
 
     // Apply root styles if present
     const rootProps = layoutData.root || {};
@@ -255,8 +271,8 @@ export async function renderPage(
     const edition = engineConfig().edition;
     const badgeHtml = renderBadge(edition, engineConfig().licenseKey, context.system?.env, context.user, rootProps.localeMessages as Record<string,string>|undefined);
 
-    const needsContext=/"(?:visibilityCondition|hiddenFilters|versions)"/.test(JSON.stringify(layoutData));
-    const publicContext=publicConditionContext(layoutData,context as unknown as Record<string,unknown>);
+    const needsContext=features.conditions;
+    const publicContext=needsContext?publicConditionContext(layoutData,context as unknown as Record<string,unknown>):{};
     if(typeof rootProps.siteNavigationOrigin==='string')publicContext.app={...(publicContext.app as Record<string,unknown>??{}),siteNavigationOrigin:rootProps.siteNavigationOrigin,...(navigationContext?.locale?{navigationLocale:navigationContext.locale,navigationOrigins:navigationContext.origins??[]}: {})};
     const bootstrap=needsContext?`<script>window.__CONDITION_CONTEXT__=${JSON.stringify(publicContext).replace(/</g,'\\u003c')};</script>`:'';
     const navigation=rootProps.localeNavigation as {locale?:string;origins?:string[]}|undefined;

@@ -22,8 +22,14 @@ const UNITLESS_PROPS = new Set([
 /**
  * Convert a camelCase key to kebab-case CSS property.
  */
+const cssPropertyNames = new Map<string, string>();
 function toKebab(key: string): string {
-    return key.replace(/([A-Z])/g, '-$1').toLowerCase();
+    const existing = cssPropertyNames.get(key);
+    if (existing !== undefined) return existing;
+    const result = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+    // Names only, never values or tenant data. Bound arbitrary custom properties.
+    if (cssPropertyNames.size < 512) cssPropertyNames.set(key, result);
+    return result;
 }
 
 /**
@@ -51,6 +57,7 @@ const BASIC_PROP_MAP: Record<string, string> = {
     backgroundColor: 'background-color',
     color: 'color',
 };
+const BASIC_PROP_ENTRIES = Object.entries(BASIC_PROP_MAP);
 
 const EXTENDED_PROP_MAP: Record<string, string> = {
     ...BASIC_PROP_MAP,
@@ -151,7 +158,7 @@ export function buildInlineStyles(props: Record<string, unknown>, styles: Record
     const cssProps: Record<string, string> = {};
 
     // First, apply props-based styles
-    for (const [prop, css] of Object.entries(BASIC_PROP_MAP)) {
+    for (const [prop, css] of BASIC_PROP_ENTRIES) {
         if (props[prop] !== undefined) {
             cssProps[css] = String(props[prop]);
         }
@@ -168,17 +175,13 @@ export function buildInlineStyles(props: Record<string, unknown>, styles: Record
         // Old flat format: { justifyContent: 'center', ... }
         else {
             // Filter out non-CSS keys
-            const nonCssKeys = ['activeProperties', 'stylingMode'];
-            for (const [key, value] of Object.entries(styles)) {
-                if (!nonCssKeys.includes(key)) {
-                    styleValues[key] = value;
-                }
-            }
+            styleValues = styles;
         }
     }
 
     // Apply style values using shared processor
     for (const [key, value] of Object.entries(styleValues)) {
+        if (key === 'activeProperties' || key === 'stylingMode') continue;
         processStyleEntry(key, value, (cssKey, cssValue) => {
             cssProps[cssKey] = cssValue;
         });

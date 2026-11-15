@@ -98,6 +98,8 @@ const imageUrl = (value: unknown) => {
     try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : ''; } catch { return ''; }
 };
 
+// Locale configuration only; dates and formatted record values are never retained.
+const editorialDateFormatters=new Map<string,Intl.DateTimeFormat>();
 /** ISO-only input; never infer timezone or allow Date.parse calendar rollover. */
 function formatEditorialDate(value: unknown, locale?: string): string {
     if (typeof value !== 'string') return '';
@@ -112,12 +114,16 @@ function formatEditorialDate(value: unknown, locale?: string): string {
         || zone && zone !== 'Z' && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4)) > 59)) return '';
     const date = new Date(h === undefined ? `${value}T00:00:00Z` : value);
     if (!Number.isFinite(date.getTime())) return '';
-    let selected = 'en';
-    try {
-        if (locale && locale.length <= 35 && /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)
-            && Intl.DateTimeFormat.supportedLocalesOf([locale]).length) selected = locale;
-    } catch { /* unsupported/invalid locale uses the stable declared fallback */ }
-    return new Intl.DateTimeFormat(selected, { timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn', year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+    const requested=locale&&locale.length<=35&&/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)?locale:'en';
+    let formatter=editorialDateFormatters.get(requested);
+    if(!formatter){
+        let selected='en';
+        try{if(Intl.DateTimeFormat.supportedLocalesOf([requested]).length)selected=requested;}catch{/* stable fallback */}
+        formatter=new Intl.DateTimeFormat(selected,{timeZone:'UTC',calendar:'gregory',numberingSystem:'latn',year:'numeric',month:'long',day:'numeric'});
+        if(editorialDateFormatters.size>=64)editorialDateFormatters.delete(editorialDateFormatters.keys().next().value!);
+        editorialDateFormatters.set(requested,formatter);
+    }
+    return formatter.format(date);
 }
 
 /** Transient plain-component projection through the SAME renderer; never save its rows.
@@ -126,6 +132,9 @@ function formatEditorialDate(value: unknown, locale?: string): string {
  *  position — transient projection state only, refused in authored layouts and never persisted. */
 export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, records: Map<string, Record<string, unknown>[]>, options: { locale?: string } = {}): T {
     directoryLayoutQueries(layout);
+    // Every row uses the same authored binding. Validate it once per projection,
+    // not once per rendered row; never cache records or cross-request authority.
+    const recordBindings = new Map<unknown, z.infer<typeof directoryRecordBindingSchema>>();
     const ownControls = (nodes: PageComponent[]): boolean => nodes.some(node=>node.props?.directoryControls!==undefined || ownControls(node.children||[]));
     const controlsOwned=ownControls(layout.content);
     let projected = 0;
@@ -157,7 +166,8 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
         const id = index ? `${node.id}-preview-${index}` : node.id;
         const { recordBindings: _bindings, ...rest } = props;
         if (props.recordBindings !== undefined) {
-            const b = directoryRecordBindingSchema.parse(props.recordBindings);
+            let b = recordBindings.get(props.recordBindings);
+            if (!b) { b = directoryRecordBindingSchema.parse(props.recordBindings); recordBindings.set(props.recordBindings, b); }
             if (!row) throw new Error('record_context_unavailable');
             if (b.blocks) { const children = projectEditorialBody(row.body, id); projected += children.reduce((n,c) => n + 1 + (c.children?.length ?? 0), 0); if (projected > 4000) throw new Error('directory_projection_size'); return { ...node, id, props: rest, children }; }
             if (b.text) {

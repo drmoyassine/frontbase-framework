@@ -12,7 +12,7 @@ const faults=[
  ['owner isolation',store,'[this.owner,ACTIVE]','[\'alpha\',ACTIVE]'],
  ['source fingerprint',store,'entry?.source===source','entry!==undefined'],
  ['publication compare-and-set',store,'AND key=? AND value=?','AND key=? AND (? IS NOT NULL)'],
- ['record identity',store,".filter(field=>!field.path.includes('initialRows')||!!field.record)",'.filter(()=>true)'],
+ ['record identity',store,"(!field.path.includes('initialRows')||!!field.record)",'true'],
  ['unrelated translation drafts',locale,'const catalog=[...published.catalog];',"if(Date.now()>=0){const prepared=await prepareHomepageLocale(host,db,tenant,request,target,s.token,reviewer,now,liveQuery,path,published.policy);await activateHomepageLocale(host,db,tenant,request,prepared.hash,pointer,now,liveQuery);return{hash:prepared.hash,saved:pending.length};}const catalog=[...published.catalog];"],
 ];
 const gate=()=>{let result;for(const file of ['frontend-edit.mjs','frontend-edit-locales.mjs']){result=spawnSync(process.execPath,[repoRoot+'packages/backend/test/'+file],{cwd:repoRoot,encoding:'utf8',timeout:60000,windowsHide:true});assert.equal(result.error,undefined);assert.equal(result.signal,null);if(result.status!==0)return result;}return result;};

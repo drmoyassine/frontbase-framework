@@ -47,9 +47,9 @@ assert.equal(await new EditorialApprovalStore(racing,'alpha').approve({...docume
 // Real authenticated route/control DB; canonical datasource response is a fixture.
 const cipher=await createSecretCipher('approval-fixture-secret');
 await db.exec('INSERT INTO datasources (id,tenant_slug,name,kind,config,created_at,updated_at) VALUES (?,?,?,?,?,?,?)',['owned','alpha','Fixture','supabase',await cipher.encrypt(JSON.stringify({url:'https://fixture.supabase.co',serviceKey:'sb_secret_fixture'})),now,now]);
-let role='owner',tenant='alpha',authenticated=true,actor='verified-owner',revision=4,state='requested',fail=false;
+let role='owner',tenant='alpha',authenticated=true,actor='verified-owner',revision=4,state='requested',fail=false,writes=0,writeCount=1,routeTitle='Route content';
 const originalFetch=globalThis.fetch;
-globalThis.fetch=async()=>{if(fail)throw new Error('PRIVATE_FAILURE');return new Response(JSON.stringify([{result:[{id,revision,original_path:'/blog/original/',title:'Route content',excerpt:'',body_blocks:document.body,language:'en',public_byline:null,published_gmt:null,review_state:state,review_note:'PRIVATE_REVIEW',private_evidence:'PRIVATE_EVIDENCE'}]}]),{headers:{'content-type':'application/json'}});};
+globalThis.fetch=async(url)=>{if(fail)throw new Error('PRIVATE_FAILURE');if(String(url).endsWith('/execute_sql')){writes++;return new Response(JSON.stringify({rowCount:writeCount}),{headers:{'content-type':'application/json'}});}return new Response(JSON.stringify([{result:[{id,revision,original_path:'/blog/original/',title:routeTitle,excerpt:'',body_blocks:document.body,language:'en',public_byline:null,published_gmt:null,review_state:state,review_note:'PRIVATE_REVIEW',private_evidence:'PRIVATE_EVIDENCE'}]}]),{headers:{'content-type':'application/json'}});};
 try {
  const app=await createCompatApp({makeRunner:async()=>db,resolvePrincipal:async()=>({user:authenticated?{id:actor,role}:null,tenant}),sessionSecret:'approval-fixture-secret',now:()=>now});
  const routeRequest={...request,expectedConfigurationRevision:3,expectedDocumentRevision:4};
@@ -62,6 +62,12 @@ try {
  tenant='beta';await new SiteConfigurationStore(db,'beta').save(config,0,now);assert.equal((await call('approve',{...routeRequest,expectedConfigurationRevision:1})).status,403);tenant='alpha';
  const response=await call();assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');assert.equal((await response.json()).publicationAvailable,false);
  assert.equal((await call()).status,409);
+ const publishInput={id,expectedConfigurationRevision:3,expectedDocumentRevision:4};
+ role='viewer';assert.equal((await call('publish',publishInput)).status,403);role='owner';
+ assert.equal((await call('publish',{...publishInput,expectedDocumentRevision:5})).status,409);
+ routeTitle='Unreviewed change';assert.equal((await call('publish',publishInput)).status,409);assert.equal(writes,0);routeTitle='Route content';
+ writeCount=0;assert.equal((await call('publish',publishInput)).status,409);writeCount=1;
+ assert.equal((await call('publish',publishInput)).status,200);assert.equal(writes,2);
  const read=await call('read',{id,expectedConfigurationRevision:3});const result=await read.json();assert.equal(result.approval.documentRevision,4);assert.ok(!JSON.stringify(result.approval).includes('PRIVATE_'));
  revision=5;const changed=await call('read',{id,expectedConfigurationRevision:3});assert.equal((await changed.json()).approval,null);
  const record=JSON.parse((await db.query('SELECT value FROM settings WHERE tenant_slug = ? AND key = ?',['alpha',`editorial_approval:v1:${id}:4:3`]))[0].value);assert.equal(record.reviewer,'verified-owner');assert.equal(record.snapshot.revision,4);

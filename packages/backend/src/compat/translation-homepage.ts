@@ -19,6 +19,7 @@ import {TranslationGenerationStore} from './translation-generation.js';
 import {translationDisplayText} from './translation-inputs.js';
 import type {TranslationBatchHost} from './translation-batches.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
+import {displayTranslationUnit} from './live-translation.js';
 
 /** Locale codes: BCP-47-style primary subtag plus optional variant subtags. Exported because the
  *  serving side uses the SAME pattern to recognize a URL's locale prefix (one definition, two uses). */
@@ -80,7 +81,7 @@ function menuNodeFields(node:PageLayoutData['content'][number],menu:MenuDocument
     }
     return out;
 }
-async function captureMenuFields(db:DbRunner,tenant:string,template:{layout:unknown},resolved:PageLayoutData):Promise<(DisplayField&{menu:MenuRef})[]>{
+export async function captureMenuFields(db:DbRunner,tenant:string,template:{layout:unknown},resolved:PageLayoutData):Promise<(DisplayField&{menu:MenuRef})[]>{
     const reference=(template.layout as PageLayoutData|undefined)?.root?.appMenus;
     if(reference===undefined)return[];
     const ref=menuReferenceSchema.parse(reference),document=await new MenusSnapshotStore(db,tenant).get(ref.hash);
@@ -182,12 +183,7 @@ async function session(host:TranslationBatchHost,db:DbRunner,tenant:string,reque
         // Record-keyed list rows own stable record identity shared by every surface
         // rendering the same record field; app menus share one 'app-menus' document identity;
         // block-bound fields keep component identity.
-        const resource=field.menu
-            ?{kind:'component' as const,documentId:'app-menus',blockId:field.menu.menuId,versionId:'default' as const,propertyPath:field.menu.path}
-            :field.record
-            ?{kind:'record' as const,connectionId:field.record.connectionId,collection:field.record.collection,key:field.record.key,propertyPath:[fieldKey]}
-            :{kind:'component' as const,documentId:capture.pageId,blockId:field.blockId,versionId:field.versionId??'default' as const,propertyPath:field.path};
-        const unit:MessageUnit={version:1,scope:storage.scope,resource,sourceLocale:config.sourceLocale,format:'plain',text:field.text,segmenterVersion:1,placeholders:[]};
+        const unit:MessageUnit=displayTranslationUnit(field,storage.scope,capture.pageId,config.sourceLocale);
         const node=findNode(capture.layout,field.blockId);
         // Record contexts match the reviewed batch extractor so one translation serves every surface;
         // menu contexts match extractMenuInput so batch and page-release units are the same unit.

@@ -32,9 +32,9 @@ export function copyDisplayLayout(input:PageLayoutData):PageLayoutData{
     if(input.root?.localeMessages)layout.root={...layout.root,localeMessages:input.root.localeMessages};
     return layout;
 }
-export async function copyFields(pageId:string,layout:PageLayoutData,locale:string,catalog:Catalog|null):Promise<CopyField[]>{
+export async function copyFields(pageId:string,layout:PageLayoutData,locale:string,catalog:Catalog|null,includeRecords=true):Promise<CopyField[]>{
     const entries=new Map(catalog?.entries.filter(entry=>entry.locale===locale).map(entry=>[entry.id,entry])??[]);
-    return Promise.all(homepageDisplayFields(layout).filter(field=>!field.path.includes('initialRows')||!!field.record).map(async field=>{
+    return Promise.all(homepageDisplayFields(layout).filter(field=>(includeRecords||!field.record)&&(!field.path.includes('initialRows')||!!field.record)).map(async field=>{
         const id=await publicationHash(copyFieldIdentity(pageId,field,layout)),source=await publicationHash(field.text),entry=entries.get(id);
         return {...field,id,source,current:entry?.source===source?entry.text:field.text};
     }));
@@ -68,10 +68,11 @@ export class FrontendCopyStore{
         return {hash:digest,operationId,saved:entries.length};
     }
 }
-export async function projectFrontendCopy(db:DbRunner,owner:string,pageId:string,layout:PageLayoutData,locale:string){
-    const current=await new FrontendCopyStore(db,owner).read(),display=copyDisplayLayout(layout);
+export async function projectFrontendCopy(db:DbRunner,owner:string,pageId:string,layout:PageLayoutData,locale:string,includeRecords=true){
+    const current=await new FrontendCopyStore(db,owner).read();
     if(!current.catalog)return {layout,hash:null};
-    const fields=await copyFields(pageId,display,locale,current.catalog),values=new Map(fields.filter(field=>field.current!==field.text).map(field=>[JSON.stringify([field.blockId,field.versionId??'default',field.path]),field.current]));
+    const display=copyDisplayLayout(layout);
+    const fields=await copyFields(pageId,display,locale,current.catalog,includeRecords),values=new Map(fields.filter(field=>field.current!==field.text).map(field=>[JSON.stringify([field.blockId,field.versionId??'default',field.path]),field.current]));
     return {layout:applyHomepageDisplayFields(display,values,{partial:true}),hash:current.hash};
 }
 /** Hydrated list reads use the same record-key identity as initial HTML, never row offsets. */

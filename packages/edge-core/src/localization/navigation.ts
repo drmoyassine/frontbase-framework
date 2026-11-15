@@ -16,8 +16,16 @@ export function localizeNavigationProps<T>(input:T,locale:string,origins:string[
     const walk=(value:unknown,key=''):unknown=>{
         if(key==='languageSwitcher')return value;
         if(typeof value==='string')return keys.has(key)&&!value.includes('{{')?localizePublicHref(value,locale,origins):value;
-        if(Array.isArray(value))return value.map(item=>walk(item,key));
-        if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,walk(v,k)]));
+        if(Array.isArray(value)){
+            let result:unknown[]|undefined;
+            for(let i=0;i<value.length;i++){const next=walk(value[i],key);if(next!==value[i]){result??=value.slice();result[i]=next;}}
+            return result??value;
+        }
+        if(value&&typeof value==='object'){
+            let result:Record<string,unknown>|undefined;
+            for(const [k,v]of Object.entries(value)){const next=walk(v,k);if(next!==v){result??={...value};result[k]=next;}}
+            return result??value;
+        }
         return value;
     };
     return walk(input) as T;

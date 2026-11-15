@@ -49,17 +49,22 @@ export async function localizedListRequest(db:DbRunner,tenant:string,path:string
  *  acquire no false SEO. The registry is read through pagination, so the walk stays bounded at
  *  any publication scale; one source capture per distinct path, memoized. */
 export async function sitemapLocaleEntries(db:DbRunner,tenant:string,request:Request,activePointer:{hash:string},liveQuery?:PublishedLiveQuery):Promise<{locale:string;path:string}[]>{
-    const captures=new Map<string,Awaited<ReturnType<typeof captureHomepage>>|null>();
-    const captureFor=async(p:string)=>{if(!captures.has(p))captures.set(p,await captureHomepage(db,tenant,request,liveQuery,p).catch(()=>null));return captures.get(p)!;};
+    const context=await createPageCapture(db,tenant,request,liveQuery);
+    if(context.source.hash!==activePointer.hash)throw Error('sitemap_source_changed');
+    const captures=new Map<string,Promise<Awaited<ReturnType<typeof captureHomepage>>|null>>();
+    const captureFor=(p:string)=>{if(!captures.has(p))captures.set(p,context.capture(p).catch(()=>null));return captures.get(p)!;};
     const entries:{locale:string;path:string}[]=[],seen=new Set<string>();
     for(let offset=0;;offset+=100){
         const page=await listPublishedLocalePointers(db,tenant,{limit:100,offset});
-        for(const {release} of page.items){
-            if(!release||seen.has(release.locale+'\u0000'+release.path))continue;seen.add(release.locale+'\u0000'+release.path);
-            if(release.policy?.outdated==='source-fallback'){if(await captureFor(release.path))entries.push({locale:release.locale,path:release.path});continue;}
-            if(release.siteHash!==activePointer.hash)continue;
-            const capture=await captureFor(release.path);
-            if(capture&&release.sourceHash===capture.sourceHash)entries.push({locale:release.locale,path:release.path});
+        for(let start=0;start<page.items.length;start+=4){
+            const batch=await Promise.all(page.items.slice(start,start+4).map(async({release})=>{
+                if(!release||seen.has(release.locale+'\u0000'+release.path))return null;
+                seen.add(release.locale+'\u0000'+release.path);
+                if(release.policy?.outdated!=='source-fallback'&&release.siteHash!==activePointer.hash)return null;
+                const capture=await captureFor(release.path);
+                return capture&&(release.policy?.outdated==='source-fallback'||release.sourceHash===capture.sourceHash)?{locale:release.locale,path:release.path}:null;
+            }));
+            for(const entry of batch)if(entry)entries.push(entry);
         }
         if(!page.items.length||offset+page.items.length>=page.total)break;
     }
@@ -69,9 +74,20 @@ export function addHomepageLanguageLinks(input:PageLayoutData,sourceLocale:strin
     // The switcher refuses more than 16 links (whole-page 503): cap the rendered entries at the
     // component's DISPLAY bound. This bounds language CHOICES on one page, never publications —
     // configured target locales are bounded at 16, so the published set never exceeds it either.
-    const layout=structuredClone(input),links=homepageLanguageLinks(sourceLocale,locales.slice(0,15),current,sourcePath);
-    const walk=(nodes:PageLayoutData['content'])=>{for(const node of nodes){if(node.type==='Navbar'){const labels=node.props?.localeLabels as Record<string,unknown>|undefined;node.props={...node.props,languageSwitcher:links,localeLabels:{...labels,language:typeof labels?.language==='string'?labels.language:current==='ar'?'اللغة':'Language'}};const logo=node.props.logo as Record<string,unknown>|undefined;if(logo?.link==='/')logo.link=current===sourceLocale?'/':`/${current}/`;}
-        if(node.type==='Footer')node.props={...node.props,logoHref:current===sourceLocale?'/':`/${current}/`};if(node.children)walk(node.children);}};walk(layout.content);
+    const links=homepageLanguageLinks(sourceLocale,locales.slice(0,15),current,sourcePath);
+    const home=current===sourceLocale?'/':`/${current}/`;
+    // Copy changed authored nodes, without deep-cloning every hydrated record.
+    const walk=(nodes:PageLayoutData['content']):PageLayoutData['content']=>nodes.map(node=>{
+        let result=node;
+        if(node.type==='Navbar'){
+            const labels=node.props?.localeLabels as Record<string,unknown>|undefined,logo=node.props?.logo as Record<string,unknown>|undefined;
+            result={...node,props:{...node.props,languageSwitcher:links,localeLabels:{...labels,language:typeof labels?.language==='string'?labels.language:current==='ar'?'\u0627\u0644\u0644\u063a\u0629':'Language'},...(logo?.link==='/'?{logo:{...logo,link:home}}:{})}};
+        }
+        if(node.type==='Footer')result={...node,props:{...node.props,logoHref:home}};
+        if(node.children)result={...result,children:walk(node.children)};
+        return result;
+    });
+    const layout={...input,content:walk(input.content)};
     if(current!==sourceLocale){const projected=localizeNavigationProps(layout,current,origins);projected.root={...projected.root,localeNavigation:{locale:current,origins}};return projected;}
     return layout;
 }
