@@ -69,6 +69,46 @@ Isolated version `ae173200-8ab1-45e6-b287-8acc17bc549e` passed home, list/search
 
 Production remains on `6451e8cf-39ae-4ec3-bd13-126d825931fb`. Non-active version `dc64dfe7-3cfa-4f0f-ae10-0f89761587a6` passed five real-data EN/AR private routes. Read-only editorial inventory found 957 approved article records; no source status migration or active layout publication has occurred.
 
+### Additional November 15 measurements
+
+- `75358b04` removes unnecessary ICU plural-rule initialization for the exact English/Arabic integer cases; all other locales/fractions retain Intl. CLDR parity and five mutation checks pass.
+
+- `f2339f11` reuses validated query definitions while injecting the runner, principal and parameters for each call. Six directory-preview mutation checks pass; no rows or credentials enter that cache.
+
+- Isolated `df3bffa5-5f45-4dc6-92e8-d2993834b447` completed five English/Arabic route passes and direct/source-language/translated editor saves with the same published layout pointer. Warm English detail samples were 4-6 ms; Arabic and homepage samples still exceeded 10 ms (including 11-19 ms). No Error 1102 occurred, but this remains a CPU-gate failure. The fixture was removed.
+
+- Copy-on-write chrome normalization was tested in isolated `1c2379a7-25e6-4e48-a941-875f183c29a3`; all route/edit checks again passed and cleanup completed. Arabic list/long-article samples still reached 11-19 ms. This is not Free acceptance.
+
+- Non-active production version `3b2454ea-df01-4630-804a-e712af7d5ad6` passed five actual-data private EN/AR routes. A read-only comparison of the first/middle/last approved articles matched current revision 2 and all reviewed fields. This is a three-record dry check, not completion of the 957-record migration. No article status or active publication changed.
+
+- `1bb431ec` bypasses promise scheduling for ordinary props and non-navbar favicon processing and avoids cloning plain article/text branches. Full Liquid expressions retain the async path. Node 22 full check/build, edge-core suite, two access-control mutation tests and six localization mutation tests pass. Isolated version `052590f2-de89-4091-ab7c-d1859a7bb766` completed 108 requests and both editor flows without republishing or Error 1102, then was removed. Warm English detail samples were 4-8 ms; Arabic samples still reached 12-25 ms (cold long article 29 ms). The CPU gate remains open. The local workerd profiler completed and its disposable containers were removed. Inspector samples include waits/debugger overhead and are not Cloudflare billed CPU measurements; do not quote their summed durations as phase CPU. No production promotion is authorized by these measurements alone.
+
+## Root-cause analysis requested November 15
+
+Scope: explain the remaining CPU overruns before further implementation. Candidate `1bb431ec`; live-only serving was introduced in `e3c9a57a`. No production change or new architectural acceptance is implied by this analysis.
+
+### Five whys
+
+1. **Why do some Arabic requests exceed 10 ms?** They execute the normal live SSR path plus a localization path that English skips. Actual Free Worker samples show English detail requests around 4-8 ms while Arabic list/article samples include 12-25 ms. English home/long-article requests can also exceed 10 ms; this is not exclusively an Arabic issue.
+2. **Why is localization substantial work?** After current records are projected into components, `localizeLiveLayout` normalizes display chrome, inventories fields, constructs scoped message identities, reads current translation heads, validates their source/version/context, and projects changed text back into the tree. This is per displayed field, not merely a locale flag.
+3. **Why rediscover fields from the component tree on every request?** The live path reuses `homepageDisplayLayout`, `homepageDisplayFields` and `applyHomepageDisplayFields`, also used by translation capture/review/editing. They enumerate the display surface and alternative Block Versions. Applying translations inventories the fields again; detail SEO calls `homepageDisplayFields` again in `localizedPolicyRecord`. The current identity cache saves some hashing but not these traversals and intermediate structures.
+4. **Why has publication not eliminated this structural work?** Publication validates/freezes authored layouts and compiles shared site bindings, but does not compile a reusable display/translation execution plan. Runtime still projects records into UI, extracts their semantics for translation, patches UI, then extracts semantics for SEO. The live-data change reused safe existing primitives without first separating stable layout work from current-value work.
+5. **Why was this not caught as a design issue first?** Functional correctness and safety tests proved tenant isolation, edit freshness and no republishing; they did not establish a per-stage cold/warm CPU budget on production-sized content before adopting that runtime composition. Later micro-optimizations treated individual costs while leaving the composition intact. This is an engineering sequencing/measurement gap, not a reason to weaken safety checks.
+
+### Additional contributing design issues
+
+- `PostgrestTranslationJobPersistence.readMany` is already batched, so this is not a separate network request per field. Its response is the persistence contract: complete source units plus revision/head metadata. Public rendering validates that larger contract even though it needs a smaller current-value/freshness result. Payload/validation cost is a credible contributor; exact production CPU share is not yet measured.
+- Generic SSR and request-local record projection already use much of the Free budget. Repeated authored-tree transformations, parameter validation, binding resolution, temporary objects and garbage collection leave little headroom for localization. Existing caches only cover part of the stable work.
+- Cold misses and garbage collection can explain variability, but neither is proven to explain every outlier. The profiler contains validation, traversal, allocation and serialization activity; its debugger timestamps include waiting and cannot establish precise millisecond attribution.
+
+### Recommended structural correction (proposal, not shipped)
+
+Compile immutable layout/binding/translation/SEO instructions at layout publication using existing component and binding contracts. Keep source records, eligibility, routes, counts and translation heads live. Resolve current data and localized semantic values once per request; share that request-local model with visible rendering, metadata and editing provenance. Introduce a small optional current-translation read projection through the existing adapter interface, preserving scope, source fingerprint, source version and context checks; retain the full persistence interface for authoring/audit. Avoid applying an all-versions review inventory to every public request, while preserving any client-switchable versions the page actually requires.
+
+Before accepting a repair, run controlled same-layout/same-record comparisons: English versus Arabic; missing versus present translation heads; short versus long articles; increasing page size; cold versus warm. Count traversals, translation units, bytes, validations and hashes, then corroborate with actual Cloudflare CPU distributions. Keep unchanged-layout live EN/AR edit tests and all tenant/source-freshness/security mutation gates. No record snapshots, paid-plan change, broad renderer rewrite or disabled validation is proposed.
+
+Confirmed: the repeated structural work and ordering above exist in the code. Not yet proven: the exact share of the 12-25 ms attributable to each stage, or that one change alone will meet the CPU gate. Production promotion and the 957-record migration remain pending.
+
 ## Next executable work
 
 Finish and measure the CPU repairs, retire remaining legacy capture authoring dependencies, migrate only eligible reviewed article source statuses, run security/conformance gates, privately verify the full English/Arabic release, then commit/push/deploy/publish and verify Study-in-USA. Production remains unchanged until these checks pass. No general-release or Workers Free acceptance claim is made yet.
