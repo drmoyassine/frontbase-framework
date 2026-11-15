@@ -204,3 +204,22 @@ The documented Free limit is 10 ms per HTTP request. Repeated cold Arabic overru
 Live edit verification on disposable Workers Free version `980583f3-ab25-4678-85d7-bdcf9b1483f0` passed: a direct source change appeared on reload; an English frontend edit updated the source row; an Arabic frontend edit updated the localized view and left the English row unchanged; a later source change hid the now-stale Arabic head. The publication hash stayed unchanged. The earlier fixture intentionally refused the write when the exposed table lacked a primary key; this run exercised the existing write guard with a keyed table. Both replay Workers and their disposable state were removed.
 
 Node 22 workspace build and type checks, the final affected package/Worker builds, edge-core functional tests, backend live layout and frontend editing tests, and the sparse adapter/HTTP bridge tests passed. The adapter mutation suite passed, including scope and key mismatch refusals. This completes the identity and sparse-rendering changes; the Workers Free CPU gate remains open.
+
+### Warm Arabic homepage CPU and fresh Worker qualification
+
+The current baseline profile used 250 warm Arabic homepage requests against the captured production-sized layout and replayed live HTTP responses. The shared renderer accounted for 1,981 of 4,090 serving samples (48%); localization and template projection were next. Those sample counts show attribution, not Cloudflare billed CPU. The renderer now reuses CSS declaration work only for deeply immutable authored styles and retained landing settings, skips Row/Column work for other components, and reuses equivalent responsive CSS calculations without changing output. Dynamic values, selectors, filters and visibility remain request-local. A paired projection/render benchmark on the captured layout with Arabic context improved from 4.08 to 3.11 ms median with byte-identical HTML and current rows; it is not a Workers Free qualification result.
+
+The Cloudflare replay used 24 measured uncached requests. Four specimens were witnessed as the first request on four different isolates after four version rotations. Each response was HTTP 200 and `no-store`; searches verified current results from the datasource.
+
+| Specimen | English CPU | Arabic CPU |
+| --- | ---: | ---: |
+| Warm homepage | 13 ms | 16 ms |
+| First-time program search on warm Worker | 11 ms | 16 ms |
+| Homepage, first request on fresh isolate | 121 ms | 89 ms |
+| First-time program search, first request on fresh isolate | 73 ms | 137 ms |
+
+The replay also verified that newly written rows show up on a never-run search and that English and Arabic frontend edits are visible without moving the publication pointer. The isolated Worker and database were removed. The sub-10 ms acceptance criterion failed; Study-in-USA production was not changed.
+
+A separate control on an initialized and migrated disposable installation (Worker version `129cce5f-0639-4772-8ebc-80280f85eb51`) measured `/health` at 35 ms CPU on invocation one and 1 ms on invocation two of the same isolate. Neither response rendered a page. This isolates a first-request startup cost; it does not attribute the remainder of the other isolates' numbers by subtraction. The current Worker initializes the full CMS before handling public URLs. Next, profile that setup and test a smaller public serving entry for initialized installations that reuses the same auth, scoped adapters and renderer. Independently reduce warm homepage/search rendering, since their requests also exceeded budget. Continue to require first-invocation and first-time-search evidence with current data and HTML caching off before promotion.
+
+Node 22 workspace check/build and the Worker no-leak build passed. The edge-core, live-layout and targeted style tests passed, including fifteen byte-parity and fourteen WYSIWYG cases. All five template landing mutation controls detected their broken guarantees.

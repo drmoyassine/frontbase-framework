@@ -79,6 +79,32 @@ interface StyleValueEmitter {
     (cssKey: string, cssValue: string): void;
 }
 
+const frozenPlainData = new WeakSet<object>();
+
+/** Frozen plain data can share derived CSS across requests. Mutable builder styles
+ * and accessor-backed objects continue through the ordinary formatter. */
+export function isFrozenPlainData(value: unknown): boolean {
+    if (!value || typeof value !== 'object' || !Object.isFrozen(value)) return false;
+    if (frozenPlainData.has(value)) return true;
+    const checking = new WeakSet<object>();
+    function check(input: unknown, depth: number): boolean {
+        if (input === null || typeof input === 'string' || typeof input === 'number' || typeof input === 'boolean' || input === undefined) return true;
+        if (typeof input !== 'object' || depth > 32 || !Object.isFrozen(input)) return false;
+        if (frozenPlainData.has(input)) return true;
+        if (checking.has(input)) return false;
+        const prototype = Object.getPrototypeOf(input);
+        if (prototype !== Object.prototype && prototype !== null && !(Array.isArray(input) && prototype === Array.prototype)) return false;
+        checking.add(input);
+        const descriptors = Object.values(Object.getOwnPropertyDescriptors(input));
+        if (Object.getOwnPropertySymbols(input).length ||
+            !descriptors.every(descriptor => Object.hasOwn(descriptor, 'value') && check(descriptor.value, depth + 1))) return false;
+        checking.delete(input);
+        frozenPlainData.add(input);
+        return true;
+    }
+    return check(value, 0);
+}
+
 /**
  * Process a single style entry (key/value from the styles object),
  * handling special shapes like size, padding/margin objects, and horizontalAlign.
@@ -155,22 +181,22 @@ export function processStyleEntry(
  * - New stylesData format: { activeProperties: [...], values: {...}, stylingMode: 'visual' }
  */
 export function buildInlineStyles(props: Record<string, unknown>, styles: Record<string, any>): string {
-    const cssProps: Record<string, string> = {};
+    let cssProps: Record<string, string> | undefined;
 
     // First, apply props-based styles
     for (const [prop, css] of BASIC_PROP_ENTRIES) {
         if (props[prop] !== undefined) {
-            cssProps[css] = String(props[prop]);
+            (cssProps ??= {})[css] = String(props[prop]);
         }
     }
 
     // Handle styles object - detect which format it is
-    let styleValues: Record<string, any> = {};
+    let styleValues: Record<string, any> | undefined;
 
     if (styles && typeof styles === 'object') {
         // New stylesData format: { activeProperties: [...], values: {...}, stylingMode: '...' }
         if ('values' in styles && typeof styles.values === 'object') {
-            styleValues = styles.values || {};
+            styleValues = styles.values || undefined;
         }
         // Old flat format: { justifyContent: 'center', ... }
         else {
@@ -179,17 +205,52 @@ export function buildInlineStyles(props: Record<string, unknown>, styles: Record
         }
     }
 
-    // Apply style values using shared processor
-    for (const [key, value] of Object.entries(styleValues)) {
-        if (key === 'activeProperties' || key === 'stylingMode') continue;
-        processStyleEntry(key, value, (cssKey, cssValue) => {
-            cssProps[cssKey] = cssValue;
-        });
+    if (!styleValues) return cssProps ? styleText(cssProps) : '';
+    const cached = inlineStyles.get(styleValues);
+    if (!cached && !isFrozenPlainData(styleValues)) {
+        return styleText(applyInlineStyleValues(cssProps ?? {}, styleValues));
     }
+    const declarations = cached ?? compileInlineStyleDeclarations(styleValues);
+    if (!cssProps) return declarations.text;
+    // Apply authored overrides onto prop-derived entries in their original order.
+    // This preserves CSS precedence even for order-sensitive shorthand/longhand.
+    Object.assign(cssProps, declarations.values);
+    return styleText(cssProps);
+}
 
-    return Object.entries(cssProps)
-        .map(([key, value]) => `${key}:${value}`)
-        .join(';');
+function styleText(values: Record<string, string>): string {
+    return Object.entries(values).map(([key, value]) => `${key}:${value}`).join(';');
+}
+
+type InlineStyleDeclarations = { values: Record<string, string>; text: string };
+const inlineStyles = new WeakMap<object, InlineStyleDeclarations>();
+
+function applyInlineStyleValues(values: Record<string, string>, styleValues: Record<string, unknown>): Record<string, string> {
+    const emit: StyleValueEmitter = (key, value) => { values[key] = value; };
+    for (const [key, value] of Object.entries(styleValues)) {
+        if (key !== 'activeProperties' && key !== 'stylingMode') processStyleEntry(key, value, emit);
+    }
+    return values;
+}
+
+function compileInlineStyleDeclarations(styleValues: Record<string, unknown>): InlineStyleDeclarations {
+    const values = applyInlineStyleValues({}, styleValues);
+    const result = { values, text: styleText(values) };
+    inlineStyles.set(styleValues, result);
+    return result;
+}
+
+const viewportStyleRules = new WeakMap<object, string>();
+
+function viewportRule(values: Record<string, unknown>): string {
+    const existing = viewportStyleRules.get(values);
+    if (existing !== undefined) return existing;
+    const parts: string[] = [];
+    const emit: StyleValueEmitter = (key, value) => { parts.push(`${key}:${value} !important`); };
+    for (const [key, value] of Object.entries(values)) processStyleEntry(key, value, emit, (_key, val) => String(val));
+    const declarations = parts.join(';');
+    if (isFrozenPlainData(values)) viewportStyleRules.set(values, declarations);
+    return declarations;
 }
 
 /**
@@ -211,20 +272,9 @@ export function buildResponsiveCSS(componentId: string, styles: StylesData | Rec
 
     const cssRules: string[] = [];
 
-    // Helper to convert style values to CSS properties with !important
-    const valuesToCSS = (values: Record<string, unknown>): string => {
-        const props: string[] = [];
-        for (const [key, value] of Object.entries(values)) {
-            processStyleEntry(key, value, (cssKey, cssValue) => {
-                props.push(`${cssKey}:${cssValue} !important`);
-            }, (_k, v) => String(v));
-        }
-        return props.join(';');
-    };
-
     // Tablet overrides (max-width: 1024px)
     if (viewportOverrides.tablet && Object.keys(viewportOverrides.tablet).length > 0) {
-        const tabletCSS = valuesToCSS(viewportOverrides.tablet);
+        const tabletCSS = viewportRule(viewportOverrides.tablet);
         if (tabletCSS) {
             cssRules.push(`@media(max-width:1024px){[id="${componentId}"]{${tabletCSS}}}`);
         }
@@ -232,7 +282,7 @@ export function buildResponsiveCSS(componentId: string, styles: StylesData | Rec
 
     // Mobile overrides (max-width: 640px)
     if (viewportOverrides.mobile && Object.keys(viewportOverrides.mobile).length > 0) {
-        const mobileCSS = valuesToCSS(viewportOverrides.mobile);
+        const mobileCSS = viewportRule(viewportOverrides.mobile);
         if (mobileCSS) {
             cssRules.push(`@media(max-width:640px){[id="${componentId}"]{${mobileCSS}}}`);
         }

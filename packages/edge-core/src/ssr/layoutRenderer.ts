@@ -9,13 +9,22 @@ import {clientVisibilityAttributes} from './visibility.js';
 import { escapeHtml } from './components/lib/utils.js';
 import { buildInlineStyles, buildResponsiveCSS, buildVisibilityCSS, buildClassName } from './styleHelpers.js';
 
+const ALIGNMENTS: Record<string,string> = {start:'flex-start',end:'flex-end',center:'center',stretch:'stretch',between:'space-between',around:'space-around',evenly:'space-evenly',baseline:'baseline'};
+
+function alignmentStyle(props:Record<string,unknown>):string {
+    // Registry layout controls only apply to Row and Column. Containers (and
+    // the live cards they contain) do not need an extra style-formatting pass.
+    return escapeHtml(buildInlineStyles({}, {gap:props.gap,alignItems:ALIGNMENTS[String(props.align)]||undefined,justifyContent:ALIGNMENTS[String(props.justify)]||undefined,...(props.wrap===true?{flexWrap:'wrap'}:{})}));
+}
+
 export function renderLayoutComponent(
     type: string,
     id: string,
     props: Record<string, unknown>,
     styles: Record<string, any>,
     childrenHtml: string,
-    visibility?: { mobile: boolean; tablet: boolean; desktop: boolean; }
+    visibility?: { mobile: boolean; tablet: boolean; desktop: boolean; },
+    css?: string,
 ): string {
     // Build inline style from both props and styles object
     const inlineStyle = buildInlineStyles(props, styles);
@@ -25,14 +34,7 @@ export function renderLayoutComponent(
     // Use custom anchor slug if provided, otherwise fall back to component ID
     const elementId = (props.anchor as string) || id;
 
-    // Generate responsive CSS media queries for viewport overrides
-    const responsiveCSS = buildResponsiveCSS(id, styles);
-
-    // Generate visibility CSS for hidden viewports
-    const visibilityCSS = buildVisibilityCSS(id, visibility);
-
-    // Combine CSS blocks
-    let combinedCSS = responsiveCSS + visibilityCSS;
+    let combinedCSS = css ?? (buildResponsiveCSS(id, styles) + buildVisibilityCSS(id, visibility));
 
     // Build data-fb-props attribute if actionBindings exist (for hover tooltips, etc.)
     const actionBindings = props.actionBindings as Array<unknown> | undefined;
@@ -43,16 +45,14 @@ export function renderLayoutComponent(
     propsAttr += clientVisibilityAttributes(props);
 
     // Existing section-link rows keep their authored styles, with progressive overflow controls.
-    const horizontal = styles.overflowX === 'auto' || styles.viewportOverrides?.mobile?.overflowX === 'auto' || styles.viewportOverrides?.tablet?.overflowX === 'auto';
-    const scrollNavigation = ['Row','Column'].includes(type) && (props.navigationOverflow === 'scroll' || props.navigationOverflow === 'wrap' || (props.navigationOverflow !== 'off' && horizontal && childrenHtml.includes('scrollToSection')));
-    if (scrollNavigation) {
-        combinedCSS += `<style>${NAVIGATION_CSS}</style>`;
-        propsAttr += ` data-fb-scroll-nav="${props.navigationOverflow === 'wrap' ? 'wrap' : 'scroll'}" data-scroll-arrows="${props.navigationArrows === 'hidden' ? 'hidden' : 'auto'}" data-scrollbar="${props.navigationScrollbar === 'visible' ? 'visible' : 'hidden'}"`;
+    if (type === 'Row' || type === 'Column') {
+        const horizontal = styles.overflowX === 'auto' || styles.viewportOverrides?.mobile?.overflowX === 'auto' || styles.viewportOverrides?.tablet?.overflowX === 'auto';
+        if (props.navigationOverflow === 'scroll' || props.navigationOverflow === 'wrap' || (props.navigationOverflow !== 'off' && horizontal && childrenHtml.includes('scrollToSection'))) {
+            combinedCSS += `<style>${NAVIGATION_CSS}</style>`;
+            propsAttr += ` data-fb-scroll-nav="${props.navigationOverflow === 'wrap' ? 'wrap' : 'scroll'}" data-scroll-arrows="${props.navigationArrows === 'hidden' ? 'hidden' : 'auto'}" data-scrollbar="${props.navigationScrollbar === 'visible' ? 'visible' : 'hidden'}"`;
+        }
     }
 
-    // Registry layout controls must reach both canvas and published output.
-    const alignment = (value: unknown) => ({start:'flex-start',end:'flex-end',center:'center',stretch:'stretch',between:'space-between',around:'space-around',evenly:'space-evenly',baseline:'baseline'} as Record<string,string>)[String(value)] || undefined;
-    const flexProps = escapeHtml(buildInlineStyles({}, {gap:props.gap,alignItems:alignment(props.align),justifyContent:alignment(props.justify),...(props.wrap===true?{flexWrap:'wrap'}:{})}));
     switch (type) {
         case 'Container':
             // Check if this container uses grid layout
@@ -95,6 +95,7 @@ export function renderLayoutComponent(
         case 'Row': {
             // Row: flex on desktop, stack on mobile. minHeight externalized (default reproduces the prior baked literal).
             const rowMinHeight = (props.minHeight as string) || '50px';
+            const flexProps = alignmentStyle(props);
             return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-row flex ${props.stackOnMobile === false ? 'flex-row' : 'flex-col md:flex-row'}" style="width:100%;min-height:${rowMinHeight};${[flexProps,inlineStyle].filter(Boolean).join(';')}">${childrenHtml}</div>`;
         }
 
@@ -102,6 +103,7 @@ export function renderLayoutComponent(
             // minHeight/minWidth externalized (defaults reproduce the prior baked literals).
             const colMinHeight = (props.minHeight as string) || '50px';
             const colMinWidth = (props.minWidth as string) || '50px';
+            const flexProps = alignmentStyle(props);
             return `${combinedCSS}<div id="${elementId}"${propsAttr} class="${className} fb-column" style="display:flex;flex-direction:column;min-height:${colMinHeight};min-width:${colMinWidth};${[flexProps,inlineStyle].filter(Boolean).join(';')}">${childrenHtml}</div>`;
         }
 

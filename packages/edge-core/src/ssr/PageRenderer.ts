@@ -28,7 +28,7 @@ import { templateMenuLabels } from '../localization/surfaces.js';
 import { renderStaticComponent } from './components/static.js';
 import { renderInteractiveComponent } from './components/interactive.js';
 import { renderDataComponent } from './components/data.js';
-import { buildResponsiveCSS, buildVisibilityCSS } from './styleHelpers.js';
+import { buildResponsiveCSS, buildVisibilityCSS, isFrozenPlainData } from './styleHelpers.js';
 import type { TemplateContext } from './lib/context.js';
 import { engineConfig } from '../config.js';
 
@@ -55,6 +55,22 @@ import { renderLandingComponent } from './landingDispatcher.js';
 export type ComponentRenderObserver=(component:PageComponent,html:string,context:TemplateContext)=>void;
 type RenderBudget={remaining:number;observe?:ComponentRenderObserver;interpolations?:ReadonlyMap<string,CompiledInterpolation>;recordScopes?:WeakMap<object,Record<string,any>>};
 type RenderResult = string | Promise<string>;
+const emptyStyles=Object.freeze({});
+const mergedStyles=new WeakMap<object,WeakMap<object,Record<string,unknown>>>();
+
+/** Builder preview inputs can change in place. Reuse only the immutable authored
+ * inputs, and never retain request props, visibility or rendered markup. */
+function stylesWithOverrides(base:PageComponent['styles'],values:Record<string,unknown>):Record<string,unknown> {
+    const styles=base??emptyStyles;
+    if (!isFrozenPlainData(styles)||!isFrozenPlainData(values)) return {...styles,...values};
+    let byValues=mergedStyles.get(styles);
+    const existing=byValues?.get(values);
+    if(existing) return existing;
+    if(!byValues){byValues=new WeakMap();mergedStyles.set(styles,byValues);}
+    const merged=Object.freeze({...styles,...values});
+    byValues.set(values,merged);
+    return merged;
+}
 
 function joinRendered(parts: RenderResult[]): RenderResult {
     return parts.some(part => typeof part !== 'string')
@@ -80,7 +96,7 @@ function renderComponent(component: PageComponent, context: TemplateContext, bud
 
 function renderComponentImpl(component: PageComponent, context: TemplateContext, budget: RenderBudget): RenderResult {
     if (--budget.remaining < 0) throw Error('Block render budget exceeded');
-    if(component.stylesData?.values)component={...component,styles:{...component.styles,...component.stylesData.values}};
+    if(component.stylesData?.values)component={...component,styles:stylesWithOverrides(component.styles,component.stylesData.values)};
     const versions = component.versions;
     if (versions?.length) return (async () => {
         const read = contextReader(context as unknown as Record<string, unknown>);
@@ -204,9 +220,10 @@ function renderComponentImpl(component: PageComponent, context: TemplateContext,
 
                     case 'layout':
                         // Builder responsive styles live in stylesData; preserve automatic section-nav enhancement.
-                        if (['Row', 'Column'].includes(type) && (!resolvedProps.navigationOverflow || resolvedProps.navigationOverflow === 'auto') && childrenHtml.includes('scrollToSection') && [stylesForCSS?.overflowX, stylesForCSS?.viewportOverrides?.mobile?.overflowX, stylesForCSS?.viewportOverrides?.tablet?.overflowX].includes('auto')) resolvedProps.navigationOverflow = 'scroll';
-                        // Render layout components with proper styles and visibility (has its own CSS handling)
-                        return combinedCSS + renderLayoutComponent(type, id, resolvedProps, component.styles || {}, childrenHtml, component.visibility);
+                        if ((type === 'Row' || type === 'Column') && (!resolvedProps.navigationOverflow || resolvedProps.navigationOverflow === 'auto') && childrenHtml.includes('scrollToSection') && [stylesForCSS?.overflowX, stylesForCSS?.viewportOverrides?.mobile?.overflowX, stylesForCSS?.viewportOverrides?.tablet?.overflowX].includes('auto')) resolvedProps.navigationOverflow = 'scroll';
+                        // Retain the existing CSS order/bytes, reusing only the equivalent computation.
+                        return combinedCSS + renderLayoutComponent(type, id, resolvedProps, component.styles || emptyStyles, childrenHtml, component.visibility,
+                            (stylesForCSS===component.styles?responsiveCSS:buildResponsiveCSS(id,component.styles))+visibilityCSS);
 
                     case 'landing':
                         // Render landing page section components
