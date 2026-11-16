@@ -1,7 +1,7 @@
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {QueryRegistry} from '@frontbase/compiler';
 import type {PageLayoutData,PageEntry,EngineOptions} from '@frontbase/edge-core';
-import {compileDirectoryProjection,restorePublishedDirectoryProjection,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectDirectoryBrowsing,type PublishedDirectoryProjectionPlan} from '@frontbase/edge-core/directory/configuration';
+import {directorySources,compileDirectoryProjection,restorePublishedDirectoryProjection,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectDirectoryBrowsing,type PublishedDirectoryProjectionPlan} from '@frontbase/edge-core/directory/configuration';
 import {publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import {localeDirection} from '@frontbase/edge-core/localization';
 import {projectPublicationListRows,type PublishedLiveQuery,type LiveListRequest} from './publication-list-source.js';
@@ -99,11 +99,12 @@ export async function resolveLiveLayoutPage(
         return {rows:rows.slice(0,size),total:Number(count[0]!.total)};
     };
     projected=await projectPublicationListRows(projected,db,owner,request,user,reader.liveQuery,undefined,context,{sourceQuery,list,directoryListing:listing==='directory',translationCollection:binding=>{
-        if(binding.dataSourceId!==c.datasourceId)return undefined;
+        if(!c.detailViews||binding.dataSourceId!==c.datasourceId)return undefined;
+        const mappings=directorySources(c);
         const collections={institution:'institutions',program:'programs',article:'articles'} as const;
         for(const role of ['institution','program','article'] as const)
-            if(c.detailViews?.[role]===binding.viewId&&c.collections[role].table===binding.tableName
-                &&c.collections[role].fields.id==='id')return collections[role];
+            if(c.detailViews?.[role]===binding.viewId&&mappings[role].tableName===binding.tableName
+                &&mappings[role].fieldMapping.id==='id')return collections[role];
         return undefined;
     }});
     if(listing && countRows){

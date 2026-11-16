@@ -8,4 +8,12 @@ A Repeater that uses the same view with the same datasource, table and canonical
 
 Local workspace checks, build, backend live layout and Saved View query suites, installer tests and eight Builder/installer UI tests passed. The live fixture verifies both Explore versions, existing detail paths in EN/AR, translation record identity, rejection for a foreign view, and absence of routes outside the view scope.
 
-The authenticated production inventory found no existing views for the current institution, program or article sources. Production migration still requires creating compatible views, preparing a versioned Explore layout, and comparing authenticated bilingual previews and the current routes before promotion. Existing publication and translation state were not edited during inventory.
+## Study-in-USA production
+
+Created the USA Institutions, USA Programs and Study in USA Articles Saved Views on the existing source relations. Published the reviewed Explore layout and detail bindings as generation 2. The institution and program lists retain the existing 18 and 293 records, and the editorial source retains 957 published articles. Existing source relation predicates and URL fields were preserved.
+
+The exact source e1231f28 passed 24 authenticated Cloudflare preview comparisons and was promoted as Worker version 8ecfce78-4f7b-4219-9348-1024daaed9cb. The public 24-case EN/AR suite passed after deployment, covering both Explore tabs, search, pagination, details, articles, canonical paths and 180 matched record links. Responses were live and no-store. The sampled Agricultural Education detail lacked a visible university label on both the prior Worker and the new release. The sampled Arabic Explore headings retained exactly their existing record text.
+
+The prior layout pointer and Worker version face02ce-b3f4-4057-a35f-aaaa943420c5 remain rollback references. A first publication request returned HTTP 422. Recovery verified the saved authoring revision and exact draft before retrying only publication, which returned 200 at generation 2.
+
+GitHub PR #12 carries this change and the existing live-serving prerequisites. Its initial CI run rejected direct legacy mapping reads in the live reader. The follow-up routes both reads through the existing source-contract adapter.

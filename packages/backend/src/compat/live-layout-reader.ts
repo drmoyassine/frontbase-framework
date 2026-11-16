@@ -1,7 +1,7 @@
 import {savedViewFilters,type SavedFilter} from '@frontbase/edge-core/saved-view-filters';
 import {savedWhere} from './saved-view-query.js';
 import {datasourceSchema} from './datasource-schema.js';
-import {isValidatedEditorialBody} from '@frontbase/edge-core/directory/configuration';
+import {directorySources,isValidatedEditorialBody} from '@frontbase/edge-core/directory/configuration';
 import {createLiveDirectoryQueries} from '@frontbase/compiler/queries/directory';
 import {datasourceRunner,dialectOf} from '../db/datasource-runner.js';
 import {mergeAccountConfig,type AccountConfigFor} from './providers/merge-account.js';
@@ -92,11 +92,12 @@ export async function resolveDirectoryViewScope(host:LiveLayoutHost, owner:strin
     const store=host.syncFor(owner);
     source??=await store.getDatasource(config.datasourceId)??undefined;
     if(!source || !(store.getViewScopes||store.getView))throw Error('detail_view_unavailable');
+    const mappings=directorySources(config);
     const ds=source,ids=selected.map(role=>references[role]!);
     const views=store.getViewScopes?await store.getViewScopes(ids):await Promise.all(ids.map(id=>store.getView!(id)));
     const plans=selected.map((role,index)=>{
         const view=store.getViewScopes?views.find(view=>view?.id===ids[index]):views[index];
-        if(!view||view.datasource_id!==ds.id||view.target_table!==config.collections[role].table
+        if(!view||view.datasource_id!==ds.id||view.target_table!==mappings[role].tableName
             ||datasourceSchema(ds.kind,ds.config,view.source_schema)!==datasourceSchema(ds.kind,ds.config,undefined))throw Error('detail_view_mismatch');
         const rules=savedViewFilters(view.filters);
         const fields=new Set<string>();
