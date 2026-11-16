@@ -37,10 +37,11 @@ import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { s3StorageProvider, kvCache, createNativeR2Storage, NATIVE_R2_ACCESS_PATH, type R2BucketBinding, type KVNamespaceBinding, type CacheProvider, type DbRunner, type StorageProvider, type StorageProviderFactory } from '@frontbase/edge-infra';
 import { resolveStateDb, StateDbConfigError, type ResolvedStateDb } from './state-db.js';
+import {currentLiveSchema,isInitializedLiveRequest} from './live-serving-startup.js';
 import { resolveSessionSecret } from './session-secret.js';
 import { tenantMiddleware, hostTenantOf, hostKindOf } from './tenancy.js';
 import { manifest } from './manifest.js';
-import { renderReviewedSitePublication,publishedLiveQuery } from '@frontbase/backend';
+import { publishedLiveQuery,renderLiveLayoutPublication,datasourceAccountConfigFor,type SecretCipher } from '@frontbase/backend';
 import {configuredMenuAudienceResolver} from '@frontbase/backend';
 import {resolveAppMenuLayout,readPublicSiteName} from '@frontbase/backend';
 import {projectSourceFrontendCopy,withFrontendEditor} from '@frontbase/backend';
@@ -49,6 +50,16 @@ import CLIENT_BUNDLE from 'virtual:builder-client-bundle';
 import CONSOLE_INDEX from './console-shell.js';
 
 const SETUP_SPA_HTML = '<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Frontbase Setup</title></head><body><div id="root"></div><script src="/frontbase-setup/spa.js"></script></body></html>';
+
+/** Both host paths share the same owner-scoped adapters, audience checks and renderer. */
+function liveServingOptions(runner:DbRunner,cipher:SecretCipher,externalFetch:typeof fetch,phase2For:(owner:string)=>Phase2Store){
+    return {
+        swBundle:SW_BUNDLE,frontendEditing:true,
+        host:{syncFor:(owner:string)=>new SyncStore(runner,owner,cipher),
+            accountConfigFor:datasourceAccountConfigFor(phase2For,()=>new Date().toISOString()),externalFetch},
+        resolveAudience:configuredMenuAudienceResolver(runner,cipher,externalFetch,Date.now,true),
+    };
+}
 
 // Host config: there is no process.env on Workers — supply edition/env explicitly.
 configureEngine({ edition: 'community', nodeEnv: 'production' });
@@ -639,8 +650,12 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         enrichLayout: (layout, req) => enrichWithDatasources(hostTenantFor(req) ?? '_root', layout),
     });
 
+    const liveDocuments = new WeakSet<Request>();
     const app = new Hono();
-    app.use('*',async(c,next)=>{await next();c.res=await withFrontendEditor(c.res,c.req.raw);});
+    app.use('*', async (c, next) => {
+        await next();
+        if (!liveDocuments.has(c.req.raw)) c.res = await withFrontendEditor(c.res, c.req.raw);
+    });
 
     // engineConfig() state is MODULE-GLOBAL, and edge-core render paths read it
     // at request time. A process hosting more than one engine — production is
@@ -880,16 +895,22 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     });
     app.route('/', compatApp);
 
-    const publicLiveQuery = publishedLiveQuery(request=>compatApp.fetch(request));
-    // Reviewed captures own public routes once active. Terminal failures never enter legacy fallback.
+    const publicLiveOptions = {
+        ...liveServingOptions(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,enrichPhase2For),
+        liveQuery:publishedLiveQuery(request=>compatApp.fetch(request)),
+    };
+    // Published structure owns live routes. No record-capture or exported-HTML fallback.
     app.get('*', async (c, next) => {
         const path = new URL(c.req.url).pathname;
         if (/^\/(?:api|frontbase-admin|frontbase-setup|builder|static|console|admin|setup)(?:\/|$)/i.test(path)
             || path === '/sw.js') return next();
         const tenant = hostTenantFor(c.req.raw);
         if (cloud && !tenant && hostKindOf(c.req.raw, cloud.baseDomain, cloud.appLabel) !== 'foreign') return next();
-        const reviewed = await renderReviewedSitePublication(opts.runner, tenant ?? '_root', c.req.raw, { swBundle: SW_BUNDLE, liveQuery:publicLiveQuery, resolveAudience:configuredMenuAudienceResolver(opts.runner,enrichCipher,opts.externalFetch??globalThis.fetch,Date.now,true) });
-        if (reviewed) return reviewed;
+        const live=await renderLiveLayoutPublication(opts.runner,tenant??'_root',c.req.raw,publicLiveOptions);
+        if (live) {
+            liveDocuments.add(c.req.raw);
+            return live;
+        }
         return next();
     });
 
@@ -899,13 +920,37 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     return app;
 }
 
+import {isPrivateRenderPath} from './prerender-delivery.js';
 let readyEngine: Hono | undefined;
 let currentCtx: ExecutionContext | null = null;
 let bootstrapHost:any;
+let workerStateDb:ResolvedStateDb|undefined;
+let directLive:ReturnType<typeof liveServingOptions>|undefined;
+
+function stateFor(env:CmsEnv):ResolvedStateDb {
+    return workerStateDb??=resolveStateDb({
+        env:env as unknown as Record<string,string|undefined>,
+        d1Binding:env.DB,hyperdriveBinding:env.HYPERDRIVE,host:'cloudflare',
+    });
+}
+
+async function initializedLiveOptions(runner:DbRunner,secret:string){
+    if(!await currentLiveSchema(runner))return null;
+    const cipher=await createSecretCipher(secret);
+    const rootResources=new Phase2Store(runner,'_root',cipher);
+    const rootFor=(owner:string)=>{
+        if(owner!=='_root')throw Error('live_owner_mismatch');
+        return rootResources;
+    };
+    return liveServingOptions(runner,cipher,globalThis.fetch,rootFor);
+}
 
 const worker = {
     async fetch(req: Request, env: CmsEnv, ctx: ExecutionContext): Promise<Response> {
         try {
+            // Internal asset proofs are never public URLs, including when this mode is off.
+            const url=new URL(req.url);
+            if(isPrivateRenderPath(url.pathname))return new Response('Not found',{status:404});
             if((env as any).FRONTBASE_BOOTSTRAP==='native'){bootstrapHost??=createNativeCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             if((env as any).FRONTBASE_BOOTSTRAP==='1'){bootstrapHost??=createCloudBootstrap(env,'cloudflare');return bootstrapHost.fetch(req);}
             // Self-host uses the shared persisted resolver after migrations.
@@ -914,8 +959,7 @@ const worker = {
                 return new Response('SESSION_SECRET is not configured — run: wrangler secret put SESSION_SECRET', { status: 500 });
             }
             currentCtx = ctx;
-            let engine = readyEngine;
-            if (!engine) {
+            const boot = async ():Promise<Hono|Response> => {
                 const isCloud = env.FRONTBASE_DEPLOYMENT_MODE === 'cloud';
                 if (isCloud && !env.HYPERDRIVE?.connectionString) {
                     return new Response(
@@ -948,12 +992,7 @@ const worker = {
                 // missing var — never at first write.
                 let stateDb: ResolvedStateDb;
                 try {
-                    stateDb = resolveStateDb({
-                        env: env as unknown as Record<string, string | undefined>,
-                        d1Binding: env.DB,
-                        hyperdriveBinding: env.HYPERDRIVE,
-                        host: 'cloudflare',
-                    });
+                    stateDb = stateFor(env);
                 } catch (e) {
                     if (e instanceof StateDbConfigError) return new Response(e.message, { status: 500 });
                     throw e;
@@ -979,7 +1018,7 @@ const worker = {
                 if (isCloud) {
                     console.log(`[cf-full] cloud mode: zone ${env.FRONTBASE_BASE_DOMAIN}`);
                 }
-                engine = await createCmsEngine({
+                const engine = await createCmsEngine({
                     runner: stateDb.runner,
                     translationExecutionEnabled: readTranslationExecutionEnabled(env.FRONTBASE_TRANSLATION_EXECUTION_ENABLED),
                     sessionSecret: env.SESSION_SECRET,
@@ -1041,7 +1080,30 @@ const worker = {
                     } : {}),
                 });
                 readyEngine = engine;
+                return engine;
+            };
+            const full = async () => readyEngine??await boot();
+            if(!readyEngine&&isInitializedLiveRequest(req,url,env as unknown as Record<string,unknown>)){
+                const runner=stateFor(env).runner;
+                // Only retain completed options. A canceled request must never
+                // strand a later request on its database or crypto promise.
+                const live=directLive??await initializedLiveOptions(runner,env.SESSION_SECRET!.trim());
+                if(live){
+                    directLive??=live;
+                    const response=await renderLiveLayoutPublication(runner,'_root',req,{
+                        ...live,
+                        // Saved Views retain all of the existing compat route gates.
+                        // A simple live directory query never invokes this fallback.
+                        liveQuery:publishedLiveQuery(async request=>{
+                            const engine=await full();
+                            return engine instanceof Response?engine:engine.fetch(request,env,ctx);
+                        }),
+                    });
+                    if(response)return response;
+                }
             }
+            const engine=await full();
+            if(engine instanceof Response)return engine;
             // Receipt reconciliation is idempotent and independent of this response.
             // A cancelled poll must not leave later requests waiting on its I/O.
             if (!receiptCompleted && Date.now() >= nextReceiptCheck) {
@@ -1055,6 +1117,7 @@ const worker = {
             const closedSetup=closedBootstrapResponse(req);if(closedSetup)return closedSetup;
             return engine.fetch(req, env, ctx);
         } catch (e) {
+            if(e instanceof StateDbConfigError)return new Response(e.message,{status:500});
             console.error('[cf-full] worker fetch failed:', (e as Error)?.stack ?? e);
             return new Response('internal_error', { status: 500 });
         }

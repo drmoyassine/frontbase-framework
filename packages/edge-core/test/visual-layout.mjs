@@ -15,3 +15,15 @@ for(const size of ['24px','1.5rem','120%','0'])assert.ok(renderStaticComponent('
 assert.ok(renderStaticComponent('Text','text',{content:'Text',size:'base'},'').includes('font-size:var(--fb-text-base, 1rem)'));
 assert.ok(!renderStaticComponent('Text','text',{content:'Text',size:'24px\" onmouseover=\"alert(1)'},'').includes('onmouseover'));
 console.log('Text explicit CSS sizes and safe token fallback PASS');
+
+const {buildInlineStyles,buildResponsiveCSS}=await import('../dist/ssr/styleHelpers.js');
+const mobile=Object.freeze({padding:Object.freeze({top:8})});
+const authored=Object.freeze({padding:Object.freeze({top:4}),viewportOverrides:Object.freeze({mobile})});
+assert.match(buildInlineStyles({width:'40%'},authored),/width:40%/);
+assert.match(buildInlineStyles({width:'70%'},authored),/width:70%/,'reused authored styles never retain request props');
+assert.match(buildResponsiveCSS('row-1',authored),/\[id="row-1"\].*padding-top:8px/);
+assert.match(buildResponsiveCSS('row-2',authored),/\[id="row-2"\].*padding-top:8px/,'reuse keeps the current component selector');
+const padding={top:10},editable=Object.freeze({padding});
+assert.match(buildInlineStyles({},editable),/padding-top:10px/);
+padding.top=20;
+assert.match(buildInlineStyles({},editable),/padding-top:20px/,'a shallow frozen builder object cannot retain stale nested styles');

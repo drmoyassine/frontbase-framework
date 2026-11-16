@@ -13,21 +13,35 @@ BEGIN
      OR (p_scope - ARRAY['tenantId','projectId']) <> '{}'::jsonb OR octet_length(p_input::text)>524288 THEN
     RAISE EXCEPTION 'invalid_translation_request' USING ERRCODE='22023';
   END IF;
-  v_allowed:=CASE p_operation WHEN 'read-many' THEN ARRAY['unitIds','locale'] WHEN 'read-revisions' THEN ARRAY['keys','locale'] END;
+  v_allowed:=CASE p_operation WHEN 'read-many' THEN ARRAY['unitIds','locale'] WHEN 'read-current-many' THEN ARRAY['unitIds','locale'] WHEN 'read-revisions' THEN ARRAY['keys','locale'] END;
   IF v_allowed IS NULL OR (p_input-v_allowed)<>'{}'::jsonb OR NOT (p_input ?& v_allowed) THEN
     RAISE EXCEPTION 'invalid_translation_operation' USING ERRCODE='22023';
   END IF;
     IF NOT EXISTS(SELECT 1 FROM translations.protocol WHERE id=1 AND version=1) THEN RAISE EXCEPTION 'unsupported_translation_protocol'; END IF;
     IF NOT (jsonb_typeof(p_input->'locale')='string' AND length(v_l) BETWEEN 1 AND 64
          OR p_operation='read-many' AND p_input->'locale'='null'::jsonb) THEN RAISE EXCEPTION 'invalid_translation_locale'; END IF;
-    IF p_operation='read-many' THEN
+    IF p_operation IN ('read-many','read-current-many') THEN
       IF jsonb_typeof(p_input->'unitIds') IS DISTINCT FROM 'array' OR jsonb_array_length(p_input->'unitIds') NOT BETWEEN 1 AND 500 THEN RAISE EXCEPTION 'invalid_translation_batch'; END IF;
       IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_input->'unitIds') x WHERE jsonb_typeof(x)<>'string' OR (x#>>'{}') !~ '^[a-f0-9]{64}$') THEN RAISE EXCEPTION 'invalid_translation_key'; END IF;
+      IF p_operation='read-current-many' THEN
+        SELECT coalesce(jsonb_agg(jsonb_build_object('unitId',k.id,'snapshot',jsonb_build_object(
+          'version',u.version,
+          'source',jsonb_build_object('unit',jsonb_build_object('scope',u.source->'unit'->'scope'),
+            'sourceVersion',u.source->'sourceVersion','fingerprint',u.source->'fingerprint','contextFingerprint',u.source->'contextFingerprint'),
+          'head',jsonb_build_object('scope',r.revision->'scope','unitId',r.revision->'unitId','locale',r.revision->'locale',
+            'sourceVersion',r.revision->'sourceVersion','sourceFingerprint',r.revision->'sourceFingerprint',
+            'contextFingerprint',r.revision->'contextFingerprint','text',r.revision->'text')))), '[]'::jsonb)
+        INTO v_result FROM jsonb_array_elements_text(p_input->'unitIds') k(id)
+        JOIN translations.units u ON u.tenant_id=v_t AND u.project_id=v_p AND u.unit_id=k.id
+        JOIN translations.heads h ON h.tenant_id=u.tenant_id AND h.project_id=u.project_id AND h.unit_id=u.unit_id AND h.locale=v_l
+        JOIN translations.revisions r ON r.tenant_id=h.tenant_id AND r.project_id=h.project_id AND r.unit_id=h.unit_id AND r.locale=h.locale AND r.revision_id=h.revision_id;
+      ELSE
       SELECT jsonb_agg(jsonb_build_object('unitId',k.id,'snapshot',jsonb_build_object('version',coalesce(u.version,0),'source',u.source,'head',r.revision)) ORDER BY k.n)
         INTO v_result FROM jsonb_array_elements_text(p_input->'unitIds') WITH ORDINALITY k(id,n)
         LEFT JOIN translations.units u ON u.tenant_id=v_t AND u.project_id=v_p AND u.unit_id=k.id
         LEFT JOIN translations.heads h ON h.tenant_id=u.tenant_id AND h.project_id=u.project_id AND h.unit_id=u.unit_id AND h.locale=v_l
         LEFT JOIN translations.revisions r ON r.tenant_id=h.tenant_id AND r.project_id=h.project_id AND r.unit_id=h.unit_id AND r.locale=h.locale AND r.revision_id=h.revision_id;
+      END IF;
     ELSE
       IF jsonb_typeof(p_input->'keys') IS DISTINCT FROM 'array' OR jsonb_array_length(p_input->'keys') NOT BETWEEN 1 AND 500 THEN RAISE EXCEPTION 'invalid_translation_batch'; END IF;
       IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_input->'keys') x WHERE jsonb_typeof(x)<>'object' OR x-ARRAY['unitId','revisionId']<>'{}'::jsonb OR jsonb_typeof(x->'unitId') IS DISTINCT FROM 'string' OR (x->>'unitId') !~ '^[a-f0-9]{64}$' OR jsonb_typeof(x->'revisionId') IS DISTINCT FROM 'string' OR length(x->>'revisionId') NOT BETWEEN 1 AND 200) THEN RAISE EXCEPTION 'invalid_translation_key'; END IF;

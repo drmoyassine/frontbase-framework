@@ -70,8 +70,16 @@ export function menuPlacementMatches(menu:MenuDefinition,pageId:string,pagePath:
 export function visibleMenuItems(items:MenuItem[],audience:VerifiedMenuAudience|null):MenuItem[] {
     return items.filter(i=>menuAudienceMatches(i.audience,audience)).map(i=>({...i,children:visibleMenuItems(i.children,audience)}));
 }
+// Only objects produced by full validation enter this immutable authored-definition cache.
+const validatedDocuments=new WeakSet<object>();
+export function validatedMenuDocument(input:MenuDocument):MenuDocument{
+    if(validatedDocuments.has(input))return input;
+    const parsed=menuDocumentSchema.parse(input);
+    const freeze=(value:unknown):void=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}};
+    freeze(parsed);validatedDocuments.add(parsed);return parsed;
+}
 export function resolveMenuRegions(document:MenuDocument,pageId:string,pagePath:string,audience:VerifiedMenuAudience|null):Partial<Record<MenuDefinition['slot'],MenuDefinition>> {
-    const parsed=menuDocumentSchema.parse(document);const regions:Partial<Record<MenuDefinition['slot'],MenuDefinition>>={};
+    const parsed=validatedMenuDocument(document);const regions:Partial<Record<MenuDefinition['slot'],MenuDefinition>>={};
     for(const menu of parsed.menus.filter(m=>m.enabled&&menuPlacementMatches(m,pageId,pagePath)&&menuAudienceMatches(m.audience,audience)).sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id))){
         if(regions[menu.slot]){if(regions[menu.slot]!.priority===menu.priority)throw Error('menu_placement_conflict');continue;}
         regions[menu.slot]={...menu,items:visibleMenuItems(menu.items,audience)};

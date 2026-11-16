@@ -30,6 +30,14 @@ assert.equal(pluralPatternLabel({}, 'recordsRange', 'en', 1), '');
 assert.equal(new Intl.PluralRules('ar').select(1), 'one');
 assert.equal(pluralPatternLabel(range, 'recordsRange', 'ar', 1), 'R1');
 assert.equal(pluralPatternLabel(range, 'recordsRange', 'ar', 11), 'R');
+// The integer fast path must stay byte-equivalent to the platform's CLDR rules.
+const categories = ['zero','one','two','few','many','other'];
+const categoryLabels = Object.fromEntries(categories.map(value => ['n.'+value,value]));
+for (const locale of ['en','ar','en-US','ar-EG','fr']) {
+    const reference = new Intl.PluralRules(locale);
+    for (const count of [...Array.from({length:601},(_,i)=>i-300),0.1,1.1,2.5,1000,10001,1000000,Number.MAX_SAFE_INTEGER])
+        assert.equal(pluralPatternLabel(categoryLabels,'n',locale,count),reference.select(count),`${locale}:${count}`);
+}
 // Every plural variant key in the registry owns its base pattern.
 for (const key of Object.keys(directoryBrowsingLabels)) if (key.includes('.'))
     assert.ok(key.split('.')[0] in directoryBrowsingLabels, `variant ${key} has a base pattern`);

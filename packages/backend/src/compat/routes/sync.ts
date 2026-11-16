@@ -3,6 +3,7 @@ import {recordFieldCatalog,sqlRecordReader,projectionRelations} from '../record-
 import {datasourceSchema,scopedDatasourceConfig,schemaSessionKey} from '../datasource-schema.js';
 import {savedWhere} from '../saved-view-query.js';
 import {savedViewFilters} from '@frontbase/edge-core/saved-view-filters';
+import {LiveLayoutPublicationStore} from '../live-layout-publication.js';
 import {savedViewUsage} from '../view-usage.js';
 import {executeSingleTableRpc} from '../single-table-rpc.js';
 /**
@@ -208,6 +209,7 @@ export function buildWhere(
     filters: Record<string, unknown>[],
     search?: string | null,
     requestedSearchColumns?: string[] | null,
+    qualifier?: string,
 ): { sql: string; params: unknown[] } {
     const columnNames = columns.map((column) => column.name);
     const clauses: string[] = [];
@@ -220,7 +222,7 @@ export function buildWhere(
         const field = validateIdentifier(String(filter.field ?? filter.column ?? ''), columnNames);
         const operator = String(filter.operator ?? filter.op ?? 'eq').toLowerCase();
         const value = filter.value;
-        const quoted = `"${field.replace(/"/g,'""')}"`;
+        const quoted = (qualifier ? `"${qualifier.replace(/"/g,'""')}".` : '') + `"${field.replace(/"/g,'""')}"`;
         if (operator === 'is_null' || operator === 'not_null') {
             clauses.push(`${quoted} IS ${operator === 'not_null' || value === false ? 'NOT ' : ''}NULL`);
         } else if (operator === 'in') {
@@ -1160,6 +1162,11 @@ export function registerSyncRoutes(
     });
 
     // PATCH /api/sync/views/{view_id}/
+    async function publishedDetailView(owner:string,id:string){
+        const active=await new LiveLayoutPublicationStore(controlRunner,owner).activeForServing();
+        return Object.values(active?.layout.configuration.detailViews??{}).includes(id);
+    }
+
     app.patch('/api/sync/views/:view_id/', async (c) => {
         const viewId = c.req.param('view_id');
         const b = await c.req.json().catch(() => ({})) as any;
@@ -1172,6 +1179,9 @@ export function registerSyncRoutes(
         try{
             b.source_schema=datasourceSchema(datasource.kind,datasource.config,b.source_schema??existing.source_schema);
             const config=scopedDatasourceConfig(datasource.kind,await mergeAccount(c.get('tenant'),datasource.kind,datasource.config),b.source_schema);
+            const sourceChanged=(b.target_table??existing.target_table)!==existing.target_table
+                || b.source_schema!==datasourceSchema(datasource.kind,datasource.config,existing.source_schema);
+            if(sourceChanged&&await publishedDetailView(c.get('tenant'),viewId))return c.json({detail:'This Saved View serves a published detail layout. Publish a different binding before changing its source.'},409);
             const schema=isNativePostgrest(datasource)||b.source_schema!=null ? (await nativePostgrestInspector(config,externalFetch)).schema(b.target_table??existing.target_table) : await inspectTable(datasourceRunner(datasource.kind,config,externalFetch),dialectOf(datasource.kind),b.target_table??existing.target_table);
             if(b.filters!==undefined){b.filters=savedViewFilters(b.filters);savedWhere(dialectOf(datasource.kind),schema.columns,b.filters);}
             if(b.default_sort!==undefined&&b.default_sort!==null&&(!schema.columns.some(column=>column.name===b.default_sort.column)||!['asc','desc'].includes(b.default_sort.direction)))throw Error('invalid_sort');
@@ -1188,6 +1198,7 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const existing = await store.getView(viewId);
         if (!existing) return c.json({ detail: 'View not found' }, 404);
+        if(await publishedDetailView(c.get('tenant'),viewId))return c.json({detail:'This Saved View serves a published detail layout. Publish a different binding before deleting it.'},409);
         await store.deleteView(viewId);
         return c.body(null, 204);
     });

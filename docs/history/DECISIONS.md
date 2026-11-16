@@ -1610,3 +1610,36 @@ The owner directed the deployment wizard changes delivered by [the wizard plan](
 The shared `mountBindingsForm` becomes a multi-step wizard (State Database required; File Storage, Application Cache, Queue Delivery, Vector Database, Email Delivery optional and skippable; deployment possible once step 1 holds a valid selection) across all four surfaces it serves, styled with the console's design tokens and official provider brand buttons. Schema creation stays apply-time only, preserving the no-pre-consent-mutation fence; provisioned selections remain fenced to `frontbase_edge_<name>`, occupied schemas are refused, and each apply mints a fresh scoped-role password.
 
 Recorded limitation, not an accepted gap to hide: the native zero-state worker holds no server-side copy of the actor's Supabase grant (it passes once through activation into the installed worker), so the native wizard connects the project chosen at OAuth time and takes the schema name inline; the full project/schema dropdowns live in the hosted setup wizard and console today. Read-only project/schema discovery endpoints exist on the hosted bootstrap and console surfaces; extending listing to native installations requires relay-protocol work and is follow-up, not shipped behavior.
+
+
+## 2026-11-15 live-only data serving — supersedes content snapshots
+
+The owner directs: “deprecate snapshots completely. All data serving is live.” Publish layout and binding/access configuration; resolve database records and translations live through existing adapters. Record edits, new eligible records and deletions must not require site preparation or republication. This includes articles, detail routes, SEO, relationships, counts, search and pagination.
+
+The November 14 content-capture/pre-render direction and its compiled record HTML/index extension below are superseded. Preserve layout version history and existing translation/source data. Historical content captures may remain for migration/audit, never serving or fallback. Keep tenant/access restrictions and explicit live-read failures. Workers Free remains required; previous snapshot CPU receipts are not evidence for the replacement.
+
+Implementation and migration are open. See [the live-serving plan](../plans/live-data-serving-20261115.md). No completed live-only deployment is claimed.
+
+## 2026-11-14 Workers Free publication preparation — superseded November 15
+
+Keep Study-in-USA on Workers Free. Run expensive publication preparation, approval validation and HTML rendering in an authenticated self-hosted Node operator, reusing the existing engine and stores. An opt-in pre-render entry may serve immutable HTML only after checking the published source identity and exact render dependencies. Deployment assets must stay behind the Worker; unreviewed/private output is not a public static site. This retains the one-engine architecture and does not introduce a required hosted control plane.
+
+The first implementation is restricted to self-hosted PostgREST state and uses database-side dependency signatures. It is an experimental serving path, not general adapter parity or full Free-plan CMS acceptance. Interactive filtering, authenticated editing, redirects, sitemap, multilingual content, database load and full-route evidence remain explicit gates. [Current evidence and open work](../plans/study-in-usa-cloudflare-deployment-20261111.md).
+
+### Dynamic browsing extension — implementation pending live qualification
+
+The owner's follow-up requires dynamic search and pagination on Workers Free, not only fixed-page exports. Compile ordinary card components with the existing renderer and tree-cloning utility outside the Worker. Keep native GET controls and their existing localized renderer. The Worker may filter/sort the complete compiled index and select immutable card fragments only after the same source, locale and exact dependency proof succeeds. No public static index, new datasource writes, renderer proxy, paid plan or second authored layout is introduced.
+
+Compilation must refuse unsupported query-dependent layouts and ambiguous record/component identities; it must compare representative queries against the normal renderer before marking an export complete. Personalized requests retain their existing authenticated handlers. This extension is not a claim that the full CMS or every authored layout fits Workers Free. Cold/warm live measurements and English/Arabic acceptance remain required.
+
+
+### 2026-11-15 publication-time execution plans - authorized implementation
+
+The owner approved compiling authored layout and translation bindings at publication, with current records and saved translation heads resolved once per request through existing adapters. This supersedes the runtime rediscovery approach in the first live-only candidate. Preserve stable resource identities, source freshness, multilingual SEO and frontend edit routing. No record values or translated record text enter the publication artifact. Existing layout publications must remain readable while gaining a derived plan; newly prepared publications persist the validated plan. Implementation and cold/warm Workers Free qualification are active and incomplete. Production remains unchanged pending end-to-end evidence.
+
+
+2026-11-15 publication execution contract: implement the owner's compilation direction using data-only display instructions and the existing safe interpolation grammar, validated against authored layouts at publication/load. Cache immutable instructions only; current record and translation values are request-local. Reuse one localized semantic field list for visible text and SEO, and retain current source/head/context checks. The PostgREST public read projection reuses its existing batch RPC and does not alter authoring/history writes. Existing publications derive plans compatibly. This is implementation direction and local/isolated evidence, not a Workers Free or production release sign-off.
+
+The first-render follow-up extends each immutable layout artifact with optional directory execution instructions: structural node paths, query limits, and validated landing-presentation references. Full authored validation stays in preparation; serving verifies the owner-scoped digest and bounded plan references, then supplies current rows to the existing projector and renderer. Older artifacts use their existing runtime compiler. No records, saved translations, credentials or HTML enter these instructions. An older binary whose strict envelope predates the new optional field requires a compatible earlier publication pointer before rollback.
+
+Strict configuration validation can be reused only for deeply immutable objects created by the internal decoder. A caller freezing its own input cannot bypass validation. Translation identity batches validate the shared scope once and each resource individually; freshness validates the exact fingerprint fields after the current identity/scope checks. Stable IDs, SHA-256 output, source invalidation and tenant boundaries remain unchanged. These changes implement the existing publication-compilation decision, not a new data cache or Workers Free acceptance claim. See the current measurements in the live-serving plan.

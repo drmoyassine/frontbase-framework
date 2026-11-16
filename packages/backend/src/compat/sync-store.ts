@@ -169,6 +169,17 @@ export class SyncStore {
         return rows.map((r) => this.mapViewRow(r));
     }
 
+    async getViewScopes(ids:readonly string[]) {
+        if(!ids.length||ids.length>3)throw Error('invalid_detail_views');
+        const rows=await this.runner.query(
+            `SELECT id,datasource_id,target_table,source_schema,filters FROM datasource_views WHERE tenant_slug=? AND id IN (${ids.map(()=>'?').join(',')})`,
+            [this.tenant,...ids],
+        );
+        return rows.map(row=>({id:String(row.id),datasource_id:String(row.datasource_id),target_table:String(row.target_table),
+            source_schema:row.source_schema==null?null:String(row.source_schema),
+            filters:row.filters==null?[]:JSON.parse(String(row.filters)) as unknown}));
+    }
+
     async getView(id: string): Promise<DatasourceViewRecord | null> {
         const rows = await this.runner.query(
             'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, source_schema, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND id = ?',

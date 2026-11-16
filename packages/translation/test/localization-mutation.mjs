@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { compareLocaleSitemapUrls } from '../dist/sitemap-comparison.js';
-import { translationUnitId } from '../dist/identity.js';
+import { translationUnitId, messageSourceFingerprintFromFields } from '../dist/identity.js';
 import { applyRichTextTranslations, extractRichTextSegments } from '../dist/rich-text.js';
 
 const scope = { tenantId: 'tenant', projectId: 'project' };
@@ -34,6 +34,13 @@ await mutation('positional slug guessing', original, 'source.get(b.relativeKey)'
 const ownerGate = async fn => assert.notEqual(await fn(scope, ref), await fn({ ...scope, tenantId: 'other' }, ref));
 await ownerGate(translationUnitId);
 await mutation('translation identity isolation', identity, 'scope: localizationScopeSchema.parse(scope)', "scope: { tenantId: 'shared', projectId: 'shared' }", 'translationUnitId', ownerGate);
+const fingerprint={sourceLocale:'en',format:'plain',text:'Apply {$name}',segmenterVersion:1,placeholders:['name']};
+const fingerprintSchemaGate=async fn=>assert.rejects(()=>fn({...fingerprint,text:'a'.repeat(100001)}));
+await fingerprintSchemaGate(messageSourceFingerprintFromFields);
+await mutation('fingerprint field validation',identity,'fingerprintDigest(fingerprintFieldsSchema.parse(input))','fingerprintDigest(input)','messageSourceFingerprintFromFields',fingerprintSchemaGate);
+const fingerprintBindingGate=async fn=>assert.notEqual(await fn(fingerprint),await fn({...fingerprint,placeholders:['region']}));
+await fingerprintBindingGate(messageSourceFingerprintFromFields);
+await mutation('fingerprint placeholder binding',identity,'fields.placeholders.slice().sort()','[]','messageSourceFingerprintFromFields',fingerprintBindingGate);
 const rich = { version: 1, children: [{ kind: 'text', id: 'text', text: 'Hi {{record.name}}' }] };
 const bindingGate = fn => assert.throws(() => fn(rich, [{ id: 'text', text: 'Hi {{record.secret}}' }]), /changed_rich_text_references/);
 bindingGate(applyRichTextTranslations);
@@ -41,5 +48,5 @@ await mutation('rich text binding protection', richText, 'JSON.stringify(referen
 const linkGate = fn => assert.throws(() => fn({ version: 1, children: [{ kind: 'element', id: 'x', tag: 'a', href: 'javascript:alert(1)', children: [] }] }), /unsafe_rich_text_link/);
 linkGate(extractRichTextSegments);
 await mutation('rich text unsafe link refusal', richText, 'if (node.href && (!', 'if (false && (!', 'extractRichTextSegments', linkGate);
-assert.equal(caught, 6);
-console.log('localization-mutation: PASS (6/6 in-memory faults; source/index unchanged)');
+assert.equal(caught, 8);
+console.log('localization-mutation: PASS (8/8 in-memory faults; source/index unchanged)');

@@ -7,14 +7,46 @@ export const sourceBindingsSchema=z.object({schemaVersion:z.literal(2),dataSourc
  filter:z.object({column:identifier,op:z.literal('eq'),value:z.union([z.string().max(160),z.number().finite()])}).strict()
 }).strict())}).strict();
 export type SourceBindings=z.infer<typeof sourceBindingsSchema>;
-/** The sole legacy-mapping adapter. It never mutates a saved configuration/capture. */
-export function sourceBindings(input:DirectoryConfiguration):SourceBindings{
- const c=directoryConfigurationSchema.parse(input);
- return sourceBindingsSchema.parse({schemaVersion:2,dataSourceId:c.datasourceId,bindings:Object.fromEntries(Object.entries(c.collections).map(([id,m])=>[id,{tableName:m.table,fieldMapping:m.fields,filter:{column:m.scope.field,op:'eq',value:m.scope.value}}]))});
-}
 const aliases=['id','title','originalPath','summary','body','cover','logo','gallery','cityId','institutionId','coverAlt','contentRole','sourceOrigin','byline','publishedAt'] as const;
 const directoryProjection=z.object(Object.fromEntries(aliases.map(key=>[key,identifier])) as Record<typeof aliases[number],typeof identifier>).catchall(identifier);
 function directoryProjectionSource(source:SourceBindings['bindings'][string]|undefined){if(!source)throw Error('record_source_unavailable');return {...source,fieldMapping:directoryProjection.parse(source.fieldMapping)};}
+type ParsedDirectorySource = {configuration:DirectoryConfiguration;sources:Record<DirectoryRole,ReturnType<typeof directoryProjectionSource>>};
+const immutableConfigurations=new WeakMap<object,ParsedDirectorySource>();
+
+/** The publication reader uses this strict decoder once, then keeps its deeply
+ * immutable result. Only values created here can reuse that validation; freezing
+ * arbitrary caller input never marks it as trusted. */
+export function immutableDirectoryConfiguration(input:unknown):DirectoryConfiguration{
+ const result=parseDirectorySourceConfiguration(input);
+ const freeze=(value:unknown):void=>{if(value&&typeof value==='object'&&!Object.isFrozen(value)){for(const child of Object.values(value))freeze(child);Object.freeze(value);}};
+ freeze(result);
+ immutableConfigurations.set(result.configuration,result);
+ return result.configuration;
+}
+
+/** Validate the legacy document before projecting its fixed role and identifier fields. */
+export function parseDirectorySourceConfiguration(input: unknown) {
+ const previous=input&&typeof input==='object'?immutableConfigurations.get(input):undefined;
+ if(previous)return previous;
+ const configuration = directoryConfigurationSchema.parse(input);
+ const sources = Object.fromEntries(Object.entries(configuration.collections).map(([role, mapping]) => [role, {
+  tableName: mapping.table,
+  fieldMapping: mapping.fields,
+  filter: {column: mapping.scope.field, op: 'eq', value: mapping.scope.value},
+ } satisfies ReturnType<typeof directoryProjectionSource>])) as Record<DirectoryRole, ReturnType<typeof directoryProjectionSource>>;
+ return {configuration, sources};
+}
+
+/** The sole legacy-mapping adapter. It never mutates a saved configuration/capture. */
+export function sourceBindings(input:DirectoryConfiguration):SourceBindings{
+ const {configuration, sources} = parseDirectorySourceConfiguration(input);
+ return sourceBindingsSchema.parse({schemaVersion:2,dataSourceId:configuration.datasourceId,bindings:sources});
+}
+
+/** Validate the complete configuration once for callers resolving several roles. */
+export function directorySources(input:DirectoryConfiguration){
+ return parseDirectorySourceConfiguration(input).sources;
+}
 export function directorySource(input:DirectoryConfiguration,role:DirectoryRole){return directoryProjectionSource(sourceBindings(input).bindings[role]);}
 /** New snapshots carry explicit lineage; absence is the compatibility path for immutable old captures. */
 export function publicationSource(input:{configuration:DirectoryConfiguration;sourceBindings?:SourceBindings},role:DirectoryRole){

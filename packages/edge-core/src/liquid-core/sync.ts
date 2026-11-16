@@ -13,7 +13,10 @@
 
 export function resolvePath(obj: any, path: string): any {
     const parts = parsePath(path);
-    if (obj == null || !parts) return undefined;
+    return parts?resolveParts(obj,parts):undefined;
+}
+function resolveParts(obj:any,parts:readonly string[]):unknown{
+    if(obj==null)return undefined;
     let cur: any = obj;
     for (let i=0;i<parts.length;i++) {
         if (cur == null || typeof cur !== 'object') return undefined;
@@ -110,4 +113,36 @@ export function renderSync(template: string, context: Record<string, any> = {}):
         const val = resolveBinding(String(expr).trim(),context);
         return val !== undefined && val !== null ? formatScalar(val) : '';
     });
+}
+
+/** Publication bytecode for the existing safe interpolation grammar. No functions,
+ * JavaScript evaluation, record values or credentials are retained. */
+export type CompiledInterpolation=({literal:string}|{alternatives:({path:string[]}|{value:unknown})[]})[];
+export function compileInterpolation(template:string):CompiledInterpolation|null{
+    if(!isSimpleInterpolation(template))return null;
+    const parts:CompiledInterpolation=[];let offset=0;
+    for(const match of template.matchAll(/\{\{\s*([^}]+?)\s*\}\}/g)){
+        if(match.index>offset)parts.push({literal:template.slice(offset,match.index)});
+        const choices=bindingAlternatives(match[1]!.trim());if(!choices)return null;
+        const alternatives:({path:string[]}|{value:unknown})[]=[];
+        for(const choice of choices){
+            const path=/^(true|false|null)$/.test(choice)?null:parsePath(choice);
+            if(path)alternatives.push({path});
+            else if(choice.startsWith("'"))alternatives.push({value:choice.slice(1,-1).replace(/\\'/g,"'").replace(/\\\\/g,'\\')});
+            else {try{alternatives.push({value:JSON.parse(choice)});}catch{return null;}}
+        }
+        parts.push({alternatives});offset=match.index+match[0].length;
+    }
+    if(offset<template.length)parts.push({literal:template.slice(offset)});
+    return parts;
+}
+export function renderCompiledInterpolation(program:CompiledInterpolation,context:Record<string,any>):string{
+    return program.map(part=>{
+        if('literal' in part)return part.literal;
+        for(const alternative of part.alternatives){
+            const value='path' in alternative?resolveParts(context,alternative.path):alternative.value;
+            if(value!==undefined&&value!==null&&!(typeof value==='string'&&!value.trim()))return formatScalar(value);
+        }
+        return '';
+    }).join('');
 }

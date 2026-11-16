@@ -1,5 +1,5 @@
 import {relativeSiteHref} from '../directory/navigation.js';
-import {localizePublicHref} from '../localization/navigation.js';
+import {createPublicHrefLocalizer} from '../localization/navigation.js';
 import {evaluateCondition,conditionUsesClient,contextReader,resolveValue,valueUsesClient} from '../conditions.js';
 /**
  * LiquidJS template-resolution helpers.
@@ -7,7 +7,7 @@ import {evaluateCondition,conditionUsesClient,contextReader,resolveValue,valueUs
  */
 
 import { liquid } from './lib/liquid.js';
-import {isSimpleInterpolation,renderSync,bindingAlternatives,resolveBinding,bindingContext} from '../liquid-core/sync.js';
+import {renderCompiledInterpolation,type CompiledInterpolation,isSimpleInterpolation,renderSync,bindingAlternatives,resolveBinding,bindingContext} from '../liquid-core/sync.js';
 import type { TemplateContext } from './lib/context.js';
 
 /**
@@ -15,56 +15,73 @@ import type { TemplateContext } from './lib/context.js';
  * Supports: {{ variable }}, {{ var | filter }}, {% if %}...{% endif %}, {% for %}...{% endfor %}
  * NOW ASYNC due to LiquidJS.
  */
-export async function resolveProps(
+/** Resolve ordinary bindings synchronously; only full Liquid programs need promises.
+ * The result is always a new object: callers attach per-render styles and bindings. */
+export async function resolveProps(props: Record<string, unknown> | undefined, context: TemplateContext): Promise<Record<string, unknown>> {
+    return resolvePropsValue(props, context);
+}
+export function propHrefResolver(app: TemplateContext['app'] | undefined): ((href: string) => string) | undefined {
+    const origin = app?.siteNavigationOrigin;
+    const locale = app?.navigationLocale;
+    const origins = app?.navigationOrigins;
+    const localize = typeof locale === 'string' && Array.isArray(origins) ? createPublicHrefLocalizer(locale, origins) : undefined;
+    if (typeof origin === 'string') {
+        if (localize) return href => localize(relativeSiteHref(href, origin) as string);
+        return href => relativeSiteHref(href, origin) as string;
+    }
+    return localize;
+}
+
+function resolveNavigation(props: Record<string, unknown>, navigate: ((href: string) => string) | undefined): Record<string, unknown> {
+    if (navigate) {
+        if (typeof props.href === 'string') props.href = navigate(props.href);
+        if (typeof props.pageUrl === 'string') props.pageUrl = navigate(props.pageUrl);
+    }
+    return props;
+}
+
+export function resolvePropsValue(
     props: Record<string, unknown> | undefined,
-    context: TemplateContext
-): Promise<Record<string, unknown>> {
+    context: TemplateContext,
+    programs?: ReadonlyMap<string, CompiledInterpolation>,
+    recordScopes?: WeakMap<object, Record<string, any>>,
+    navigate: ((href: string) => string) | undefined = propHrefResolver(context.app),
+): Record<string, unknown> | Promise<Record<string, unknown>> {
     if (!props) return {};
-
     const resolved: Record<string, unknown> = {};
-
-    // Expose the system date scalars (year, date, time, datetime, month, day,
-    // env) at the top of the Liquid scope so bare tokens like {{year}} resolve
-    // — the builder's Liquid preview flattens these the same way. Scoped copy
-    // only; an empty system (e.g. the byte-parity pinned context) is a no-op,
-    // so golden snapshots stay deterministic.
-    const system = (context as Record<string, any>).system || {};
-    const scope = bindingContext({ ...context, ...system });
-
-    for (const [key, value] of Object.entries(props)) {
-        if(key==='actionBindings'&&Array.isArray(value)&&context.record){
-            resolved[key]=await Promise.all(value.map(action=>action&&typeof action==='object'&&!Array.isArray(action)?resolveProps(action,context):action));continue;
-        }
-        if (typeof value === 'string' && (value.includes('{{') || value.includes('{%'))) {
-            // Use LiquidJS for template rendering
-            try {
-                resolved[key] = isSimpleInterpolation(value)?renderSync(value,scope):await liquid.parseAndRender(value, scope);
-                if(key==='src'&&props.fallbackOnError===true){
-                    const expression=value.match(/^\s*\{\{([^{}]+)\}\}\s*$/)?.[1];
-                    const alternatives=expression?bindingAlternatives(expression):null;
-                    if(alternatives&&alternatives.length>1)resolved._imageFallbackSrc=resolveBinding(alternatives.slice(1).join(' || '),scope);
-                }
-            } catch (error) {
-                console.error(`Template error in prop "${key}":`, error);
-                resolved[key] = value; // Fallback to original value
+    let pending: Promise<void>[] | undefined;
+    let scope: Record<string, any> | undefined;
+    const assign = (key: string, value: unknown) => {
+        if (value instanceof Promise) (pending ??= []).push(value.then(result => { resolved[key] = result; }));
+        else resolved[key] = value;
+    };
+    for (const key of Object.keys(props)) {
+        const value = props[key];
+        if (key === 'actionBindings' && Array.isArray(value) && context.record) {
+            const actions = value.map(action => action && typeof action === 'object' && !Array.isArray(action) ? resolvePropsValue(action, context, programs, recordScopes, navigate) : action);
+            assign(key, actions.some(action => action instanceof Promise) ? Promise.all(actions) : actions);
+        } else if (typeof value === 'string' && (value.includes('{{') || value.includes('{%'))) {
+            if(!scope){
+                const base={...context,...((context as Record<string,any>).system||{})},record=base.record;
+                const cached=record&&typeof record==='object'?recordScopes?.get(record):undefined;
+                const normalized:Record<string,any>=cached?{...base,record:cached}:bindingContext(base);
+                scope=normalized;
+                if(!cached&&record&&typeof record==='object'&&normalized.record)recordScopes?.set(record,normalized.record);
             }
-        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-            // Recursively resolve nested objects
-            resolved[key] = await resolveProps(value as Record<string, unknown>, context);
-        } else {
-            resolved[key] = value;
-        }
+            const failed = (error: unknown) => { console.error(`Template error in prop "${key}":`, error); return value; };
+            try {
+                const compiled=programs?.get(value);
+                assign(key, compiled?renderCompiledInterpolation(compiled,scope):isSimpleInterpolation(value) ? renderSync(value, scope) : liquid.parseAndRender(value, scope).catch(failed));
+                if (key === 'src' && props.fallbackOnError === true) {
+                    const expression = value.match(/^\s*\{\{([^{}]+)\}\}\s*$/)?.[1];
+                    const alternatives = expression ? bindingAlternatives(expression) : null;
+                    if (alternatives && alternatives.length > 1) resolved._imageFallbackSrc = resolveBinding(alternatives.slice(1).join(' || '), scope);
+                }
+            } catch (error) { resolved[key] = failed(error); }
+        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) assign(key, resolvePropsValue(value as Record<string, unknown>, context, programs, recordScopes, navigate));
+        else resolved[key] = value;
     }
-
-    // Resolve navigation after row interpolation; related URL fields are source content and
-    // must not be rewritten in the record itself. Reuse host/locale navigation guards.
-    for(const key of ['href','pageUrl'])if(typeof resolved[key]==='string'){
-        const origin=context.app?.siteNavigationOrigin;
-        if(typeof origin==='string')resolved[key]=relativeSiteHref(resolved[key],origin);
-        const locale=context.app?.navigationLocale,origins=context.app?.navigationOrigins;
-        if(typeof locale==='string'&&Array.isArray(origins))resolved[key]=localizePublicHref(String(resolved[key]),locale,origins);
-    }
-    return resolved;
+    return pending ? Promise.all(pending).then(() => resolveNavigation(resolved, navigate)) : resolveNavigation(resolved, navigate);
 }
 
 /**

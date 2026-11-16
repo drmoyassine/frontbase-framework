@@ -26,10 +26,16 @@ console.log('edge-infra translation HTTP bridge: PASS (shared client, auth/schem
 const {fixture,scope}=await import('../../translation/test/job-fixtures.mjs');
 const f=await fixture();try{
  await f.engine.writeManual(scope,f.revision());const snapshot=await f.store.read(scope,f.source.unitId,'ar'),reads=[];
+ let sparseStatus='supported';
  const batch=translationPersistenceFromSupabase({url:'https://native.invalid',restUrl:'https://native.invalid',serviceKey:'synthetic-jwt',fetchImpl:async(input,init)=>{
   const req=new Request(input,init),url=new URL(req.url);reads.push(url);
   assert.equal(req.method,'POST');assert.equal(req.headers.get('content-profile'),'translations');assert.equal(req.headers.get('authorization'),'Bearer synthetic-jwt');
   assert.equal(url.pathname,'/rpc/translation_read_batch');const {p_operation,p_scope,p_input}=await req.json();assert.deepEqual(p_scope,scope);assert.equal(p_input.locale,'ar');
+  if(p_operation==='read-current-many') {
+   if(sparseStatus==='legacy') return Response.json({code:'22023',message:'invalid_translation_operation'},{status:400});
+   if(sparseStatus==='failed') return Response.json({code:'42501',message:'permission denied'},{status:403});
+   return Response.json([{unitId:f.source.unitId,snapshot}]);
+  }
   if(p_operation==='read-many')return Response.json(p_input.unitIds.map(unitId=>({unitId,snapshot:unitId===f.source.unitId?snapshot:{version:0,source:null,head:null}})));
   assert.equal(p_operation,'read-revisions');return Response.json(p_input.keys.map(key=>({...key,revision:snapshot.head})));
  }});
@@ -37,6 +43,21 @@ const f=await fixture();try{
  const result=await batch.readMany(scope,ids,'ar');assert.equal(result.length,67);assert.deepEqual(result[0],snapshot);assert.deepEqual(result[66],{version:0,source:null,head:null});
  assert.equal(reads.length,1,'67 fields must issue exactly one HTTP request');
  assert.equal((await batch.readRevisions(scope,[{unitId:f.source.unitId,revisionId:'revision'}],'ar'))[0].revisionId,'revision');assert.equal(reads.length,2);
+ const direct=await batch.readCurrentMany(scope,ids,'ar');
+ assert.equal(direct[0].head.text,snapshot.head.text);
+ assert.equal(direct[66].head,null);
+ assert.equal(reads.length,3,'sparse lookup sends one HTTP request');
+ const heads = await batch.readCurrentHeads(scope, ids, 'ar');
+ assert.deepEqual(heads, new Map([[f.source.unitId, direct[0]]]));
+ assert.equal(reads.length, 4, 'public lookup sends one request and returns only present heads');
+ sparseStatus='legacy';
+ assert.deepEqual(await batch.readCurrentMany(scope, ids, 'ar'), direct);
+ assert.deepEqual(await batch.readCurrentHeads(scope, ids, 'ar'), heads);
+ assert.equal(reads.length, 8, 'legacy RPC fallback preserves both projections');
+ sparseStatus='failed';
+ await assert.rejects(batch.readCurrentHeads(scope, ids, 'ar'), /translation_rpc_failed/);
+ assert.equal(reads.length, 9, 'permission failure does not fall back');
+
  console.log('translation batch reads PASS: one scoped HTTP request for 67 fields, isolated revision lookup');
 }finally{f.close();}
 

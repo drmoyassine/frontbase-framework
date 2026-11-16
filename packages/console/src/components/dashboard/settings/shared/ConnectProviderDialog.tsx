@@ -7,13 +7,12 @@
  *
  * Architecture:
  *   - useConnectProvider.ts    — All shared state, test-connection, generic save
- *   - SupabaseDiscovery.tsx    — Post-test project picker
  *   - NeonDiscovery.tsx        — Post-test org → project picker
  *   - Turso save flow          — Inline (find-or-create + add DB) — small enough
  */
 
 import { useState, useCallback } from 'react';
-import {connectProvider,readProviderConnections} from '@/components/deployment/provider-connect';
+import {CONNECTED_ACCOUNTS_PATH,connectProvider,readProviderConnections} from '@/components/deployment/provider-connect';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     AlertTriangle, CheckCircle2, Cloud, Loader2,
@@ -32,7 +31,6 @@ import { edgeInfrastructureApi } from '@/hooks/useEdgeInfrastructure';
 import { API_BASE, CAPABILITY_LABELS } from './edgeConstants';
 import type { ProviderCapability } from './edgeConstants';
 import { useConnectProvider } from './connect-dialog/useConnectProvider';
-import { SupabaseDiscovery } from './connect-dialog/SupabaseDiscovery';
 import { NeonDiscovery } from './connect-dialog/NeonDiscovery';
 
 // ============================================================================
@@ -46,7 +44,6 @@ interface ConnectProviderDialogProps {
     onOpenChange: (open: boolean) => void;
     onConnected?: (accountId: string) => void;
     hideDisplayName?: boolean;
-    oauthReturnPath?: string;
     editProvider?: { id: string; name: string; provider: string } | null;
 }
 
@@ -61,7 +58,6 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
     onOpenChange,
     onConnected,
     hideDisplayName,
-    oauthReturnPath,
     editProvider,
 }) => {
     const effectiveLockedProvider = editProvider?.provider || lockedProvider;
@@ -95,10 +91,6 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
     const authorizationPending = supportsOAuth && authorization.isPending;
     const manualAvailable = !oauthAvailable && !authorizationPending && !(supportsOAuth && authorization.isError);
 
-    // Supabase
-    const [discoveredProjects, setDiscoveredProjects] = useState<{ ref: string; name: string; region: string; status: string }[]>([]);
-    const [selectedProjectRef, setSelectedProjectRef] = useState('');
-
     // Neon
     const [neonOrgs, setNeonOrgs] = useState<{ id: string; name: string }[]>([]);
     const [selectedNeonOrg, setSelectedNeonOrg] = useState('');
@@ -106,8 +98,6 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
 
     // Reset discovery state
     const resetDiscovery = useCallback(() => {
-        setDiscoveredProjects([]);
-        setSelectedProjectRef('');
         setNeonOrgs([]);
         setSelectedNeonOrg('');
         setSelectedNeonProject('');
@@ -118,12 +108,6 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
         resetDiscovery();
         const result = await handleTestConnection();
         if (!result?.success) return;
-
-        // Supabase: populate project picker
-        if (result.projects && result.projects.length > 0) {
-            setDiscoveredProjects(result.projects);
-
-        }
 
         // Turso: auto-name from db_name
         if (effectiveProvider === 'turso' && result.db_name) {
@@ -177,9 +161,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
             } else {
                 // Standard providers — append discovery selections
                 let extraCreds: Record<string, string> = {};
-                if (effectiveProvider === 'supabase' && selectedProjectRef) {
-                    extraCreds = { project_ref: selectedProjectRef };
-                } else if (effectiveProvider === 'neon' && selectedNeonOrg) {
+                if (effectiveProvider === 'neon' && selectedNeonOrg) {
                     extraCreds = { org_id: selectedNeonOrg, project_id: selectedNeonProject };
                 }
                 newAccountId = await handleGenericSave(extraCreds);
@@ -199,7 +181,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
         }
     }, [
         effectiveProvider, providers, name, credFields,
-        selectedProjectRef, selectedNeonOrg, selectedNeonProject,
+        selectedNeonOrg, selectedNeonProject,
         handleGenericSave, refetch, resetForm, resetDiscovery,
         onOpenChange, onConnected, setIsConnecting, setError,
     ]);
@@ -272,7 +254,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                     {authorizationPending && <p role="status">Checking connection options…</p>}
                     {supportsOAuth && authorization.isError && <p role="alert">Connection options could not be loaded. <Button variant="link" onClick={() => void authorization.refetch()}>Retry</Button></p>}
                     {oauthAvailable && effectiveProvider === 'supabase' && !editProvider && <p className="text-sm text-muted-foreground">After authorization, choose the Supabase project for your datasource.</p>}
-                    {oauthAvailable&&<Button type="button" onClick={()=>void connectProvider(effectiveProvider as 'cloudflare'|'vercel'|'supabase'|'upstash',oauthReturnPath ?? (effectiveProvider === 'supabase' && !editProvider ? '/frontbase-admin/data-studio/datasources?connect=supabase' : '/frontbase-admin/settings?tab=accounts'),editProvider?.id).catch(()=>setError('Could not start provider authorization. Please try again.'))}>Connect to {currentConfig.label}</Button>}
+                    {oauthAvailable&&<Button type="button" onClick={()=>void connectProvider(effectiveProvider as 'cloudflare'|'vercel'|'supabase'|'upstash',CONNECTED_ACCOUNTS_PATH,editProvider?.id).catch(()=>setError('Could not start provider authorization. Please try again.'))}>Connect to {currentConfig.label}</Button>}
                     {manualAvailable&&currentConfig.fields.map(field => (
                         <div key={field.key} className="space-y-2">
                             <Label>{field.label}{!editProvider && field.required && ' *'}</Label>
@@ -324,19 +306,6 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                     </div>
                 )}
 
-                {/* ─── Discovery Slot: Supabase ─── */}
-                {effectiveProvider === 'supabase' && (
-                    <SupabaseDiscovery
-                        testResult={testResult}
-                        discoveredProjects={discoveredProjects}
-                        selectedProjectRef={selectedProjectRef}
-                        onProjectChange={(ref, projectName) => {
-                            setSelectedProjectRef(ref);
-                            if (projectName) setName(projectName);
-                        }}
-                    />
-                )}
-
                 {/* ─── Discovery Slot: Neon ─── */}
                 {effectiveProvider === 'neon' && (
                     <NeonDiscovery
@@ -371,7 +340,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                         onClick={handleSave}
                         disabled={editProvider
                             ? isConnecting
-                            : (!testResult?.success || isConnecting || (effectiveProvider === 'neon' && !selectedNeonProject) || (effectiveProvider === 'supabase' && !selectedProjectRef))}
+                            : (!testResult?.success || isConnecting || (effectiveProvider === 'neon' && !selectedNeonProject))}
                     >
                         {isConnecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Cloud className="w-4 h-4 mr-2" />}
                         {editProvider

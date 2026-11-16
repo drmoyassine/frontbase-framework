@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 import { projectEditorialBody } from './editorial.js';
 import { validateDirectoryBrowsing, directoryBrowsingSchema } from './browsing.js';
-import { landingRootSchema,templateSettingsSchema } from './template-settings.js';
+import { landingQueryLimit, landingRootSchema, projectTemplatePresentation, publishedLandingPresentation, templateSettingsSchema } from './template-settings.js';
 
 const path = z.string().max(400).refine(v => {
     try { const decoded = decodeURIComponent(v); return v.startsWith('/') && !decoded.startsWith('//') && !/[\\?#{}\s\x00-\x20]/.test(decoded) && !decoded.split('/').some(p => p === '.' || p === '..'); }
@@ -34,6 +34,9 @@ export const directoryRecordBindingSchema = z.object({
 export const directoryListCollections: Record<string, 'institutions' | 'programs' | 'cities' | 'articles'> = {
     'directory.institution.list': 'institutions', 'directory.program.list': 'programs',
     'directory.city.list': 'cities', 'directory.article.list': 'articles' };
+const liveDetailRecordCollections: Readonly<Record<string,string>> = Object.freeze({
+    'directory.institution.detail':'institutions', 'directory.program.detail':'programs', 'directory.article.detail':'articles',
+});
 /** Record text columns a list row may own as a translatable unit — dates and plain bodies never do. */
 const stampableRecordColumns = new Set(['title', 'summary', 'coverAlt', 'byline']);
 
@@ -49,12 +52,24 @@ export function validateSiteBinding(node: PageComponent): void {
 }
 
 /** Validate saved nodes without fetching rows. Avoid nested query multiplication. */
-export function directoryLayoutQueries(layout: PageLayoutData): { id: string; binding: DirectoryQueryBinding }[] {
-    if(layout?.root?.directoryLanding!==undefined)landingRootSchema.parse(layout.root.directoryLanding);
-    const requests: { id: string; binding: DirectoryQueryBinding }[] = []; let visited = 0, browsing = 0;
-    const walk = (nodes: PageComponent[], inQuery = false, depth = 0, articleQuery = false) => {
+type DirectoryQuery = { id: string; binding: DirectoryQueryBinding };
+type DirectoryInstructions = {
+    queries: DirectoryQuery[];
+    records: Map<PageComponent, z.infer<typeof directoryRecordBindingSchema>>;
+    controls: Map<PageComponent, z.infer<typeof directoryBrowsingSchema>>;
+    landing: z.infer<typeof templateSettingsSchema> | undefined;
+};
+type PublishDirectoryNode = (node: PageComponent, path: readonly number[]) => void;
+function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: PublishDirectoryNode): DirectoryInstructions {
+    const landing = layout?.root?.directoryLanding === undefined ? undefined : landingRootSchema.parse(layout.root.directoryLanding).settings;
+    const requests: DirectoryQuery[] = [];
+    const records: DirectoryInstructions['records'] = new Map();
+    const controls: DirectoryInstructions['controls'] = new Map();
+    let visited = 0, browsing = 0;
+    const walk = (nodes: PageComponent[], inQuery = false, depth = 0, articleQuery = false, parent?: readonly number[]) => {
         if (depth > 20) throw new Error('directory_template_depth');
-        for (const node of nodes) {
+        for (let index = 0; index < nodes.length; index++) {
+            const node = nodes[index]!;
             if (++visited > 2000) throw new Error('directory_template_size');
             const props = node.props || {}; let isArticle = false;
             if(props.templateHeroState!==undefined || props.templateSearchState!==undefined || props.templateMenuLabels!==undefined)throw new Error('transient_template_state');
@@ -64,7 +79,7 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
             }
             if(props.templateMenu!==undefined){z.object({version:z.literal(1)}).strict().parse(props.templateMenu);if(node.type!=='Container'||inQuery||layout.root?.directoryLanding===undefined)throw new Error('invalid_template_component');}
             validateDirectoryBrowsing(node, inQuery);
-            if(props.directoryControls !== undefined){directoryBrowsingSchema.parse(props.directoryControls);if(node.type!=='Repeater'||inQuery||props.directoryQuery===undefined)throw new Error('invalid_repeater_controls');}
+            if(props.directoryControls !== undefined){controls.set(node, directoryBrowsingSchema.parse(props.directoryControls));if(node.type!=='Repeater'||inQuery||props.directoryQuery===undefined)throw new Error('invalid_repeater_controls');}
             if (props.directoryBrowsing !== undefined && (++browsing > 1 || !['directory', 'article-index'].includes(String((layout.root?.siteConfiguration as {role?:string} | undefined)?.role)))) throw new Error('invalid_directory_browsing_role');
             validateSiteBinding(node);
             if (props.directoryQuery !== undefined) {
@@ -77,6 +92,7 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
             if (props.recordBindings !== undefined) {
                 if (!inQuery) throw new Error('record_binding_without_query');
                 const record = directoryRecordBindingSchema.parse(props.recordBindings);
+                records.set(node, record);
                 if (record.text && !['Text', 'Heading', 'Paragraph', 'Link'].includes(node.type)
                     || record.format && record.text !== 'publishedAt'
                     || record.altFallback && (node.type !== 'Image' || record.alt !== 'coverAlt')
@@ -86,10 +102,16 @@ export function directoryLayoutQueries(layout: PageLayoutData): { id: string; bi
                     || record.hideWhenEmpty !== undefined && (node.type !== 'Image' || !record.src)
                     || props.siteBindings !== undefined) throw new Error('invalid_record_binding_component');
             }
-            walk(node.children || [], inQuery || props.directoryQuery !== undefined, depth + 1, articleQuery || isArticle);
+            const path = publishNode ? Object.freeze([...(parent ?? []), index]) : undefined;
+            if (path) publishNode!(node, path);
+            walk(node.children || [], inQuery || props.directoryQuery !== undefined, depth + 1, articleQuery || isArticle, path);
         }
     };
-    walk(layout?.content || []); return requests;
+    walk(layout?.content || []);
+    return { queries: requests, records, controls, landing };
+}
+export function directoryLayoutQueries(layout: PageLayoutData): DirectoryQuery[] {
+    return compileDirectoryInstructions(layout).queries;
 }
 
 const literal = (value: unknown) => typeof value === 'string' ? value.replace(/\{(?=[{%])/g, '{\u200b') : '';
@@ -98,6 +120,8 @@ const imageUrl = (value: unknown) => {
     try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : ''; } catch { return ''; }
 };
 
+// Locale configuration only; dates and formatted record values are never retained.
+const editorialDateFormatters=new Map<string,Intl.DateTimeFormat>();
 /** ISO-only input; never infer timezone or allow Date.parse calendar rollover. */
 function formatEditorialDate(value: unknown, locale?: string): string {
     if (typeof value !== 'string') return '';
@@ -112,12 +136,16 @@ function formatEditorialDate(value: unknown, locale?: string): string {
         || zone && zone !== 'Z' && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4)) > 59)) return '';
     const date = new Date(h === undefined ? `${value}T00:00:00Z` : value);
     if (!Number.isFinite(date.getTime())) return '';
-    let selected = 'en';
-    try {
-        if (locale && locale.length <= 35 && /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)
-            && Intl.DateTimeFormat.supportedLocalesOf([locale]).length) selected = locale;
-    } catch { /* unsupported/invalid locale uses the stable declared fallback */ }
-    return new Intl.DateTimeFormat(selected, { timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn', year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+    const requested=locale&&locale.length<=35&&/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)?locale:'en';
+    let formatter=editorialDateFormatters.get(requested);
+    if(!formatter){
+        let selected='en';
+        try{if(Intl.DateTimeFormat.supportedLocalesOf([requested]).length)selected=requested;}catch{/* stable fallback */}
+        formatter=new Intl.DateTimeFormat(selected,{timeZone:'UTC',calendar:'gregory',numberingSystem:'latn',year:'numeric',month:'long',day:'numeric'});
+        if(editorialDateFormatters.size>=64)editorialDateFormatters.delete(editorialDateFormatters.keys().next().value!);
+        editorialDateFormatters.set(requested,formatter);
+    }
+    return formatter.format(date);
 }
 
 /** Transient plain-component projection through the SAME renderer; never save its rows.
@@ -125,29 +153,174 @@ function formatEditorialDate(value: unknown, locale?: string): string {
  *  localization surface extraction keys their text to the shared record unit instead of rendered
  *  position — transient projection state only, refused in authored layouts and never persisted. */
 export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, records: Map<string, Record<string, unknown>[]>, options: { locale?: string } = {}): T {
-    directoryLayoutQueries(layout);
-    const ownControls = (nodes: PageComponent[]): boolean => nodes.some(node=>node.props?.directoryControls!==undefined || ownControls(node.children||[]));
-    const controlsOwned=ownControls(layout.content);
+    return projectCompiledDirectory(layout, compileDirectoryInstructions(layout), records, options);
+}
+
+/** A compiled projector is bound to an immutable authored tree. It receives only
+ * current rows and the request's inactive branch IDs, never replacement bindings. */
+export function compileDirectoryProjection<T extends PageLayoutData>(layout: T) {
+    const instructions = compileDirectoryInstructions(layout);
+    const queries = instructions.queries.map(query => {
+        const landingLimit = landingQueryLimit(layout, query.id, instructions.landing);
+        return landingLimit === undefined ? query : { ...query, landingLimit };
+    });
+    return directoryProjection(layout, instructions, queries);
+}
+
+function directoryProjection<T extends PageLayoutData>(
+    layout: T,
+    instructions: DirectoryInstructions,
+    requests: (DirectoryQuery & { landingLimit?: number })[],
+    projectPresentation: typeof projectTemplatePresentation = projectTemplatePresentation,
+) {
+    const queries = Object.freeze(requests.map(query =>
+        Object.freeze({ ...query, binding: Object.freeze({ ...query.binding, params: Object.freeze({ ...query.binding.params }) }) })));
+    const project = (records: Map<string, Record<string, unknown>[]>, options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean } = {}) =>
+        projectCompiledDirectory(layout, instructions, records, options);
+    return Object.freeze({ queries, project, projectPresentation });
+}
+
+type NodePath = readonly number[];
+type PublishedQuery = Readonly<{ path: NodePath; landingLimit?: number }>;
+/** Contains only layout instructions. The layout bytes beside this plan still own
+ * the validated binding properties, while each request supplies new rows. */
+export type PublishedDirectoryProjectionPlan = Readonly<{
+    version: 1;
+    queries: readonly PublishedQuery[];
+    records: readonly NodePath[];
+    controls: readonly NodePath[];
+    heroes: readonly NodePath[];
+    landing: boolean;
+}>;
+
+export function compilePublishedDirectoryProjection(layout: PageLayoutData): PublishedDirectoryProjectionPlan {
+    const queries: PublishedQuery[] = [];
+    const records: NodePath[] = [];
+    const controls: NodePath[] = [];
+    const heroes: NodePath[] = [];
+    const locations: { id: string; path: NodePath }[] = [];
+    const instructions = compileDirectoryInstructions(layout, (node, path) => {
+        if (node.props?.directoryQuery !== undefined) locations.push({ id: node.id, path });
+        if (node.props?.recordBindings !== undefined) records.push(path);
+        if (node.props?.directoryControls !== undefined) controls.push(path);
+        if (node.props?.templateHero !== undefined) heroes.push(path);
+    });
+    for (const { id, path } of locations) {
+        const landingLimit = landingQueryLimit(layout, id, instructions.landing);
+        queries.push(Object.freeze(landingLimit === undefined ? { path } : { path, landingLimit }));
+    }
+    return Object.freeze({ version: 1, queries: Object.freeze(queries), records: Object.freeze(records),
+        controls: Object.freeze(controls), heroes: Object.freeze(heroes), landing: instructions.landing !== undefined });
+}
+
+function invalidPublicationPlan(): never { throw new Error('directory_projection_plan_invalid'); }
+
+function resolvePublishedNode(layout: PageLayoutData, path: readonly number[]): PageComponent {
+    if (!Array.isArray(path) || path.length < 1 || path.length > 21) return invalidPublicationPlan();
+    let children = layout.content;
+    let node: PageComponent | undefined;
+    for (const index of path) {
+        if (!Number.isInteger(index) || index < 0 || index >= (children?.length ?? 0)) return invalidPublicationPlan();
+        node = children[index];
+        if (!node || !Object.isFrozen(node)) return invalidPublicationPlan();
+        children = node.children ?? [];
+    }
+    return node!;
+}
+
+/** Rebind a stored plan to the frozen layout after the owner-scoped store has
+ * verified their shared artifact digest. Raw authoring inputs use the compiler. */
+export function restorePublishedDirectoryProjection<T extends PageLayoutData>(layout: T, value: unknown) {
+    const plan = value as PublishedDirectoryProjectionPlan;
+    if (!Object.isFrozen(layout) || !Object.isFrozen(layout.content) || !plan || !Object.isFrozen(plan)
+        || plan.version !== 1 || Object.keys(plan).length !== 6 || typeof plan.landing !== 'boolean'
+        || !Array.isArray(plan.queries) || plan.queries.length > 8
+        || !Array.isArray(plan.records) || plan.records.length > 2000
+        || !Array.isArray(plan.controls) || plan.controls.length > plan.queries.length
+        || !Array.isArray(plan.heroes) || plan.heroes.length > 2000
+        || plan.records.length + plan.heroes.length + plan.queries.length > 2000
+        || plan.landing !== (layout.root?.directoryLanding !== undefined)) return invalidPublicationPlan();
+
+    const landing = plan.landing ? (layout.root?.directoryLanding as { settings?: DirectoryInstructions['landing'] })?.settings : undefined;
+    if (plan.landing && (!landing || !Object.isFrozen(landing))) return invalidPublicationPlan();
+    const ids = new Set<string>();
+    const queries = new Map<PageComponent, DirectoryQuery & { landingLimit?: number }>();
+    const records: DirectoryInstructions['records'] = new Map();
+    const controls: DirectoryInstructions['controls'] = new Map();
+    const heroes = new WeakSet<object>();
+    for (const query of plan.queries as readonly PublishedQuery[]) {
+        if (!query || Object.keys(query).length !== (query.landingLimit === undefined ? 1 : 2)) return invalidPublicationPlan();
+        const node = resolvePublishedNode(layout, query.path);
+        const { landingLimit } = query;
+        const binding = node.props?.directoryQuery as DirectoryQueryBinding | undefined;
+        if (!binding || !binding.params || !Object.isFrozen(binding) || !Object.isFrozen(binding.params) || ids.has(node.id)
+            || binding.version !== 1 || typeof binding.queryId !== 'string'
+            || node.type !== (binding.queryId.endsWith('.list') ? 'Repeater' : 'Container')
+            || landingLimit !== undefined && (!landing || !Number.isInteger(landingLimit) || landingLimit < 1 || landingLimit > 12)) return invalidPublicationPlan();
+        const params = binding.params as { q?: string };
+        const normalized = typeof params.q === 'string'
+            ? { ...binding, params: { ...binding.params, q: params.q.trim() } } as DirectoryQueryBinding
+            : binding;
+        ids.add(node.id);
+        queries.set(node, landingLimit === undefined ? { id: node.id, binding: normalized } : { id: node.id, binding: normalized, landingLimit });
+    }
+    for (const path of plan.records) {
+        const node = resolvePublishedNode(layout, path);
+        const binding = node.props?.recordBindings as z.infer<typeof directoryRecordBindingSchema> | undefined;
+        if (!binding || !Object.isFrozen(binding) || records.has(node)) return invalidPublicationPlan();
+        records.set(node, binding);
+    }
+    for (const path of plan.controls) {
+        const node = resolvePublishedNode(layout, path);
+        const binding = node.props?.directoryControls as z.infer<typeof directoryBrowsingSchema> | undefined;
+        if (!binding || !Object.isFrozen(binding) || node.type !== 'Repeater' || !queries.has(node) || controls.has(node)) return invalidPublicationPlan();
+        controls.set(node, binding);
+    }
+    for (const path of plan.heroes) {
+        const node = resolvePublishedNode(layout, path);
+        const hero = node.props?.templateHero;
+        if (!landing || !hero || typeof hero !== 'object' || !Object.isFrozen(hero) || node.type !== 'Container' || heroes.has(hero)) return invalidPublicationPlan();
+        heroes.add(hero);
+    }
+    const requests = [...queries.values()];
+    return directoryProjection(layout, { queries: requests, records, controls, landing }, requests, publishedLandingPresentation(landing, heroes));
+}
+
+function projectCompiledDirectory<T extends PageLayoutData>(
+    layout: T,
+    instructions: DirectoryInstructions,
+    records: Map<string, Record<string, unknown>[]>,
+    options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean },
+): T {
+    const queries = new Map(instructions.queries.map(query => [query.id, query.binding]));
+    const inactive = options.inactive;
+    const controlsOwned = [...instructions.controls.keys()].some(node => !inactive?.has(node.id));
+    const visible = (nodes: PageComponent[]) => inactive?.size ? nodes.filter(node => !inactive.has(node.id)) : nodes;
     let projected = 0;
     const walk = (node: PageComponent, row?: Record<string, unknown>, index = 0, collection?: string): PageComponent => {
         if (++projected > 4000) throw new Error('directory_projection_size');
         const props = { ...node.props }; const query = props.directoryQuery;
         if(controlsOwned && props.directoryBrowsing!==undefined)return {...node,props:{},styles:{display:'none'},children:[]};
         if (query !== undefined) {
-            const parsed = directoryQueryBindingSchema.parse(query); const rows = records.get(node.id);
+            const parsed = queries.get(node.id);
+            if (!parsed) throw new Error('invalid_directory_query_component');
+            const rows = records.get(node.id);
             if (!rows || rows.length > (parsed.queryId.endsWith('.list') ? 48 : 1)) throw new Error('directory_records_unavailable');
             const { directoryQuery: _query, directoryControls: controls, ...rest } = props;
             const list = parsed.queryId.endsWith('.list'); const columns = Math.min(4, Math.max(1, Number(props.columns) || 3));
             if (list) rest.className = `${typeof rest.className === 'string' ? rest.className : ''} ${props.layout === 'list' ? 'flex flex-col' : `grid grid-cols-1 ${columns > 1 ? 'md:grid-cols-2' : ''} ${columns > 2 ? `lg:grid-cols-${Math.floor(columns)}` : ''}`} gap-6`;
-            const rowCollection = directoryListCollections[parsed.queryId];
+            // Live detail fields use the same record unit/edit destination as list fields.
+            // Retain positional identities when reading older, reviewed locale publications.
+            const rowCollection = directoryListCollections[parsed.queryId]
+                ?? (options.liveDetailRecords ? liveDetailRecordCollections[parsed.queryId] : undefined);
             // With browsing controls the empty hint renders from the browsing labels (released
             // patterns, page language); only a control-less list keeps a projected fallback text.
             const projected: PageComponent = { ...node, type: 'Container', props: rest,
                 ...(list ? { styles: { gap: '24px', ...node.styles } } : {}),
-                children: rows.length ? rows.flatMap((record, i) => (node.children || []).map(child => walk(child, record, i, rowCollection)))
+                children: rows.length ? rows.flatMap((record, i) => visible(node.children || []).map(child => walk(child, record, i, rowCollection)))
                     : controls === undefined ? [{ id: `${node.id}-empty`, type: 'Text', props: { text: 'No records matched this preview.' } }] : [] };
             if(list && controls !== undefined){
-                const options=directoryBrowsingSchema.parse(controls),position=options.paginationPosition||'top';
+                const options=instructions.controls.get(node)!,position=options.paginationPosition||'top';
                 const top:PageComponent={id:`${node.id}-controls`,type:'Container',props:{directoryBrowsing:{...options,pagination:options.pagination && position!=='bottom'}}};
                 const bottom:PageComponent={id:`${node.id}-pagination`,type:'Container',props:{directoryBrowsing:{...options,tabs:false,search:false,sorting:false,filters:false,recordCount:false}}};
                 return {...node,type:'Container',props:{},styles:{},children:[top,{...projected,id:`${node.id}-records`},...(options.pagination && position!=='top'?[bottom]:[])]};
@@ -157,7 +330,7 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
         const id = index ? `${node.id}-preview-${index}` : node.id;
         const { recordBindings: _bindings, ...rest } = props;
         if (props.recordBindings !== undefined) {
-            const b = directoryRecordBindingSchema.parse(props.recordBindings);
+            const b = instructions.records.get(node)!;
             if (!row) throw new Error('record_context_unavailable');
             if (b.blocks) { const children = projectEditorialBody(row.body, id); projected += children.reduce((n,c) => n + 1 + (c.children?.length ?? 0), 0); if (projected > 4000) throw new Error('directory_projection_size'); return { ...node, id, props: rest, children }; }
             if (b.text) {
@@ -188,7 +361,7 @@ export function projectDirectoryRecords<T extends PageLayoutData>(layout: T, rec
                 rest.translationSources = recordColumns;
             }
         }
-        return { ...node, id, props: rest, ...(node.children ? { children: node.children.map(child => walk(child, row, index, collection)) } : {}) };
+        return { ...node, id, props: rest, ...(node.children ? { children: visible(node.children).map(child => walk(child, row, index, collection)) } : {}) };
     };
-    return { ...layout, content: layout.content.map(node => walk(node)) };
+    return { ...layout, content: visible(layout.content).map(node => walk(node)) };
 }

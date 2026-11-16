@@ -518,7 +518,7 @@ await esbuild.build({
 //      smoke-cloud.mjs — the A-25 cloud smoke (src/smoke-cloud.ts): the SAME
 //                       worker booted with cloud:{baseDomain}, driven with
 //                       explicit Host headers across every host kind.
-for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/session-secret.ts', 'session-secret.mjs'], ['src/smoke-host.ts', 'smoke-host.mjs'], ['src/smoke-translation.ts', 'smoke-translation.mjs'], ['src/smoke-cloud.ts', 'smoke-cloud.mjs'], ['src/smoke-publication.ts', 'smoke-publication.mjs']]) {
+for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/session-secret.ts', 'session-secret.mjs'], ['src/live-serving-startup.ts','live-serving-startup.mjs'], ['src/smoke-host.ts', 'smoke-host.mjs'], ['src/smoke-translation.ts', 'smoke-translation.mjs'], ['src/smoke-cloud.ts', 'smoke-cloud.mjs'], ['src/smoke-publication.ts', 'smoke-publication.mjs']]) {
     await esbuild.build({
         ...shared,
         platform: 'node',
@@ -529,6 +529,10 @@ for (const [entry, outfile] of [['src/state-db.ts', 'state-db.mjs'], ['src/sessi
         minify: false,
         plugins: [inlineSwPlugin, consoleShellPlugin, inlineClientPlugin, bootstrapAssetPlugin],
     });
+}
+
+for (const [entry,outfile] of [['src/live-publication-operator.ts','publication-operator.mjs'],['src/prerender-delivery.ts','prerender-delivery.mjs'],['src/prerender-browsing-compiler.ts','prerender-browsing-compiler.mjs'],['src/prerender-proof.ts','prerender-proof.mjs']]) {
+    await esbuild.build({...shared,platform:'node',packages:'external',target:'node22',entryPoints:[entry],outfile:join(here,'operator-dist',outfile),minify:false,plugins:[inlineSwPlugin,consoleShellPlugin,inlineClientPlugin,bootstrapAssetPlugin]});
 }
 
 // Local-only Cloud browser fixture. Keep it OUTSIDE dist/: wrangler's

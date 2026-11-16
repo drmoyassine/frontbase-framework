@@ -1,9 +1,12 @@
 import React from 'react';
-import { render, screen, cleanup, act } from '@testing-library/react';
+import { render, screen, cleanup, act, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ status: vi.fn() }));
-vi.mock('@/components/deployment/provider-connect', () => ({ readProviderConnections: mocks.status, connectProvider: vi.fn() }));
+const mocks = vi.hoisted(() => ({ status: vi.fn(), connect: vi.fn() }));
+vi.mock('@/components/deployment/provider-connect', async importOriginal => ({
+    ...await importOriginal<typeof import('@/components/deployment/provider-connect')>(),
+    readProviderConnections: mocks.status, connectProvider: mocks.connect,
+}));
 vi.mock('./connect-dialog/useConnectProvider', () => ({
     useConnectProvider: (provider: string) => ({
         providers: [], visibleProviders: [], effectiveProvider: provider,
@@ -25,6 +28,9 @@ it.each(['cloudflare','vercel','supabase'])('never flashes credential fields bef
     expect(await screen.findByRole('button',{name:`Connect to ${provider}`})).toBeVisible();
     expect(screen.queryByText('API token')).toBeNull();
     expect(mocks.status).toHaveBeenCalledTimes(1);
+    mocks.connect.mockResolvedValue(undefined);
+    fireEvent.click(screen.getByRole('button',{name:`Connect to ${provider}`}));
+    expect(mocks.connect).toHaveBeenCalledWith(provider,'/frontbase-admin/settings?tab=accounts',undefined);
 });
 it('shows a retry instead of silently switching to manual credentials on a status error', async () => {
     mocks.status.mockRejectedValue(Error('offline'));

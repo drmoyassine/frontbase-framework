@@ -13,6 +13,7 @@ import {inspectTable,listRelationships} from './routes/sync.js';
 import {projectionRelations,recordFieldCatalog,sqlRecordReader,type RecordReader} from './record-fields.js';
 import {editorialAdapter} from './editorial-adapter.js';
 import {SitePublicationStore} from './site-publication-store.js';
+import {LiveLayoutPublicationStore} from './live-layout-publication.js';
 import type {TranslationStorageHost} from './translation-storage.js';
 import type {CopyField} from './frontend-copy.js';
 
@@ -36,10 +37,13 @@ export type PreparedRecordEdit={identity:unknown;before:unknown;after:unknown;co
 export async function prepareFrontendRecordEdit(host:TranslationStorageHost,db:DbRunner,owner:string,field:CopyField,text:string,sourceSchema?:string):Promise<PreparedRecordEdit>{
     if(!field.record||field.record.key.length!==1)throw Error('record_identity_required');
     const record=field.record;let connectionId=record.connectionId,table=record.collection,key=record.key[0]!,path=field.fieldKey??field.path.at(-1)!;
+    const live=await new LiveLayoutPublicationStore(db,owner).active();
+    const legacy=live?null:await new SitePublicationStore(db,owner).activeVersion();
+    const published=live?.layout??(legacy?.artifact.schemaVersion===2?legacy.artifact:null);
     if(connectionId==='frontbase:publication'){
-        const active=await new SitePublicationStore(db,owner).activeVersion();if(active?.artifact.schemaVersion!==2)throw Error('record_lineage_unavailable');
+        if(!published)throw Error('record_lineage_unavailable');
         const role=table==='programs'?'program':table==='institutions'?'institution':table==='articles'?'article':null;if(!role)throw Error('record_lineage_unavailable');
-        const source=publicationSource(active.artifact,role),column=(source.fieldMapping as Record<string,string>)[path];if(!column)throw Error('record_field_read_only');
+        const source=publicationSource(published,role),column=(source.fieldMapping as Record<string,string>)[path];if(!column)throw Error('record_field_read_only');
         connectionId=source.dataSourceId;table=source.tableName;key={column:source.fieldMapping.id,value:key.value};path=column;
     }
     const ds=await host.syncFor(owner).getDatasource(connectionId);if(!ds)throw Error('record_datasource_unavailable');
@@ -55,9 +59,9 @@ export async function prepareFrontendRecordEdit(host:TranslationStorageHost,db:D
     // A generated SELECT projection is not a write destination. Resolve its admitted
     // root aliases through the exact active configuration; relationships use the same catalog as @.
     if(extra.length&&!path.includes('.')){
-        const active=await new SitePublicationStore(db,owner).activeVersion();if(active?.artifact.schemaVersion!==2)throw Error('record_lineage_unavailable');
+        if(!published)throw Error('record_lineage_unavailable');
         const role=table.endsWith('_programs')?'program':table.endsWith('_institutions')?'institution':'article';
-        const source=publicationSource(active.artifact,role),column=(source.fieldMapping as Record<string,string>)[path];if(!column)throw Error('record_field_read_only');
+        const source=publicationSource(published,role),column=(source.fieldMapping as Record<string,string>)[path];if(!column)throw Error('record_field_read_only');
         table=source.tableName;key={column:source.fieldMapping.id,value:key.value};path=column;
     }
     const parts=path.split('.');if(parts.length>4)throw Error('record_path_invalid');
@@ -76,16 +80,16 @@ export async function prepareFrontendRecordEdit(host:TranslationStorageHost,db:D
     const after=recordEditValue(text,definition,before);
     // Managed editorial documents retain their existing revision/archive contract.
     // Their approved public snapshot remains pinned until the ordinary review/publication flow.
-    const active=await new SitePublicationStore(db,owner).activeVersion(),publication=active?.artifact.schemaVersion===2?active.artifact.configuration:null;
-    const editorialSource=active?.artifact.schemaVersion===2?publicationSource(active.artifact,'article'):null;
+    const publication=published?.configuration??null;
+    const editorialSource=published?publicationSource(published,'article'):null;
     const managed=editorialSource?.dataSourceId===ds.id&&editorialSource.tableName===table;
     if(managed||table==='editorial_documents'){
         const columns:Record<string,'title'|'excerpt'|'byline'|'coverAlt'>={title:'title',excerpt:'excerpt',public_byline:'byline',cover_alt:'coverAlt'},property=columns[column];
         if(!managed||!property||typeof after!=='string'||String(sourceSchema??'public')!=='public')throw Error('record_editorial_contract_required');
-        const editorialRead=async()=>{const writer=datasourceRunner(ds.kind,config,host.externalFetch);try{for(const role of ['article','page'] as const){const adapter=editorialAdapter(publication!,writer,role),document=await adapter.read(String(key.value));if(document)return {role,document};}throw Error('record_changed');}finally{await writer.close?.();}};
+        const editorialRead=async()=>{const writer=datasourceRunner(ds.kind,config,host.externalFetch);try{for(const role of ['article','page'] as const){const adapter=editorialAdapter(publication!,writer,role,live?'published':'draft'),document=await adapter.read(String(key.value));if(document)return {role,document};}throw Error('record_changed');}finally{await writer.close?.();}};
         const initial=await editorialRead();if(String(initial.document[property]??'')!==shown)throw Error('record_changed');
         return {identity:[ds.id,'public',table,key,column],before,after,commit:async()=>{
-            const writer=datasourceRunner(ds.kind,config,host.externalFetch);try{const adapter=editorialAdapter(publication!,writer,initial.role),current=await adapter.read(String(key.value));
+            const writer=datasourceRunner(ds.kind,config,host.externalFetch);try{const adapter=editorialAdapter(publication!,writer,initial.role,live?'published':'draft'),current=await adapter.read(String(key.value));
                 if(!current||String(current[property]??'')!==shown)throw Error('record_changed');
                 const {title,excerpt,body,language,byline,coverUrl,coverAlt,reviewState,reviewNote}=current;
                 const edited={title,excerpt,body,language,byline,coverUrl,coverAlt,reviewState,reviewNote};edited[property]=after;

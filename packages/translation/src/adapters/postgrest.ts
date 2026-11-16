@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { localizationScopeSchema, translationRevisionSchema, type LocalizationScope } from '../contracts.js';
-import { parsePersistenceKey, parsePersistenceChange, translationSnapshotSchema, sourceRecordSchema, storedRevisionSchema,
+import { localeSchema, localizationScopeSchema, translationRevisionSchema, type LocalizationScope } from '../contracts.js';
+import { parsePersistenceKey, parsePersistenceChange, currentTranslationValueSchema,type CurrentTranslationValue, translationSnapshotSchema, sourceRecordSchema, storedRevisionSchema,
     type TranslationBatchReader, type TranslationSnapshot, type SourceRecord, type StoredRevision, type PersistenceChange, type CasResult } from '../revisions.js';
 import { translationJobSchema, translationJobIntentSchema, jobErrorSchema,
     type TranslationJobPersistence, type TranslationJob, type TranslationJobIntent, type EnqueueResult, type JobError } from '../jobs.js';
@@ -9,10 +9,15 @@ export type TranslationRpcOperation = 'capabilities' | 'read-many' | 'read-revis
     | 'ready-jobs' | 'claim' | 'renew' | 'dispatch' | 'fail' | 'cancel';
 /** Host-injected authenticated HTTP client. No SQL, socket or credential lookup in the engine. */
 export interface TranslationRpcTransport {
+    /** undefined means the installed batch RPC predates sparse reads. */
+    readCurrent?(scope: LocalizationScope, input: {unitIds:string[];locale:string}): Promise<unknown>;
     call(operation: TranslationRpcOperation, scope: LocalizationScope, input: Record<string, unknown>): Promise<unknown>;
 
 }
 const id = translationRevisionSchema.shape.revisionId;
+const batchUnitIds = z.array(translationRevisionSchema.shape.unitId).min(1).max(500);
+const currentRows = z.array(z.object({ unitId: id, snapshot: currentTranslationValueSchema }).strict());
+const emptyCurrentValue = Object.freeze({ version: 0, source: null, head: null });
 const positive = z.number().int().positive().safe();
 const lease = z.number().int().min(1000).max(300_000);
 function owner(actual: LocalizationScope, expected: LocalizationScope): void {
@@ -38,8 +43,10 @@ export class PostgrestTranslationJobPersistence implements TranslationJobPersist
         return value;
     }
     async readMany(scopeInput: LocalizationScope, units: string[], localeInput?: string): Promise<TranslationSnapshot[]> {
-        const keys=z.array(id).min(1).max(500).parse(units).map(unit=>parsePersistenceKey(scopeInput,unit,localeInput));
-        const scope=keys[0]!.scope,locale=keys[0]!.locale;
+        // Every unit shares one scope/locale. Validate all hashes, but normalize
+        // the locale once rather than invoking Intl once per display field.
+        const keys=z.array(translationRevisionSchema.shape.unitId).min(1).max(500).parse(units);
+        const {scope,locale}=parsePersistenceKey(scopeInput,keys[0]!,localeInput);
         if(new Set(units).size!==units.length)throw Error('translation_rpc_key_mismatch');
         const raw=await this.request('read-many',scope,{unitIds:units,locale:locale??null});
         const rows=z.array(z.object({unitId:id,snapshot:translationSnapshotSchema}).strict()).length(units.length).parse(raw);
@@ -48,6 +55,60 @@ export class PostgrestTranslationJobPersistence implements TranslationJobPersist
             if(value.head){owner(value.head.scope,scope);if(value.head.unitId!==row.unitId||value.head.locale!==locale)throw Error('translation_rpc_key_mismatch');}
             if(!value.source&&(value.version!==0||value.head)||value.source&&value.version<1)throw Error('translation_rpc_key_mismatch');
             return value;});
+    }
+    /** Public reads use the sparse projection all the way to the renderer. */
+    async readCurrentHeads(scope: LocalizationScope, units: string[], locale: string): Promise<Map<string, CurrentTranslationValue>> {
+        const { values } = await this.readCurrentBatch(scope, units, locale);
+        if (values instanceof Map) return values;
+        const heads = new Map<string, CurrentTranslationValue>();
+        for (const { unitId, snapshot } of values) {
+            if (snapshot.head) heads.set(unitId, snapshot);
+        }
+        return heads;
+    }
+    /** Preserve the ordered projection for consumers that still use positional results. */
+    async readCurrentMany(scope: LocalizationScope, units: string[], locale: string): Promise<CurrentTranslationValue[]> {
+        const { keys, values } = await this.readCurrentBatch(scope, units, locale);
+        return values instanceof Map ? keys.map(key => values.get(key) ?? emptyCurrentValue) : values.map(row => row.snapshot);
+    }
+    private async readCurrentBatch(scopeInput: LocalizationScope, units: string[], localeInput: string) {
+        const keys = batchUnitIds.parse(units);
+        const scope = localizationScopeSchema.parse(scopeInput);
+        const locale = localeSchema.parse(localeInput);
+        const permitted = new Set(keys);
+        if (permitted.size !== keys.length) throw Error('translation_rpc_key_mismatch');
+        if (this.transport.readCurrent) {
+            let sparse: unknown;
+            try { sparse = await this.transport.readCurrent(scope, { unitIds: keys, locale }); }
+            catch { throw Error('translation_rpc_failed'); }
+            if (sparse !== undefined) {
+                if (!Array.isArray(sparse) || sparse.length > keys.length) throw Error('translation_rpc_key_mismatch');
+                const byId = new Map<string, CurrentTranslationValue>();
+                for (const { unitId, snapshot } of currentRows.parse(sparse)) {
+                    const {source, head, version} = snapshot;
+                    if (!permitted.has(unitId) || byId.has(unitId) || !source || !head || version < 1
+                        || head.unitId !== unitId || head.locale !== locale) throw Error('translation_rpc_key_mismatch');
+                    owner(source.unit.scope, scope);
+                    owner(head.scope, scope);
+                    byId.set(unitId, snapshot);
+                }
+                return { keys, values: byId };
+            }
+        }
+        const raw = await this.request('read-many', scope, { unitIds: keys, locale });
+        if (!Array.isArray(raw) || raw.length !== keys.length) throw Error('translation_rpc_key_mismatch');
+        const rows = currentRows.parse(raw);
+        for (const [index, { unitId, snapshot: { source, head, version } }] of rows.entries()) {
+            if (unitId !== keys[index] || (!source && (version !== 0 || head)) || (source && version < 1)) {
+                throw Error('translation_rpc_key_mismatch');
+            }
+            if (source) owner(source.unit.scope, scope);
+            if (head) {
+                owner(head.scope, scope);
+                if (head.unitId !== unitId || head.locale !== locale) throw Error('translation_rpc_key_mismatch');
+            }
+        }
+        return { keys, values: rows };
     }
     async readRevisions(scopeInput: LocalizationScope, input:{unitId:string;revisionId:string}[], localeInput:string):Promise<(StoredRevision|null)[]> {
         const keys=z.array(z.object({unitId:id,revisionId:id}).strict()).min(1).max(500).parse(input);

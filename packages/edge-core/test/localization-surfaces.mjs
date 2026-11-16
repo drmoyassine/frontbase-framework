@@ -116,3 +116,24 @@ assert.equal(articleFields.find(f => f.blockId === 'ad'), undefined, 'formatted 
 assert.ok(articleFields.some(f => f.blockId === 'at' && f.text === 'Travel guide'), 'record text beside a date literal still surfaces');
 
 console.log('localization display surfaces PASS: record identity extraction, reorder stability, shared-identity positions, positional fallback, coverage-refusing projection and Block Version inheritance identity');
+
+// Translation projection copies only edited paths; the input may be a frozen authored layout.
+const immutable={root:{localeMessages:{poweredBy:'Powered by Frontbase'}},content:[{id:'immutable',type:'Repeater',props:{initialRows:[{id:'one',title:'Original',nested:{untouched:true}}],binding:{dataSourceId:'source',tableName:'items'},controls:{searchLabel:'Find'}}}]};
+const immutableBefore=JSON.stringify(immutable);
+const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};freeze(immutable);
+const immutableProjected=applyHomepageDisplayFields(immutable,valuesFor(homepageDisplayFields(immutable)));
+assert.equal(JSON.stringify(immutable),immutableBefore);
+assert.equal(immutableProjected.content[0].props.initialRows[0].title,'عربي Original');
+assert.equal(immutableProjected.content[0].props.initialRows[0].nested,immutable.content[0].props.initialRows[0].nested);
+assert.equal(immutableProjected.content[0].props.controls.searchLabel,'عربي Find');
+
+// A sparse patch still checks identity uniqueness outside the changed branch.
+const ambiguous={content:[
+    {id:'copy',type:'Text',props:{text:'Original'}},
+    {id:'other',type:'Container',props:{},children:[{id:'reused',type:'Text',props:{}}],
+        versions:[{id:'alternative',overrides:{children:[{id:'reused',type:'Text',props:{}}]}}]},
+]};
+const firstField={blockId:'copy',path:['props','text'],text:'Original',label:'Text'};
+assert.throws(()=>applyHomepageDisplayFields(ambiguous,valuesFor([firstField]),{partial:true,fields:[firstField]}),/duplicate_component/);
+const missing={...firstField,blockId:'missing'};
+assert.throws(()=>applyHomepageDisplayFields(immutable,valuesFor([missing]),{partial:true,fields:[missing]}),/unknown_component/);

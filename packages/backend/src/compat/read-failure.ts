@@ -11,6 +11,6 @@ export function readFailureReason(error: unknown): string {
     if (message === 'homepage_unavailable' || message === 'homepage_required') return 'source_unavailable';
     return 'unclassified';
 }
-export function reportReadFailure(stage: 'localized-page' | 'selected-schema' | 'single-table' | 'data-execute', error: unknown): void {
+export function reportReadFailure(stage: 'live-page' | 'localized-page' | 'selected-schema' | 'single-table' | 'data-execute', error: unknown): void {
     console.warn('[frontbase] read_failure', { stage, reason: readFailureReason(error) });
 }

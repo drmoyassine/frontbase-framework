@@ -14,6 +14,7 @@
     "dist"
   ],
   "scripts": {
+    "test:live-layout": "node test/live-page-settings.mjs && node test/live-query-batch.mjs && node test/live-layout-serving.mjs && node test/live-layout-routes.mjs && node test/live-translation.mjs",
     "test:source-contract": "node test/source-contract.mjs && node test/source-contract-compatibility.mjs",
     "test:source-contract-mutation": "node test/source-contract-mutation.mjs",
     "test:template-urls": "node test/template-policy.mjs && node test/template-policy-mutation.mjs",

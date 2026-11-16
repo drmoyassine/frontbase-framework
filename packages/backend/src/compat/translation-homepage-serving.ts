@@ -10,7 +10,12 @@ import type {PublishedLocalePointerEntry} from './translation-homepage.js';
 import type {LocalizedQueryPlan} from './site-publication-chunk-queries.js';
 import type {PublishedLiveQuery} from './publication-list-source.js';
 
-export function homepageLanguageLinks(sourceLocale:string,locales:string[],current:string,sourcePath='/'){const source=encodeURI(sourcePath),label=(code:string)=>{if(code==='ar')return 'العربية';try{return new Intl.DisplayNames([code,'en'],{type:'language'}).of(code)??code;}catch{return code;}};
+export function homepageLanguageLinks(sourceLocale:string,locales:string[],current:string,sourcePath='/'){
+    // URL preserves existing percent escapes. encodeURI on a serialized search
+    // double-encoded Arabic/punctuation and changed the search after switching.
+    const parsed=new URL(sourcePath,'https://locale.invalid');
+    if(!sourcePath.startsWith('/')||parsed.origin!=='https://locale.invalid')throw Error('invalid_locale_path');
+    const source=parsed.pathname+parsed.search.replaceAll('\\','%5C')+parsed.hash,label=(code:string)=>{if(code==='ar')return 'العربية';try{return new Intl.DisplayNames([code,'en'],{type:'language'}).of(code)??code;}catch{return code;}};
     return [{code:sourceLocale,label:sourceLocale==='en'?'English':label(sourceLocale),href:source,current:current===sourceLocale},...locales.map(code=>({code,label:label(code),href:`/${code}${source}`,current:current===code}))];}
 /** The release that translates `path`'s content under the URL's locale prefix, for the localized
  *  list endpoint: a prefix counts only when that locale publishes THIS path (or the homepage,
@@ -30,7 +35,7 @@ export async function localizedListRequest(db:DbRunner,tenant:string,path:string
     if(exact?.release){
         if(exact.release.policy?.outdated!=='source-fallback'){
             const current=await captureHomepage(db,tenant,new Request('https://locale-validation.invalid'+stripped),liveQuery,stripped);
-            if(current.active.pointer.hash!==exact.release.siteHash||current.sourceHash!==exact.release.sourceHash)throw Error('locale_unavailable');
+            if(current.source.hash!==exact.release.siteHash||current.sourceHash!==exact.release.sourceHash)throw Error('locale_unavailable');
         }
         return {locale:prefix,path:stripped,catalog:exact.release.catalog};
     }
@@ -44,17 +49,22 @@ export async function localizedListRequest(db:DbRunner,tenant:string,path:string
  *  acquire no false SEO. The registry is read through pagination, so the walk stays bounded at
  *  any publication scale; one source capture per distinct path, memoized. */
 export async function sitemapLocaleEntries(db:DbRunner,tenant:string,request:Request,activePointer:{hash:string},liveQuery?:PublishedLiveQuery):Promise<{locale:string;path:string}[]>{
-    const captures=new Map<string,Awaited<ReturnType<typeof captureHomepage>>|null>();
-    const captureFor=async(p:string)=>{if(!captures.has(p))captures.set(p,await captureHomepage(db,tenant,request,liveQuery,p).catch(()=>null));return captures.get(p)!;};
+    const context=await createPageCapture(db,tenant,request,liveQuery);
+    if(context.source.hash!==activePointer.hash)throw Error('sitemap_source_changed');
+    const captures=new Map<string,Promise<Awaited<ReturnType<typeof captureHomepage>>|null>>();
+    const captureFor=(p:string)=>{if(!captures.has(p))captures.set(p,context.capture(p).catch(()=>null));return captures.get(p)!;};
     const entries:{locale:string;path:string}[]=[],seen=new Set<string>();
     for(let offset=0;;offset+=100){
         const page=await listPublishedLocalePointers(db,tenant,{limit:100,offset});
-        for(const {release} of page.items){
-            if(!release||seen.has(release.locale+'\u0000'+release.path))continue;seen.add(release.locale+'\u0000'+release.path);
-            if(release.policy?.outdated==='source-fallback'){if(await captureFor(release.path))entries.push({locale:release.locale,path:release.path});continue;}
-            if(release.siteHash!==activePointer.hash)continue;
-            const capture=await captureFor(release.path);
-            if(capture&&release.sourceHash===capture.sourceHash)entries.push({locale:release.locale,path:release.path});
+        for(let start=0;start<page.items.length;start+=4){
+            const batch=await Promise.all(page.items.slice(start,start+4).map(async({release})=>{
+                if(!release||seen.has(release.locale+'\u0000'+release.path))return null;
+                seen.add(release.locale+'\u0000'+release.path);
+                if(release.policy?.outdated!=='source-fallback'&&release.siteHash!==activePointer.hash)return null;
+                const capture=await captureFor(release.path);
+                return capture&&(release.policy?.outdated==='source-fallback'||release.sourceHash===capture.sourceHash)?{locale:release.locale,path:release.path}:null;
+            }));
+            for(const entry of batch)if(entry)entries.push(entry);
         }
         if(!page.items.length||offset+page.items.length>=page.total)break;
     }
@@ -64,9 +74,28 @@ export function addHomepageLanguageLinks(input:PageLayoutData,sourceLocale:strin
     // The switcher refuses more than 16 links (whole-page 503): cap the rendered entries at the
     // component's DISPLAY bound. This bounds language CHOICES on one page, never publications —
     // configured target locales are bounded at 16, so the published set never exceeds it either.
-    const layout=structuredClone(input),links=homepageLanguageLinks(sourceLocale,locales.slice(0,15),current,sourcePath);
-    const walk=(nodes:PageLayoutData['content'])=>{for(const node of nodes){if(node.type==='Navbar'){const labels=node.props?.localeLabels as Record<string,unknown>|undefined;node.props={...node.props,languageSwitcher:links,localeLabels:{...labels,language:typeof labels?.language==='string'?labels.language:current==='ar'?'اللغة':'Language'}};const logo=node.props.logo as Record<string,unknown>|undefined;if(logo?.link==='/')logo.link=current===sourceLocale?'/':`/${current}/`;}
-        if(node.type==='Footer')node.props={...node.props,logoHref:current===sourceLocale?'/':`/${current}/`};if(node.children)walk(node.children);}};walk(layout.content);
+    const links=homepageLanguageLinks(sourceLocale,locales.slice(0,15),current,sourcePath);
+    const home=current===sourceLocale?'/':`/${current}/`;
+    // Copy changed authored nodes, without deep-cloning every hydrated record.
+    const walk=(nodes:PageLayoutData['content']):PageLayoutData['content']=>{
+        let output:PageLayoutData['content']|undefined;
+        for(let i=0;i<nodes.length;i++){
+            const node=nodes[i]!;
+            let result=node;
+            if(node.type==='Navbar'){
+                const labels=node.props?.localeLabels as Record<string,unknown>|undefined,logo=node.props?.logo as Record<string,unknown>|undefined;
+                result={...node,props:{...node.props,languageSwitcher:links,localeLabels:{...labels,language:typeof labels?.language==='string'?labels.language:current==='ar'?'\u0627\u0644\u0644\u063a\u0629':'Language'},...(logo?.link==='/'?{logo:{...logo,link:home}}:{})}};
+            }
+            if(node.type==='Footer')result={...node,props:{...node.props,logoHref:home}};
+            if(node.children){
+                const children=walk(node.children);
+                if(children!==node.children)result={...result,children};
+            }
+            if(result!==node){output??=nodes.slice();output[i]=result;}
+        }
+        return output??nodes;
+    };
+    const layout={...input,content:walk(input.content)};
     if(current!==sourceLocale){const projected=localizeNavigationProps(layout,current,origins);projected.root={...projected.root,localeNavigation:{locale:current,origins}};return projected;}
     return layout;
 }
@@ -104,7 +133,7 @@ export async function resolveHomepageLanguageRequest(db:DbRunner,tenant:string,r
     type LiveEntry=PublishedLocalePointerEntry&{pointer:{hash:string;generation:number};release:NonNullable<PublishedLocalePointerEntry['release']>};
     const liveOf=(item:PublishedLocalePointerEntry|null):LiveEntry|null=>item&&!item.corrupt&&item.release?item as LiveEntry:null;
     const sourceUrl=new URL(request.url);if(matched)sourceUrl.pathname=stripped;
-    const context=await createPageCapture(db,tenant,request,liveQuery),active=context.active;
+    const context=await createPageCapture(db,tenant,request,liveQuery),active=context.active!;
     const captures=new Map<string,Awaited<ReturnType<typeof captureHomepage>>>();
     // Listing releases resolve through localized queries: their fresh released titles drive the
     // registry (search/sort/totals) and standard-list reads beside the per-unit text join.

@@ -24,8 +24,20 @@ export type TranslationSnapshot = z.infer<typeof translationSnapshotSchema>;
 export type PersistenceChange = z.infer<typeof persistenceChangeSchema>;
 export type CasResult = 'committed' | 'conflict' | 'revision-id-conflict' | 'job-fenced';
 
+/** Public rendering needs current text and freshness proofs, not the editor's source
+ * document, context description or revision provenance. Unknown editor metadata is
+ * discarded; all scope/key/version/fingerprint fields used for serving remain checked. */
+export const currentTranslationValueSchema=z.object({
+    version:counter,
+    source:z.object({unit:z.object({scope:localizationScopeSchema}),sourceVersion:counter.min(1),fingerprint:hash,contextFingerprint}).nullable(),
+    head:z.object({scope:localizationScopeSchema,unitId:hash,locale:z.string().min(2).max(63),sourceVersion:counter.min(1),sourceFingerprint:hash,contextFingerprint,text:translationRevisionSchema.shape.text}).nullable(),
+});
+export type CurrentTranslationValue=z.infer<typeof currentTranslationValueSchema>;
 /** Page readers consume this port; single-unit persistence implementations stay compatible. */
 export interface TranslationBatchReader {
+    /** Current values keyed by unit ID. Units without a head are omitted. */
+    readCurrentHeads?(scope: LocalizationScope, unitIds: string[], locale: string): Promise<Map<string, CurrentTranslationValue>>;
+    readCurrentMany?(scope:LocalizationScope,unitIds:string[],locale:string):Promise<CurrentTranslationValue[]>;
     /** One bounded, ordered snapshot per requested unit; missing units retain their position. */
     readMany(scope: LocalizationScope, unitIds: string[], locale?: string): Promise<TranslationSnapshot[]>;
     readRevisions(scope: LocalizationScope, keys: {unitId:string;revisionId:string}[], locale:string): Promise<(StoredRevision|null)[]>;

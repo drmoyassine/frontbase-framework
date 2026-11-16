@@ -26,7 +26,15 @@ function translationTransports(options: Omit<SupabaseOpts, 'schema'>) {
         return data;
     };
     return {
-        jobs: { call: (operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => call(operation==='read-many'||operation==='read-revisions'?'translation_read_batch':'translation_request', operation, scope, input) },
+        jobs: {
+            readCurrent: async (scope: {tenantId:string;projectId:string}, input: {unitIds:string[];locale:string}) => {
+                const {data, error} = await client.rpc('translation_read_batch', {p_operation:'read-current-many', p_scope:scope, p_input:input});
+                // Only the legacy function's explicit unsupported-operation reply permits fallback.
+                if (error?.code === '22023' && error.message === 'invalid_translation_operation') return undefined;
+                if (error) throw Error('translation_rpc_failed');
+                return data;
+            },
+            call: (operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => call(operation==='read-many'||operation==='read-revisions'?'translation_read_batch':'translation_request', operation, scope, input) },
         accounting: { call: (operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => call('translation_accounting_request', operation, scope, input) },
     };
 }

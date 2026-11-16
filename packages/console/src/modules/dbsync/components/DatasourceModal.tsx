@@ -11,15 +11,15 @@ import { DATABASE_PROVIDERS, DATASOURCE_RESOURCE_TYPES, datasourceResourceConfig
 
 interface DatasourceModalProps {
     datasource?: Datasource | null;
-    initialType?: Datasource['type'];
     onClose: () => void;
     /** Called with the newly created datasource ID after successful creation */
     onCreated?: (datasourceId: string) => void;
 }
 
-export function DatasourceModal({ datasource, initialType, onClose, onCreated }: DatasourceModalProps) {
+export function DatasourceModal({ datasource, onClose, onCreated }: DatasourceModalProps) {
     const queryClient = useQueryClient();
     const isEditing = !!datasource;
+    const canEditLegacyHttp = datasource?.type === 'supabase' && !datasource.provider_account_id;
     const [manualHttp, setManualHttp] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -30,7 +30,7 @@ export function DatasourceModal({ datasource, initialType, onClose, onCreated }:
         db_id: datasource?.db_id || '',
         db_name: datasource?.db_name || '',
         name: datasource?.name || '',
-        type: datasource?.type || initialType || 'wordpress_rest',
+        type: datasource?.type || 'wordpress_rest',
         host: datasource?.host || '',
         port: datasource?.port || (datasource?.type === 'mysql' ? 3306 : 5432),
         database: datasource?.database || '',
@@ -87,11 +87,9 @@ export function DatasourceModal({ datasource, initialType, onClose, onCreated }:
     });
 
     const nativePostgrest = formData.type === 'supabase' && formData.endpoint_format === 'postgrest';
-    const canSave = !!formData.name.trim() && (isEditing || (
-        manualHttp && formData.type === 'supabase'
-            ? /^https:\/\//.test(formData.api_url) && !!formData.service_role_key
-            : !!formData.provider_account_id && (formData.type !== 'supabase' || nativePostgrest || !!formData.project_ref)
-    ));
+    const resourceSelected = !!formData.provider_account_id
+        && (formData.type !== 'supabase' || nativePostgrest || !!formData.project_ref);
+    const canSave = !!formData.name.trim() && (isEditing || resourceSelected);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -162,7 +160,7 @@ export function DatasourceModal({ datasource, initialType, onClose, onCreated }:
                             <label className="block text-sm">Schema<input className="w-full rounded-md border bg-background px-3 py-2" value={formData.schema} maxLength={63} onChange={e => setFormData({ ...formData, schema: e.target.value })} placeholder="public" /></label>
                             <p className="text-xs text-muted-foreground">Choose an already exposed schema. Test Connection checks HTTP access and schema metadata; it does not install SQL functions or verify every data operation.</p>
                         </div>}
-                        {formData.type === 'supabase' && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={manualHttp} onChange={e => { setManualHttp(e.target.checked); setFormData({ ...formData, provider_account_id: '', api_url: '', service_role_key: '' }); }} />{isEditing ? 'Edit HTTPS URL and server key' : 'Connect using an HTTPS URL and server key'}</label>}
+                        {canEditLegacyHttp && formData.type === 'supabase' && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={manualHttp} onChange={e => { setManualHttp(e.target.checked); setFormData({ ...formData, provider_account_id: '', api_url: '', service_role_key: '' }); }} />Edit existing HTTPS URL and server key</label>}
                         {manualHttp && formData.type === 'supabase' && <div className="space-y-3">
                             <label className="block text-sm">API base URL<input type="url" className="w-full rounded-md border bg-background px-3 py-2" value={formData.api_url} onChange={e => setFormData({ ...formData, api_url: e.target.value })} placeholder="https://your-database.example.com" required={!isEditing} /></label>
                             <label className="block text-sm">Server API key<input type="password" autoComplete="new-password" className="w-full rounded-md border bg-background px-3 py-2" value={formData.service_role_key} onChange={e => setFormData({ ...formData, service_role_key: e.target.value })} required={!isEditing} /></label>
@@ -178,7 +176,7 @@ export function DatasourceModal({ datasource, initialType, onClose, onCreated }:
                                     compatibleProviders={[nativePostgrest ? 'postgrest' : formData.type === 'd1' ? 'cloudflare' : formData.type]}
                                     requireResourceSelection={formData.type === 'supabase' && !nativePostgrest}
                                     resourceLabel={formData.type === 'supabase' && !nativePostgrest ? 'Select Supabase project' : undefined}
-                                    connectReturnPath={formData.type === 'supabase' ? '/frontbase-admin/data-studio/datasources?connect=supabase' : undefined}
+                                    connectInSettings
                                     label="Connected Account (recommended)"
                                     autoSelectSingle
                                     selectedAccountId={formData.provider_account_id || undefined}

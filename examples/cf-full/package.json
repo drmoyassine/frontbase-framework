@@ -5,6 +5,8 @@
     "type": "module",
     "scripts": {
         "build": "node build.mjs",
+        "publication:operator": "node operator-dist/publication-operator.mjs",
+        "test:prerender": "node test/prerender-delivery.mjs && node test/prerender-browsing.mjs && node test/prerender-postgres.mjs && node test/prerender-mutation.mjs && node test/prerender-browsing-mutation.mjs && node test/prerender-proof-mutation.mjs",
         "e2e": "node build.mjs && playwright test -c e2e/playwright.config.ts",
         "e2e:cloud": "node build.mjs && playwright test -c e2e/cloud.config.ts",
         "e2e:quality": "node build.mjs && playwright test -c e2e/pilot-quality/quality.config.ts",
@@ -19,6 +21,7 @@
         "test:state-db": "node build.mjs && node test/state-db.mjs",
         "test:state-db-mutation": "node test/state-db-mutation.mjs",
         "test:session-secret": "node build.mjs && node test/session-secret.mjs",
+        "test:live-startup": "node build.mjs && node test/live-serving-startup.mjs",
         "test:vercel-config": "node build.mjs && node test/vercel-config.mjs",
         "test:node-fresh": "node test/fresh-node.mjs"
     },

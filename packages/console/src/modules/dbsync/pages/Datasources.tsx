@@ -1,5 +1,3 @@
-import { SiteConfigurationForm } from '@/components/dashboard/settings/shared/SiteConfigurationForm'
-import { LiveListMigration } from '@/components/dashboard/settings/shared/LiveListMigration'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { datasourcesApi, Datasource } from '../api'
@@ -31,9 +29,6 @@ const TYPE_COLORS: Record<string, string> = {
 }
 
 export function Datasources() {
-    const [showSharedMappings, setShowSharedMappings] = useState(() => new URLSearchParams(window.location.search).get('setup') === 'collections')
-    const [showMaintenance, setShowMaintenance] = useState(false)
-    const [chooseSupabaseProject, setChooseSupabaseProject] = useState(() => new URLSearchParams(window.location.search).get('connect') === 'supabase')
     const [showModal, setShowModal] = useState(false)
     const [editingDatasource, setEditingDatasource] = useState<Datasource | null>(null)
     const [relationshipDatasource, setRelationshipDatasource] = useState<Datasource | null>(null)
@@ -89,15 +84,6 @@ export function Datasources() {
 
     return (
         <div className="space-y-6">
-            <details open={showSharedMappings} onToggle={e => setShowSharedMappings(e.currentTarget.open)} className="rounded border p-4">
-                <summary className="cursor-pointer font-medium">Advanced publication setup</summary>
-                {showSharedMappings && <div className="mt-4 space-y-4"><SiteConfigurationForm section="data" />
-                    <p className="text-sm">Configure routes and publish in the builder’s Page settings. <a className="underline" href="/frontbase-admin/pages">Open Pages</a></p>
-                    <button type="button" className="text-sm underline" aria-expanded={showMaintenance} onClick={() => setShowMaintenance(value => !value)}>Legacy data maintenance</button>
-                    {showMaintenance && <LiveListMigration />}
-                </div>}
-            </details>
-
             {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
@@ -163,19 +149,12 @@ export function Datasources() {
                 }}
             />
 
-            {(showModal || chooseSupabaseProject) && (
+            {showModal && (
                 <DatasourceModal
                     datasource={editingDatasource}
-                    initialType={chooseSupabaseProject ? 'supabase' : undefined}
                     onClose={() => {
                         setShowModal(false)
                         setEditingDatasource(null)
-                        if (chooseSupabaseProject) {
-                            const next = new URL(window.location.href)
-                            next.searchParams.delete('connect')
-                            window.history.replaceState(window.history.state, '', next)
-                            setChooseSupabaseProject(false)
-                        }
                     }}
                 />
             )}

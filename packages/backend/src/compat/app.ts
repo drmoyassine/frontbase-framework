@@ -52,6 +52,7 @@ import { datasourceRunner } from '../db/datasource-runner.js';
 import { mergeAccountConfig, datasourceAccountConfigFor } from './providers/merge-account.js';
 import { registerEditorialRoutes } from './routes/editorial.js';
 import { registerSitePublicationRoutes } from './routes/site-publication.js';
+import { registerLiveLayoutPublicationRoutes, registerSnapshotRetirement } from './routes/live-layout-publication.js';
 import { registerSecurityEventsRoutes } from './routes/security-events.js';
 import { registerPagesRoutes } from './routes/pages.js';
 import { registerPageChangeRoutes } from './routes/page-changes.js';
@@ -477,6 +478,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     registerMenusRoutes(app, runner, kvFor, now);
     registerSiteConfigurationRoutes(app, runner, now);
     registerTranslationStorageRoutes(app, runner, { syncFor: syncStoreFor, externalFetch, accountConfigFor: accountConfigFor }, now);
+    registerSnapshotRetirement(app,runner);
     registerTranslationGenerationRoutes(app, runner, { accountsFor: phase2For, externalFetch }, now);
     registerTranslationBatchRoutes(app, runner, { pagesFor, syncFor: syncStoreFor, accountsFor: phase2For, externalFetch,
         accountConfigFor: accountConfigFor }, now, deps.translationExecutionEnabled === true);
@@ -491,6 +493,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         return datasourceRunner(datasource.kind, await mergeAccountConfig(accountConfigFor, externalFetch, tenant, datasource.kind, datasource.config), externalFetch);
     });
     registerSitePublicationRoutes(app, runner, syncStoreFor, externalFetch, accountConfigFor, now);
+    registerLiveLayoutPublicationRoutes(app, runner, now,{syncFor:syncStoreFor,accountConfigFor,externalFetch});
     registerDirectoryPreviewRoutes(app, runner, syncStoreFor, externalFetch, accountConfigFor);
     registerEditorialRoutes(app, runner, syncStoreFor, externalFetch, accountConfigFor, now);
     registerSecurityEventsRoutes(app, secEventsFor);

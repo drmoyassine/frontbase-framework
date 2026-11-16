@@ -32,7 +32,8 @@ export const publicationListRequestSchema = z.object({ componentId:z.string().mi
     filters:z.array(z.object({column:z.enum(['title','id','parentId','institutionId']),op:z.enum(['eq','neq','gt','gte','lt','lte','contains','in','is_null','not_null']),value:z.unknown().optional()}).strict()).max(50)
 }).strict();
 const liveColumn=z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).max(128);
-const liveListRequestSchema=publicationListRequestSchema.extend({search:z.string().max(512).default(''),pageSize:z.number().int().min(1).max(100),sortColumn:liveColumn.default('title'),filters:z.array(z.object({column:liveColumn,op:z.enum(['eq','neq','gt','gte','lt','lte','contains','starts_with','ends_with','in','is_null','not_null']),value:z.unknown().optional()}).strict()).max(50)});
+export const liveListRequestSchema=publicationListRequestSchema.extend({search:z.string().max(512).default(''),pageSize:z.number().int().min(1).max(100),sortColumn:liveColumn.default('title'),filters:z.array(z.object({column:liveColumn,op:z.enum(['eq','neq','gt','gte','lt','lte','contains','starts_with','ends_with','in','is_null','not_null']),value:z.unknown().optional()}).strict()).max(50)});
+export type LiveListRequest=z.infer<typeof liveListRequestSchema>;
 const collections = ['institutions','programs','articles'] as const;
 export const publicationListBindingSchema=z.object({dataSourceId:z.literal('frontbase:publication'),tableName:z.enum(collections),source:z.object({kind:z.literal('publication'),hash:z.string().regex(/^[a-f0-9]{64}$/)}).passthrough()}).passthrough();
 
@@ -78,12 +79,16 @@ export async function readPublicationList(db:DbRunner,owner:string,bindingInput:
     const rows:Record<string,unknown>[]=[],store=new SitePublicationManifestStore(db,owner),loaded=new Map<string,Awaited<ReturnType<typeof store.loadChunk>>>();
     const loadChunk=store.chunkReader(source);
     const selectedEntries=entries.slice(pageNumber*pageSize,(pageNumber+1)*pageSize),textByRecord=localizedRowText(catalog);
-    for(const entry of selectedEntries){
+    if(db.dialect==='postgres')rows.push(...await store.readRecords(source,selectedEntries));
+    else for(const entry of selectedEntries){
         let chunk=loaded.get(entry.chunkHash);
         if(!chunk){const reference=source.chunks.find(chunk=>chunk.hash===entry.chunkHash);if(!reference)throw Error();chunk=await loadChunk(reference);loaded.set(entry.chunkHash,chunk);}
         const row=chunk.records[entry.position];if(!row)throw Error();rows.push(Object.fromEntries(Object.entries(row).filter(([key])=>key!=='body')));
     }
     if(binding.tableName==='articles')await verifyManifestEditorial(db,owner,source,rows);
+    // HTTP projection includes bodies only for exact editorial verification.
+    // Continuation responses retain the existing public list-field contract.
+    for(let i=0;i<rows.length;i++)rows[i]=Object.fromEntries(Object.entries(rows[i]!).filter(([key])=>key!=='body'));
     if(textByRecord.size)for(let i=0;i<rows.length;i++){const entry=selectedEntries[i]!,row=rows[i]!,fields=textByRecord.get(entry.collection+':'+String(entry.id));
         if(fields)for(const [fieldKey,localized] of fields){const current=row[fieldKey];
             if(typeof current==='string'&&(localized.sourceText===undefined||localized.sourceText===current))row[fieldKey]=localized.text;}}
@@ -143,14 +148,34 @@ export async function readLocalizedLiveList(owner:string,binding:Record<string,a
     return {rows,total:filtered.length};
 }
 
+function hasPublicationListBinding(nodes:PageComponent[]):boolean{
+    for(const node of nodes){
+        if(node.props?.binding||node.binding)return true;
+        if(node.children&&hasPublicationListBinding(node.children))return true;
+        for(const {overrides} of node.versions??[]){
+            if(overrides.props?.binding||overrides.binding)return true;
+            if(overrides.children&&hasPublicationListBinding(overrides.children as PageComponent[]))return true;
+        }
+    }
+    return false;
+}
+
 /** Resolve only the selected source for initial HTML; alternatives stay query-free. The optional
  *  catalog localizes pinned publication reads (query + returned text) and gives live views
  *  full-dataset localized sort/filter semantics (readLocalizedLiveList); without a catalog live
  *  views keep coherent source semantics. */
-export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[],pageContext:Record<string,unknown>={}):Promise<PageLayoutData>{
+export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[],pageContext:Record<string,unknown>={},liveOnly?:{sourceQuery:PublishedLiveQuery;list?:LiveListRequest;directoryListing?:boolean;translationCollection?:(binding:Record<string,any>)=>string|undefined}):Promise<PageLayoutData>{
+    if(liveOnly&&catalog)throw Error('content_catalog_deprecated');
+    const {publicationRecordContext:_authoredContext,...root}=layout.root??{};
+    const scopedLayout={...layout,root:{...root,...(pageContext.recordId!==undefined?{publicationRecordContext:pageContext}:{})}};
+    // Directory queries already projected these live rows. Only a Saved View
+    // binding needs the async tree projection below.
+    if(liveOnly&&!hasPublicationListBinding(layout.content))return scopedLayout;
     const url=new URL(request.url),read=contextReader({url:Object.fromEntries(url.searchParams),user,page:pageContext});
-    const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>Promise.all(nodes.map(async node=>{
-        const versionId=selectBlockVersion(node,read),effective=applyBlockVersion(node,versionId);let binding=effective.props?.binding?bindingWithTemplateFields(effective.props.binding as any,[...effective.children??[],...(effective.type==='Card'&&layout.root?.templatePolicy?[{id:'$template-policy-fields',type:'Text',props:{templatePolicy:layout.root.templatePolicy}}]:[])]):undefined;
+    const projectNode=async(node:PageComponent):Promise<PageComponent>=>{
+        if(liveOnly&&node.visibilityCondition&&!evaluateCondition(node.visibilityCondition,read))return node;
+        const versionId=selectBlockVersion(node,read),effective=node.versions?.length?applyBlockVersion(node,versionId):node;
+        let binding=effective.props?.binding?bindingWithTemplateFields(effective.props.binding as any,[...effective.children??[],...(effective.type==='Card'&&layout.root?.templatePolicy?[{id:'$template-policy-fields',type:'Text',props:{templatePolicy:layout.root.templatePolicy}}]:[])]):undefined;
         if(binding&&effective.type==='Card'&&layout.root?.templatePolicy){const fields=templateRecordFields([{id:'$template-policy',type:'Text',props:{templatePolicy:layout.root.templatePolicy}}]);binding={...binding,columnOrder:[...new Set([...binding.columnOrder??[],...fields])]};}
         let result=node;
         if(binding?.source?.kind==='publication'||binding&&!binding.source){
@@ -158,15 +183,24 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
             if(live){liveViewBindingSchema.parse(binding);if(!liveQuery)throw Error('live_list_resolver_unavailable');}
             const controls=effective.props?.controls as any??{};
             const page=Math.max(0,Number(url.searchParams.get('page')||1)-1),search=url.searchParams.get('q')??'';
-            const listingArtifact=live&&node.type!=='Card'?(await new SitePublicationStore(db,owner).activeVersion())?.artifact:null;
+            const listingArtifact=!liveOnly&&live&&node.type!=='Card'?(await new SitePublicationStore(db,owner).activeVersion())?.artifact:null;
             const listingFilters=listingArtifact?.schemaVersion===2?await templateLiveListingFilter(db,owner,listingArtifact,binding,typeof pageContext.locale==='string'?pageContext.locale:undefined):[];
             const sourceFilters=[...listingFilters,...Object.entries(binding.filtering?.filters??{}).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
                 ...(binding.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:routeFilterValue(filter.value,read)}))];
-            const filters=[...sourceFilters,...(search&&controls.searchColumn?[{column:controls.searchColumn,op:'contains',value:search}]:[])];
-            const query={componentId:node.id,versionId,page,...(live?{sourceFilters}:{}),pageSize:binding.pagination?.pageSize??12,sortColumn:binding.sorting?.column??'title',direction:binding.sorting?.direction??'asc',filters};
-            const records=live?(catalog?await readLocalizedLiveList(owner,binding,query,request,liveQuery!,catalog):await liveQuery!(owner,binding,query,request)):await readPublicationList(db,owner,binding,query,catalog,typeof pageContext.locale==='string'?pageContext.locale:undefined);
+            const match=liveOnly?.directoryListing?url.searchParams.get('match'):null;
+            const sort=liveOnly?.directoryListing?url.searchParams.get('sort'):null;
+            const operator=match==='equals'?'eq':match==='startsWith'?'starts_with':'contains';
+            const direction=sort==='title-desc'?'desc':sort==='title-asc'?'asc':binding.sorting?.direction??'asc';
+            const filters=[...sourceFilters,...(search&&controls.searchColumn?[{column:controls.searchColumn,op:operator,value:search}]:[])];
+            const query={componentId:node.id,versionId,page,...(live?{sourceFilters}:{}),pageSize:binding.pagination?.pageSize??12,sortColumn:binding.sorting?.column??'title',direction,filters};
+            if(liveOnly?.list?.componentId===node.id){
+                if(liveOnly.list.versionId!==versionId)throw Error('live_list_version_refused');
+                Object.assign(query,liveOnly.list,{sourceFilters,filters:[...sourceFilters,...liveOnly.list.filters]});
+            }
+            const records=live?(catalog?await readLocalizedLiveList(owner,binding,query,request,liveQuery!,catalog):await liveQuery!(owner,binding,query,request)):liveOnly?await liveOnly.sourceQuery(owner,binding,query,request):await readPublicationList(db,owner,binding,query,catalog,typeof pageContext.locale==='string'?pageContext.locale:undefined);
             const routeFilters=(binding.hiddenFilters??[]).map((filter:any)=>filter.value?.kind==='variable'&&['page.recordId','page.parentId'].includes(filter.value.path)?{...filter,value:routeFilterValue(filter.value,read)??null}:filter);
-            const props={binding:{...binding,hiddenFilters:routeFilters},initialRows:records.rows,initialTotal:records.total,_initialVersionId:versionId,_initialQuery:{page,search,sortColumn:query.sortColumn,direction:query.direction}};
+            const directoryTranslationCollection=live?liveOnly?.translationCollection?.(binding):undefined;
+            const props={binding:{...binding,hiddenFilters:routeFilters},...(directoryTranslationCollection?{directoryTranslationCollection}:{}),initialRows:records.rows,initialTotal:records.total,_initialVersionId:versionId,_initialQuery:{page,search,sortColumn:query.sortColumn,direction:query.direction}};
             if(versionId==='default')result={...node,props:{...node.props,...props}};
             else result={...node,versions:node.versions?.map(version=>version.id===versionId?{...version,overrides:{...version.overrides,props:{...version.overrides.props,...props}}}:version)};
         }
@@ -175,12 +209,18 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
         const activeVersion=result.versions?.find(version=>version.id===versionId);
         if(activeVersion?.overrides.children){
             const children=await walk(activeVersion.overrides.children as PageComponent[]);
-            result={...result,versions:result.versions?.map(version=>version.id===versionId?{...version,overrides:{...version.overrides,children}}:version)};
-        }else if(result.children)result={...result,children:await walk(result.children)};
+            if(children!==activeVersion.overrides.children)result={...result,versions:result.versions?.map(version=>version.id===versionId?{...version,overrides:{...version.overrides,children}}:version)};
+        }else if(result.children){
+            const children=await walk(result.children);
+            if(children!==result.children)result={...result,children};
+        }
         return result;
-    }));
-    const {publicationRecordContext:_authoredContext,...root}=layout.root??{};
-    return {...layout,root:{...root,...(pageContext.recordId!==undefined?{publicationRecordContext:pageContext}:{})},content:await walk(layout.content)};
+    };
+    const walk=async(nodes:PageComponent[]):Promise<PageComponent[]>=>{
+        const projected=await Promise.all(nodes.map(projectNode));
+        return projected.every((node,index)=>node===nodes[index])?nodes:projected;
+    };
+    return {...scopedLayout,content:await walk(layout.content)};
 }
 
 /** Same public page/host boundary, exact reviewed element binding; no arbitrary datasource access.

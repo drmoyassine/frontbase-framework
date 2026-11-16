@@ -5,6 +5,7 @@ import {liveViewBindings} from '@frontbase/edge-core/directory/configuration';
 import type {PageLayoutData} from '@frontbase/edge-core';
 import {SitePublicationStore} from './site-publication-store.js';
 import {SitePublicationReviewStore} from './site-publication-review-store.js';
+import {LiveLayoutPublicationStore} from './live-layout-publication.js';
 
 const key=(id:string)=>`live_view_access:v1:${id}`;
 const policy=JSON.stringify({schemaVersion:1,mode:'published-views-only'});
@@ -25,10 +26,12 @@ export async function publishedLiveReadAllowed(db:DbRunner,owner:string,datasour
     const rows=await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',[owner,key(datasourceId)]);
     if(!rows.length)return true; // Existing, unrelated source policies are not changed by this pilot migration.
     if(rows[0]?.value!==policy||typeof viewId!=='string'||!body||typeof body!=='object'||'query' in body||!Array.isArray(body.joins)||body.joins.length)return false;
-    const active=await new SitePublicationStore(db,owner).activeVersion();
-    if(active?.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,owner).get(active.pointer.hash))return false;
+    const live=await new LiveLayoutPublicationStore(db,owner).active();
+    const active=live?null:await new SitePublicationStore(db,owner).activeVersion();
+    if(!live&&(active?.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,owner).get(active.pointer.hash)))return false;
+    const pages=live?[...live.layout.templates,...live.layout.staticPages]:active!.artifact.schemaVersion===2?[...active!.artifact.templates,...(active!.artifact.staticPages??[])]:[];
     let paths:string[];try{paths=recordPaths(body.related_fields);}catch{return false;}
     const aggregateAllowed=(binding:any)=>{if(!body._aggregate)return true;if(!binding.chartConfig)return false;const {variant,...config}=binding.chartConfig;const a=viewAggregateSchema.safeParse(body._aggregate),b=viewAggregateSchema.safeParse(config);return a.success&&b.success&&JSON.stringify(a.data)===JSON.stringify(b.data);};
-    return [...active.artifact.templates,...(active.artifact.staticPages??[])].some(page=>liveViewBindings(page.layout as unknown as PageLayoutData)
+    return pages.some(page=>liveViewBindings(page.layout as unknown as PageLayoutData)
         .some(binding=>binding.dataSourceId===datasourceId&&binding.viewId===viewId&&binding.tableName===body.table_name&&aggregateAllowed(binding)&&paths.every(path=>binding.columnOrder?.includes(path))&&(binding.sourceSchema===undefined||binding.sourceSchema===sourceSchema)));
 }

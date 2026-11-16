@@ -69,7 +69,7 @@ export const RepeaterProperties: React.FC<RepeaterPropertiesProps> = ({
     if (activeTab === 'general') {
         return (
             <div className="space-y-4">
-                {effectiveBinding.source?.kind==='publication'?<div className="space-y-3 rounded border p-3"><p className="text-sm">This existing component uses the published catalog.</p><p className="text-xs text-muted-foreground">{effectiveBinding.tableName}</p><button type="button" onClick={()=>onBindingUpdate({...defaultBinding})}>Switch to live data</button></div>:<LiveSourceSelector binding={effectiveBinding} onChange={onBindingUpdate} onSourceChange={()=>updateComponentProp('controls',{})}/>}
+                {effectiveBinding.source?.kind==='publication'?<div className="space-y-3 rounded border p-3"><p className="text-sm">This existing component uses the published catalog.</p><p className="text-xs text-muted-foreground">{effectiveBinding.tableName}</p><button type="button" onClick={()=>onBindingUpdate({...defaultBinding})}>Switch to live data</button></div>:<LiveSourceSelector binding={effectiveBinding} onChange={onBindingUpdate} onSourceChange={()=>{if(effectiveBinding.tableName)updateComponentProp('controls',{});}}/>}
 
                 {/* Template hint */}
                 <div className="pt-4 border-t">

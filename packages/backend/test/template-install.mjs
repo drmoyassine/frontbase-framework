@@ -7,6 +7,8 @@ const {TemplateInstallStore}=await import(process.env.FRONTBASE_INSTALL_MODULE??
 import {emptyDirectoryConfiguration,directoryLayoutQueries} from '@frontbase/edge-core/directory/configuration';
 import {validateDirectoryLayout} from '../dist/compat/directory-configuration.js';
 import {renderPage} from '@frontbase/edge-core';
+import {applyBlockVersion, selectBlockVersion} from '@frontbase/edge-core/block-versions';
+import {publicationBindingDiagnostics} from '../dist/compat/publication-binding-diagnostics.js';
 import {resolveAppMenuLayout} from '../dist/compat/menus-runtime.js';
 import {MenusStore} from '../dist/compat/menus-store.js';
 import {projectSharedDirectoryPreview,projectDirectoryRecords,projectTemplatePresentation} from '@frontbase/edge-core/directory/configuration';
@@ -25,8 +27,21 @@ let pages=await seed.list();assert.equal(pages.length,6);assert.equal(pages.filt
 for(const page of pages){const layout=JSON.parse(page.layout_data);assert(layout.content.length);assert.equal(await validateDirectoryLayout(layout,'alpha',db),null);directoryLayoutQueries(layout);assert(!JSON.stringify(layout).includes('PRIVATE_'));}
 assert.equal((await new MenusStore(db,'alpha').get()).menus.length,2,'normal Header/Footer menu drafts');
 const explore=JSON.parse(pages.find(p=>p.name==='Explore').layout_data);
-assert.deepEqual(directoryLayoutQueries(explore).map(q=>q.binding.queryId),['directory.institution.list','directory.program.list'],'installed Explore supports both header destinations before first publication');
-assert(directoryLayoutQueries(explore).every(q=>explore.content.find(n=>n.id===q.id).props.directoryControls.tabs),'each active collection retains the existing browsing controls');
+assert.deepEqual(directoryLayoutQueries(explore),[],'Explore uses standard Repeater bindings');
+const repeaters=explore.content.filter(node=>node.type==='Repeater');
+assert.equal(repeaters.length,1);
+const [repeater]=repeaters;
+assert.equal(selectBlockVersion(repeater,()=>undefined),'default');
+assert.equal(selectBlockVersion(repeater,(scope,key)=>scope==='url'&&key==='type'?'program':undefined),'programs');
+for(const versionId of ['default','programs']){
+ const selected=applyBlockVersion(repeater,versionId);
+ assert.equal(selected.props.binding.componentId,repeater.id);
+ assert.equal(selected.props.binding.dataSourceId,'','fresh installation does not select a datasource');
+ assert.equal(selected.props.controls.search,true);
+}
+assert.ok(Object.hasOwn(repeater.versions[0].overrides.props,'binding'),'Programs owns an independent binding');
+const issues=await publicationBindingDiagnostics([{pageId:'explore',layout:explore}],async()=>{throw Error('unbound drafts need no datasource requests');});
+assert.deepEqual(issues.map(issue=>[issue.elementId,issue.versionId,issue.code]),[[repeater.id,'default','binding_invalid'],[repeater.id,'programs','binding_invalid']]);
 for(const locale of ['en','ar'])for(const page of pages){const authored=JSON.parse(page.layout_data),config=emptyDirectoryConfiguration();config.site={name:locale==='ar'?'دليل الدراسة':'Study directory',origin:'https://fixture.test',locale};
  const rows=new Map(directoryLayoutQueries(authored).map(q=>[q.id,[{id:'record-one',title:locale==='ar'?'برنامج دراسي':'Sample program',summary:'Editable record summary',body:[{kind:'paragraph',runs:[{text:'Editable article body العربية'}]}],byline:'Author',publishedAt:'2026-11-01',originalPath:'/sample-program/',cover:null,coverAlt:''}]]));
  const bound=projectTemplatePresentation(projectDirectoryRecords(projectSharedDirectoryPreview(authored,config),rows,{locale}),config),withMenus=await resolveAppMenuLayout(db,'alpha',bound,'/',null,config.site.name,page.id);

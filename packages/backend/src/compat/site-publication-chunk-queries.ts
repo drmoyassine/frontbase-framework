@@ -60,7 +60,8 @@ export function createChunkDirectoryQueries(input:SitePublicationManifest,owner:
             entries.sort((a,b)=>{const at=localizedTitle(a),bt=localizedTitle(b);return (at<bt?-1:at>bt?1:0)*(p.sort==='title-desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
             const selected=entries.slice(p.offset??0,(p.offset??0)+(mode==='detail'?1:(p.limit??manifest.configuration.browsing.pageSize)+1));
             const rows:Record<string,unknown>[]=[];
-            for(const entry of selected){
+            if(db.dialect==='postgres')rows.push(...await store.readRecords(manifest,selected));
+            else for(const entry of selected){
                 let loading=cache.get(entry.chunkHash);
                 if(!loading){const reference=manifest.chunks.find(ref=>ref.hash===entry.chunkHash);if(!reference)throw new Error('publication_chunk_unavailable');
                     loading=loadChunk(reference);cache.set(entry.chunkHash,loading);}

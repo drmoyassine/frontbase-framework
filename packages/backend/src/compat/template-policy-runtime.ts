@@ -16,8 +16,8 @@ export function templatePolicyPresentation(layout:PageLayoutData,row:Record<stri
 }
 
 /** Reproject localized semantic fields, never feed formatted SEO back into record.title. */
-export function localizedPolicyRecord(layout:PageLayoutData,record:Record<string,unknown>,route:Record<string,unknown>){
+export function localizedPolicyRecord(layout:PageLayoutData,record:Record<string,unknown>,route:Record<string,unknown>,fields?:ReturnType<typeof homepageDisplayFields>){
     const projected={...record};
-    for(const field of homepageDisplayFields(layout))if(field.record?.connectionId==='frontbase:publication'&&field.record.collection===route.collection&&field.record.key.some(key=>key.column==='id'&&String(key.value)===String(route.recordId))&&field.fieldKey)projected[field.fieldKey]=field.text;
+    for(const field of fields??homepageDisplayFields(layout))if(field.record?.connectionId==='frontbase:publication'&&field.record.collection===route.collection&&field.record.key.some(key=>key.column==='id'&&String(key.value)===String(route.recordId))&&field.fieldKey)projected[field.fieldKey]=field.text;
     return projected;
 }

@@ -4,10 +4,18 @@ import { z } from 'zod';
 const id = z.string().min(1).max(160).refine(value => !/[\u0000-\u001f]/.test(value), 'Invalid identifier');
 const name = z.string().min(1).max(160).refine(value => !['__proto__', 'prototype', 'constructor'].includes(value), 'Reserved name');
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
+// Cache only validated BCP 47 normalization, never translation or record values.
+const canonicalLocales = new Map<string,string>();
 export const localeSchema = z.string().min(2).max(63).transform((value, ctx) => {
+    const cached=canonicalLocales.get(value);
+    if(cached)return cached;
     try {
         const [canonical] = Intl.getCanonicalLocales(value);
-        if (canonical) return canonical;
+        if (canonical) {
+            if(canonicalLocales.size>=128)canonicalLocales.delete(canonicalLocales.keys().next().value!);
+            canonicalLocales.set(value,canonical);
+            return canonical;
+        }
     } catch { /* invalid BCP 47 identifier */ }
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid language identifier' });
     return z.NEVER;

@@ -3,7 +3,10 @@
  * Verifies the edge projection retains `execute`, the browser projection strips
  * it, and keys are deterministically sorted.
  */
+import assert from 'node:assert/strict';
 import { z } from 'zod';
+import { emptyDirectoryConfiguration, directorySources, immutableDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
+import { createDirectoryQueries, createLiveDirectoryQueries } from '../dist/queries/directory.js';
 import { defineQueries } from '../dist/queries/defineQueries.js';
 import { toEdgeQueries, toBrowserQueries } from '../dist/queries/registrar.js';
 
@@ -46,6 +49,51 @@ check('edge projection is deterministic', JSON.stringify(toEdgeQueries(registry)
 // execute actually runs (server-side simulation)
 const rows = await edge['zebra.last'].execute({}, {});
 check('edge execute runs and returns rows', Array.isArray(rows) && rows.length === 1);
+
+const directory = emptyDirectoryConfiguration();
+directory.site = {name: 'Fixture', origin: 'https://fixture.example', locale: 'en'};
+directory.datasourceId = 'fixture';
+for (const role of ['institution', 'program', 'city']) {
+    const mapping = directory.collections[role];
+    mapping.table = role;
+    Object.assign(mapping.fields, {id: 'id', title: 'title', originalPath: 'path', institutionId: 'institution_id', cityId: 'city_id'});
+    mapping.scope = {field: 'is_published', value: 0};
+}
+const legacyDirectory = structuredClone(directory);
+for (const {fields} of Object.values(legacyDirectory.collections)) {
+    for (const field of ['coverAlt', 'contentRole', 'sourceOrigin', 'byline', 'publishedAt']) delete fields[field];
+}
+assert.deepEqual(directorySources(legacyDirectory), directorySources(directory));
+const immutableConfiguration=immutableDirectoryConfiguration(legacyDirectory);
+assert.deepEqual(immutableConfiguration,directory,'legacy defaults normalized before reuse');
+assert.ok(Object.isFrozen(immutableConfiguration.collections.program.fields));
+assert.throws(()=>{immutableConfiguration.collections.program.table='unsafe;sql';},TypeError);
+assert.strictEqual(directorySources(immutableConfiguration),directorySources(immutableConfiguration),'reuse only internally validated immutable definitions');
+const forged=structuredClone(immutableConfiguration);forged.collections.program.scope.field='unsafe;sql';Object.freeze(forged);
+assert.throws(()=>directorySources(forged),z.ZodError,'freezing caller input cannot bypass validation');
+assert.notStrictEqual(directorySources(legacyDirectory),directorySources(legacyDirectory),'mutable authoring values are decoded anew');
+const reads = [];
+const readDirectory = async (sql, params) => {
+    reads.push({sql, params});
+    return [{total: 0}];
+};
+const live = createLiveDirectoryQueries(legacyDirectory, 'fixture', 'postgres', readDirectory);
+assert.deepEqual(await live['directory.program.count'].execute({}, {tenant: 'fixture'}), [{total: 0}]);
+assert.match(reads[0].sql, /FROM "program" d WHERE d\."is_published" = \$1/);
+assert.deepEqual(reads[0].params, [0, 0, 0]);
+legacyDirectory.collections.program.table = 'updated_program';
+await createLiveDirectoryQueries(legacyDirectory, 'fixture', 'postgres', readDirectory)['directory.program.count'].execute({}, {tenant: 'fixture'});
+assert.match(reads[1].sql, /FROM "updated_program" d/);
+assert.match(reads[0].sql, /FROM "program" d/);
+legacyDirectory.collections.program.scope.field = '';
+for (const create of [createDirectoryQueries, createLiveDirectoryQueries]) {
+    assert.throws(() => create(legacyDirectory, 'fixture', 'postgres', readDirectory), /directory_configuration_incomplete/);
+}
+legacyDirectory.collections.program.scope.field = 'unsafe;sql';
+for (const create of [createDirectoryQueries, createLiveDirectoryQueries]) {
+    assert.throws(() => create(legacyDirectory, 'fixture', 'postgres', readDirectory), z.ZodError);
+}
+check('directory compilation keeps legacy defaults, mutable mappings, scope values, and input validation', true);
 
 console.log(failures === 0 ? '\nqueries: PASS ✅' : `\nqueries: FAIL ❌ (${failures})`);
 process.exit(failures === 0 ? 0 : 1);

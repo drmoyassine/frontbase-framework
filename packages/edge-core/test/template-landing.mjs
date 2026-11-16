@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
-import {createEducationLanding,defaultTemplateSettings,templateSettingsSchema,directoryLayoutQueries,projectSharedDirectoryPreview,projectDirectoryRecords,projectTemplatePresentation,landingQueryParams} from '../dist/directory/configuration.js';
+import {createEducationLanding,defaultTemplateSettings,templateSettingsSchema,directoryLayoutQueries,projectSharedDirectoryPreview,projectDirectoryRecords,projectTemplatePresentation,landingQueryParams,compileDirectoryProjection,compilePublishedDirectoryProjection,restorePublishedDirectoryProjection} from '../dist/directory/configuration.js';
 import {renderPage} from '../dist/index.js';
 import {startHeroSlides} from '../dist/hero-behavior.js';
 
@@ -17,6 +17,44 @@ const projected=projectTemplatePresentation(projectDirectoryRecords(projectShare
 assert.equal(JSON.stringify(layout),before);
 const context={user:{private:'PRIVATE_CONTEXT_CANARY'},page:{},app:{},visitor:{},url:{},system:{},cookies:{},local:{},session:{}};
 const html=await renderPage(projected,context);
+function frozen(value) {
+    if (value && typeof value === 'object') {
+        for (const child of Object.values(value)) frozen(child);
+        Object.freeze(value);
+    }
+    return value;
+}
+const authored=projectSharedDirectoryPreview(layout,full);
+const plan=compilePublishedDirectoryProjection(authored);
+assert.ok(Object.isFrozen(plan)&&Object.isFrozen(plan.queries)&&Object.isFrozen(plan.queries[0].path));
+const serialized=JSON.stringify(plan);
+assert.ok(!serialized.includes('Guide summary')&&!serialized.includes('PRIVATE_CONTEXT_CANARY'));
+const stored=frozen(JSON.parse(JSON.stringify(authored)));
+const restored=restorePublishedDirectoryProjection(stored,frozen(JSON.parse(serialized)));
+assert.deepEqual(restored.queries,compileDirectoryProjection(stored).queries);
+for(const locale of ['en','ar']){
+    const legacy=compileDirectoryProjection(stored);
+    const expected=await renderPage(legacy.projectPresentation(legacy.project(records,{locale}),full),context);
+    const actual=await renderPage(restored.projectPresentation(restored.project(records,{locale}),full),context);
+    assert.equal(actual,expected);
+}
+assert.equal(restored.queries[0].landingLimit,2);
+assert.throws(()=>restorePublishedDirectoryProjection(authored,plan),/projection_plan_invalid/);
+for(const corrupt of [
+    p=>{p.queries[0].path=[99];},
+    p=>{p.queries[0].landingLimit=13;},
+    p=>{p.records.push(p.records[0]);},
+    p=>{p.heroes=[[0]];},
+    p=>{p.landing=false;},
+    p=>{p.cachedRows=[];},
+]){
+    const bad=JSON.parse(serialized);
+    corrupt(bad);
+    assert.throws(()=>restorePublishedDirectoryProjection(stored,frozen(bad)),/projection_plan_invalid/);
+}
+const invalid=structuredClone(authored);
+invalid.root.directoryLanding.settings.programCount=13;
+assert.throws(()=>compilePublishedDirectoryProjection(invalid));
 assert.ok(html.includes('Study in Hungary'));assert.ok(!html.includes('PRIVATE_CONTEXT_CANARY'));assert.ok(!html.includes('<script>BAD'));
 assert.ok(html.includes('method="get" action="/explore/"'));assert.ok(html.includes('name="type"'));assert.ok(html.includes('href="/original-program/"'));assert.ok(html.includes('href="/original-guide/"'));
 assert.equal((html.match(/<h1\b/g)||[]).length,1);assert.ok(html.includes('data-hero-next'));assert.ok(!html.includes('Featured institutions'));

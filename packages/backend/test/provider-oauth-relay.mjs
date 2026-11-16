@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';import {sqliteRunner} from '@frontbase/edge-infra';
+import assert from 'node:assert/strict';import {sqliteRunner} from '@frontbase/edge-infra';import {Hono} from 'hono';
 import {migrateUp} from '../dist/db/migrations.js';import {createSecretCipher} from '../dist/db/secret-cipher.js';
 const {createProviderOAuthRelay}=await import(process.env.FRONTBASE_RELAY_TEST_MODULE??'../dist/provider-oauth-relay.js');
 const {sqlOAuthRelayVault,sqlOAuthNativeClaims,sqlOAuthNativeReceiver}=await import(process.env.FRONTBASE_RELAY_STORE_TEST_MODULE??'../dist/provider-oauth-relay-store.js');
@@ -23,6 +23,10 @@ const call=(path,opts)=>dispatch(relay,relayOrigin,path,opts);
 const store=providerOAuthStore(appDB,appCipher,()=>clock);
 const receiver=createProviderRelayClient({origin,relayOrigin,target,mode:'authenticated',cipher:appCipher,store,now:()=>clock,authorize:async r=>r.headers.get('x-owner')==='yes'?{tenant:'test',subject:'owner'}:null,fetch:async(input,init)=>relay.fetch(new Request(String(input),init))});
 const client=(path,opts)=>dispatch(receiver,origin,path,opts);
+const mounted=new Hono();mounted.route('/',receiver);mounted.get('/api/ordinary',c=>c.text('ordinary'));
+const ordinary=await mounted.fetch(new Request('https://preview.example/api/ordinary'));
+assert.equal(ordinary.status,200);assert.equal(ordinary.headers.get('content-security-policy'),null);
+assert.equal((await mounted.fetch(new Request('https://preview.example/api/provider-oauth/receiver-proof'))).status,403,'relay origin check stays enforced');
 const cookie=r=>r.headers.get('set-cookie').split(';')[0];
 async function flow(clientFor=client,providerName='cloudflare'){
  const start=await clientFor('/api/provider-oauth/'+providerName+'/start',{body:{returnPath:'/frontbase-admin/settings?tab=accounts'}});assert.equal(start.status,200);const clientCookie=cookie(start),url=new URL((await start.json()).url);if(establishedKey)assert.ok(!url.href.includes(establishedKey),'registration secret never enters browser URL');

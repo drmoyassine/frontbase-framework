@@ -1,4 +1,5 @@
-import {directorySource} from './source-contract.js';
+import {parseDirectorySourceConfiguration} from './source-contract.js';
+export {immutableDirectoryConfiguration} from './source-contract.js';
 import { z } from 'zod';
 export {liveViewBindingSchema,liveViewBindings} from './live-list.js';
 export { projectRelativeSiteLinks } from './navigation.js';
@@ -6,8 +7,8 @@ export { templateSettingsSchema, landingRootSchema, defaultTemplateSettings, rea
 export { createEducationLanding } from './landing.js';
 import { siteBindingsSchema, validateSiteBinding } from './bindings.js';
 export { siteBindingsSchema } from './bindings.js';
-export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, directoryListCollections, projectDirectoryRecords, type DirectoryQueryBinding } from './bindings.js';
-export { editorialBodySchema, parseEditorialBody, projectEditorialBody } from './editorial.js';
+export { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryLayoutQueries, compileDirectoryProjection, compilePublishedDirectoryProjection, restorePublishedDirectoryProjection, directoryListCollections, projectDirectoryRecords, type DirectoryQueryBinding, type PublishedDirectoryProjectionPlan } from './bindings.js';
+export { editorialBodySchema, isValidatedEditorialBody, parseEditorialBody, projectEditorialBody } from './editorial.js';
 export { directoryBrowsingSchema, directoryBrowsingStateSchema, projectDirectoryBrowsing, type DirectoryBrowsingState } from './browsing.js';
 
 /** Data-only authoring contract. No credentials, SQL, executable templates or host adapters. */
@@ -46,6 +47,11 @@ export const directoryConfigurationSchema = z.object({
     site: z.object({ name: label, destination: label.optional(), origin, locale: z.string().max(35).regex(/^(?:[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*)?$/) }).strict(),
     datasourceId: z.string().max(128).regex(/^[A-Za-z0-9_-]*$/),
     collections: z.object({ institution: collection, program: collection, city: collection, article: collection, pathway: collection }).strict(),
+    detailViews: z.object({
+        institution: z.string().min(1).max(128).optional(),
+        program: z.string().min(1).max(128).optional(),
+        article: z.string().min(1).max(128).optional(),
+    }).strict().optional(),
     browsing: z.object({ defaultCollection: z.enum(directoryRoles), pageSize: z.union([z.literal(12), z.literal(24), z.literal(48)]),
         search: z.boolean(), cityFilter: z.boolean(), degreeFilter: z.boolean(), intakeFilter: z.boolean(), sort: z.enum(['name', 'latest']) }).strict(),
     routes: z.object({ directory: localPath, blog: localPath, preserveOriginalPaths: z.literal(true) }).strict(),
@@ -121,30 +127,44 @@ export function directoryConfigurationIssues(value: unknown): string[] {
 }
 
 /** Completeness is distinct from validation: incomplete authoring drafts remain saveable. */
-export {migrateExploreRepeater,standardPublicationQueries,publicationListSourceSchema} from './standard-repeater.js';
+export {createVersionedExploreDraft,migrateExploreRepeater,standardPublicationQueries,publicationListSourceSchema} from './standard-repeater.js';
 export {materializeElementSettings} from './template-settings.js';
 export function directoryConfigurationReadiness(value: unknown): string[] {
-    const parsed = directoryConfigurationSchema.safeParse(value);
-    if (!parsed.success) return directoryConfigurationIssues(value);
-    const c = parsed.data;
+    try {
+        return directoryConfigurationGaps(parseDirectorySourceConfiguration(value));
+    } catch (error) {
+        if (!(error instanceof z.ZodError)) throw error;
+        return error.issues.map(issue => issue.path.join('.') || 'configuration');
+    }
+}
+
+/** The query compiler receives complete configuration and source mappings from one strict parse. */
+export function requireDirectorySourceConfiguration(value: unknown) {
+    const resolved = parseDirectorySourceConfiguration(value);
+    if (directoryConfigurationGaps(resolved).length) throw Error('directory_configuration_incomplete');
+    return resolved;
+}
+
+function directoryConfigurationGaps({configuration: c, sources}: ReturnType<typeof parseDirectorySourceConfiguration>): string[] {
     const missing: string[] = [];
     for (const key of ['name', 'origin'] as const) if (!c.site[key]) missing.push(`site.${key}`);
     if (!c.datasourceId) missing.push('datasourceId');
     if (!c.routes.directory) missing.push('routes.directory');
     for (const role of ['institution', 'program', 'city'] as const) {
-        const r = directorySource(c,role);
+        const r = sources[role];
         for (const key of ['id', 'title'] as const) if (!r.fieldMapping[key]) missing.push(`collections.${role}.fields.${key}`);
         if (role !== 'city' && !r.fieldMapping.originalPath) missing.push(`collections.${role}.fields.originalPath`);
         if (!r.tableName) missing.push(`collections.${role}.table`);
         if (!r.filter.column || r.filter.value === '') missing.push(`collections.${role}.scope`);
     }
-    if (!directorySource(c,'program').fieldMapping.institutionId) missing.push('collections.program.fields.institutionId');
-    if (!directorySource(c,'institution').fieldMapping.cityId) missing.push('collections.institution.fields.cityId');
-    for (const role of ['article', 'pathway'] as const) if (directorySource(c,role).tableName) {
-        const r = directorySource(c,role);
+    if (!sources.program.fieldMapping.institutionId) missing.push('collections.program.fields.institutionId');
+    if (!sources.institution.fieldMapping.cityId) missing.push('collections.institution.fields.cityId');
+    for (const role of ['article', 'pathway'] as const) if (sources[role].tableName) {
+        const r = sources[role];
         if (!r.fieldMapping.id || !r.fieldMapping.title || !r.fieldMapping.originalPath || !r.filter.column || r.filter.value === '') missing.push(`collections.${role}`);
     }
-    if (directorySource(c,'article').tableName && (!directorySource(c,'article').fieldMapping.contentRole || !directorySource(c,'article').fieldMapping.sourceOrigin || !directorySource(c,'article').fieldMapping.body)) missing.push('collections.article.editorial');
+    const article = sources.article;
+    if (article.tableName && (!article.fieldMapping.contentRole || !article.fieldMapping.sourceOrigin || !article.fieldMapping.body)) missing.push('collections.article.editorial');
     return missing;
 }
 /** Actionable authoring diagnostics over the existing publication admission checks.
@@ -178,4 +198,4 @@ export { editorialCoverUrlSchema, editorialEditSchema, editorialReadRequestSchem
 
 export {templateRecordFields,bindingWithTemplateFields} from './live-list.js';
 
-export {sourceBindingsSchema,sourceBindings,directorySource,publicationSource,sourceBindingsMatch,storedSourceConfigurationSchema,encodeSourceConfiguration,readSourceConfiguration,type SourceBindings} from './source-contract.js';
+export {sourceBindingsSchema,sourceBindings,directorySource,directorySources,publicationSource,sourceBindingsMatch,storedSourceConfigurationSchema,encodeSourceConfiguration,readSourceConfiguration,type SourceBindings} from './source-contract.js';

@@ -43,6 +43,23 @@ await db.exec('INSERT INTO settings(tenant_slug,key,value,updated_at) VALUES(?,?
 assert.deepEqual(await store.get(legacyHash),legacy);assert.equal(await publicationHash(await store.get(legacyHash)),legacyHash);assert.equal((await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',['alpha','site_publication:manifest:v2:'+legacyHash]))[0].value,legacyBytes);assert.equal(publicationSource(legacy,'program').tableName,'program');
 
 assert.ok(manifest.chunks.reduce((n,c) => n + c.bytes, 0) > 1024 * 1024);
+const operations = [];
+const httpStyleRunner = {
+    dialect: 'postgres',
+    query: async (sql, params) => { operations.push(sql); return db.query(sql, params); },
+    exec: async (sql, params) => { operations.push(sql); return db.exec(sql, params); },
+};
+const httpStore = new SitePublicationManifestStore(httpStyleRunner, 'http-alpha');
+assert.equal(await httpStore.prepare(header, records, now), hash);
+assert.deepEqual(await httpStore.get(hash), manifest);
+const inserts = operations.filter(sql => sql.startsWith('INSERT') && sql.includes('(?,?,?,?),(?,?,?,?)'));
+assert.ok(inserts.length > 0, 'HTTP state writes multiple chunks per statement');
+assert.ok(operations.length < manifest.chunks.length * 2, 'HTTP preparation batches chunk writes and readback');
+const chunkKey = 'site_publication:chunk:v1:' + manifest.chunks[0].hash;
+await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?', ['{}', 'http-alpha', chunkKey]);
+await assert.rejects(() => httpStore.prepare(header, records, now), /publication_chunk_unavailable/);
+
+
 await store.verify(manifest);
 const redirected=await store.get(await store.prepare({...header,redirects:[{from:'/blog/old-news/',to:'/old-news/'}]},records,now));
 assert.deepEqual(redirected.redirects,[{from:'/blog/old-news/',to:'/old-news/'}]);

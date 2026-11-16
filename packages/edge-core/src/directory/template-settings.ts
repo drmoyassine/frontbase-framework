@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { editorialCoverUrlSchema } from './editorial.js';
 import type { PageLayoutData, PageComponent } from '../ssr/types.js';
+import { isFrozenPlainData } from '../ssr/styleHelpers.js';
 
 const color = z.string().regex(/^#[a-fA-F0-9]{6}$/);
 const copy = (n: number) => z.string().max(n).refine(v => !/[\x00-\x08]/.test(v));
@@ -25,18 +26,38 @@ export function defaultTemplateSettings(): TemplateSettings {
         sections:{guidance:true,programs:true,articles:true,counselor:true},programCount:6,articleCount:3,
         programHeading:'Explore study programs',articleHeading:'Study guides',counselorHeading:'Your next step starts with a conversation.',counselorCopy:'Talk through your study goals and application options with a counselor.' };
 }
-export function templatePalette(input: TemplateSettings) {
-    const s=templateSettingsSchema.parse(input);
+function paletteForValidatedSettings(s: TemplateSettings) {
     return { background:'#ffffff',surface:'#f4f6f8',text:'#172033',muted:'#536174',primary:s.preset==='navy'?'#122d50':'#252a32',border:'#dce2e9',...s.colors };
 }
+export function templatePalette(input: TemplateSettings) {
+    return paletteForValidatedSettings(templateSettingsSchema.parse(input));
+}
 export function templateContrastIssues(input:TemplateSettings):string[]{
-    if(!templateSettingsSchema.safeParse(input).success)return ['Check template settings'];
-    const p=templatePalette(input),lum=(hex:string)=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i]!,0);
+    const checked=templateSettingsSchema.safeParse(input);
+    if(!checked.success)return ['Check template settings'];
+    const p=paletteForValidatedSettings(checked.data),lum=(hex:string)=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i]!,0);
     const ratio=(a:string,b:string)=>{const x=lum(a),y=lum(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
     return [...(ratio(p.text,p.background)<4.5?['Text/background contrast is too low']:[]),...(ratio('#ffffff',p.primary)<4.5?['Primary color needs enough contrast with white button/header text']:[])];
 }
 export function readLandingSettings(layout: PageLayoutData): TemplateSettings | undefined {
     return layout.root?.directoryLanding === undefined ? undefined : landingRootSchema.parse(layout.root.directoryLanding).settings;
+}
+
+interface LandingState {
+    settings: TemplateSettings;
+    presentation?: ReturnType<typeof compileLandingPresentation>;
+}
+const frozenLandingState = new WeakMap<object, LandingState>();
+
+function landingState(layout: PageLayoutData): LandingState | undefined {
+    const source = layout.root?.directoryLanding;
+    if (source === undefined) return undefined;
+    if (!source || typeof source !== 'object') return { settings: landingRootSchema.parse(source).settings };
+    const previous = frozenLandingState.get(source);
+    if (previous) return previous;
+    const state = { settings: landingRootSchema.parse(source).settings };
+    if (isFrozenPlainData(source)) frozenLandingState.set(source, state);
+    return state;
 }
 
 /** Copy legacy global presentation values into their actual authoring elements. */
@@ -60,19 +81,20 @@ export function materializeElementSettings(layout:PageLayoutData,configuration:{
     });
     return {...layout,root:{...layout.root,elementSettingsVersion:1},content:walk(layout.content)};
 }
-export function landingQueryParams(layout:PageLayoutData,id:string,params:Record<string,unknown>):Record<string,unknown>{
-    const settings=readLandingSettings(layout);if(!settings)return params;
+export function landingQueryLimit(layout: PageLayoutData, id: string, settings: TemplateSettings | undefined): number | undefined {
+    if (!settings) return undefined;
     const find=(nodes:PageComponent[]):PageComponent|undefined=>{for(const n of nodes){if(n.id===id)return n;const found=n.children&&find(n.children);if(found)return found;}return undefined;};
     const node=find(layout.content),role=node?.props?.templateList;
-    return role==='program'||role==='article'?{...params,limit:role==='program'?settings.programCount:settings.articleCount}:params;
+    return role === 'program' ? settings.programCount : role === 'article' ? settings.articleCount : undefined;
+}
+export function landingQueryParams(layout:PageLayoutData,id:string,params:Record<string,unknown>):Record<string,unknown>{
+    const limit = landingQueryLimit(layout, id, landingState(layout)?.settings);
+    return limit === undefined ? params : {...params, limit};
 }
 const literal=(s:string)=>s.replace(/\{(?=[{%])/g,'{\u200b');
 const hsl=(hex:string)=>{const [r,g,b]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255) as [number,number,number];const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min,l=(max+min)/2;let h=0,s=0;if(d){s=d/(1-Math.abs(2*l-1));h=max===r?((g-b)/d)%6:max===g?(b-r)/d+2:(r-g)/d+4;h=(h*60+360)%360;}return `${h.toFixed(2)} ${(s*100).toFixed(2)}% ${(l*100).toFixed(2)}%`;};
-/** Settings live in the saved homepage, separately from approved source content. */
-export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, configuration:{site:{name:string;destination?:string};routes:{directory:string;blog:string};browsing:{defaultCollection:string}}, inherited?:TemplateSettings):T {
-    const settings=readLandingSettings(layout)??inherited;
-    if(!settings)return layout;
-    const s=templateSettingsSchema.parse(settings),p=templatePalette(s);
+function compileLandingPresentation(s: TemplateSettings) {
+    const p=paletteForValidatedSettings(s);
     const slots:Record<string,Record<string,unknown>>={
         page:{backgroundColor:'hsl(var(--background))',color:'hsl(var(--foreground))',fontFamily:s.font==='serif'?'Georgia, serif':'system-ui, -apple-system, Segoe UI, sans-serif'},
         header:{backgroundColor:p.primary,color:'#ffffff'}, section:{padding:`${s.spacing}px 24px`,maxWidth:`${s.width}px`,margin:'0 auto',width:'100%'},
@@ -81,6 +103,50 @@ export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, 
         muted:{color:'hsl(var(--muted-foreground))'},
     };
     const values={programHeading:s.programHeading,articleHeading:s.articleHeading,counselorHeading:s.counselorHeading,counselorCopy:s.counselorCopy};
+    const rootStyles={'--fb-template-primary':p.primary,'--fb-template-width':`${s.width}px`,'--primary':hsl(p.primary),'--primary-foreground':'0 0% 100%','--background':hsl(p.background),'--foreground':hsl(p.text),'--muted':hsl(p.surface),'--border':hsl(p.border),'--muted-foreground':hsl(p.muted)};
+    const mergedSlots = new Map<string, WeakMap<object, Record<string, unknown>>>();
+    const emptyStyles = Object.freeze({});
+    for (const slot of Object.values(slots)) Object.freeze(slot);
+    function styleProjection(style: PageComponent['styles'], slotName: unknown): Record<string, unknown> {
+        const slot = typeof slotName === 'string' && Object.hasOwn(slots, slotName) ? slots[slotName] : undefined;
+        if (!slot) return style && isFrozenPlainData(style) ? style : { ...style };
+        const source = style ?? emptyStyles;
+        if (!isFrozenPlainData(source)) return { ...slot, ...source };
+        const key = String(slotName);
+        let styles = mergedSlots.get(key);
+        if (!styles) {
+            styles = new WeakMap();
+            mergedSlots.set(key, styles);
+        }
+        let merged = styles.get(source);
+        if (!merged) {
+            merged = Object.freeze({ ...slot, ...source });
+            styles.set(source, merged);
+        }
+        return merged;
+    }
+    return { p, values, rootStyles, styleProjection };
+}
+
+/** Settings live in the saved homepage, separately from approved source content. */
+type TemplateConfiguration = {site:{name:string;destination?:string};routes:{directory:string;blog:string};browsing:{defaultCollection:string}};
+export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, configuration:TemplateConfiguration, inherited?:TemplateSettings):T {
+    return projectLandingPresentation(layout, configuration, landingState(layout), inherited);
+}
+
+/** Construct the presentation counterpart of a digest-verified publication plan. */
+export function publishedLandingPresentation(settings: TemplateSettings | undefined, heroes: WeakSet<object>) {
+    const state = settings ? { settings } : undefined;
+    return <T extends PageLayoutData>(layout: T, configuration: TemplateConfiguration): T =>
+        projectLandingPresentation(layout, configuration, state, undefined, heroes);
+}
+
+function projectLandingPresentation<T extends PageLayoutData>(layout: T, configuration: TemplateConfiguration, state: LandingState | undefined, inherited?: TemplateSettings, heroes?: WeakSet<object>): T {
+    const s = state?.settings ?? (inherited ? templateSettingsSchema.parse(inherited) : undefined);
+    if (!s) return layout;
+    const presentation = state ? (state.presentation ??= compileLandingPresentation(s)) : compileLandingPresentation(s);
+    const { p, values, rootStyles, styleProjection } = presentation;
+    const palette = { ...p };
     const walk=(node:PageComponent):PageComponent|null=>{
         const props={...node.props};
         if(['page','card','soft','muted'].includes(String(props.templateStyle)))props.className=[typeof props.className==='string'?props.className:'',`fb-template-${props.templateStyle}`].filter(Boolean).join(' ');
@@ -90,12 +156,15 @@ export function projectTemplatePresentation<T extends PageLayoutData>(layout:T, 
         if(props.templateLink==='institutions')props.href=configuration.routes.directory+'?type=institution';
         if(props.templateLink==='programs')props.href=configuration.routes.directory+'?type=program';
         // Like browsing state, a tuple keeps public copy out of recursive Liquid resolution.
-        if(props.templateHero!==undefined)props.templateHeroState=[{settings:templateSettingsSchema.shape.hero.parse((props.templateHero as any)?.settings??s.hero),palette:p,destination:configuration.site.destination??''}];
+        if(props.templateHero!==undefined){
+            if (heroes?.has(props.templateHero as object)) props.templateHeroState=[{settings:(props.templateHero as any)?.settings??s.hero,palette,destination:configuration.site.destination??''}];
+            else props.templateHeroState=[{settings:templateSettingsSchema.shape.hero.parse((props.templateHero as any)?.settings??s.hero),palette,destination:configuration.site.destination??''}];
+        }
         if(props.templateSearch!==undefined)props.templateSearchState={path:configuration.routes.directory,collection:(props.templateSearch as any)?.defaultCollection??(configuration.browsing.defaultCollection==='program'?'program':'institution')};
-        const styles={...(typeof props.templateStyle==='string'?slots[props.templateStyle]??{}:{}),...node.styles};
+        const styles=styleProjection(node.styles,props.templateStyle);
         return {...node,props,styles,...(node.children?{children:node.children.map(walk).filter((n):n is PageComponent=>!!n)}:{})};
     };
     const previous=layout.root?.containerStyles as Record<string,unknown>|undefined;
     const styleValues=(previous?.values??previous??{}) as Record<string,unknown>;
-    return {...layout,root:{...layout.root,containerStyles:{values:{...styleValues,'--fb-template-primary':p.primary,'--fb-template-width':`${s.width}px`,'--primary':hsl(p.primary),'--primary-foreground':'0 0% 100%','--background':hsl(p.background),'--foreground':hsl(p.text),'--muted':hsl(p.surface),'--border':hsl(p.border),'--muted-foreground':hsl(p.muted)}}},content:layout.content.map(walk).filter((n):n is PageComponent=>!!n)};
+    return {...layout,root:{...layout.root,containerStyles:{values:{...styleValues,...rootStyles}}},content:layout.content.map(walk).filter((n):n is PageComponent=>!!n)};
 }

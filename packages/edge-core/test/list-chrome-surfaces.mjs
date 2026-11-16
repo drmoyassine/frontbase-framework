@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { renderDataComponent } from '../dist/ssr/components/data.js';
 import { renderDirectoryBrowsing } from '../dist/ssr/components/directoryBrowsing.js';
-import { homepageDisplayLayout, homepageDisplayFields } from '../dist/localization/surfaces.js';
+import { homepageDisplayLayout, homepageDisplayFields, applyHomepageDisplayFields } from '../dist/localization/surfaces.js';
 
 // Task 7 slice C: pin what list components actually render on localized published pages.
 // Pure SSR Repeaters stay server-only; interactive lists retain localized hydration.
@@ -69,3 +69,65 @@ const hydration=JSON.parse(localizedDom.querySelector('[data-react-props]').data
 assert.deepEqual(hydration.initialRows,rows);assert.equal(hydration.initialTotal,1);assert.equal(hydration.mode,'edge');
 assert.equal(hydration.binding._localePath,'/ar/catalog/');
 console.log('list chrome surfaces PASS: pure SSR stability, interactive localization, translated loading shell and seed-preserving Table/Grid hydration');
+const frozenText=Object.freeze({id:'article-text',type:'Text',props:Object.freeze({text:'Current database text'})});
+const frozenNav=Object.freeze({id:'nav',type:'Navbar',props:Object.freeze({})});
+const frozenChildren=Object.freeze([frozenText]);
+const frozenContainer=Object.freeze({id:'article',type:'Container',children:frozenChildren});
+const frozenVersion=Object.freeze({id:'mobile',name:'Mobile',overrides:Object.freeze({children:Object.freeze([frozenNav,frozenText])})});
+const frozenInput=Object.freeze({root:Object.freeze({}),content:Object.freeze([frozenContainer,Object.freeze({id:'versioned',type:'Container',versions:Object.freeze([frozenVersion])})])});
+const normalizedFrozen=homepageDisplayLayout(frozenInput);
+assert.equal(normalizedFrozen.content[0],frozenContainer,'ordinary text subtree is reused without retaining it beyond this request');
+assert.equal(normalizedFrozen.content[1].versions[0].overrides.children[1],frozenText);
+assert.equal(normalizedFrozen.content[1].versions[0].overrides.children[0].props.localeLabels.language,'Language');
+assert.equal(frozenNav.props.localeLabels,undefined,'normalization must not mutate authored or shared inputs');
+assert.equal(homepageDisplayLayout({content:[{id:'fresh',type:'Text',props:{text:'Changed database text'}}]}).content[0].props.text,'Changed database text');
+// The renderer fast path and public async API must agree, including nested Actions
+// and full Liquid programs; no record values may carry into a later invocation.
+const {resolveProps,resolvePropsValue}=await import('../dist/ssr/resolve.js');
+const bindingProps={text:'{{ record.title }}',actionBindings:[{href:'/program/{{ record.id }}'}]};
+const firstContext={record:{title:'First program',id:'one'}};
+const direct=resolvePropsValue(bindingProps,firstContext);
+assert.equal(direct instanceof Promise,false);
+assert.deepEqual(direct,await resolveProps(bindingProps,firstContext));
+assert.equal(resolvePropsValue(bindingProps,{record:{title:'Updated program',id:'two'}}).text,'Updated program');
+assert.equal(bindingProps.text,'{{ record.title }}');
+const liquidProps={text:'{% if record.available %}Open{% else %}Closed{% endif %}'};
+assert.deepEqual(await resolvePropsValue(liquidProps,{record:{available:true}}),{text:'Open'});
+assert.deepEqual(await resolvePropsValue(liquidProps,{record:{available:false}}),{text:'Closed'});
+
+// Publication instructions contain bindings, never request records or translations.
+const {compileDisplaySurfacePlan}=await import('../dist/localization/surfaces.js');
+const authored={root:{},content:[{id:'cards',type:'Repeater',props:{binding:{dataSourceId:'db',tableName:'programs'}},children:[
+ {id:'title',type:'Heading',props:{text:'{{ record.title }}'}},
+ {id:'city',type:'Text',props:{text:'{{ record.institution.city }}'}},
+ {id:'link',type:'Link',props:{text:'View',href:'{{ record.secret }}'}}
+]}]};
+const compiled=JSON.parse(JSON.stringify(compileDisplaySurfacePlan(authored)));
+const currentLayout=structuredClone(authored);
+currentLayout.content[0].props.initialRows=[{id:1,title:'First',institution:{city:'City'},secret:'not display'}];
+const compiledFields=homepageDisplayFields(currentLayout,compiled);
+assert.deepEqual(compiledFields,homepageDisplayFields(currentLayout),'compiled and existing display identities agree');
+assert.ok(!JSON.stringify(compiled).includes('First'));
+assert.ok(!compiledFields.some(field=>field.text==='not display'));
+currentLayout.content[0].props.initialRows[0].title='Changed';
+assert.ok(homepageDisplayFields(currentLayout,compiled).some(field=>field.text==='Changed'),'compiled instructions reread current values');
+const untouched={id:'untouched',type:'Text',props:{text:'Unchanged'}};
+const patchInput={root:{},content:[{id:'change',type:'Text',props:{text:'Before'}},untouched]};
+const patchFields=homepageDisplayFields(patchInput);
+const changedField=patchFields.find(field=>field.blockId==='change');
+const patch=applyHomepageDisplayFields(patchInput,new Map([[JSON.stringify(['change','default',changedField.path]),'After']]),{partial:true,fields:patchFields});
+assert.equal(patch.content[1],untouched,'translation application preserves untouched subtrees');
+assert.equal(patch.content[0].props.text,'After');assert.equal(patchInput.content[0].props.text,'Before');
+
+const {compileInterpolation,renderCompiledInterpolation,renderSync}=await import('../dist/liquid-core/sync.js');
+const expressions=['{{ record.title }}','At {{ record["institution.city"] }}','{{ record.image || record.institution.image || "none" }}','{{ false || "yes" }}','{{ 0 || 12 }}','{{ null || "none" }}',"{{ 'literal' }}"];
+for(const expression of expressions)for(const record of [{},{title:'New',institution:{city:'Nested',image:'cover'}},{title:'Changed','institution.city':'Flat',image:''}]){
+ const compiledExpression=compileInterpolation(expression);assert.ok(compiledExpression);
+ assert.equal(renderCompiledInterpolation(compiledExpression,{record}),renderSync(expression,{record}),'same safe grammar and current values');
+}
+assert.equal(compileInterpolation('{{ record.constructor }}'),null,'prototype access never compiles');
+assert.equal(compileInterpolation('{% if record.title %}yes{% endif %}'),null,'full Liquid keeps its existing execution path');
+const {displayPlanInterpolations}=await import('../dist/localization/surfaces.js');
+assert.equal(resolvePropsValue(authored.content[0].children[0].props,{record:{title:'Latest'}},displayPlanInterpolations(compiled)).text,'Latest');
+
+for(const expression of ['{{ 01 }}','{{ "\\q" }}'])assert.equal(compileInterpolation(expression),null,'legacy invalid literals keep the existing noncompiled path');

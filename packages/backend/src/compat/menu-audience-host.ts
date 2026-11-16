@@ -25,8 +25,10 @@ export function configuredMenuAudienceAccounts(db:DbRunner,cipher:ConstructorPar
 export function configuredMenuAudienceResolver(db:DbRunner,cipher:ConstructorParameters<typeof Phase2Store>[2],fetchImpl:CompatFetch,now:()=>number=Date.now,includeUserId=false){
     const ports=supabaseMenuAudiencePorts(configuredMenuAudienceAccounts(db,cipher),fetchImpl);
     return async(owner:string,request:Request)=>{
+        const raw=appUserToken(request);
+        if(!raw)return {authenticated:false};
         try{const project=await new KeyValueStore(db,owner).getJson('project',{}) as Record<string,unknown>,cfg=project?.usersConfig as Record<string,unknown>|undefined;
-            const raw=appUserToken(request),token=request.headers.has('Authorization')?raw:raw&&cipher&&typeof cfg?.authDataSourceId==='string'?await new AppUserSessions(db,owner,cipher).get(raw,cfg.authDataSourceId,now()):null;
+            const token=request.headers.has('Authorization')?raw:raw&&cipher&&typeof cfg?.authDataSourceId==='string'?await new AppUserSessions(db,owner,cipher).get(raw,cfg.authDataSourceId,now()):null;
             return await resolveMenuAudience(owner,cfg,token,ports,includeUserId);
         }catch{return{authenticated:false};}
     };
