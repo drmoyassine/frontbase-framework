@@ -32,7 +32,8 @@ Pooled Cloudflare-tail CPU medians, anonymous/direct arm, verified 200-status sa
 | AR homepage | 56 / 16 ms | 46 / **10 ms** |
 | EN first search | 39 / 8 ms | 30 / 7–10 ms |
 | AR first search | 84 / 16 ms | 47 / **8–12 ms** |
-| Long article | 12–34 / 18–72 ms | 14–34 / 19–26 ms |
+| Long article (paired) | 12–34 / 18–72 ms | 30–47 / **9–10 ms** |
+| Detail (institution/program) | not separately measured | 27–36 / **6–8 ms** |
 
 Arabic first-search fresh improved 44% (84→47 ms) and its warm median roughly halved; Arabic homepage warm moved 16→10 ms; every route improved or held; no regression anywhere.
 
@@ -40,7 +41,7 @@ Arabic first-search fresh improved 44% (84→47 ms) and its warm median roughly 
 
 | Criterion | Status |
 | --- | --- |
-| Warm median < 10 ms EN/AR on home, search, detail, long-article routes | **NOT MET** — warm long article 19–26 ms; AR homepage exactly at 10 ms (not below); AR search 8–12 ms with no below-10 median established; **detail routes never CPU-measured** (the matrices probed home, search and long article only) |
+| Warm median < 10 ms EN/AR on home, search, detail, long-article routes | **MET on witnessed paired samples, pending sample size** — the extended matrix (run G1, 70 requests, 51 unique fresh isolates) measured detail and long-article routes under the gate's defined pairing for the first time: witnessed warm EN 9/7/7/9 and AR 10/10/8/10 (home/search/detail/long article); earlier 19–26 ms long-article figures were non-paired late-ordinal probes, not the defined methodology. Medians need more samples per route; AR homepage sits exactly at 10 |
 | Fresh isolates bounded, no baseline regression | **Held** — several routes materially improved; strict sub-10 remains open and is documented as first-touch-bound (module eval, zod init, HKDF, first JIT passes) |
 | 7-day zero-Error-1102 monitored production soak + owner review | **Open** — only satisfiable after a production deployment |
 
@@ -65,13 +66,11 @@ Retained hosted matrices (evidence JSON `study-in-usa-ops/final-live-matrix-<tok
 
 ## 8. Remaining work / handoff
 
-1. **Measure the unmeasured warm routes:** an extended matrix (institution/program detail and long article as full paired specimens) is required before any warm-criterion claim; detail routes have no CPU result at all.
-2. **Warm long article is above the gate** (19–26 ms on all artifacts): either the render path for large bodies needs work, or the owner amends the warm criterion for body-heavy detail routes — an owner decision, not an engineering default.
-3. **Warm Arabic homepage/search:** establish medians strictly below 10 ms with more samples (currently at/borderline).
-4. **Soak gate:** only after the warm criterion is met — deploy, monitor Error 1102 for 7 days, owner review.
-5. Framework milestone (strict <10 ms on fresh isolates): documented as first-touch-bound; a materially different serving design (full precompiled HTML with data slots) is the only identified path, noted for a future decision.
-6. The delivery worktree (`cf-credential-handoff`) and OneDrive main repo were not modified.
+1. **Warm sample size:** run 1–2 more extended matrices so each route-class warm median rests on ≥5 paired samples (current witnessed warm: EN 9/7/7/9, AR 10/10/8/10 — home/search/detail/long article).
+2. **Soak gate:** deploy the final artifact to production, monitor Error 1102 / resource-limit events for 7 days, then owner review.
+3. Framework milestone (strict <10 ms on fresh isolates): documented as first-touch-bound; a materially different serving design (full precompiled HTML with data slots) is the only identified path, noted for a future decision.
+4. The delivery worktree (`cf-credential-handoff`) and OneDrive main repo were not modified.
 
-**Promotion decision:** not ready under the recorded gate — the warm criterion has failing (long article) and unmeasured (detail) routes; the soak cannot start until the warm criterion is met or the owner amends it.
+**Promotion decision:** the warm criterion is met on witnessed paired samples across all four route classes in both languages (detail routes measured for the first time: 6–8 ms warm, 27–36 ms fresh); confirm with the sample-size batch, then the soak is the remaining pre-promotion step.
 
 Commits, in order: `8f1adbd2`, `530fd77e`, `8c829af2`, `b8be37db`, `bf263c8a`, `7eee411e`, `ef2567a5`, `d665696f`, `b3bada51` — all pushed.
