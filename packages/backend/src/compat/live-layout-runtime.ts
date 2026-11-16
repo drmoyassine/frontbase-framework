@@ -98,7 +98,7 @@ export async function resolveLiveLayoutPage(
         const [rows,count]=await Promise.all([read('directory.'+collection+'.list',params),read('directory.'+collection+'.count',params)]);
         return {rows:rows.slice(0,size),total:Number(count[0]!.total)};
     };
-    projected=await projectPublicationListRows(projected,db,owner,request,user,reader.liveQuery,undefined,context,{sourceQuery,list,translationCollection:binding=>{
+    projected=await projectPublicationListRows(projected,db,owner,request,user,reader.liveQuery,undefined,context,{sourceQuery,list,directoryListing:listing==='directory',translationCollection:binding=>{
         if(binding.dataSourceId!==c.datasourceId)return undefined;
         const collections={institution:'institutions',program:'programs',article:'articles'} as const;
         for(const role of ['institution','program','article'] as const)

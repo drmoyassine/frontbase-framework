@@ -105,6 +105,7 @@ await db.exec('INSERT INTO programs VALUES(9,?,?,9,22)',['Outside parent view','
 const versionedHash=await store.prepare({...plan,configuration:scopedConfiguration,templates:[directoryPage,...templates.slice(1)]},'2026-11-15T00:00:00Z');
 const versionedRelease=await store.open(versionedHash);
 const viewReads=[];
+const exploreQueries=[];
 await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',[
  JSON.stringify({revision:1,projectId:'proof-project',configuration:{version:1,datasourceId:'translations',endpoint:'postgrest',namespace:'translations'}}),
  'one','translation_storage:v1',
@@ -124,7 +125,8 @@ const versionedHost={...host,syncFor:owner=>({
  return Response.json([]);
 }};
 const versionedOptions={...options,host:versionedHost,prepared:{pointer:{hash:versionedHash,generation:2},...versionedRelease},
- liveQuery:async(owner,binding)=>{
+ liveQuery:async(owner,binding,query)=>{
+    exploreQueries.push(query);
     assert.equal(owner,'one');
     const sources={'usa-institutions':'institutions','usa-programs':'programs'};
     const table=sources[binding.viewId];
@@ -159,6 +161,10 @@ for(const prefix of ['', '/ar']){
 }
 const wrongOwner={...versionedHost,syncFor:owner=>({...versionedHost.syncFor(owner),getView:async()=>({datasource_id:'unowned',target_table:'institutions'})})};
 assert.equal((await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),{...versionedOptions,host:wrongOwner})).status,503);
+const searchResponse=await renderLiveLayoutPublication(db,'one',new Request('https://live.example/explore/?type=program&q=Pro&match=startsWith&sort=title-desc'),versionedOptions);
+assert.equal(searchResponse.status,200);
+assert.equal(exploreQueries.at(-1).direction,'desc');
+assert.deepEqual(exploreQueries.at(-1).filters,[{column:'title',op:'starts_with',value:'Pro'}]);
 const localizedExplore=await resolveLiveLayoutSurface(db,'one',new Request('https://live.example/ar/explore/?type=program'),versionedOptions);
 assert.deepEqual(homepageDisplayFields(localizedExplore.layout).find(field=>field.text==='Program one').record,
  {connectionId:'frontbase:publication',collection:'programs',key:[{column:'id',value:1}]},

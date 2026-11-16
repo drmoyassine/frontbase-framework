@@ -164,7 +164,7 @@ function hasPublicationListBinding(nodes:PageComponent[]):boolean{
  *  catalog localizes pinned publication reads (query + returned text) and gives live views
  *  full-dataset localized sort/filter semantics (readLocalizedLiveList); without a catalog live
  *  views keep coherent source semantics. */
-export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[],pageContext:Record<string,unknown>={},liveOnly?:{sourceQuery:PublishedLiveQuery;list?:LiveListRequest;translationCollection?:(binding:Record<string,any>)=>string|undefined}):Promise<PageLayoutData>{
+export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[],pageContext:Record<string,unknown>={},liveOnly?:{sourceQuery:PublishedLiveQuery;list?:LiveListRequest;directoryListing?:boolean;translationCollection?:(binding:Record<string,any>)=>string|undefined}):Promise<PageLayoutData>{
     if(liveOnly&&catalog)throw Error('content_catalog_deprecated');
     const {publicationRecordContext:_authoredContext,...root}=layout.root??{};
     const scopedLayout={...layout,root:{...root,...(pageContext.recordId!==undefined?{publicationRecordContext:pageContext}:{})}};
@@ -187,8 +187,12 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
             const listingFilters=listingArtifact?.schemaVersion===2?await templateLiveListingFilter(db,owner,listingArtifact,binding,typeof pageContext.locale==='string'?pageContext.locale:undefined):[];
             const sourceFilters=[...listingFilters,...Object.entries(binding.filtering?.filters??{}).filter(([,value])=>value!==undefined&&value!=='').map(([column,value])=>({column,op:'eq',value})),
                 ...(binding.hiddenFilters??[]).filter((filter:any)=>filter.when===undefined||evaluateCondition(filter.when,read)).map((filter:any)=>({column:filter.column,op:filter.operator,value:routeFilterValue(filter.value,read)}))];
-            const filters=[...sourceFilters,...(search&&controls.searchColumn?[{column:controls.searchColumn,op:'contains',value:search}]:[])];
-            const query={componentId:node.id,versionId,page,...(live?{sourceFilters}:{}),pageSize:binding.pagination?.pageSize??12,sortColumn:binding.sorting?.column??'title',direction:binding.sorting?.direction??'asc',filters};
+            const match=liveOnly?.directoryListing?url.searchParams.get('match'):null;
+            const sort=liveOnly?.directoryListing?url.searchParams.get('sort'):null;
+            const operator=match==='equals'?'eq':match==='startsWith'?'starts_with':'contains';
+            const direction=sort==='title-desc'?'desc':sort==='title-asc'?'asc':binding.sorting?.direction??'asc';
+            const filters=[...sourceFilters,...(search&&controls.searchColumn?[{column:controls.searchColumn,op:operator,value:search}]:[])];
+            const query={componentId:node.id,versionId,page,...(live?{sourceFilters}:{}),pageSize:binding.pagination?.pageSize??12,sortColumn:binding.sorting?.column??'title',direction,filters};
             if(liveOnly?.list?.componentId===node.id){
                 if(liveOnly.list.versionId!==versionId)throw Error('live_list_version_refused');
                 Object.assign(query,liveOnly.list,{sourceFilters,filters:[...sourceFilters,...liveOnly.list.filters]});
