@@ -1,6 +1,7 @@
 import {SiteConfigurationForm} from '@/components/dashboard/settings/shared/SiteConfigurationForm';
 import {ElementSettingsMigration} from '@/components/dashboard/settings/shared/ElementSettingsMigration';
 import {recordLinksToActions,useSingleRecordCards,upgradeDetailPresentation} from '@/lib/builder/recordDetailTemplates';
+import type {RecordIdentityRole} from './RecordIdentityFields';
 import {DetailTemplateStarter} from './DetailTemplateStarter';
 import React, { useCallback, useEffect, useState } from 'react';
 import { directoryCopiesMatch, siteConfigurationDraftSchema, sitePageRoles, sitePageReferenceSchema, readLandingSettings, type SiteConfigurationDraft, type SitePageReference } from '@frontbase/edge-core/directory/configuration';
@@ -15,6 +16,8 @@ import { TemplateSettingsEditor } from './TemplateSettingsEditor';
 
 export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenChange }: { page: Page; onChange: (layout: NonNullable<Page['layoutData']>) => void; onEditorialOpenChange?: (open:boolean)=>void }) {
     const [sharedOpen,setSharedOpen]=useState(false);
+    const [mappingsOpen,setMappingsOpen]=useState(false);
+    const [identityOpen,setIdentityOpen]=useState(false);
     const [maintenanceOpen,setMaintenanceOpen]=useState(false);
     const [editorialOpen,setEditorialOpen]=useState(false);
     const handleEditorialOpen=useCallback((open:boolean)=>{setEditorialOpen(open);onEditorialOpenChange?.(open);},[onEditorialOpenChange]);
@@ -28,7 +31,7 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
         void fetch('/api/project/site-configuration/', { credentials: 'include' }).then(async response => {
             if (!response.ok) throw new Error(); const body = await response.json();
             const next = body.draft === null ? undefined : siteConfigurationDraftSchema.parse(body.draft);
-            if (!cancelled) { setDraft(next); setMessage(next ? '' : 'Configure collection mappings in Datasources, then shared routes and contacts below.'); }
+            if (!cancelled) { setDraft(next); setMessage(next ? '' : 'Configure the source mappings and shared routes below.'); }
         }).catch(() => { if (!cancelled) setMessage('Shared settings unavailable. Reload before linking.'); });
         return () => { cancelled = true; };
     }, [page.id, reload]);
@@ -37,7 +40,8 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
     const conflict = copy !== undefined && (!draft || !directoryCopiesMatch(copy, draft.configuration));
     const landing=page.layoutData?readLandingSettings(page.layoutData):undefined;
     const sharedControls=<div className="space-y-3">
-        <a className="underline" href="/frontbase-admin/data-studio/datasources?setup=collections">Collection mappings and publication scope in Datasources</a>
+        <Button variant="outline" disabled={editorialOpen} aria-expanded={mappingsOpen} onClick={()=>setMappingsOpen(value=>!value)}>Directory source fields</Button>
+        {mappingsOpen&&<SiteConfigurationForm section="data" onSaved={()=>setReload(value=>value+1)}/>}
         <Button variant="outline" disabled={editorialOpen} aria-expanded={sharedOpen} onClick={()=>setSharedOpen(value=>!value)}>Shared routes</Button>
         {sharedOpen&&<SiteConfigurationForm section="site" onSaved={()=>setReload(value=>value+1)}/>}
         <Button variant="outline" disabled={editorialOpen} aria-expanded={maintenanceOpen} onClick={()=>setMaintenanceOpen(value=>!value)}>Legacy layout maintenance</Button>
@@ -46,6 +50,10 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
     if(landing)return <div className="space-y-4">{sharedControls}<p>Save the page draft, then review and publish its layout. Connected records remain live.</p><TemplateSettingsEditor scope={page.layoutData?.root.elementSettingsVersion===1?'appearance':'all'} value={landing} onChange={settings=>{if(page.layoutData)onChange({...page.layoutData,root:{...page.layoutData.root,directoryLanding:{version:1,settings}}});}}/>{draft&&<SitePreparationPanel draft={draft}/>}</div>;
     return <div className="space-y-3">
         {sharedControls}
+        {current.success&&['institution','program','article'].includes(current.data.role)&&<>
+            <Button variant="outline" disabled={editorialOpen} aria-expanded={identityOpen} onClick={()=>setIdentityOpen(value=>!value)}>Detail source and URLs</Button>
+            {identityOpen&&<SiteConfigurationForm identityRole={current.data.role as RecordIdentityRole} onSaved={()=>setReload(value=>value+1)}/>}
+        </>}
         <p>Link this page to project-wide settings. Your layout stays intact. Live publication is pending.</p>
         <label className="block">Page role<select aria-label="Shared page role" value={role} disabled={editorialOpen} onChange={e => setRole(e.target.value as SitePageReference['role'])}>{sitePageRoles.map(value => <option key={value}>{value}</option>)}</select></label>
         {draft && <p>Shared settings revision: {draft.revision}</p>}

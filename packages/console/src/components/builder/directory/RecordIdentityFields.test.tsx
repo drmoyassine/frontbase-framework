@@ -4,7 +4,18 @@ import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {emptyDirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
 import {RecordIdentityFields} from './RecordIdentityFields';
 vi.mock('@/hooks/data/useBindingColumns',()=>({useBindingColumns:()=>[{name:'record_key'},{name:'canonical_path'}]}));
+vi.mock('@/components/builder/data-binding/LiveSourceSelector',()=>({useSavedViews:()=>({
+ data:[{id:'usa',name:'USA Programs',target_table:'programs'},{id:'other',name:'Other Table',target_table:'institutions'}],
+ isPending:false,
+})}));
 afterEach(cleanup);
+it('selects a matching Saved View without replacing URL fields or prior scope',()=>{
+ const configuration=emptyDirectoryConfiguration();configuration.datasourceId='owned';configuration.collections.program.table='programs';
+ const changed=vi.fn();render(<RecordIdentityFields configuration={configuration} role="program" onChange={changed}/>);
+ expect(screen.queryByRole('option',{name:'Other Table'})).toBeNull();
+ fireEvent.change(screen.getByLabelText('Saved View'),{target:{value:'usa'}});
+ expect(changed).toHaveBeenCalledWith({...configuration,detailViews:{program:'usa'}});
+});
 it('updates only the selected role identity while preserving source, filters, other roles and presentation fields',()=>{
  const configuration=emptyDirectoryConfiguration();configuration.datasourceId='owned';configuration.collections.program.table='programs';configuration.collections.program.scope={field:'country_id',value:22};configuration.collections.program.fields.title='name';configuration.collections.institution.fields.id='institution_key';
  const changed=vi.fn();render(<RecordIdentityFields configuration={configuration} role="program" onChange={changed}/>);

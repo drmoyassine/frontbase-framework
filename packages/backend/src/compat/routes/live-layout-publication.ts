@@ -9,7 +9,7 @@ import {SiteConfigurationStore} from '../site-configuration-store.js';
 import {LiveLayoutPublicationStore,liveLayoutPublicationSchema} from '../live-layout-publication.js';
 import {consoleDataAdministrator,protectPublishedLiveSource} from '../published-live-access.js';
 import {TranslationGenerationStore} from '../translation-generation.js';
-import type {LiveLayoutHost} from '../live-layout-reader.js';
+import {resolveDirectoryViewScope,type LiveLayoutHost} from '../live-layout-reader.js';
 import {renderLiveLayoutPublication} from '../live-layout-serving.js';
 import {publicationBindingDiagnostics} from '../publication-binding-diagnostics.js';
 import {publishedLiveQuery} from '../published-live-query.js';
@@ -53,6 +53,8 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
             if(action==='publish'){
                 const parsed=publish.safeParse(input);if(!parsed.success)return c.json({detail:'Invalid publication request'},422);
                 const layout=await store.get(parsed.data.hash);if(!layout)return c.json({detail:'Prepared layout not found'},404);
+                try{await resolveDirectoryViewScope(host,owner,layout.configuration);}
+                catch{return c.json({detail:'A detail layout Saved View changed. Check its source table and schema, then review again.',code:'detail_view_mismatch'},422);}
                 const sources=new Set([layout.configuration.datasourceId,...[...layout.templates,...layout.staticPages].flatMap(page=>liveViewBindings(page.layout as unknown as PageLayoutData).map(binding=>binding.dataSourceId))]);
                 for(const source of sources)if(source!=='frontbase:publication')await protectPublishedLiveSource(db,owner,source,now());
                 const pointer=await store.publish(parsed.data.hash,parsed.data.expected,now());
@@ -62,21 +64,25 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
             const draft=await new SiteConfigurationStore(db,owner).get();
             if(!draft||draft.revision!==parsed.data.expectedConfigurationRevision)return c.json({detail:'Configuration changed. Reload and review.'},409);
             if(new Set(parsed.data.pageIds).size!==parsed.data.pageIds.length)return c.json({detail:'Duplicate page'},422);
+            try{await resolveDirectoryViewScope(host,owner,draft.configuration);}
+            catch{return c.json({detail:'A detail layout Saved View is unavailable or uses a different source table or schema. Update its Builder binding.',code:'detail_view_mismatch'},422);}
             const pages=new PagesStore(db,owner),templates:unknown[]=[],staticPages:unknown[]=[];
+            const authoredPages:{pageId:string;layout:PageLayoutData}[]=[];
             for(const id of parsed.data.pageIds){
                 const page=await pages.get(id);if(!page||page.deleted_at||!page.is_public)return c.json({detail:'Page is not available for publication'},422);
                 const layout=JSON.parse(page.layout_data),base={pageId:id,title:page.title??page.name,description:page.description??'',layout};
+                authoredPages.push({pageId:id,layout});
                 const reference=sitePageReferenceSchema.safeParse(layout.root?.siteConfiguration);
                 if(reference.success)templates.push({...base,role:reference.data.role});
                 else if(layout.root?.siteConfiguration!==undefined)return c.json({detail:'Invalid template reference'},422);
                 else staticPages.push({...base,originalPath:page.is_homepage?'/':'/'+page.slug.replace(/^\/+|\/+$/g,'')+'/'});
             }
-            const layout=liveLayoutPublicationSchema.parse({schemaVersion:3,runtimeVersion:'live-layout-v1',configuration:draft.configuration,templates,staticPages,locales:parsed.data.locales});
-            const elementIssues=await publicationBindingDiagnostics([...layout.templates,...layout.staticPages].map(page=>({pageId:page.pageId,layout:page.layout as unknown as PageLayoutData})),async path=>{
+            const elementIssues=await publicationBindingDiagnostics(authoredPages,async path=>{
                 const headers=new Headers();for(const name of ['cookie','authorization']){const value=c.req.header(name);if(value)headers.set(name,value);}
                 const response=await app.fetch(new Request(new URL(path,c.req.url),{headers}));if(!response.ok)throw Error('binding_resource_unavailable');return response.json();
             });
             if(elementIssues.length)return c.json({detail:'Resolve the listed element bindings before publishing.',code:'publication_elements_incomplete',elementIssues},422);
+            const layout=liveLayoutPublicationSchema.parse({schemaVersion:3,runtimeVersion:'live-layout-v1',configuration:draft.configuration,templates,staticPages,locales:parsed.data.locales});
             const id=await store.prepare(layout,now());return c.json({hash:id,mode:'live',pageCount:templates.length+staticPages.length});
         }catch{return c.json({detail:'Layout publication could not be completed. Check its bindings and configuration.'},422);}
     });

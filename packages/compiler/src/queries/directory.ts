@@ -34,13 +34,16 @@ export function createDirectoryQueries(input: DirectoryConfiguration, owner: str
 /** Server-side published binding executor. Configuration must come from an owned published
  * layout, never request input. Uses the same parameter, projection and scope compiler as preview. */
 export function createLiveDirectoryQueries(input:DirectoryConfiguration,owner:string,dialect:'postgres'|'sqlite',
-    query:(sql:string,params:unknown[])=>Promise<Record<string,unknown>[]>):QueryRegistry{
-    return directoryRegistry(input,owner,dialect,query,false);
+    query:(sql:string,params:unknown[])=>Promise<Record<string,unknown>[]>,viewScope?:DirectoryViewScope):QueryRegistry{
+    return directoryRegistry(input,owner,dialect,query,false,viewScope);
 }
+
+/** Resolved for the current request by the host from owned Saved Views. */
+type DirectoryViewScope=(role:'institution'|'program'|'article',alias:string)=>{sql:string;params:unknown[]}|undefined;
 
 // Compiled configuration only: never credentials, query results or request identities.
 type DirectoryRead=(sql:string,params:unknown[])=>Promise<Record<string,unknown>[]>;
-type DirectoryPlan=Record<string,Omit<QueryDef,'execute'>&{execute:(raw:Record<string,unknown>,ctx:QueryContext,read:DirectoryRead)=>Promise<Record<string,unknown>[]>}>;
+type DirectoryPlan=Record<string,Omit<QueryDef,'execute'>&{execute:(raw:Record<string,unknown>,ctx:QueryContext,read:DirectoryRead,viewScope?:DirectoryViewScope)=>Promise<Record<string,unknown>[]>}>;
 const liveConfigurations=new Map<string,ReturnType<typeof requireDirectorySourceConfiguration>&{plans:Map<string,DirectoryPlan>}>();
 function liveConfiguration(input:DirectoryConfiguration){
     const key=JSON.stringify(input),cached=liveConfigurations.get(key);if(cached)return cached;
@@ -50,7 +53,7 @@ function liveConfiguration(input:DirectoryConfiguration){
 }
 
 function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'postgres'|'sqlite',
-    query:(sql:string,params:unknown[])=>Promise<Record<string,unknown>[]>,authoring:boolean):QueryRegistry{
+    query:(sql:string,params:unknown[])=>Promise<Record<string,unknown>[]>,authoring:boolean,viewScope?:DirectoryViewScope):QueryRegistry{
     if(!owner)throw Error('directory_configuration_incomplete');
     const compiled=authoring?null:liveConfiguration(input);
     const {configuration:c,sources}=compiled??requireDirectorySourceConfiguration(input);
@@ -71,21 +74,29 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
             ? (Number(!!p.path)+Number(p.id!==undefined)===1) && p.q === undefined && p.offset === undefined && p.limit === undefined && p.institutionId === undefined && p.sort === undefined && p.match === undefined
             : p.path === undefined && p.id===undefined && (p.institutionId === undefined || role === 'program') && (p.limit ?? c.browsing.pageSize) <= c.browsing.pageSize);
         registry[`directory.${role}.${mode}`] = { scope: 'tenant', ttlSeconds: 0, params: paramsSchema,
-            execute: async (raw, ctx, query) => {
+            execute: async (raw, ctx, query, viewScope) => {
                 if (ctx.tenant !== owner || authoring&&!ctx.user) throw new Error('principal_context_required');
                 const p = paramsSchema.parse(raw);
                 const values: unknown[] = []; const bind = (v: unknown) => { values.push(v); return dialect === 'postgres' ? `$${values.length}` : '?'; };
                 const field = (alias: string, name: string) => `${alias}.${quote(name)}`;
-                const scoped = (alias: string, m: typeof mapping) => `${field(alias, m.filter.column)} = ${bind(m.filter.value)}`;
+                const scoped = (alias: string, m: typeof mapping, recordRole?: 'institution'|'program'|'article') => {
+                    const base = `${field(alias, m.filter.column)} = ${bind(m.filter.value)}`;
+                    const extra = recordRole && viewScope?.(recordRole, alias);
+                    if (!extra?.sql) return base;
+                    const offset=values.length;
+                    values.push(...extra.params);
+                    const predicate=dialect==='postgres'?extra.sql.replace(/\$(\d+)/g,(_,n)=>'$'+(offset+Number(n))):extra.sql;
+                    return `(${base} AND (${predicate}))`;
+                };
 
                 const cityExists = (alias: string) => `EXISTS (SELECT 1 FROM ${quote(city.tableName)} dc WHERE ${field('dc', city.fieldMapping.id)} = ${field(alias, institution.fieldMapping.cityId)} AND ${scoped('dc', city)})`;
-                const where = [scoped('d', mapping)];
+                const where = [scoped('d', mapping, role==='page'?'article':role==='city'?undefined:role)];
                 // Canonical editorial records have an explicit public status. Live reads must
                 // never replace the former approval fence with unrestricted draft reads.
                 if(!authoring&&(role==='article'||role==='page'))where.push(`${field('d','status')} = ${bind('published')}`);
                 if (role === 'article' || role === 'page') where.push(`${field('d', mapping.fieldMapping.contentRole)} = ${bind(role)}`, `${field('d', mapping.fieldMapping.sourceOrigin)} = ${bind(c.site.origin)}`);
                 if (role === 'institution') where.push(cityExists('d'));
-                if (role === 'program') where.push(`EXISTS (SELECT 1 FROM ${quote(institution.tableName)} di WHERE ${field('di', institution.fieldMapping.id)} = ${field('d', mapping.fieldMapping.institutionId)} AND ${scoped('di', institution)} AND ${cityExists('di')})`);
+                if (role === 'program') where.push(`EXISTS (SELECT 1 FROM ${quote(institution.tableName)} di WHERE ${field('di', institution.fieldMapping.id)} = ${field('d', mapping.fieldMapping.institutionId)} AND ${scoped('di', institution, 'institution')} AND ${cityExists('di')})`);
                 if (p.institutionId !== undefined) where.push(`${field('d', mapping.fieldMapping.institutionId)} = ${bind(p.institutionId)}`);
                 if (p.q) where.push(`LOWER(CAST(${field('d', mapping.fieldMapping.title)} AS TEXT)) LIKE ${bind((p.match === 'contains' || !p.match ? '%' : '') + p.q.toLowerCase().replace(/[!%_]/g, v => '!' + v) + (p.match === 'equals' ? '' : '%'))} ESCAPE '!'`);
                 if (p.path) where.push(`(${field('d', mapping.fieldMapping.originalPath)} = ${bind(p.path)} OR ${field('d', mapping.fieldMapping.originalPath)} = ${bind(c.site.origin + p.path)})`);
@@ -111,7 +122,7 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
     if(compiled){if(compiled.plans.size>=8)compiled.plans.delete(compiled.plans.keys().next().value!);compiled.plans.set(planKey,registry);}
     }
     return defineQueries(Object.fromEntries(Object.entries(registry).map(([id,definition])=>[id,{
-        ...definition,execute:(raw:Record<string,unknown>,ctx:QueryContext)=>definition.execute(raw,ctx,query),
+        ...definition,execute:(raw:Record<string,unknown>,ctx:QueryContext)=>definition.execute(raw,ctx,query,viewScope),
     }])));
 }
 

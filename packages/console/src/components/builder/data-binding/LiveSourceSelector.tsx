@@ -21,16 +21,20 @@ export function resetListSource(binding:ComponentDataBinding, updates:Partial<Co
     });
 }
 
-export function LiveSourceSelector({binding,onChange,onSourceChange}:{binding:ComponentDataBinding;onChange:(binding:ComponentDataBinding)=>void;onSourceChange?:()=>void}) {
-    const metadata=useDatasourceSchema(binding.dataSourceId);
-    const selectedSchema=binding.sourceSchema??(metadata.data?.supported?metadata.data.defaultSchema:undefined);
-    const views=useQuery({queryKey:['list-source-views',binding.dataSourceId],enabled:!!binding.dataSourceId,queryFn:async({signal})=>{
-        const response=await fetch(`/api/sync/datasources/${encodeURIComponent(binding.dataSourceId)}/views/`,{credentials:'include',signal});
+export function useSavedViews(dataSourceId:string) {
+    return useQuery({queryKey:['list-source-views',dataSourceId],enabled:!!dataSourceId,queryFn:async({signal})=>{
+        const response=await fetch(`/api/sync/datasources/${encodeURIComponent(dataSourceId)}/views/`,{credentials:'include',signal});
         if(!response.ok)throw Error('Saved views unavailable');
         const result=await response.json();
         if(!Array.isArray(result))throw Error('Invalid saved views response');
         return result as {id:string;name:string;target_table:string;source_schema?:string|null;column_order?:string[]}[];
     }});
+}
+
+export function LiveSourceSelector({binding,onChange,onSourceChange}:{binding:ComponentDataBinding;onChange:(binding:ComponentDataBinding)=>void;onSourceChange?:()=>void}) {
+    const metadata=useDatasourceSchema(binding.dataSourceId);
+    const selectedSchema=binding.sourceSchema??(metadata.data?.supported?metadata.data.defaultSchema:undefined);
+    const views=useSavedViews(binding.dataSourceId);
     const tables=useQuery({queryKey:['datasource-tables',binding.dataSourceId,selectedSchema,'sync'],enabled:!!binding.dataSourceId,queryFn:async({signal})=>{
         const response=await fetch(`/api/sync/datasources/${encodeURIComponent(binding.dataSourceId)}/tables/${selectedSchema!==undefined?`?schema=${encodeURIComponent(selectedSchema)}`:''}`,{credentials:'include',signal});
         if(!response.ok)throw Error('Tables unavailable');

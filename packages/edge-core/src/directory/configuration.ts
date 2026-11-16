@@ -47,6 +47,11 @@ export const directoryConfigurationSchema = z.object({
     site: z.object({ name: label, destination: label.optional(), origin, locale: z.string().max(35).regex(/^(?:[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*)?$/) }).strict(),
     datasourceId: z.string().max(128).regex(/^[A-Za-z0-9_-]*$/),
     collections: z.object({ institution: collection, program: collection, city: collection, article: collection, pathway: collection }).strict(),
+    detailViews: z.object({
+        institution: z.string().min(1).max(128).optional(),
+        program: z.string().min(1).max(128).optional(),
+        article: z.string().min(1).max(128).optional(),
+    }).strict().optional(),
     browsing: z.object({ defaultCollection: z.enum(directoryRoles), pageSize: z.union([z.literal(12), z.literal(24), z.literal(48)]),
         search: z.boolean(), cityFilter: z.boolean(), degreeFilter: z.boolean(), intakeFilter: z.boolean(), sort: z.enum(['name', 'latest']) }).strict(),
     routes: z.object({ directory: localPath, blog: localPath, preserveOriginalPaths: z.literal(true) }).strict(),
@@ -122,7 +127,7 @@ export function directoryConfigurationIssues(value: unknown): string[] {
 }
 
 /** Completeness is distinct from validation: incomplete authoring drafts remain saveable. */
-export {migrateExploreRepeater,standardPublicationQueries,publicationListSourceSchema} from './standard-repeater.js';
+export {createVersionedExploreDraft,migrateExploreRepeater,standardPublicationQueries,publicationListSourceSchema} from './standard-repeater.js';
 export {materializeElementSettings} from './template-settings.js';
 export function directoryConfigurationReadiness(value: unknown): string[] {
     try {

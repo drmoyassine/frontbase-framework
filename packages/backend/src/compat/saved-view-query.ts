@@ -1,11 +1,11 @@
 import {savedViewFilters,type SavedFilter} from '@frontbase/edge-core/saved-view-filters';
 import {buildWhere} from './routes/sync.js';
 /** Reuse schema-validated predicates; large PostgreSQL equality selections use a typed relation. */
-export function savedWhere(dialect:'sqlite'|'postgres',columns:Parameters<typeof buildWhere>[1],raw:unknown,table?:string){
+export function savedWhere(dialect:'sqlite'|'postgres',columns:Parameters<typeof buildWhere>[1],raw:unknown,table?:string,qualifier?:string){
     const params:unknown[]=[];
     const quote=(name:string)=>'"'+name.replace(/"/g,'""')+'"';
     const membership=(node:SavedFilter):string|undefined=>{
-        if(dialect!=='postgres'||!table||!('logic' in node)||node.logic!=='or'||node.conditions.length<16)return;
+        if(qualifier||dialect!=='postgres'||!table||!('logic' in node)||node.logic!=='or'||node.conditions.length<16)return;
         let fields:string[]|undefined;const records:Record<string,unknown>[]=[];
         for(const branch of node.conditions){
             if(!('logic' in branch)||branch.logic!=='and')return;
@@ -40,7 +40,7 @@ export function savedWhere(dialect:'sqlite'|'postgres',columns:Parameters<typeof
         if(node.operator==='in'&&Array.isArray(node.value)&&node.value.length>100){
             const chunks:string[]=[];for(let i=0;i<node.value.length;i+=100)chunks.push(leaf({...node,value:node.value.slice(i,i+100)}));return '('+chunks.join(' OR ')+')';
         }
-        const part=buildWhere(dialect,columns,[{field:node.field,operator:node.operator,value:node.value}]);
+        const part=buildWhere(dialect,columns,[{field:node.field,operator:node.operator,value:node.value}],undefined,undefined,qualifier);
         const sql=part.sql.replace(/^ WHERE /,'').replace(/\$(\d+)/g,(_,n)=>'$'+(Number(n)+params.length));params.push(...part.params);return sql;
     };
     const join=(parts:string[],op:string):string=>parts.length<2?parts[0]!: '('+join(parts.slice(0,Math.ceil(parts.length/2)),op)+op+join(parts.slice(Math.ceil(parts.length/2)),op)+')';

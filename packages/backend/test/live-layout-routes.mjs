@@ -32,6 +32,12 @@ try{
  const layout={root:{},content:[{id:'list',type:'Repeater',props:{binding:{componentId:'list',dataSourceId:'source',viewId:'missing',tableName:'rows',pagination:{enabled:true,pageSize:12,page:0},sorting:{enabled:false},filtering:{searchEnabled:false,filters:{}},columnOverrides:{}}}}]};
  await pages.update(page.id,{layoutData:layout},now);
  const invalid=await post('prepare',input);assert.equal(invalid.status,422);const issue=await invalid.json();assert.equal(issue.code,'publication_elements_incomplete');assert.equal(issue.elementIssues[0].elementId,'list');
+ layout.content[0].props.binding.dataSourceId='';
+ layout.content[0].props.binding.viewId='';
+ await pages.update(page.id,{layoutData:layout},now);
+ const unbound=await post('prepare',input);
+ assert.equal(unbound.status,422);
+ assert.equal((await unbound.json()).elementIssues[0].code,'binding_invalid');
  const liveStore=new LiveLayoutPublicationStore(db,owner);await liveStore.publish(prepared.hash,null,now);
  for(const path of ['site-configuration/publication/prepare/','site-configuration/publication/activate/','translation-batches/homepage/prepare/','translation-batches/homepage/publish/']){
   const retired=await app.request('/api/project/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});

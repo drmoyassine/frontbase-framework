@@ -65,7 +65,8 @@ export async function resolveLiveLayoutPage(
     const layout = publication.siteBindingsCompiled ? authored : projectSharedDirectoryPreview(authored, c);
     const plan = directoryPlan(layout,artifact?.directoryPlan);
     const records=new Map<string,Record<string,unknown>[]>(),inactive=new Set<string>();
-    const count = listing ? read('directory.' + (listing === 'article-index' ? 'article' : type) + '.count', { q: search, match, sort, limit }) : undefined;
+    const needsDirectoryCount = listing && (!layout.root?.standardListComponents || plan.queries.some(query => query.binding.queryId.endsWith('.list')));
+    const count = needsDirectoryCount ? read('directory.' + (listing === 'article-index' ? 'article' : type) + '.count', { q: search, match, sort, limit }) : undefined;
     const [countRows] = await Promise.all([count, ...plan.queries.map(async query=>{
         const [,collection,mode]=query.binding.queryId.split('.');
         if(listing==='directory'&&mode==='list'&&['institution','program'].includes(collection!)&&collection!==type){inactive.add(query.id);return;}
@@ -97,7 +98,14 @@ export async function resolveLiveLayoutPage(
         const [rows,count]=await Promise.all([read('directory.'+collection+'.list',params),read('directory.'+collection+'.count',params)]);
         return {rows:rows.slice(0,size),total:Number(count[0]!.total)};
     };
-    projected=await projectPublicationListRows(projected,db,owner,request,user,reader.liveQuery,undefined,context,{sourceQuery,list});
+    projected=await projectPublicationListRows(projected,db,owner,request,user,reader.liveQuery,undefined,context,{sourceQuery,list,translationCollection:binding=>{
+        if(binding.dataSourceId!==c.datasourceId)return undefined;
+        const collections={institution:'institutions',program:'programs',article:'articles'} as const;
+        for(const role of ['institution','program','article'] as const)
+            if(c.detailViews?.[role]===binding.viewId&&c.collections[role].table===binding.tableName
+                &&c.collections[role].fields.id==='id')return collections[role];
+        return undefined;
+    }});
     if(listing && countRows){
         const total=Number(countRows[0]!.total);
         projected=projectDirectoryBrowsing(projected,[{path,locale,collection:listing==='directory'?type as 'institution'|'program':null,q:search,page,sort:sort as 'title-asc'|'title-desc',match:match as 'contains'|'startsWith'|'equals',pageSize:limit,total,hasNext:offset+limit<total&&offset+limit<=19999,searchEnabled:c.browsing.search}]);

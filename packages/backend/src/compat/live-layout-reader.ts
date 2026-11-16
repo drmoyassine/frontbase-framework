@@ -1,3 +1,6 @@
+import {savedViewFilters,type SavedFilter} from '@frontbase/edge-core/saved-view-filters';
+import {savedWhere} from './saved-view-query.js';
+import {datasourceSchema} from './datasource-schema.js';
 import {isValidatedEditorialBody} from '@frontbase/edge-core/directory/configuration';
 import {createLiveDirectoryQueries} from '@frontbase/compiler/queries/directory';
 import {datasourceRunner,dialectOf} from '../db/datasource-runner.js';
@@ -10,7 +13,7 @@ import type {LivePageReader,LiveRoute} from './live-layout-runtime.js';
 import {liveQueryBatch} from './live-query-batch.js';
 
 export interface LiveLayoutHost{
-    syncFor(owner:string):Pick<SyncStore,'getDatasource'>;
+    syncFor(owner:string):Pick<SyncStore,'getDatasource'> & Partial<Pick<SyncStore,'getView'|'getViewScopes'>>;
     accountConfigFor:AccountConfigFor;
     externalFetch:CompatFetch;
 }
@@ -22,15 +25,17 @@ export function requestLiveLayoutHost(host:LiveLayoutHost):LiveLayoutHost{
     const sources=new Map<string,ReturnType<SyncStore['getDatasource']>>();
     // Preserve the adapter functions and refresh hook exactly. In particular,
     // Workers' native fetch rejects a wrapper that invokes it as a host method.
-    return {accountConfigFor:host.accountConfigFor,externalFetch:host.externalFetch,syncFor:owner=>({getDatasource:async id=>{
+    return {accountConfigFor:host.accountConfigFor,externalFetch:host.externalFetch,syncFor:owner=>{
+        const store=host.syncFor(owner);
+        return {getView:store.getView?.bind(store),getViewScopes:store.getViewScopes?.bind(store),getDatasource:async id=>{
         const key=JSON.stringify([owner,id]);
         let pending=sources.get(key);
         if(!pending){
-            pending=host.syncFor(owner).getDatasource(id);
+            pending=store.getDatasource(id);
             if(sources.size<32)sources.set(key,pending);
         }
         return structuredClone(await pending);
-    }})};
+    }};}};
 }
 
 /** Called with an owned published layout, never a browser-provided table/configuration.
@@ -40,8 +45,9 @@ export async function liveLayoutReader(host:LiveLayoutHost,owner:string,layout:L
     const source=await host.syncFor(owner).getDatasource(layout.configuration.datasourceId);
     if(!source)throw Error('live_datasource_unavailable');
     const config=await mergeAccountConfig(host.accountConfigFor,host.externalFetch,owner,source.kind,source.config);
+    const viewScope=await resolveDirectoryViewScope(host,owner,layout.configuration,source);
     const runner=datasourceRunner(source.kind,config,host.externalFetch);
-    const queries=createLiveDirectoryQueries(layout.configuration,owner,dialectOf(source.kind),liveQueryBatch(runner));
+    const queries=createLiveDirectoryQueries(layout.configuration,owner,dialectOf(source.kind),liveQueryBatch(runner),viewScope);
     // A request-local memo avoids resolving the same current record twice. It is never
     // retained across requests, tenants, credential rotations or source writes.
     const pending=new Map<string,Promise<Record<string,unknown>[]>>();
@@ -72,4 +78,44 @@ export async function liveLayoutReader(host:LiveLayoutHost,owner:string,layout:L
         if(found.length>1)throw Error('live_route_ambiguous');
         return found[0]??null;
     }};
+}
+
+/** The directory adapter must resolve the same table and schema as the Builder's
+ * Saved View. Reject mismatched or deleted views before executing content SQL. */
+export async function resolveDirectoryViewScope(host:LiveLayoutHost, owner:string,
+    config:LiveLayoutIndex['configuration'], source?:NonNullable<Awaited<ReturnType<SyncStore['getDatasource']>>>){
+    const references=config.detailViews;
+    if(!references)return undefined;
+    const roles=['institution','program','article'] as const;
+    const selected=roles.filter(role=>references[role]);
+    if(!selected.length)return undefined;
+    const store=host.syncFor(owner);
+    source??=await store.getDatasource(config.datasourceId)??undefined;
+    if(!source || !(store.getViewScopes||store.getView))throw Error('detail_view_unavailable');
+    const ds=source,ids=selected.map(role=>references[role]!);
+    const views=store.getViewScopes?await store.getViewScopes(ids):await Promise.all(ids.map(id=>store.getView!(id)));
+    const plans=selected.map((role,index)=>{
+        const view=store.getViewScopes?views.find(view=>view?.id===ids[index]):views[index];
+        if(!view||view.datasource_id!==ds.id||view.target_table!==config.collections[role].table
+            ||datasourceSchema(ds.kind,ds.config,view.source_schema)!==datasourceSchema(ds.kind,ds.config,undefined))throw Error('detail_view_mismatch');
+        const rules=savedViewFilters(view.filters);
+        const fields=new Set<string>();
+        const collect=(rule:SavedFilter):void=>{
+            if('logic' in rule)rule.conditions.forEach(collect);
+            else fields.add(rule.field);
+        };
+        rules.forEach(collect);
+        const columns=[...fields].map(name=>({name,type:'',nullable:true,primary_key:false,default_value:null}));
+        const dialect=dialectOf(ds.kind);
+        const compile=(alias:string)=>{
+            const {sql,params}=savedWhere(dialect,columns,rules,undefined,alias);
+            return {sql:sql.slice(7),params};
+        };
+        return [role,{d:compile('d'),di:compile('di')}] as const;
+    });
+    const byRole=new Map(plans);
+    return (role:typeof roles[number],alias:string)=>{
+        if(alias!=='d'&&alias!=='di')throw Error('detail_view_alias_invalid');
+        return byRole.get(role)?.[alias];
+    };
 }

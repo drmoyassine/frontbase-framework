@@ -24,7 +24,10 @@ const plainId=(value:unknown):string|undefined=>typeof value==='string'&&value.t
 function rowRecord(node:PageComponent,p:Record<string,unknown>,row:Record<string,unknown>):DisplayRecord|undefined{
     const binding=(p.binding??(node as {binding?:unknown}).binding)as unknown;
     if(!binding||typeof binding!=='object')return undefined;
-    const connectionId=plainId((binding as Record<string,unknown>).dataSourceId),collection=plainId((binding as Record<string,unknown>).tableName);
+    const directoryCollection=p.directoryTranslationCollection;
+    const directoryIdentity=directoryCollection==='institutions'||directoryCollection==='programs'||directoryCollection==='articles';
+    const connectionId=directoryIdentity?'frontbase:publication':plainId((binding as Record<string,unknown>).dataSourceId);
+    const collection=directoryIdentity?directoryCollection:plainId((binding as Record<string,unknown>).tableName);
     if(!connectionId||!collection)return undefined;
     const value=row.id;
     if(typeof value==='string'){if(!value.trim()||value.length>4000||/[\u0000-\u001f]/.test(value))return undefined;return {connectionId,collection,key:[{column:'id',value}]};}

@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {sqliteRunner} from '@frontbase/edge-infra';
-import {emptyDirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
+import {createVersionedExploreDraft,emptyDirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
 import {homepageDisplayFields} from '@frontbase/edge-core/localization';
 import {createLiveDirectoryQueries,createDirectoryQueries} from '@frontbase/compiler/queries/directory';
 import {createEngine,directProvider} from '@frontbase/edge-core';
@@ -91,6 +91,83 @@ const options={host,liveQuery:async()=>{throw Error('unexpected view');}};
 let response=await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),options);
 assert.equal(response.status,200);assert.equal(response.headers.get('X-Frontbase-Data'),'live');
 const preparedHtml=await response.text();assert.match(preparedHtml,/First title/);
+// Use the installer's Explore conversion with Builder-authored Saved View selections.
+// Both versions share the real public renderer and read only their selected view.
+const directoryPage=structuredClone(templates[0]);
+directoryPage.layout.content.push(block('program-list','directory.program.list'));
+directoryPage.layout=createVersionedExploreDraft(directoryPage.layout,configuration.browsing);
+const repeater=directoryPage.layout.content.find(node=>node.type==='Repeater');
+Object.assign(repeater.props.binding,{dataSourceId:'source',viewId:'usa-institutions',tableName:'institutions'});
+Object.assign(repeater.versions[0].overrides.props.binding,{dataSourceId:'source',viewId:'usa-programs',tableName:'programs'});
+const scopedConfiguration={...configuration,detailViews:{institution:'usa-institutions',program:'usa-programs'}};
+await db.exec('INSERT INTO institutions VALUES(9,?,?,1,22)',['Outside view','/excluded/']);
+await db.exec('INSERT INTO programs VALUES(9,?,?,9,22)',['Outside parent view','/excluded-program/']);
+const versionedHash=await store.prepare({...plan,configuration:scopedConfiguration,templates:[directoryPage,...templates.slice(1)]},'2026-11-15T00:00:00Z');
+const versionedRelease=await store.open(versionedHash);
+const viewReads=[];
+await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',[
+ JSON.stringify({revision:1,projectId:'proof-project',configuration:{version:1,datasourceId:'translations',endpoint:'postgrest',namespace:'translations'}}),
+ 'one','translation_storage:v1',
+]);
+const versionedHost={...host,syncFor:owner=>({
+ getView:async id=>{
+    assert.equal(owner,'one');
+    const targets={'usa-institutions':'institutions','usa-programs':'programs'};
+    return {datasource_id:'source',target_table:targets[id],filters:[{field:'id',operator:'neq',value:id==='usa-institutions'?9:-1}]};
+ },
+ getDatasource:async id=>id==='translations'
+ ?{id,kind:'supabase',config:{url:'https://translations.example.test',serviceKey:'test-only'}}
+ :host.syncFor(owner).getDatasource(id)}),externalFetch:async(input,init)=>{
+ const request=new Request(input,init);
+ assert.match(request.url,/\/rpc\/translation_read_batch$/);
+ assert.equal((await request.json()).p_operation,'read-current-many');
+ return Response.json([]);
+}};
+const versionedOptions={...options,host:versionedHost,prepared:{pointer:{hash:versionedHash,generation:2},...versionedRelease},
+ liveQuery:async(owner,binding)=>{
+    assert.equal(owner,'one');
+    const sources={'usa-institutions':'institutions','usa-programs':'programs'};
+    const table=sources[binding.viewId];
+    assert.equal(binding.tableName,table);
+    viewReads.push(binding.viewId);
+    const rows=await db.query(table==='institutions'?'SELECT id,title FROM institutions WHERE country=22':'SELECT id,title FROM programs WHERE country=22');
+    const wanted=rows.filter(row=>row.id!==9);
+    return {rows:wanted,total:wanted.length};
+ }};
+for(const prefix of ['', '/ar']) for(const [type,view,text] of [
+ ['', 'usa-institutions', 'First title'], ['?type=program', 'usa-programs', 'Program one'],
+]){
+ viewReads.length=0;
+ const result=await renderLiveLayoutPublication(db,'one',new Request('https://live.example'+prefix+'/explore/'+type),versionedOptions);
+ assert.equal(result.status,200);
+ assert.equal(result.headers.get('Cache-Control'),'no-store');
+ const html=await result.text();
+ assert.match(html,new RegExp(text));
+ assert.match(html,prefix?/lang="ar"/:/lang="en"/);
+ assert.deepEqual(viewReads,[view],'only the selected version queries its Saved View');
+}
+for(const prefix of ['', '/ar']) for(const [path,title] of [['/first/','First title'],['/program/','Program one']]){
+ viewReads.length=0;
+ const detail=await renderLiveLayoutPublication(db,'one',new Request('https://live.example'+prefix+path),versionedOptions);
+ assert.equal(detail.status,200);
+ assert.match(await detail.text(),new RegExp(title));
+ assert.deepEqual(viewReads,[]);
+}
+for(const prefix of ['', '/ar']){
+ for(const path of ['/excluded/','/excluded-program/'])
+    assert.equal((await renderLiveLayoutPublication(db,'one',new Request('https://live.example'+prefix+path),versionedOptions)).status,404);
+}
+const wrongOwner={...versionedHost,syncFor:owner=>({...versionedHost.syncFor(owner),getView:async()=>({datasource_id:'unowned',target_table:'institutions'})})};
+assert.equal((await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),{...versionedOptions,host:wrongOwner})).status,503);
+const localizedExplore=await resolveLiveLayoutSurface(db,'one',new Request('https://live.example/ar/explore/?type=program'),versionedOptions);
+assert.deepEqual(homepageDisplayFields(localizedExplore.layout).find(field=>field.text==='Program one').record,
+ {connectionId:'frontbase:publication',collection:'programs',key:[{column:'id',value:1}]},
+ 'changing from a directory query to its Saved View preserves the record translation unit');
+await db.exec('DELETE FROM programs WHERE id=9');
+await db.exec('DELETE FROM institutions WHERE id=9');
+assert.deepEqual((await store.active()).pointer,pointer,'verification leaves the active version unchanged');
+await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',[JSON.stringify({revision:1,projectId:'proof-project',configuration:null}),'one','translation_storage:v1']);
+
 const withoutDirectoryPlan={...options,prepared:{pointer,layout:open.layout,loadLayout:async page=>{
  const {directoryPlan,...olderArtifact}=await open.loadLayout(page);return structuredClone(olderArtifact);
 }}};
