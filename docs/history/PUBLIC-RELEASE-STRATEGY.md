@@ -243,6 +243,7 @@ The owner may change the release label or scope, but must not waive truth, secur
 | Documentation | Quick start through operations and troubleshooting reviewed by a clean-room adopter |
 | Release operations | Versions, licenses, changelog, tags, publishing automation, rollback, and security reporting |
 | Honest positioning | README and announcement distinguish shipped, preview, deferred, and unsupported behavior |
+| Workers Free CPU (Study-in-USA promotion) | Realistic gate per the 2026-11-16 decision: warm-isolate median < 10 ms EN/AR on all measured routes with no-store and live data; fresh isolates bounded without regressing the reproduced baseline; zero Error 1102 across a 7-day monitored soak |
 
 ## Relationship to NoCodeHero
 
@@ -259,3 +260,7 @@ The separate [pilot execution plan](../plans/wordpress-pilot-execution-plan.md) 
 ## 2026-11-15 live-only data serving — active replacement claim
 
 The owner deprecated all content-snapshot serving. The snapshot export/publication work above is superseded and will not be deployed. Publish layouts and bindings; resolve all record content, translations, route membership, SEO and browsing through existing adapters live. Keep layout history and access controls; no saved-record fallback. See [the ordered implementation and acceptance plan](../plans/live-data-serving-20261115.md). Implementation is open: no live-only deployment or Workers Free qualification is claimed. Prior snapshot CPU/browser receipts remain historical evidence only. Preserve unrelated worktree changes and existing production data.
+
+## 2026-11-16 realistic Workers Free promotion gate for Study-in-USA
+
+The owner adopted a realistic promotion gate for the Study-in-USA deployment, replacing the strict "every measured request below 10 ms" proof, which remains the framework milestone: warm-isolate median CPU below 10 ms on home, list/search, detail and long-article routes in English and Arabic (no-store, fully live data); fresh-isolate CPU bounded without regressing the reproduced clean-checkout baseline medians (re-baselined after every adopted change); and zero Error 1102 / resource-limit events across a 7-day monitored production soak followed by owner review. No functional or security gate is weakened and no framework release claim changes. Evidence: [the live-serving plan](../plans/live-data-serving-20261115.md).

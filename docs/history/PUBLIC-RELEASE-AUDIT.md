@@ -1698,3 +1698,7 @@ Final pnpm -r check/build, directory42/42 across9files, console:stage and subseq
 ## 2026-11-15 live-only data serving — active replacement claim
 
 The owner deprecated all content-snapshot serving. The snapshot export/publication work above is superseded and will not be deployed. Publish layouts and bindings; resolve all record content, translations, route membership, SEO and browsing through existing adapters live. Keep layout history and access controls; no saved-record fallback. See [the ordered implementation and acceptance plan](../plans/live-data-serving-20261115.md). Implementation is open: no live-only deployment or Workers Free qualification is claimed. Prior snapshot CPU/browser receipts remain historical evidence only. Preserve unrelated worktree changes and existing production data.
+
+## 2026-11-16 realistic Workers Free promotion gate — decision recorded
+
+Owner decision adopting the realistic Study-in-USA promotion gate (warm median < 10 ms EN/AR on all measured routes with no-store and live data; fresh isolates bounded and not regressing the reproduced clean-checkout baseline medians; zero Error 1102 / resource-limit events in a 7-day monitored production soak followed by owner review). The strict every-request-below-10 ms proof is retained as the framework milestone and is not waived for any release claim. Recorded in DECISIONS, STRATEGY and MILESTONES with the same date; implementation receipts accumulate in the live-serving plan.
