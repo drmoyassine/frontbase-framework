@@ -78,7 +78,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const menuHash=(resolved.page.layout.root?.appMenus as {hash?:unknown}|undefined)?.hash;
         const settings=await livePageSettings(db,owner,['project','frontend_copy:active:v1',...(locale!==sourceLocale?['translation_storage:v1']:[]),
             ...(typeof menuHash==='string'&&/^[a-f0-9]{64}$/.test(menuHash)?['app_menus:publication:v1:'+menuHash]:[])]);
-        let layout=await resolveAppMenuLayout(settings,owner,resolved.page.layout,sourceUrl.pathname,audience,publication.configuration.site.name,resolved.sourcePageId);
+        let layout=await resolveAppMenuLayout(settings,owner,resolved.page.layout,sourceUrl.pathname,audience,publication.configuration.site.name,resolved.sourcePageId,resolved.features?.legacyMenuRegion);
         layout=(await projectFrontendCopy(settings,owner,resolved.sourcePageId,layout,locale,false)).layout;
         let localizedFields:LiveDisplayField[]|undefined;
         if(locale!==sourceLocale){
@@ -115,6 +115,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const html = await renderResolvedPageDocument(page, request, {
             manifest, environment: 'edge', document, swBundle: options.swBundle,
             interpolations: displayPlanInterpolations(displayPlan),
+            features: resolved.features,
         }, audienceConditionUser(audience));
         headers.set('Content-Language', locale);
         headers.set('Content-Type', 'text/html; charset=UTF-8');

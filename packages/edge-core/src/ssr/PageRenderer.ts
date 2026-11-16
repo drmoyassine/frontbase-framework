@@ -252,8 +252,10 @@ export async function renderBlock(component:PageComponent,context:TemplateContex
 // Style helpers are imported from ./styleHelpers.js:
 // buildInlineStyles, buildResponsiveCSS, buildVisibilityCSS, buildStyleString, buildClassName
 
-/** One traversal for the two runtime features; hydrated rows are never executable layout. */
-function runtimeFeatures(value:unknown,found={versions:false,conditions:false}):{versions:boolean;conditions:boolean}{
+/** One traversal for the two runtime features; hydrated rows are never executable layout.
+ * Exported so the serving path can compute the same flags once per frozen layout and
+ * thread them back through renderPage's `features` option. */
+export function runtimeFeatures(value:unknown,found={versions:false,conditions:false}):{versions:boolean;conditions:boolean}{
     if(!value||typeof value!=='object'||found.versions&&found.conditions)return found;
     if(Array.isArray(value)){for(const item of value)runtimeFeatures(item,found);return found;}
     for(const key of Object.keys(value)){
@@ -272,13 +274,16 @@ export async function renderPage(
     layoutData: PageLayoutData,
     context: TemplateContext,
     observe?:ComponentRenderObserver,
-    interpolations?:ReadonlyMap<string,CompiledInterpolation>
+    interpolations?:ReadonlyMap<string,CompiledInterpolation>,
+    features?:{versions:boolean;conditions:boolean}
 ): Promise<string> {
     if (!layoutData || !layoutData.content) {
         return '<div class="fb-empty">No content</div>';
     }
-    const features=runtimeFeatures(layoutData);
-    if (features.versions) validateBlockVersions(layoutData.content);
+    // Publication-time instructions may precompute the runtime feature flags for a
+    // frozen layout; absent flags keep the ordinary in-render walk.
+    const resolved=features??runtimeFeatures(layoutData);
+    if (resolved.versions) validateBlockVersions(layoutData.content);
 
     // Apply root styles if present
     const rootProps = layoutData.root || {};
@@ -298,7 +303,7 @@ export async function renderPage(
     const edition = engineConfig().edition;
     const badgeHtml = renderBadge(edition, engineConfig().licenseKey, context.system?.env, context.user, rootProps.localeMessages as Record<string,string>|undefined);
 
-    const needsContext=features.conditions;
+    const needsContext=resolved.conditions;
     const publicContext=needsContext?publicConditionContext(layoutData,context as unknown as Record<string,unknown>):{};
     if(typeof rootProps.siteNavigationOrigin==='string')publicContext.app={...(publicContext.app as Record<string,unknown>??{}),siteNavigationOrigin:rootProps.siteNavigationOrigin,...(navigationContext?.locale?{navigationLocale:navigationContext.locale,navigationOrigins:navigationContext.origins??[]}: {})};
     const bootstrap=needsContext?`<script>window.__CONDITION_CONTEXT__=${JSON.stringify(publicContext).replace(/</g,'\\u003c')};</script>`:'';

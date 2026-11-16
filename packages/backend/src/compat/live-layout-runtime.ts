@@ -1,6 +1,7 @@
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {QueryRegistry} from '@frontbase/compiler';
 import type {PageLayoutData,PageEntry,EngineOptions} from '@frontbase/edge-core';
+import {runtimeFeatures} from '@frontbase/edge-core';
 import {compileDirectoryProjection,restorePublishedDirectoryProjection,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectDirectoryBrowsing,type PublishedDirectoryProjectionPlan} from '@frontbase/edge-core/directory/configuration';
 import {publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import {localeDirection} from '@frontbase/edge-core/localization';
@@ -18,6 +19,24 @@ function directoryPlan(layout: PageLayoutData,published?:PublishedDirectoryProje
     return plan;
 }
 
+const layoutFeatures=new WeakMap<PageLayoutData,NonNullable<EngineOptions['features']>&{legacyMenuRegion:boolean}>();
+/** Compute the four per-render whole-tree flags once per frozen published layout:
+ * the exact renderPage runtime-feature walk over the content subtree, the engine's
+ * non-empty-versions probe for public-tree projection, and the pre-composition
+ * legacy menu region scan. Projection and localization are key-pure for these
+ * flags (they never add versions/visibilityCondition/hiddenFilters keys), so the
+ * authored-layout result equals what per-request walks would produce. */
+export function liveLayoutFeatures(layout:PageLayoutData):NonNullable<EngineOptions['features']>&{legacyMenuRegion:boolean}{
+    const cached=layoutFeatures.get(layout);if(cached)return cached;
+    type LayoutNodes=PageLayoutData['content']|undefined;
+ const {versions,conditions}=runtimeFeatures({content:layout.content} as unknown as PageLayoutData);
+    const arrays=(nodes:LayoutNodes):boolean=>(nodes??[]).some(node=>!!node.versions?.length||arrays(node.children as LayoutNodes));
+    const legacy=(nodes:LayoutNodes):boolean=>(nodes??[]).some(node=>node.type==='Navbar'||node.type==='Footer'||node.props?.sharedSiteHeader===true||legacy(node.children as LayoutNodes));
+    const features={versions,versionsArrays:arrays(layout.content),conditions,legacyMenuRegion:legacy(layout.content)};
+    if(Object.isFrozen(layout))layoutFeatures.set(layout,features);
+    return features;
+}
+
 export class LivePageRequestError extends Error{}
 export type LiveRoute={role:'institution'|'program'|'article'|'editorial';row:Record<string,unknown>};
 export interface LivePageReader{
@@ -33,7 +52,7 @@ export interface LivePageReader{
 export async function resolveLiveLayoutPage(
     publication:LiveLayoutIndex,version:string,owner:string,db:DbRunner,request:Request,
     reader:LivePageReader,locale=publication.configuration.site.locale,user:Record<string,unknown>|null=null,list?:LiveListRequest, loadLayout?:LoadLiveLayout,
-):Promise<{sourcePageId:string;authored:PageLayoutData;displayPlan?:Awaited<ReturnType<LoadLiveLayout>>['displayPlan'];translationIds?:Awaited<ReturnType<LoadLiveLayout>>['translationIds'];page:PageEntry;document:NonNullable<EngineOptions['document']>;record:Record<string,unknown>;context:Record<string,unknown>}|null>{
+):Promise<{sourcePageId:string;authored:PageLayoutData;displayPlan?:Awaited<ReturnType<LoadLiveLayout>>['displayPlan'];translationIds?:Awaited<ReturnType<LoadLiveLayout>>['translationIds'];features:NonNullable<EngineOptions['features']>&{legacyMenuRegion:boolean};page:PageEntry;document:NonNullable<EngineOptions['document']>;record:Record<string,unknown>;context:Record<string,unknown>}|null>{
     if(!owner||!publication.locales.includes(locale))throw Error('live_page_context_required');
     const url=new URL(request.url),path=url.pathname,c=publication.configuration;
     if(!publicationPathSchema.safeParse(path).success)return null;
@@ -106,7 +125,7 @@ export async function resolveLiveLayoutPage(
     const presentation=templatePolicyPresentation(projected,row,row?context.collection+':'+row.id:'',locale,context);
     const title=presentation.values.title||String(row?.title??template.title),description=presentation.values.description||String(row?.summary??template.description);
     const canonicalUrl=new URL(locale===c.site.locale?path:'/'+locale+path,c.site.origin).href;
-    return {sourcePageId:template.pageId,authored,displayPlan:artifact?.displayPlan,translationIds:artifact?.translationIds,record:presentation.record,context,
+    return {sourcePageId:template.pageId,authored,displayPlan:artifact?.displayPlan,translationIds:artifact?.translationIds,features:liveLayoutFeatures(authored),record:presentation.record,context,
         page:{title,description,slug:path.slice(1),layout:presentation.layout},
         document:{language:locale,direction:localeDirection(locale),canonicalUrl,robots:url.search||presentation.values.indexing==='noindex'?'noindex, follow':'index, follow',
             openGraph:{title,description,url:canonicalUrl,type:role==='article'?'article':'website',siteName:c.site.name,locale}}};

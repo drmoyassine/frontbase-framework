@@ -28,6 +28,11 @@ export type Environment = 'edge' | 'service-worker' | 'builder';
 export interface EngineOptions {
     /** Trusted publication-time binding instructions; never loaded from visitor input. */
     interpolations?:ReadonlyMap<string,import('./liquid-core/sync.js').CompiledInterpolation>;
+    /** Precomputed runtime feature flags for a frozen layout (same semantics as the
+     * in-render walk: `versions` flags any versions key, `versionsArrays` requires a
+     * non-empty array for public-tree projection, `conditions` gates the bootstrap).
+     * Absent flags keep the ordinary in-render traversals. */
+    features?:{versions:boolean;versionsArrays:boolean;conditions:boolean};
     /** Trusted offline compiler hook. Never populated from a manifest or request. */
     observeComponent?:import('./ssr/PageRenderer.js').ComponentRenderObserver;
     /** Host-verified minimal visitor context; never the console principal. */
@@ -80,7 +85,7 @@ export function enforceScope(q: RegisteredQuery, principal: Principal): { status
     }
 }
 
-type ResolvedPageOptions = Pick<EngineOptions, 'manifest' | 'environment' | 'document' | 'swBundle' | 'observeComponent' | 'interpolations'>;
+type ResolvedPageOptions = Pick<EngineOptions, 'manifest' | 'environment' | 'document' | 'swBundle' | 'observeComponent' | 'interpolations' | 'features'>;
 
 /** Deterministic template context — timestamps come from the manifest, never Date.now(). */
 function buildContext(page: PageEntry, path: string, records: Record<string, unknown>[], opts: ResolvedPageOptions, user:Record<string,unknown>|null=null): TemplateContext {
@@ -134,8 +139,9 @@ export async function renderResolvedPageDocument(
     const renderContext = buildContext(page, path, records, opts, user);
     renderContext.url = Object.fromEntries(url.searchParams);
     const hasVersions=(nodes:typeof page.layout.content):boolean=>nodes.some(node=>!!node.versions?.length||hasVersions(node.children??[]));
-    const publicPage = hasVersions(page.layout.content) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;
-    const body = await renderPage(publicPage.layout, renderContext, opts.observeComponent,opts.interpolations);
+    const features=opts.features;
+    const publicPage = (features?features.versionsArrays:hasVersions(page.layout.content)) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;
+    const body = await renderPage(publicPage.layout, renderContext, opts.observeComponent,opts.interpolations,features?{versions:features.versions,conditions:features.conditions}:undefined);
     const html = renderDocument(publicPage, body, {
         environment,
         registerServiceWorker: environment === 'edge' && !!opts.swBundle,
