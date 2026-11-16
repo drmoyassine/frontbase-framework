@@ -38,6 +38,11 @@ export interface TranslationBatchReader {
     /** Current values keyed by unit ID. Units without a head are omitted. */
     readCurrentHeads?(scope: LocalizationScope, unitIds: string[], locale: string): Promise<Map<string, CurrentTranslationValue>>;
     readCurrentMany?(scope:LocalizationScope,unitIds:string[],locale:string):Promise<CurrentTranslationValue[]>;
+    /** Resolve unit IDs for validated resources without hashing them client-side.
+     * Positional result, one ID per requested resource; implementations may compute
+     * any subset locally, so the result is always the same length as the input.
+     * Unit identity is locale-independent by contract. */
+    resolveUnitIdsByResources?(scope: LocalizationScope, resources: import('./contracts.js').ResourceRef[]): Promise<string[]>;
     /** One bounded, ordered snapshot per requested unit; missing units retain their position. */
     readMany(scope: LocalizationScope, unitIds: string[], locale?: string): Promise<TranslationSnapshot[]>;
     readRevisions(scope: LocalizationScope, keys: {unitId:string;revisionId:string}[], locale:string): Promise<(StoredRevision|null)[]>;

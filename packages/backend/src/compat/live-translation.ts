@@ -15,7 +15,7 @@ const identityIds=new Map<string,string>();
  * Source edits immediately invalidate stale translations while retaining their history in storage. */
 export async function localizeLiveLayout(input:PageLayoutData,options:{
     scope:LocalizationScope;pageId:string;sourceLocale:string;locale:string;
-    reader:Pick<TranslationBatchReader,'readMany'|'readCurrentMany'|'readCurrentHeads'>;menuFields?:LiveDisplayField[];plan?:DisplaySurfacePlan;identityPlan?:TranslationIdentityPlan;
+    reader:Pick<TranslationBatchReader,'readMany'|'readCurrentMany'|'readCurrentHeads'|'resolveUnitIdsByResources'>;menuFields?:LiveDisplayField[];plan?:DisplaySurfacePlan;identityPlan?:TranslationIdentityPlan;
     resolvedFields?:(fields:LiveDisplayField[])=>void;
 }):Promise<PageLayoutData>{
     const layout=homepageDisplayLayout(input);
@@ -29,7 +29,6 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
     if(fields.length>500)throw Error('live_translation_surface_limit');
     if(!fields.length){options.resolvedFields?.(fields);return layout;}
     const prepared=preparedTranslationIds(options.identityPlan,options.scope,options.pageId);
-    const pendingIds = new Map<string, Promise<string>>();
     let unitIdFor:ReturnType<typeof translationUnitIdForScope>|undefined;
     const groups=new Map<string,number|number[]>();
     const group=(id:string,index:number)=>{
@@ -38,27 +37,35 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
         else if(typeof existing==='number')groups.set(id,[existing,index]);
         else existing.push(index);
     };
-    const pendingFields:Promise<void>[]=[];
+    // Identities needing resolution, deduplicated per raw resource. Cache identities
+    // only; current source and translated text stay request-local.
+    const unresolved=new Map<string,{key:string;resource:ReturnType<typeof displayTranslationUnit>['resource'];indexes:number[]}>();
     for(const [index,field] of fields.entries()){
         const compiled=!field.menu&&!field.record&&prepared?.get(displayFieldKey(field));
         if(compiled){group(compiled,index);continue;}
         const unit = displayTranslationUnit(field, options.scope, options.pageId, options.sourceLocale);
-        // Cache identities only. Current source and translated text stay request-local.
         const key = JSON.stringify([options.scope, unit.resource]);
         const cached = identityIds.get(key);
         if (cached){group(cached,index);continue;}
-        let pending = pendingIds.get(key);
-        if (!pending) {
-            pending = (unitIdFor??=translationUnitIdForScope(options.scope))(unit.resource).then(id => {
-                if (identityIds.size >= 2048) identityIds.delete(identityIds.keys().next().value!);
-                identityIds.set(key, id);
-                return id;
-            });
-            pendingIds.set(key, pending);
-        }
-        pendingFields.push(pending.then(id=>group(id,index)));
+        const entry=unresolved.get(key);
+        if(entry)entry.indexes.push(index);
+        else unresolved.set(key,{key,resource:unit.resource,indexes:[index]});
     }
-    if(pendingFields.length)await Promise.all(pendingFields);
+    if(unresolved.size){
+        const entries=[...unresolved.values()];
+        // Server-side resolution avoids per-field WebCrypto hashing on every fresh
+        // isolate; readers without the port keep the ordinary client-side identity.
+        const ids=options.reader.resolveUnitIdsByResources
+            ?await options.reader.resolveUnitIdsByResources(options.scope,entries.map(entry=>entry.resource))
+            :await Promise.all(entries.map(entry=>(unitIdFor??=translationUnitIdForScope(options.scope))(entry.resource)));
+        if(ids.length!==entries.length)throw Error('live_translation_response_invalid');
+        for(const [i,entry] of entries.entries()){
+            const id=ids[i]!;
+            if (identityIds.size >= 2048) identityIds.delete(identityIds.keys().next().value!);
+            identityIds.set(entry.key,id);
+            for(const index of entry.indexes)group(id,index);
+        }
+    }
     const ids=[...groups.keys()];
     let heads:Map<string,CurrentTranslationValue>;
     if(options.reader.readCurrentHeads)heads=await options.reader.readCurrentHeads(options.scope,ids,options.locale);

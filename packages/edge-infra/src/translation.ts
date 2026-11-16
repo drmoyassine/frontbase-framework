@@ -34,6 +34,14 @@ function translationTransports(options: Omit<SupabaseOpts, 'schema'>) {
                 if (error) throw Error('translation_rpc_failed');
                 return data;
             },
+            resolveByResources: async (scope: {tenantId:string;projectId:string}, input: {resources:unknown[]}) => {
+                const {data, error} = await client.rpc('translation_read_batch', {p_operation:'read-unit-ids-by-resource', p_scope:scope, p_input:input});
+                // Legacy SQL and out-of-domain refusals share the same unsupported-operation
+                // reply; both permit the adapter to fall back to client-side identity.
+                if (error?.code === '22023' && error.message === 'invalid_translation_operation') return undefined;
+                if (error) throw Error('translation_rpc_failed');
+                return data;
+            },
             call: (operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => call(operation==='read-many'||operation==='read-revisions'?'translation_read_batch':'translation_request', operation, scope, input) },
         accounting: { call: (operation: string, scope: { tenantId: string; projectId: string }, input: Record<string, unknown>) => call('translation_accounting_request', operation, scope, input) },
     };

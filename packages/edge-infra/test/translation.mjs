@@ -23,6 +23,7 @@ const failing = translationPersistenceFromSupabase({ url: 'https://test.invalid'
 await assert.rejects(failing.initialize(), e => e.message === 'translation_rpc_failed');
 console.log('edge-infra translation HTTP bridge: PASS (shared client, auth/schema/URL policy, safe errors; no sockets)');
 
+import {createHash} from 'node:crypto';
 const {fixture,scope}=await import('../../translation/test/job-fixtures.mjs');
 const f=await fixture();try{
  await f.engine.writeManual(scope,f.revision());const snapshot=await f.store.read(scope,f.source.unitId,'ar'),reads=[];
@@ -30,13 +31,19 @@ const f=await fixture();try{
  const batch=translationPersistenceFromSupabase({url:'https://native.invalid',restUrl:'https://native.invalid',serviceKey:'synthetic-jwt',fetchImpl:async(input,init)=>{
   const req=new Request(input,init),url=new URL(req.url);reads.push(url);
   assert.equal(req.method,'POST');assert.equal(req.headers.get('content-profile'),'translations');assert.equal(req.headers.get('authorization'),'Bearer synthetic-jwt');
-  assert.equal(url.pathname,'/rpc/translation_read_batch');const {p_operation,p_scope,p_input}=await req.json();assert.deepEqual(p_scope,scope);assert.equal(p_input.locale,'ar');
+  assert.equal(url.pathname,'/rpc/translation_read_batch');const {p_operation,p_scope,p_input}=await req.json();assert.deepEqual(p_scope,scope);if(p_operation!=='read-unit-ids-by-resource')assert.equal(p_input.locale,'ar');
   if(p_operation==='read-current-many') {
    if(sparseStatus==='legacy') return Response.json({code:'22023',message:'invalid_translation_operation'},{status:400});
    if(sparseStatus==='failed') return Response.json({code:'42501',message:'permission denied'},{status:403});
    return Response.json([{unitId:f.source.unitId,snapshot}]);
   }
   if(p_operation==='read-many')return Response.json(p_input.unitIds.map(unitId=>({unitId,snapshot:unitId===f.source.unitId?snapshot:{version:0,source:null,head:null}})));
+  if(p_operation==='read-unit-ids-by-resource'){
+   if(sparseStatus==='legacy')return Response.json({code:'22023',message:'invalid_translation_operation'},{status:400});
+   if(sparseStatus==='failed')return Response.json({code:'42501',message:'permission denied'},{status:403});
+   const {canonicalResourceEnvelope}=await import('../../translation/dist/identity.js');
+   return Response.json(p_input.resources.map((resource,index)=>{const envelope=canonicalResourceEnvelope(scope,resource);return {index,unitId:createHash('sha256').update(Buffer.from(envelope,'utf8')).digest('hex'),envelope};}));
+  }
   assert.equal(p_operation,'read-revisions');return Response.json(p_input.keys.map(key=>({...key,revision:snapshot.head})));
  }});
  const ids=[f.source.unitId,...Array.from({length:66},(_,i)=>i.toString(16).padStart(64,'0'))];
@@ -57,6 +64,26 @@ const f=await fixture();try{
  sparseStatus='failed';
  await assert.rejects(batch.readCurrentHeads(scope, ids, 'ar'), /translation_rpc_failed/);
  assert.equal(reads.length, 9, 'permission failure does not fall back');
+
+ // By-resource identity: routed to the batch RPC; legacy SQL falls back, permission errors do not.
+ const {translationUnitIdForScope}=await import('../../translation/dist/identity.js');
+ const identityFactory=translationUnitIdForScope(scope);
+ const resources=[
+  {kind:'record',connectionId:'ds-live',collection:'programs',key:[{column:'id',value:42},{column:'slug',value:'arizona-state'}],propertyPath:['title']},
+  {kind:'component',documentId:'page-1',blockId:'hero',versionId:'default',propertyPath:['heading','text']},
+  {kind:'record',connectionId:'ds-live',collection:'programs',key:[{column:'id',value:1.5}],propertyPath:['p']},
+ ];
+ const localIds=await Promise.all(resources.map(resource=>identityFactory(resource)));
+ sparseStatus='supported';
+ const identityReads=reads.length;
+ assert.deepEqual(await batch.resolveUnitIdsByResources(scope,resources),localIds);
+ assert.equal(reads.length,identityReads+1,'one batch RPC resolves in-domain identities');
+ sparseStatus='legacy';
+ assert.deepEqual(await batch.resolveUnitIdsByResources(scope,resources),localIds,'legacy SQL falls back to client identity');
+ assert.equal(reads.length,identityReads+2,'legacy fallback still reaches the RPC once before falling back');
+ sparseStatus='failed';
+ await assert.rejects(batch.resolveUnitIdsByResources(scope,resources),/translation_rpc_failed/);
+ assert.equal(reads.length,identityReads+3,'permission failure does not fall back');
 
  console.log('translation batch reads PASS: one scoped HTTP request for 67 fields, isolated revision lookup');
 }finally{f.close();}

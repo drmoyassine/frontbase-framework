@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { localeSchema, localizationScopeSchema, translationRevisionSchema, type LocalizationScope } from '../contracts.js';
+import { localeSchema, localizationScopeSchema, resourceRefSchema, translationRevisionSchema, type LocalizationScope, type ResourceRef } from '../contracts.js';
+import { canonicalResourceEnvelope, normalizedResource, translationUnitIdForScope } from '../identity.js';
 import { parsePersistenceKey, parsePersistenceChange, currentTranslationValueSchema,type CurrentTranslationValue, translationSnapshotSchema, sourceRecordSchema, storedRevisionSchema,
     type TranslationBatchReader, type TranslationSnapshot, type SourceRecord, type StoredRevision, type PersistenceChange, type CasResult } from '../revisions.js';
 import { translationJobSchema, translationJobIntentSchema, jobErrorSchema,
@@ -11,6 +12,9 @@ export type TranslationRpcOperation = 'capabilities' | 'read-many' | 'read-revis
 export interface TranslationRpcTransport {
     /** undefined means the installed batch RPC predates sparse reads. */
     readCurrent?(scope: LocalizationScope, input: {unitIds:string[];locale:string}): Promise<unknown>;
+    /** undefined means the installed batch RPC predates by-resource reads or refused
+     * a resource outside the domain Postgres can hash byte-exactly. */
+    resolveByResources?(scope: LocalizationScope, input: {resources:unknown[]}): Promise<unknown>;
     call(operation: TranslationRpcOperation, scope: LocalizationScope, input: Record<string, unknown>): Promise<unknown>;
 
 }
@@ -20,6 +24,33 @@ const currentRows = z.array(z.object({ unitId: id, snapshot: currentTranslationV
 const emptyCurrentValue = Object.freeze({ version: 0, source: null, head: null });
 const positive = z.number().int().positive().safe();
 const lease = z.number().int().min(1000).max(300_000);
+const resolvedRows = z.array(z.object({ index: z.number().int().min(0), unitId: translationRevisionSchema.shape.unitId, envelope: z.string().min(1) }).strict());
+let resourceLookupFallbacks = 0;
+/** Times by-resource identity lookup fell back to client-side hashing (legacy SQL,
+ * refused domain or envelope mismatch). Diagnostics only, never a request path. */
+export function translationResourceLookupFallbackCount(): number { return resourceLookupFallbacks; }
+/** Postgres reproduces the canonical envelope byte-exactly only for this domain:
+ * strings without control characters within the contract caps, record-key columns
+ * restricted to printable ASCII (byte order ≡ UTF-16 code-unit order), and record
+ * values restricted to booleans, safe integers and bounded strings. Everything
+ * else (system resources, exotic numbers, control characters, unpaired surrogates)
+ * is hashed locally instead of trusted to SQL. */
+function sqlDomainResource(resource: ResourceRef): boolean {
+    const leaf = (value: string, max: number) => value.length >= 1 && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
+    switch (resource.kind) {
+        case 'system': return false;
+        case 'component':
+            return leaf(resource.blockId, 160) && leaf(resource.documentId, 160) && leaf(resource.versionId, 160)
+                && resource.propertyPath.every(part => leaf(part, 160));
+        case 'record':
+            return leaf(resource.connectionId, 160) && leaf(resource.collection, 160)
+                && resource.propertyPath.every(part => leaf(part, 160))
+                && resource.key.every(part => /^[\x20-\x7e]+$/.test(part.column) && leaf(part.column, 160)
+                    && (typeof part.value === 'boolean'
+                        || (typeof part.value === 'number' && Number.isSafeInteger(part.value))
+                        || (typeof part.value === 'string' && leaf(part.value, 4000))));
+    }
+}
 function owner(actual: LocalizationScope, expected: LocalizationScope): void {
     if (actual.tenantId !== expected.tenantId || actual.projectId !== expected.projectId) throw Error('translation_rpc_scope_mismatch');
 }
@@ -109,6 +140,59 @@ export class PostgrestTranslationJobPersistence implements TranslationJobPersist
             }
         }
         return { keys, values: rows };
+    }
+    /** Resolve unit IDs without hashing them client-side. In-domain resources go to
+     * the batch RPC, which echoes the exact envelope it hashed — a byte mismatch is
+     * treated like a refusal so identity can never silently diverge. Out-of-domain
+     * resources and any refusal fall back to the ordinary client-side identity. */
+    async resolveUnitIdsByResources(scopeInput: LocalizationScope, resourcesInput: ResourceRef[]): Promise<string[]> {
+        const scope = localizationScopeSchema.parse(scopeInput);
+        const resources = z.array(resourceRefSchema).min(1).max(500).parse(resourcesInput);
+        const normalized = resources.map(normalizedResource);
+        const envelopes = normalized.map(resource => canonicalResourceEnvelope(scope, resource));
+        const ids = new Array<string>(resources.length);
+        const local = translationUnitIdForScope(scope);
+        const pendingLocal: Promise<void>[] = [];
+        const rpc: number[] = [];
+        const seenEnvelopes = new Set<string>();
+        for (const [index, envelope] of envelopes.entries()) {
+            if (sqlDomainResource(normalized[index]!) && !seenEnvelopes.has(envelope)) {
+                seenEnvelopes.add(envelope);
+                rpc.push(index);
+            } else {
+                pendingLocal.push(local(normalized[index]!).then(unitId => { ids[index] = unitId; }));
+            }
+        }
+        if (rpc.length && this.transport.resolveByResources) {
+            let rows: z.infer<typeof resolvedRows> | undefined;
+            try {
+                const raw = await this.transport.resolveByResources(scope, { resources: rpc.map(index => normalized[index]) });
+                if (raw !== undefined) rows = resolvedRows.parse(raw);
+            } catch { throw Error('translation_rpc_failed'); }
+            if (rows) {
+                let refused = false;
+                if (rows.length !== rpc.length) throw Error('translation_rpc_key_mismatch');
+                const assigned = new Map<number, string>();
+                const seen = new Set<number>();
+                for (const row of rows) {
+                    if (seen.has(row.index)) throw Error('translation_rpc_key_mismatch');
+                    seen.add(row.index);
+                    const requested = rpc[row.index];
+                    if (requested === undefined) throw Error('translation_rpc_key_mismatch');
+                    // The echo is the trust anchor: SQL must have hashed exactly the
+                    // bytes the client would have hashed. Any divergence refuses.
+                    if (row.envelope !== envelopes[requested]) { refused = true; break; }
+                    assigned.set(requested, row.unitId);
+                }
+                if (refused) resourceLookupFallbacks++;
+                else for (const [requested, unitId] of assigned) ids[requested] = unitId;
+            } else resourceLookupFallbacks++;
+        } else if (rpc.length) resourceLookupFallbacks++;
+        for (const index of rpc) {
+            if (ids[index] === undefined) pendingLocal.push(local(normalized[index]!).then(unitId => { ids[index] = unitId; }));
+        }
+        await Promise.all(pendingLocal);
+        return ids;
     }
     async readRevisions(scopeInput: LocalizationScope, input:{unitId:string;revisionId:string}[], localeInput:string):Promise<(StoredRevision|null)[]> {
         const keys=z.array(z.object({unitId:id,revisionId:id}).strict()).min(1).max(500).parse(input);

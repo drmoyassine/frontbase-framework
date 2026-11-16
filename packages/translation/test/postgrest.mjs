@@ -127,5 +127,55 @@ try {
     await assert.rejects(wrongBatch.readCurrentMany(scope,[f.source.unitId],'ar'),/key_mismatch/);
     const wrongRevisionBatch=new PostgrestTranslationJobPersistence({call:async()=>[{unitId:f.source.unitId,revisionId:'revision',revision:{...await f.store.readRevision(scope,f.source.unitId,'ar','revision'),locale:'fr'}}]});
     await assert.rejects(wrongRevisionBatch.readRevisions(scope,[{unitId:f.source.unitId,revisionId:'revision'}],'ar'),/key_mismatch/);
+    // By-resource unit-ID resolution: server-side hashing with envelope-echo trust,
+    // local fallback for out-of-domain resources, legacy RPC and refusals.
+    const {translationUnitIdForScope,canonicalResourceEnvelope}=await import('../dist/identity.js');
+    const {translationResourceLookupFallbackCount}=await import('../dist/adapters/postgrest.js');
+    const local=translationUnitIdForScope(scope);
+    const sample=[
+        {kind:'record',connectionId:'ds-live',collection:'programs',key:[{column:'id',value:42},{column:'slug',value:'arizona-state'}],propertyPath:['title']},
+        {kind:'component',documentId:'page-1',blockId:'hero',versionId:'default',propertyPath:['heading','text']},
+        {kind:'system',componentKind:'x',messageId:'y'},
+        {kind:'record',connectionId:'ds-live',collection:'programs',key:[{column:'id',value:1.5}],propertyPath:['p']},
+        {kind:'component',documentId:'page-1',blockId:'ctl',versionId:'default',propertyPath:['a\nb']},
+    ];
+    const localIds=await Promise.all(sample.map(resource=>local(resource)));
+    const expectedRows=localIds.map((id,index)=>({index,unitId:id,envelope:canonicalResourceEnvelope(scope,sample[index])}));
+    let resolveCalls=0;
+    const originOf=resource=>sample.findIndex(item=>JSON.stringify(item)===JSON.stringify(resource));
+    const resolving=new PostgrestTranslationJobPersistence({
+        async call(){throw Error('Unexpected dense lookup');},
+        async resolveByResources(ownerScope,input){resolveCalls++;assert.deepEqual(ownerScope,scope);
+            return input.resources.map((resource,position)=>({index:position,unitId:localIds[originOf(resource)],envelope:canonicalResourceEnvelope(scope,resource)}));},
+    });
+    const before=translationResourceLookupFallbackCount();
+    assert.deepEqual(await resolving.resolveUnitIdsByResources(scope,sample),localIds);
+    assert.equal(resolveCalls,1,'only in-domain resources reach the RPC');
+    const legacy=new PostgrestTranslationJobPersistence({
+        async call(){throw Error('Unexpected dense lookup');},
+        async resolveByResources(){return undefined;},
+    });
+    assert.deepEqual(await legacy.resolveUnitIdsByResources(scope,sample),localIds,'legacy SQL falls back to client identity');
+    assert.ok(translationResourceLookupFallbackCount()>=before+1,'fallback counter records legacy refusals');
+    let echoMismatch=0;
+    const divergent=new PostgrestTranslationJobPersistence({
+        async call(){throw Error('Unexpected dense lookup');},
+        async resolveByResources(ownerScope,input){echoMismatch++;
+            const rows=input.resources.map((resource,position)=>({index:position,unitId:localIds[originOf(resource)],envelope:canonicalResourceEnvelope(scope,resource)}));
+            rows[0]={...rows[0],envelope:rows[0].envelope.replace('"version":1}','"version":9}')};
+            return rows;},
+    });
+    assert.deepEqual(await divergent.resolveUnitIdsByResources(scope,sample),localIds,'envelope divergence refuses and falls back');
+    assert.ok(translationResourceLookupFallbackCount()>=before+2);
+    const hostileResolve=new PostgrestTranslationJobPersistence({
+        async call(){throw Error('Unexpected dense lookup');},
+        async resolveByResources(ownerScope,input){return input.resources.map((resource,position)=>({index:position,unitId:'f'.repeat(64),envelope:canonicalResourceEnvelope(scope,resource)})).slice(1);},
+    });
+    await assert.rejects(hostileResolve.resolveUnitIdsByResources(scope,sample),/key_mismatch/);
+    await assert.rejects(new PostgrestTranslationJobPersistence({async call(){throw Error('x');},async resolveByResources(){throw Error('private connection details');}}).resolveUnitIdsByResources(scope,[sample[0]]),e=>e.message==='translation_rpc_failed');
+    const noHook=new PostgrestTranslationJobPersistence({async call(){throw Error('Unexpected dense lookup');}});
+    assert.deepEqual(await noHook.resolveUnitIdsByResources(scope,sample),localIds,'transports without the hook fall back entirely');
+    await assert.rejects(resolving.resolveUnitIdsByResources(scope,[]));
+    await assert.rejects(resolving.resolveUnitIdsByResources(scope,Array.from({length:501},()=>sample[0])));
 } finally { f.close(); }
 console.log('translation PostgREST adapter: PASS (typed transport test double; live SQL proof is separate)');

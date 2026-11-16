@@ -24,10 +24,46 @@ function validatedResource(input: ResourceRef): ResourceRef {
     if (resource.kind === 'record') resource.key.sort((a, b) => a.column < b.column ? -1 : a.column > b.column ? 1 : 0);
     return resource;
 }
+/** Validated identity-form resource (record key parts sorted by the exact JS
+ * column comparator). Sending this form over RPC lets SQL verify the same order. */
+export function normalizedResource(input: ResourceRef): ResourceRef {
+    return validatedResource(input);
+}
 /** Unit identity never depends on source wording, URL, DOM order or translation provider. */
 export async function translationUnitId(scope: LocalizationScope, input: ResourceRef): Promise<string> {
     const resource = validatedResource(input);
     return digest({ version: 1, scope: localizationScopeSchema.parse(scope), resource });
+}
+
+/** The exact canonical envelope whose SHA-256 is the unit ID. Resource passes the
+ * same strict identity validation (including record-key column ordering).
+ * The SQL read-batch operation reproduces these bytes for server-side hashing;
+ * the JS↔SQL parity harness pins both sides to this format. */
+export function canonicalResourceEnvelope(scope: LocalizationScope, input: ResourceRef): string {
+    const resource = validatedResource(input);
+    const { projectId, tenantId } = localizationScopeSchema.parse(scope);
+    const suffix = ',"scope":' + JSON.stringify({ projectId, tenantId }) + ',"version":1}';
+    let ordered: ResourceRef;
+    // Contract keys in canonical order. Record key parts were parsed as
+    // column/value objects and sorted by column in validatedResource.
+    switch (resource.kind) {
+        case 'component': {
+            const { blockId, documentId, kind, propertyPath, versionId } = resource;
+            ordered = { blockId, documentId, kind, propertyPath, versionId };
+            break;
+        }
+        case 'record': {
+            const { collection, connectionId, key, kind, propertyPath } = resource;
+            ordered = { collection, connectionId, key, kind, propertyPath };
+            break;
+        }
+        case 'system': {
+            const { componentKind, kind, messageId } = resource;
+            ordered = { componentKind, kind, messageId };
+            break;
+        }
+    }
+    return '{"resource":' + JSON.stringify(ordered) + suffix;
 }
 
 /** Preserve the canonical ID envelope while validating and serializing a shared
