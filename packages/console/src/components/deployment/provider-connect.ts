@@ -1,4 +1,6 @@
 /** Shared browser protocol: only authorization URLs and public status cross this boundary. */
+export const CONNECTED_ACCOUNTS_PATH = '/frontbase-admin/settings?tab=accounts';
+
 export interface ProviderConnectionStatus {
     providers:Array<{provider:'cloudflare'|'vercel'|'supabase'|'upstash';available:boolean}>;
     connections:Array<{id:string;provider:'cloudflare'|'vercel'|'supabase'|'upstash';label:string;accountId:string;reconnectRequired:boolean;capabilities?:string[]}>;

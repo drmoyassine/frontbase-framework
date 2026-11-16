@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { CONNECTED_ACCOUNTS_PATH } from '@/components/deployment/provider-connect';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -91,7 +92,8 @@ interface AccountResourcePickerProps {
     /** Auto-select single account and hide account dropdown (e.g. Turso container) */
     autoSelectSingle?: boolean;
     requireResourceSelection?: boolean;
-    connectReturnPath?: string;
+    /** Manage accounts in Settings. The picker only binds existing resources. */
+    connectInSettings?: boolean;
     /** Label for the resource dropdown (e.g. 'Select Database') */
     resourceLabel?: string;
     /** Hide Display Name in the ConnectProviderDialog (e.g. Turso) */
@@ -110,11 +112,11 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
     existingUrls = [],
     autoSelectSingle,
     requireResourceSelection,
-    connectReturnPath,
+    connectInSettings,
     resourceLabel,
     hideConnectDisplayName,
 }) => {
-    const { data: allProviders = [] } = useEdgeProviders();
+    const { data: allProviders = [], isPending: accountsPending, isError: accountsError, refetch: refetchAccounts } = useEdgeProviders();
     const queryClient = useQueryClient();
     const [selectedAccount, setSelectedAccount] = useState<string>(selectedAccountId || '');
     const [resources, setResources] = useState<DiscoveredResource[]>([]);
@@ -137,6 +139,7 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
     const compatibleAccounts = allProviders.filter(
         (p: any) => compatibleProviders.includes(p.provider) && p.is_active
     );
+    const selectedAccountAvailable = compatibleAccounts.some(account => account.id === selectedAccount);
 
     // Auto-select single account when autoSelectSingle is on
     useEffect(() => {
@@ -147,14 +150,14 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
 
     // Auto-discover when account is selected
     useEffect(() => {
-        if (selectedAccount) {
+        if (selectedAccountAvailable) {
             void discoverResources(selectedAccount);
         } else {
             setResources([]);
             setDiscoverError(null);
         }
         return () => { ++discoverySequence.current; };
-    }, [selectedAccount, resourceTypeFilter]);
+    }, [selectedAccount, selectedAccountAvailable, resourceTypeFilter]);
 
     const discoverResources = async (accountId: string) => {
         const sequence = ++discoverySequence.current;
@@ -285,8 +288,24 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
         }
     };
 
-    // No compatible accounts → show "Connect Account" button
+    const manageAccounts = <Button asChild variant="outline" size="sm">
+        <a href={CONNECTED_ACCOUNTS_PATH}>Open Connected Accounts</a>
+    </Button>;
+
+    if (accountsPending) return <p role="status" className="text-sm text-muted-foreground">Loading connected accounts…</p>;
+    if (accountsError && compatibleAccounts.length === 0) return (
+        <div className="space-y-2">
+            <p role="alert" className="text-sm">Connected accounts could not be loaded.</p>
+            <Button type="button" variant="outline" size="sm" onClick={() => void refetchAccounts()}>Retry</Button>
+        </div>
+    );
     if (compatibleAccounts.length === 0) {
+        if (connectInSettings) return <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+                {selectedAccount ? 'The saved account is unavailable.' : 'Connect an account to choose its resources.'}
+            </p>
+            {manageAccounts}
+        </div>;
         const providerName = PROVIDER_CONFIGS[compatibleProviders[0]]?.label || compatibleProviders[0] || 'Provider';
         const buttonLabel = autoSelectSingle && compatibleProviders[0] === 'turso'
             ? `Add ${providerName} Database`
@@ -306,7 +325,6 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
                 </Button>
                 <ConnectProviderDialog
                     provider={compatibleProviders[0]}
-                    oauthReturnPath={connectReturnPath}
                     open={showConnectDialog}
                     onOpenChange={setShowConnectDialog}
                     hideDisplayName={hideConnectDisplayName}
@@ -330,10 +348,10 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
     return (
         <div className="space-y-3">
             {/* Account selector — hidden when autoSelectSingle with 1 account */}
-            {!(autoSelectSingle && compatibleAccounts.length === 1) && (
+            {!(autoSelectSingle && compatibleAccounts.length === 1 && (!selectedAccount || selectedAccountAvailable)) && (
                 <div className="space-y-1.5">
                     <Label className="text-sm">{label}</Label>
-                    <Select value={selectedAccount || undefined} onValueChange={handleAccountChange}>
+                    <Select value={selectedAccountAvailable ? selectedAccount : ''} onValueChange={handleAccountChange}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select a connected account..." />
                         </SelectTrigger>
@@ -349,19 +367,23 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
                                     </span>
                                 </SelectItem>
                             ))}
-                            <SelectItem value="__connect_new__">
+                            {!connectInSettings && <SelectItem value="__connect_new__">
                                 <span className="flex items-center gap-2 text-primary">
                                     <Plus className="h-3 w-3" />
                                     Connect New Account
                                 </span>
-                            </SelectItem>
+                            </SelectItem>}
                         </SelectContent>
                     </Select>
                 </div>
             )}
 
             {/* Discover results */}
-            {selectedAccount && (
+            {selectedAccount && !selectedAccountAvailable && <p className="text-sm text-muted-foreground">
+                The saved account is unavailable. Choose another connected account.
+            </p>}
+            {connectInSettings && manageAccounts}
+            {selectedAccountAvailable && (
                 <div className="space-y-2">
                     {isDiscovering ? (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
@@ -448,13 +470,12 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
                                             </span>
                                         </SelectItem>
                                     )}
-                                    {/* Connect Another Account — always available */}
-                                    <SelectItem value="__connect_new_account__">
+                                    {!connectInSettings && <SelectItem value="__connect_new_account__">
                                         <span className="flex items-center gap-2 text-primary">
                                             <Plus className="h-3 w-3" />
                                             Connect Another Account
                                         </span>
-                                    </SelectItem>
+                                    </SelectItem>}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -465,7 +486,6 @@ export const AccountResourcePicker: React.FC<AccountResourcePickerProps> = ({
 
             <ConnectProviderDialog
                 provider={compatibleProviders[0]}
-                oauthReturnPath={connectReturnPath}
                 open={showConnectDialog}
                 onOpenChange={setShowConnectDialog}
                 hideDisplayName={hideConnectDisplayName}

@@ -26,18 +26,15 @@ describe('Manual HTTP datasource',()=>{
         mocked.testRaw.mockRejectedValue(new Error('PRIVATE_KEY'));mount();fireEvent.click(screen.getByRole('button',{name:'Test Connection'}));
         await waitFor(()=>expect(mocked.error).toHaveBeenCalled());expect(mocked.error.mock.calls[0][0]).toBe('Connection test could not complete');expect(JSON.stringify(mocked.error.mock.calls)).not.toContain('PRIVATE_KEY');
     });
-    it('creates a native HTTP connection using the existing encrypted datasource API',async()=>{
-        mocked.create.mockResolvedValue({data:{id:'native'}});mount();fireEvent.change(screen.getByRole('combobox',{name:'Database Type'}),{target:{value:'supabase'}});fireEvent.click(screen.getByLabelText('Connect using an HTTPS URL and server key'));
-        expect(screen.queryByText('Account picker')).toBeNull();expect(screen.getByRole('button',{name:'Test Connection'})).toBeEnabled();
-        fireEvent.change(screen.getByPlaceholderText('My Production DB'),{target:{value:'Selfhost'}});fireEvent.change(screen.getByLabelText('API base URL'),{target:{value:'https://native.example.test'}});fireEvent.change(screen.getByLabelText('Server API key'),{target:{value:'SYNTHETIC_TEST_KEY'}});fireEvent.click(screen.getByRole('button',{name:'Add Data Source'}));
-        await waitFor(()=>expect(mocked.create).toHaveBeenCalledTimes(1));expect(mocked.create.mock.calls[0][0]).toMatchObject({type:'supabase',api_url:'https://native.example.test',service_role_key:'SYNTHETIC_TEST_KEY',provider_account_id:''});
-    });
-    it('does not carry the server key into another provider when changing database type',async()=>{
-        mocked.create.mockResolvedValue({data:{id:'other'}});mount();fireEvent.change(screen.getByRole('combobox',{name:'Database Type'}),{target:{value:'supabase'}});fireEvent.click(screen.getByLabelText('Connect using an HTTPS URL and server key'));fireEvent.change(screen.getByLabelText('API base URL'),{target:{value:'https://native.example.test'}});fireEvent.change(screen.getByLabelText('Server API key'),{target:{value:'SYNTHETIC_TEST_KEY'}});fireEvent.change(screen.getByRole('combobox',{name:'Database Type'}),{target:{value:'turso'}});fireEvent.click(screen.getByRole('button',{name:'Choose resource'}));fireEvent.click(screen.getByRole('button',{name:'Add Data Source'}));await waitFor(()=>expect(mocked.create).toHaveBeenCalledTimes(1));expect(mocked.create.mock.calls[0][0]).toMatchObject({type:'turso',service_role_key:'',api_url:''});
-    });
-    it('requires an HTTPS URL and server key and clears manual credentials on returning to account mode',()=>{
-        mount();fireEvent.change(screen.getByRole('combobox',{name:'Database Type'}),{target:{value:'supabase'}});fireEvent.click(screen.getByLabelText('Connect using an HTTPS URL and server key'));expect(screen.getByRole('button',{name:'Add Data Source'})).toBeDisabled();
-        fireEvent.change(screen.getByLabelText('API base URL'),{target:{value:'http://native.example.test'}});fireEvent.change(screen.getByLabelText('Server API key'),{target:{value:'SYNTHETIC_TEST_KEY'}});expect(screen.getByRole('button',{name:'Add Data Source'})).toBeDisabled();fireEvent.click(screen.getByLabelText('Connect using an HTTPS URL and server key'));expect(screen.getByText('Account picker')).toBeTruthy();fireEvent.click(screen.getByLabelText('Connect using an HTTPS URL and server key'));expect(screen.getByLabelText('Server API key')).toHaveValue('');
+    it('allows editing a legacy direct endpoint without carrying credentials back into account mode',()=>{
+        render(<QueryClientProvider client={new QueryClient()}><DatasourceModal datasource={{id:'native',name:'Native',type:'supabase'} as any} onClose={()=>{}} /></QueryClientProvider>);
+        const manual = screen.getByLabelText('Edit existing HTTPS URL and server key');
+        fireEvent.click(manual);
+        fireEvent.change(screen.getByLabelText('Server API key'),{target:{value:'SYNTHETIC_TEST_KEY'}});
+        fireEvent.click(manual);
+        expect(screen.getByText('Account picker')).toBeTruthy();
+        fireEvent.click(manual);
+        expect(screen.getByLabelText('Server API key')).toHaveValue('');
     });
 });
 
@@ -47,6 +44,7 @@ describe('Datasource resource routing', () => {
         mount();
         fireEvent.change(screen.getByRole('combobox',{name:'Database Type'}),{target:{value:'supabase'}});
         expect(screen.getByTestId('explicit-resource')).toHaveTextContent('true');
+        expect(screen.queryByLabelText(/HTTPS URL and server key/)).toBeNull();
         expect(screen.getByRole('button',{name:'Add Data Source'})).toBeDisabled();
         fireEvent.change(screen.getByLabelText('Endpoint format'),{target:{value:'postgrest'}});
         expect(screen.getByTestId('resource-filter')).toHaveTextContent('postgrest_endpoint');

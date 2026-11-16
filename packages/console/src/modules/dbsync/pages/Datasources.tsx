@@ -33,7 +33,6 @@ const TYPE_COLORS: Record<string, string> = {
 export function Datasources() {
     const [showSharedMappings, setShowSharedMappings] = useState(() => new URLSearchParams(window.location.search).get('setup') === 'collections')
     const [showMaintenance, setShowMaintenance] = useState(false)
-    const [chooseSupabaseProject, setChooseSupabaseProject] = useState(() => new URLSearchParams(window.location.search).get('connect') === 'supabase')
     const [showModal, setShowModal] = useState(false)
     const [editingDatasource, setEditingDatasource] = useState<Datasource | null>(null)
     const [relationshipDatasource, setRelationshipDatasource] = useState<Datasource | null>(null)
@@ -163,19 +162,12 @@ export function Datasources() {
                 }}
             />
 
-            {(showModal || chooseSupabaseProject) && (
+            {showModal && (
                 <DatasourceModal
                     datasource={editingDatasource}
-                    initialType={chooseSupabaseProject ? 'supabase' : undefined}
                     onClose={() => {
                         setShowModal(false)
                         setEditingDatasource(null)
-                        if (chooseSupabaseProject) {
-                            const next = new URL(window.location.href)
-                            next.searchParams.delete('connect')
-                            window.history.replaceState(window.history.state, '', next)
-                            setChooseSupabaseProject(false)
-                        }
                     }}
                 />
             )}
