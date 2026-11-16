@@ -180,5 +180,8 @@ REVOKE ALL ON FUNCTION translations.translation_json_leaf(jsonb,int) FROM PUBLIC
 REVOKE ALL ON FUNCTION translations.translation_json_path(jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION translations.translation_json_value(jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION translations.translation_resource_envelope(jsonb,jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION translations.translation_json_leaf(jsonb,int) TO service_role;
+GRANT EXECUTE ON FUNCTION translations.translation_json_path(jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION translations.translation_json_value(jsonb) TO service_role;
 NOTIFY pgrst, 'reload schema';
 COMMIT;
