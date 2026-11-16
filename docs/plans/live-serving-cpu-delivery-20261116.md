@@ -74,3 +74,15 @@ Retained hosted matrices (evidence JSON `study-in-usa-ops/final-live-matrix-<tok
 **Promotion decision:** the warm criterion is met on witnessed paired samples across all four route classes in both languages (detail routes measured for the first time: 6–8 ms warm, 27–36 ms fresh); confirm with the sample-size batch, then the soak is the remaining pre-promotion step.
 
 Commits, in order: `8f1adbd2`, `530fd77e`, `8c829af2`, `b8be37db`, `bf263c8a`, `7eee411e`, `ef2567a5`, `d665696f`, `b3bada51` — all pushed.
+
+## 9. Sample-size verification — final result (2026-11-16, owner gate ≤10 ms)
+
+Seven hosted matrices on the final artifact `d19b9e40…` (F1, G1, H1–H3, K1, K2; 8 evidence files, ~250 verified requests, ~80 same-isolate pairs, zero candidate defects — every functional flow passed in every retained run). Same-isolate paired warm medians at ≥5 pairs per route/language:
+
+- Met: EN home 9 ms, EN search 8 ms, EN detail 6 ms, AR detail 7.5 ms.
+- Not met: AR home 11 ms, AR search 10.5 ms, AR article 12 ms — the three Arabic text-heavy routes sit 0.5–2 ms above the owner's ≤10 ms line. K1 ran on a hot-isolate day (fresh EN home median 36–42 ms vs the typical 30–33), which lifted previously at-line medians by ~1 ms — the Arabic warm truth is "straddles 10–12 depending on isolate conditions."
+- EN article pairs still short (2; the same-isolate warm repeat systematically lands on a different isolate for the 87 KB body even at 9 visits) — an instrumentation limit, not a serving result.
+
+**Deployment decision per the owner's directive (deploy only once the warm gate is satisfied): NOT DEPLOYED.** The production version upload (`d7615489…`, traffic-preserving) and the additive SQL v2 upgrade on the production translations DB (applied transactionally; legacy operations byte-preserved; 862 production units/heads intact; rollback definition captured at `/tmp/read-batch-v1-rollback.sql` on the DB container) remain staged, and production traffic is untouched on `4e6253b0…` at 100%.
+
+**The remaining 0.5–2 ms on Arabic routes has a concrete, in-seam lever:** per-request `messageSourceFingerprintFromFields` still SHA-256 hashes every distinct headed field text on every localized request through WebCrypto (packages/backend/src/compat/live-translation.ts:93) — the same class the by-resource change removed for identities. Batching or precomputing those fingerprints against the by-resource RPC is the next candidate. Alternatively the owner may amend the warm criterion for text-heavy Arabic routes. The 7-day soak starts only after either lands.
