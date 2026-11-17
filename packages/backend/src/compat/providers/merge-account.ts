@@ -1,7 +1,7 @@
 /**
  * Shared datasource-config hydration (used by the sync AND database compat
  * routes). Datasource rows persist only `provider_account_id` + the fields the
- * SPA sent — the secrets themselves stay on the connected account row and are
+ * SPA sent â€” the secrets themselves stay on the connected account row and are
  * merged back at read time (product parity: no secret duplication, survives
  * key rotation).
  *
@@ -18,6 +18,7 @@ export type AccountConfigFor = ((
     tenant: string,
     accountId: string,
 ) => Promise<Record<string, unknown> | null>) & {
+    forManagement?: (tenant:string,id:string)=>Promise<Record<string,unknown>>;
     persistRefresh?: (tenant:string,id:string,before:Record<string,unknown>,after:Record<string,unknown>)=>Promise<Record<string,unknown>|null>;
 };
 
@@ -35,7 +36,7 @@ export function datasourceAccountConfigFor(stores:(tenant:string)=>Phase2Store,n
 /**
  * Merge a connected account's stored config into a datasource config when the
  * datasource references one via `provider_account_id`, then lazily enrich.
- * The per-kind transform (service_role_key→serviceKey, etc.) is applied inside
+ * The per-kind transform (service_role_keyâ†’serviceKey, etc.) is applied inside
  * datasourceRunner. Framework port of get_datasource_credentials hydration.
  *
  * Lazy enrichment: accounts created before the connect-time enrichers shipped
@@ -55,6 +56,11 @@ export async function mergeAccountConfig(
 ): Promise<Record<string, unknown>> {
     const accountId = String(config?.provider_account_id ?? '');
     let merged = config;
+    let projectForKeyCache:string|undefined;
+    const projectCache=(account:Record<string,unknown>)=>{
+        const value=account.supabase_project_credentials;
+        return value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,Record<string,unknown>>:{};
+    };
     let accountConfig:Record<string,unknown>|null=null;
     if (accountId && accountConfigFor) {
         accountConfig = await accountConfigFor(tenant, accountId).catch(() => null);
@@ -71,14 +77,45 @@ export async function mergeAccountConfig(
             const base={...accountConfig};
             if(kind==='supabase'&&selectedRef!==accountRef){
                 base.project_ref=selectedRef;
-                for(const key of ['api_url','url','service_role_key','serviceKey','anon_key','anonKey','jwt','jwt_secret'])delete base[key];
+                const credentialFields=['api_url','url','service_role_key','serviceKey','anon_key','anonKey','jwt','jwt_secret'];
+                for(const key of credentialFields)delete base[key];
+                if(/^[a-z0-9][a-z0-9-]{0,63}$/.test(selectedRef)&&selectedRef!=='constructor'
+                   &&credentialFields.every(key=>config[key]===undefined)&&config.access_token===undefined){
+                    projectForKeyCache=selectedRef;
+                    const keys=Object.hasOwn(projectCache(accountConfig),selectedRef)?projectCache(accountConfig)[selectedRef]:undefined;
+                    if(keys&&typeof keys.service_role_key==='string'){
+                        base.service_role_key=keys.service_role_key;
+                        if(typeof keys.anon_key==='string')base.anon_key=keys.anon_key;
+                    }
+                }
             }
             merged = { ...base, ...config };
         }
     }
     // Lazy provider-specific enrichment/legacy credential refresh.
+    if(kind==='supabase'&&accountId&&accountConfig?.oauth&&!merged.service_role_key&&!merged.serviceKey&&accountConfigFor?.forManagement){
+        const authorization=await accountConfigFor.forManagement(tenant,accountId);
+        // Reuse the canonical merge after renewal, keeping credential routing and
+        // the encrypted project-key write identical.
+        if(authorization.access_token!==accountConfig.access_token){
+            const latest:AccountConfigFor=async()=>authorization;
+            latest.persistRefresh=accountConfigFor.persistRefresh;
+            return mergeAccountConfig(latest,externalFetch,tenant,kind,config);
+        }
+    }
     const before=merged;
-    merged = await enrichProviderConfig(kind, merged, externalFetch).catch(() => merged);
+    if(!projectForKeyCache||!merged.service_role_key)merged = await enrichProviderConfig(kind, merged, externalFetch).catch(() => merged);
+    if(projectForKeyCache&&accountConfig&&accountConfigFor?.persistRefresh&&!before.service_role_key
+       &&typeof merged.service_role_key==='string'&&merged.service_role_key){
+        const previous=projectCache(accountConfig);
+        const entries=Object.entries(previous).filter(([ref])=>ref!==projectForKeyCache).slice(-19);
+        const keys={service_role_key:merged.service_role_key,...(typeof merged.anon_key==='string'?{anon_key:merged.anon_key}:{})};
+        const next={...accountConfig,supabase_project_credentials:Object.fromEntries([...entries,[projectForKeyCache,keys]])};
+        const current=await accountConfigFor.persistRefresh(tenant,accountId,accountConfig,next);
+        if(!current)throw Error('account_unavailable');
+        if(projectCache(current)[projectForKeyCache]?.service_role_key!==keys.service_role_key)
+            return mergeAccountConfig(async()=>current,externalFetch,tenant,kind,config);
+    }
     // A datasource can override its account project or keys. Never persist those
     // overrides into the shared account, nor retain discovery failures.
     const identity=['access_token','project_ref','ref','api_url','url','endpoint_format','serviceKey','service_role_key','anon_key'];

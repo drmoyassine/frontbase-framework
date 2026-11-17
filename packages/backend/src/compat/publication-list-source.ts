@@ -164,7 +164,7 @@ function hasPublicationListBinding(nodes:PageComponent[]):boolean{
  *  catalog localizes pinned publication reads (query + returned text) and gives live views
  *  full-dataset localized sort/filter semantics (readLocalizedLiveList); without a catalog live
  *  views keep coherent source semantics. */
-export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[],pageContext:Record<string,unknown>={},liveOnly?:{sourceQuery:PublishedLiveQuery;list?:LiveListRequest;directoryListing?:boolean;translationCollection?:(binding:Record<string,any>)=>string|undefined}):Promise<PageLayoutData>{
+export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunner,owner:string,request:Request,user:Record<string,unknown>|null=null,liveQuery?:PublishedLiveQuery,catalog?:readonly LocalizedCatalogEntry[],pageContext:Record<string,unknown>={},liveOnly?:{sourceQuery:PublishedLiveQuery;list?:LiveListRequest;directoryListing?:boolean;useDirectoryProjection?:(binding:Record<string,any>)=>boolean;translationCollection?:(binding:Record<string,any>)=>string|undefined}):Promise<PageLayoutData>{
     if(liveOnly&&catalog)throw Error('content_catalog_deprecated');
     const {publicationRecordContext:_authoredContext,...root}=layout.root??{};
     const scopedLayout={...layout,root:{...root,...(pageContext.recordId!==undefined?{publicationRecordContext:pageContext}:{})}};
@@ -197,7 +197,8 @@ export async function projectPublicationListRows(layout:PageLayoutData,db:DbRunn
                 if(liveOnly.list.versionId!==versionId)throw Error('live_list_version_refused');
                 Object.assign(query,liveOnly.list,{sourceFilters,filters:[...sourceFilters,...liveOnly.list.filters]});
             }
-            const records=live?(catalog?await readLocalizedLiveList(owner,binding,query,request,liveQuery!,catalog):await liveQuery!(owner,binding,query,request)):liveOnly?await liveOnly.sourceQuery(owner,binding,query,request):await readPublicationList(db,owner,binding,query,catalog,typeof pageContext.locale==='string'?pageContext.locale:undefined);
+            const projected=live&&liveOnly?.useDirectoryProjection?.(binding);
+            const records=projected?await liveOnly!.sourceQuery(owner,binding,query,request):live?(catalog?await readLocalizedLiveList(owner,binding,query,request,liveQuery!,catalog):await liveQuery!(owner,binding,query,request)):liveOnly?await liveOnly.sourceQuery(owner,binding,query,request):await readPublicationList(db,owner,binding,query,catalog,typeof pageContext.locale==='string'?pageContext.locale:undefined);
             const routeFilters=(binding.hiddenFilters??[]).map((filter:any)=>filter.value?.kind==='variable'&&['page.recordId','page.parentId'].includes(filter.value.path)?{...filter,value:routeFilterValue(filter.value,read)??null}:filter);
             const directoryTranslationCollection=live?liveOnly?.translationCollection?.(binding):undefined;
             const props={binding:{...binding,hiddenFilters:routeFilters},...(directoryTranslationCollection?{directoryTranslationCollection}:{}),initialRows:records.rows,initialTotal:records.total,_initialVersionId:versionId,_initialQuery:{page,search,sortColumn:query.sortColumn,direction:query.direction}};

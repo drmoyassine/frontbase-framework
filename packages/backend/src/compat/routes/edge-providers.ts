@@ -80,12 +80,20 @@ export function registerEdgeProvidersRoutes(
     externalFetch: CompatFetch,
     now: () => string,
     providerClients?: Partial<Record<OAuthProvider, ProviderOAuthClient>>,
+    managementConfig?: (tenant:string,id:string,rejectedToken?:string)=>Promise<Record<string,unknown>>,
 ): void {
     // Initialize provider test strategies with external fetch implementation
     initStrategies(externalFetch);
     // Initialize provider resource strategies (discover / create / list-engines)
     initResourceStrategies(externalFetch);
 
+    const readCredentials=async (tenant:string,id:string,provider:string)=>{
+        if(provider==='supabase'&&managementConfig)return managementConfig(tenant,id);
+        return await p2(tenant).getEdgeResourceConfig(id)??{};
+    };
+    const renewalMessage=(error:unknown)=>error instanceof Error&&error.message==='supabase_renewal_in_progress'
+        ? 'Supabase authorization is renewing. Try again in a moment.'
+        : 'Could not use this account. Check the connection in Connected Accounts.';
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
         const ciphertext = await secretCipher.encrypt(JSON.stringify(config));
@@ -242,7 +250,9 @@ export function registerEdgeProvidersRoutes(
         const store = p2(c.get('tenant'));
         const provider = await providerFor(c.get('tenant'), c.req.param('provider_id'));
         if (!provider) return providerNotFound(c);
-        const config = await store.getEdgeResourceConfig(c.req.param('provider_id')) ?? {};
+        let config:Record<string,unknown>;
+        try{config=await readCredentials(c.get('tenant'),c.req.param('provider_id'),String(provider.provider??''));}
+        catch(error){return c.json({success:false,detail:renewalMessage(error)});}
         // Match product behavior: return "No credentials stored" if config is empty
         // rather than passing empty config to testProvider (which returns "Unsupported provider")
         if (Object.keys(config).length === 0) {
@@ -288,12 +298,18 @@ export function registerEdgeProvidersRoutes(
         const store = p2(c.get('tenant'));
         let creds: Record<string, unknown> = {};
         try {
-            creds = await store.getEdgeResourceConfig(accountId) ?? {};
-        } catch {
-            return c.json({ success: false, detail: 'Credentials not available for this account' });
+            creds = await readCredentials(c.get('tenant'),accountId,provider);
+        } catch(error) {
+            return c.json({ success: false, detail: renewalMessage(error) });
         }
-        const result = await discoverResources(provider, creds);
-        await setCachedDiscovery(kv, accountId, provider, result, now());
+        let result = await discoverResources(provider, creds);
+        // Discovery is read-only. If a now-invalid access token was still inside
+        // its advertised lifetime, renew once and repeat only the discovery.
+        if(provider==='supabase'&&!result.success&&result.detail==='Supabase API error: 401'&&creds.oauth&&managementConfig){
+            try{result=await discoverResources(provider,await managementConfig(c.get('tenant'),accountId,String(creds.access_token??'')));}
+            catch(error){return c.json({success:false,detail:renewalMessage(error)});}
+        }
+        if(provider!=='supabase'||result.success)await setCachedDiscovery(kv, accountId, provider, result, now());
         return c.json(result);
     });
 
@@ -310,9 +326,9 @@ export function registerEdgeProvidersRoutes(
         const store = p2(c.get('tenant'));
         let creds: Record<string, unknown> = {};
         try {
-            creds = await store.getEdgeResourceConfig(accountId) ?? {};
-        } catch {
-            return c.json({ success: false, detail: 'Credentials not available for this account' });
+            creds = await readCredentials(c.get('tenant'),accountId,provider);
+        } catch(error) {
+            return c.json({ success: false, detail: renewalMessage(error) });
         }
         const result = await createProviderResource(
             provider,
@@ -358,9 +374,9 @@ export function registerEdgeProvidersRoutes(
         const store = p2(c.get('tenant'));
         let creds: Record<string, unknown> = {};
         try {
-            creds = await store.getEdgeResourceConfig(c.req.param('account_id')) ?? {};
-        } catch {
-            return c.json({ success: false, detail: 'Credentials not available for this account', engines: [] });
+            creds = await readCredentials(c.get('tenant'),c.req.param('account_id'),String(account.provider??''));
+        } catch(error) {
+            return c.json({ success: false, detail: renewalMessage(error), engines: [] });
         }
         return c.json(await listEnginesForProvider(String(account.provider ?? ''), creds));
     });

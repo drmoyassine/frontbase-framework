@@ -44,7 +44,7 @@ await db.exec('CREATE TABLE cities(id INTEGER PRIMARY KEY,title TEXT,country INT
 await db.exec('CREATE TABLE institutions(id INTEGER PRIMARY KEY,title TEXT,path TEXT,city_id INTEGER,country INTEGER)');
 await db.exec('CREATE TABLE programs(id INTEGER PRIMARY KEY,title TEXT,path TEXT,institution_id INTEGER,country INTEGER)');
 await db.exec('INSERT INTO cities VALUES(1,?,22)',['City']);
-await db.exec('INSERT INTO institutions VALUES(1,?,?,1,22)',['First title','/first/']);
+await db.exec('INSERT INTO institutions(id,title,path,city_id,country) VALUES(1,?,?,1,22)',['First title','/first/']);
 await db.exec('INSERT INTO programs VALUES(1,?,?,1,22)',['Program one','/program/']);
 const configuration=emptyDirectoryConfiguration();
 configuration.site={name:'Live site',origin:'https://live.example',locale:'en'};
@@ -100,7 +100,7 @@ const repeater=directoryPage.layout.content.find(node=>node.type==='Repeater');
 Object.assign(repeater.props.binding,{dataSourceId:'source',viewId:'usa-institutions',tableName:'institutions'});
 Object.assign(repeater.versions[0].overrides.props.binding,{dataSourceId:'source',viewId:'usa-programs',tableName:'programs'});
 const scopedConfiguration={...configuration,detailViews:{institution:'usa-institutions',program:'usa-programs'}};
-await db.exec('INSERT INTO institutions VALUES(9,?,?,1,22)',['Outside view','/excluded/']);
+await db.exec('INSERT INTO institutions(id,title,path,city_id,country) VALUES(9,?,?,1,22)',['Outside view','/excluded/']);
 await db.exec('INSERT INTO programs VALUES(9,?,?,9,22)',['Outside parent view','/excluded-program/']);
 const versionedHash=await store.prepare({...plan,configuration:scopedConfiguration,templates:[directoryPage,...templates.slice(1)]},'2026-11-15T00:00:00Z');
 const versionedRelease=await store.open(versionedHash);
@@ -169,6 +169,27 @@ const localizedExplore=await resolveLiveLayoutSurface(db,'one',new Request('http
 assert.deepEqual(homepageDisplayFields(localizedExplore.layout).find(field=>field.text==='Program one').record,
  {connectionId:'frontbase:publication',collection:'programs',key:[{column:'id',value:1}]},
  'changing from a directory query to its Saved View preserves the record translation unit');
+const mapped=structuredClone(scopedConfiguration);
+mapped.directoryViewProjection={logoReplacements:[{from:'https://media.test/logo.svg',to:'https://media.test/logo.png'}]};
+await db.exec('ALTER TABLE institutions ADD COLUMN raw_logo TEXT');
+await db.exec('ALTER TABLE institutions ADD COLUMN private_notes TEXT');
+await db.exec("UPDATE institutions SET raw_logo=' https://media.test/logo.svg ',private_notes='MUST_NOT_LEAK',path='https://live.example/first/' WHERE id=1");
+mapped.collections.institution.fields.logo='raw_logo';
+const projectedHash=await store.prepare({...plan,configuration:mapped,templates:[directoryPage,...templates.slice(1)]},'2026-11-15T00:00:00Z');
+const projectedRelease=await store.open(projectedHash);
+const projectedOptions={...versionedOptions,liveQuery:()=>{throw Error('unprojected read');},prepared:{pointer:{hash:projectedHash,generation:3},...projectedRelease}};
+const requestList=new Request('https://live.example/ar/explore/',{headers:{'X-Frontbase-List':encodeURIComponent(JSON.stringify({
+ componentId:repeater.id,versionId:'default',page:0,pageSize:12,sortColumn:'title',direction:'asc',filters:[],
+}))}});
+const projectedResponse=await renderLiveLayoutPublication(db,'one',requestList,projectedOptions);
+assert.equal(projectedResponse.status,200);
+const projectedRows=await projectedResponse.json();
+assert.equal(projectedRows.total,1,'Saved View filters apply to the projected list');
+assert.equal(projectedRows.rows[0].originalPath,'/ar/first/');
+assert.equal(projectedRows.rows[0].logo,'https://media.test/logo.png');
+assert.doesNotMatch(JSON.stringify(projectedRows),/MUST_NOT_LEAK/);
+assert.equal((await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),projectedOptions)).status,200);
+await db.exec("UPDATE institutions SET path='/first/' WHERE id=1");
 await db.exec('DELETE FROM programs WHERE id=9');
 await db.exec('DELETE FROM institutions WHERE id=9');
 assert.deepEqual((await store.active()).pointer,pointer,'verification leaves the active version unchanged');
@@ -261,7 +282,7 @@ response=await renderLiveLayoutPublication(db,'one',new Request('https://live.ex
 assert.match(await response.text(),/Edited immediately/,'full HTTP renderer rereads adapter');
 response=await renderLiveLayoutPublication(db,'one',new Request('https://live.example/sitemap-live-institution-0.xml'),options);
 assert.equal(response.status,200);assert.match(await response.text(),/\/first\//);
-await db.exec('INSERT INTO institutions VALUES(2,?,?,1,22)',['New record','/new/']);
+await db.exec('INSERT INTO institutions(id,title,path,city_id,country) VALUES(2,?,?,1,22)',['New record','/new/']);
 const listRequest=(componentId='live-list')=>new Request('https://live.example/browse/',{headers:{'X-Frontbase-List':encodeURIComponent(JSON.stringify({componentId,versionId:'default',page:1,pageSize:1,sortColumn:'title',direction:'asc',filters:[]}))}});
 response=await renderLiveLayoutPublication(db,'one',listRequest(),options);
 assert.equal(response.status,200);const currentList=await response.json();assert.equal(currentList.total,2);assert.equal(currentList.rows[0].title,'New record','pagination ignores obsolete source hash');

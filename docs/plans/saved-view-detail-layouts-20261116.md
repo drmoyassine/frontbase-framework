@@ -17,3 +17,19 @@ The exact source e1231f28 passed 24 authenticated Cloudflare preview comparisons
 The prior layout pointer and Worker version face02ce-b3f4-4057-a35f-aaaa943420c5 remain rollback references. A first publication request returned HTTP 422. Recovery verified the saved authoring revision and exact draft before retrying only publication, which returned 200 at generation 2.
 
 GitHub PR #12 carries this change and the existing live-serving prerequisites. Its initial CI run rejected direct legacy mapping reads in the live reader. The follow-up routes both reads through the existing source-contract adapter.
+
+## 2026-11-17 raw-table cutover
+
+Study-in-USA generation 3 binds USA Institutions and USA Programs to the raw public tables with editable Saved View rules. The view filters preserve the USA scope, original URL requirement, and historical ID exclusions. Directory relationships remain enforced. The existing database views are retained as the rollback source. No source rows, database schema, or grants were changed.
+
+The platform projects the mapped public fields for lists that share a detail Saved View. This retains original routes, directory translation identities, summary limits and configurable logo replacements while preventing direct anonymous reads of the raw columns. The Saved View inspector reports the active publication, Block Versions, detail sources and article references. The main list omits page-by-page usage.
+
+Worker d4c32a8e-510a-44bc-bca0-b48154324fe0 serves the generation 3 release. Private and public EN/AR route checks passed 24/24 each. The private comparison matched titles and media URLs and preserved all 622 institution and program sitemap URLs. The public check matched 180 record links. A concurrent sitemap sweep saw a transient 503 on one public shard, which returned 200 on two sequential checks.
+
+Before the change, the Supabase Management API rejected the saved authorization with 401 and public reads returned 503 because the project key had to be fetched again. Reconnecting restored access. Frontbase now retains the selected project's discovered database key in the encrypted Connected Account, independently of the management token's lifetime. Local tests cover tenant and project isolation and continued reads after management authorization becomes unavailable.
+
+## Supabase management renewal
+
+Connected Accounts discovery, connection testing, resource management and project-key discovery renew an expired Supabase OAuth grant on demand. Installed hosts with local OAuth client credentials use Supabase directly. Hosts connected through the Frontbase relay use the same enrolled receiver proof. The relay exchanges the refresh token server-side. The app writes the rotated grant back to the same encrypted account while retaining its project read credentials. A durable account claim serializes refresh across Workers.
+
+Fixture verification exercises the actual installed API and relay with an expired grant, concurrent requests, rotated storage and a fresh app instance. The fixture replaces Supabase HTTP transport. Live production relay rollout and a real-provider post-expiry observation are separate from that verification.

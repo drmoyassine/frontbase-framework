@@ -49,8 +49,7 @@ export async function localizedListRequest(db:DbRunner,tenant:string,path:string
  *  acquire no false SEO. The registry is read through pagination, so the walk stays bounded at
  *  any publication scale; one source capture per distinct path, memoized. */
 export async function sitemapLocaleEntries(db:DbRunner,tenant:string,request:Request,activePointer:{hash:string},liveQuery?:PublishedLiveQuery):Promise<{locale:string;path:string}[]>{
-    const context=await createPageCapture(db,tenant,request,liveQuery);
-    if(context.source.hash!==activePointer.hash)throw Error('sitemap_source_changed');
+    const context=await createPageCapture(db,tenant,request,liveQuery,activePointer.hash);
     const captures=new Map<string,Promise<Awaited<ReturnType<typeof captureHomepage>>|null>>();
     const captureFor=(p:string)=>{if(!captures.has(p))captures.set(p,context.capture(p).catch(()=>null));return captures.get(p)!;};
     const entries:{locale:string;path:string}[]=[],seen=new Set<string>();

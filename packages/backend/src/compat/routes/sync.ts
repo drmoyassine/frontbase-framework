@@ -1198,7 +1198,8 @@ export function registerSyncRoutes(
         const store = syncStoreFor(c.get('tenant'));
         const existing = await store.getView(viewId);
         if (!existing) return c.json({ detail: 'View not found' }, 404);
-        if(await publishedDetailView(c.get('tenant'),viewId))return c.json({detail:'This Saved View serves a published detail layout. Publish a different binding before deleting it.'},409);
+        const usage=await savedViewUsage(controlRunner,c.get('tenant'));
+        if(usage[viewId]?.length)return c.json({detail:'This Saved View is used by a page. Remove its page bindings before deleting it.'},409);
         await store.deleteView(viewId);
         return c.body(null, 204);
     });

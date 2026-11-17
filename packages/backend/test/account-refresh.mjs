@@ -36,10 +36,13 @@ const sqlRaced=await mergeAccountConfig(racingRead,discover,'a','supabase',{prov
 assert.equal(sqlRaced.service_role_key,'sb_secret_sql_owner');
 assert.equal((await stores('a').getEdgeResourceConfig('account')).service_role_key,'sb_secret_sql_owner');
 await save('a',{...old,service_role_key:'sb_secret_owner'});
-// A different datasource project must discover its own key, never reuse/persist account project keys.
+// A different project gets its own encrypted key without replacing the account default.
 let otherCalls=0;const other=await mergeAccountConfig(read,async(url)=>{otherCalls++;assert.match(String(url),/project-b/);return Response.json([{type:'secret',api_key:'sb_secret_other'}]);},'a','supabase',{provider_account_id:'account',project_ref:'project-b'});
 assert.equal(other.service_role_key,'sb_secret_other');assert.equal(other.api_url,'https://project-b.supabase.co');assert.ok(otherCalls>0);
 assert.equal((await stores('a').getEdgeResourceConfig('account')).service_role_key,'sb_secret_owner');
+assert.equal((await stores('a').getEdgeResourceConfig('account')).supabase_project_credentials['project-b'].service_role_key,'sb_secret_other');
+assert.equal((await mergeAccountConfig(read,()=>{throw Error('expired_management_authorization')},'a','supabase',{provider_account_id:'account',project_ref:'project-b'})).service_role_key,'sb_secret_other');
+assert.equal((await stores('b').getEdgeResourceConfig('account')).supabase_project_credentials,undefined);
 // Manual credentials and native PostgREST never cause discovery or writes.
 assert.equal((await mergeAccountConfig(read,()=>{throw Error('must_not_fetch')},'a','supabase',{endpoint_format:'postgrest',url:'https://rest.example',serviceKey:'manual'})).serviceKey,'manual');
 // Resource deletion while discovery is in flight cannot resurrect the account.

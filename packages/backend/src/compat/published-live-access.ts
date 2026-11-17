@@ -27,6 +27,8 @@ export async function publishedLiveReadAllowed(db:DbRunner,owner:string,datasour
     if(!rows.length)return true; // Existing, unrelated source policies are not changed by this pilot migration.
     if(rows[0]?.value!==policy||typeof viewId!=='string'||!body||typeof body!=='object'||'query' in body||!Array.isArray(body.joins)||body.joins.length)return false;
     const live=await new LiveLayoutPublicationStore(db,owner).active();
+    if(live?.layout.configuration.directoryViewProjection&&live.layout.configuration.datasourceId===datasourceId
+        &&Object.values(live.layout.configuration.detailViews??{}).includes(viewId))return false;
     const active=live?null:await new SitePublicationStore(db,owner).activeVersion();
     if(!live&&(active?.artifact.schemaVersion!==2||!await new SitePublicationReviewStore(db,owner).get(active.pointer.hash)))return false;
     const pages=live?[...live.layout.templates,...live.layout.staticPages]:active!.artifact.schemaVersion===2?[...active!.artifact.templates,...(active!.artifact.staticPages??[])]:[];

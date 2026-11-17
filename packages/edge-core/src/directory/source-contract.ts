@@ -48,6 +48,12 @@ export function directorySources(input:DirectoryConfiguration){
  return parseDirectorySourceConfiguration(input).sources;
 }
 export function directorySource(input:DirectoryConfiguration,role:DirectoryRole){return directoryProjectionSource(sourceBindings(input).bindings[role]);}
+export function directoryViewRole(input:DirectoryConfiguration,binding:{dataSourceId:unknown;viewId:unknown;tableName:unknown}){
+ if(!input.detailViews||binding.dataSourceId!==input.datasourceId)return undefined;
+ const mappings=directorySources(input);
+ return (['institution','program','article'] as const).find(role=>input.detailViews?.[role]===binding.viewId
+     &&typeof binding.viewId==='string'&&mappings[role].tableName===binding.tableName);
+}
 /** New snapshots carry explicit lineage; absence is the compatibility path for immutable old captures. */
 export function publicationSource(input:{configuration:DirectoryConfiguration;sourceBindings?:SourceBindings},role:DirectoryRole){
  const bindings=input.sourceBindings?sourceBindingsSchema.parse(input.sourceBindings):sourceBindings(input.configuration);
