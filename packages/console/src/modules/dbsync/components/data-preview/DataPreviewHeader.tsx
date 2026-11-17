@@ -118,6 +118,7 @@ export const DataPreviewHeader = ({
                     <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-2" />
                     <button
                         onClick={onClose}
+                        aria-label="Close Data Inspector"
                         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
                     >
                         <X size={18} />

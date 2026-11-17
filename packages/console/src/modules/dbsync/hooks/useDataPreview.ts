@@ -6,8 +6,10 @@ import { useLayoutStore } from '../store/useLayoutStore';
 import { DataPreviewModalProps } from '../types/data-preview';
 import { useDataPreviewFilters } from './data-preview/useDataPreviewFilters';
 import { useDataPreviewData } from './data-preview/useDataPreviewData';
+import {savedViewFilters,type SavedFilter} from '@frontbase/edge-core/saved-view-filters';
 
 export const useDataPreview = ({
+    savedView,
     sourceSchema,
     readOnly,
     isOpen,
@@ -48,6 +50,13 @@ export const useDataPreview = ({
     const [showSaveForm, setShowSaveForm] = useState(false);
     const [showSyncConfirm, setShowSyncConfirm] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [saveError,setSaveError]=useState('');
+    const sameSavedSource=savedView?.target_table===table&&(savedView?.source_schema??'public')===(sourceSchema??'public');
+    const [savedSelection,setSavedSelection]=useState<SavedFilter[]>(()=>savedViewFilters(sameSavedSource?savedView?.filters:[]));
+    const [revision,setRevision]=useState(savedView?.updated_at);
+    const [savedPreview,setSavedPreview]=useState(savedView);
+    const [description,setDescription]=useState(savedView?.description??'');
+    const [defaultSort,setDefaultSort]=useState(sameSavedSource?savedView?.default_sort:undefined);
     const [activeTab, setActiveTab] = useState<'table' | 'record' | 'linked' | 'api' | 'webhooks' | 'relationships'>('table');
     const [isRenamingView, setIsRenamingView] = useState(false);
     const [showDataSearchResults, setShowDataSearchResults] = useState(false);
@@ -104,6 +113,7 @@ export const useDataPreview = ({
         tables, isLoadingTables, isFetchingTables, tablesError, refetchTables, schemaData, data, isLoading, error, isFetchingData, fetchNextPage, hasNextPage, isFetchingNextPage, refetchData,
         searchResults, isSearchingByQuery, refreshSchemaMutation
     } = useDataPreviewData({
+        savedView:savedPreview,
         isOpen,
         datasourceId,
         sourceSchema,
@@ -300,25 +310,30 @@ export const useDataPreview = ({
 
     // Copy/Paste Logic for View Saving/Restoring (Simplified for brevity but preserving functionality)
     const handleSaveView = async () => {
-        if (!viewName || !selectedTable) return;
+        if (isSaving || !viewName.trim() || !selectedTable) return;
         setIsSaving(true);
+        setSaveError('');
         try {
             const payload = {
-                source_schema: sourceSchema, name: viewName, target_table: selectedTable, filters: filterState.filters, field_mappings: fieldMappings,
+                source_schema: sourceSchema, name: viewName, target_table: selectedTable, filters: savedView?savedViewFilters(savedSelection):filterState.filters, field_mappings: fieldMappings,
                 linked_views: linkedViews, visible_columns: visibleColumns, pinned_columns: pinnedColumns,
-                column_order: columnOrder, webhooks: webhooks
+                column_order: columnOrder, webhooks: webhooks,
+                ...(savedView?{description,default_sort:defaultSort??null,expected_updated_at:revision}:{})
             };
             const response = currentViewId ? await viewsApi.update(currentViewId, payload) : await viewsApi.create(datasourceId, payload);
             setShowSaveForm(false); setIsRenamingView(false); setCurrentStep('records');
             filterState.setAppliedFilters([...filterState.filters]);
             if (response.data.id) setCurrentViewId(response.data.id);
+            if(savedView){setRevision(response.data.updated_at);setSavedPreview({...savedView,...response.data});await queryClient.invalidateQueries({queryKey:['tableData',datasourceId]});}
+            await Promise.all(['saved-view-assets','datasources','saved-view-detail','schema-known-views'].map(key=>queryClient.invalidateQueries({queryKey:[key]})));
             setSaveSuccess(true); onViewSaved?.(response.data); setTimeout(() => setSaveSuccess(false), 5000);
-            if (selectedTable) await datasourcesApi.clearSession(datasourceId, selectedTable, sourceSchema);
-        } catch (err) { console.error('Error saving view:', err); } finally { setIsSaving(false); }
+            if (selectedTable&&!savedView) await datasourcesApi.clearSession(datasourceId, selectedTable, sourceSchema);
+        } catch (err:any) { setSaveError(err.response?.data?.detail||'Could not save the view. Your edits are preserved.'); } finally { setIsSaving(false); }
     };
 
     const handleManualUpdate = async () => {
         if (!datasourceId || !selectedTable) return;
+        if(savedView){await refetchData();return;}
         try {
             setIsSessionLoading(true);
             if (selectedTable) await datasourcesApi.clearSession(datasourceId, selectedTable, sourceSchema);
@@ -336,7 +351,7 @@ export const useDataPreview = ({
             await Promise.all([refetchData(), queryClient.invalidateQueries({ queryKey: ['tableSchema', datasourceId, sourceSchema, selectedTable] })]);
             setViewName(initialViewName || '');
             // Logic for viewId/table/default view...
-            if (viewId) { setCurrentViewId(viewId); setCurrentStep('records'); setIsSidebarCollapsed(true); }
+            if (viewId) { setCurrentViewId(viewId); setCurrentStep(table?'records':'tables'); setIsSidebarCollapsed(!savedView); }
             else if (table) { setCurrentViewId(undefined); setCurrentStep('records'); setIsSidebarCollapsed(false); }
             else { setCurrentViewId(undefined); setCurrentStep('tables'); setIsSidebarCollapsed(false); }
             setActiveTab('table'); setIsSessionLoading(false);
@@ -367,7 +382,7 @@ export const useDataPreview = ({
             if (initialViewName) setViewName(initialViewName);
             setIsSessionLoading(true);
             try {
-                if (table) {
+                if (table&&!savedView) {
                     const { data: sessionData } = await datasourcesApi.getSession(datasourceId, table, sourceSchema);
                     if (sessionData && Object.keys(sessionData).length > 0) {
                         const nextFilters = sessionData.filters || [];
@@ -377,7 +392,7 @@ export const useDataPreview = ({
                         setFieldMappings(sessionData.fieldMappings || {});
                         initializeLayout({ pinnedColumns: sessionData.pinnedColumns, columnOrder: sessionData.columnOrder, visibleColumns: sessionData.visibleColumns });
                         // ... View ID logic ...
-                        if (viewId) { setCurrentViewId(viewId); setCurrentStep('records'); setIsSidebarCollapsed(true); }
+                        if (viewId) { setCurrentViewId(viewId); setCurrentStep('records'); setIsSidebarCollapsed(!savedView); }
                         else if (table) { setCurrentViewId(undefined); setCurrentStep('records'); setIsSidebarCollapsed(false); }
                         else { setCurrentViewId(undefined); setCurrentStep('tables'); setIsSidebarCollapsed(false); }
                         setIsSessionLoading(false); lastProcessedConfig.current = currentPropsKey; return;
@@ -389,7 +404,7 @@ export const useDataPreview = ({
             filterState.setFilters(nextFilters); filterState.setAppliedFilters(nextFilters);
             setFieldMappings(initialFieldMappings || {}); setLinkedViews(initialLinkedViews || {});
             initializeLayout({ pinnedColumns: (initialPinnedColumns as string[]) || [], columnOrder: (initialColumnOrder as string[]) || [], visibleColumns: initialVisibleColumns || [] });
-            if (viewId) { setCurrentViewId(viewId); setCurrentStep('records'); setIsSidebarCollapsed(true); }
+            if (viewId) { setCurrentViewId(viewId); setCurrentStep(table?'records':'tables'); setIsSidebarCollapsed(!savedView); }
             else if (table) { setCurrentViewId(undefined); setCurrentStep('records'); setIsSidebarCollapsed(false); }
             else { setCurrentViewId(undefined); setCurrentStep('tables'); setIsSidebarCollapsed(false); }
             setIsSessionLoading(false); lastProcessedConfig.current = currentPropsKey;
@@ -399,7 +414,7 @@ export const useDataPreview = ({
 
     // Sync to Redis
     useEffect(() => {
-        if (!isOpen || !datasourceId || !selectedTable || isSessionLoading) return;
+        if (!isOpen || !datasourceId || !selectedTable || isSessionLoading || savedView) return;
         const syncToRedis = async () => {
             if (!selectedTable) return;
             try {
@@ -425,8 +440,18 @@ export const useDataPreview = ({
         return viewsApi.trigger(vId, { test: true, timestamp: new Date().toISOString() });
     };
 
+    const hasViewEdits=!!savedPreview&&JSON.stringify([
+        viewName,selectedTable,sourceSchema??null,savedSelection,description,defaultSort??null,
+        visibleColumns,columnOrder,pinnedColumns,fieldMappings,linkedViews,webhooks
+    ])!==JSON.stringify([
+        savedPreview.name,savedPreview.target_table,savedPreview.source_schema??null,savedViewFilters(savedPreview.filters),
+        savedPreview.description??'',savedPreview.default_sort??null,savedPreview.visible_columns??[],savedPreview.column_order??[],
+        savedPreview.pinned_columns??[],savedPreview.field_mappings??{},savedPreview.linked_views??{},savedPreview.webhooks??[]
+    ]);
+
     return {
         state: {
+            savedSelection,description,defaultSort,saveError,hasViewEdits,
             filters: filterState.filters, appliedFilters: filterState.appliedFilters, viewName, currentViewId, isSaving,
             isColumnsDropdownOpen, columnSearch, showSaveForm, showSyncConfirm, saveSuccess, activeTab,
             globalSearch: filterState.globalSearch, dataSearchQuery: filterState.dataSearchQuery, showDataSearchResults,
@@ -441,11 +466,19 @@ export const useDataPreview = ({
             hasNextPage, isFetchingNextPage, refreshSchemaMutation
         },
         actions: {
+            setSavedSelection,setDescription,setDefaultSort,
             setFilters: filterState.setFilters, setAppliedFilters: filterState.setAppliedFilters, setViewName, setCurrentViewId,
             setIsSaving, setIsColumnsDropdownOpen, setColumnSearch, setShowSaveForm, setShowSyncConfirm, setSaveSuccess,
             setActiveTab, setGlobalSearch: filterState.setGlobalSearch, setDataSearchQuery: filterState.setDataSearchQuery,
             setShowDataSearchResults, setIsRenamingView, setGlobalSearchStatus: filterState.setGlobalSearchStatus,
-            setGlobalResults: filterState.setGlobalResults, setIsSessionLoading, setCopySuccess, setSelectedTable,
+            setGlobalResults: filterState.setGlobalResults, setIsSessionLoading, setCopySuccess,
+            setSelectedTable:(next:string)=>{
+                if(savedView&&next!==selectedTable){
+                    setSavedSelection([]);setDefaultSort(undefined);setFieldMappings({});setLinkedViews({});
+                    initializeLayout({visibleColumns:[],columnOrder:[],pinnedColumns:[]});
+                }
+                setSelectedTable(next);
+            },
             setTableSearch, setEditingRecord: readOnly ? () => {} : setEditingRecord, setFieldMappings, setLinkedViews, setWebhooks, setCurrentStep,
             setIsSidebarCollapsed, setIsWebhookModalOpen, setEditingWebhookIndex, setWebhookForm,
             setCurrentMatchIndex, setAllMatches, setColumnOrder, setVisibleColumns, togglePin, toggleVisibility,

@@ -6,6 +6,8 @@ export interface SearchResult {
 }
 
 export interface DataPreviewModalProps {
+    savedView?: import('../components/SavedViewInspector').ViewAsset;
+    viewTools?: import('react').ReactNode;
     sourceSchema?: string;
     schemaSelector?: import("react").ReactNode;
     readOnly?: boolean;
