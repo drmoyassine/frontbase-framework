@@ -50,7 +50,7 @@ export function createVercelNativeIntegration(deps:VercelNativeIntegrationDeps){
         const body=new URLSearchParams({grant_type:'authorization_code',code,client_id:client.clientId,client_secret:client.clientSecret!,redirect_uri:client.redirectUri});
         let result:any;try{result=await json(await deps.fetch('https://api.vercel.com/v2/oauth/access_token',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:body.toString(),redirect:'manual',signal:AbortSignal.timeout(15000)}));}catch{return refuse('native_vercel_authorization_code_refused');}
         if(typeof result.access_token!=='string'||!result.access_token||result.access_token.length>16384||result.team_id!==c.team||result.installation_id!==c.configuration)refuse('native_vercel_grant_mismatch');
-        const a:OAuthAuthorization={provider:'vercel',accessToken:result.access_token,accounts:[],scopes:typeof result.scope==='string'?result.scope.split(' ').filter(Boolean):[]};
+        const a:OAuthAuthorization={provider:'vercel',accessToken:result.access_token,installationId:result.installation_id,accounts:[],scopes:typeof result.scope==='string'?result.scope.split(' ').filter(Boolean):[]};
         if(Number.isFinite(result.expires_in)&&result.expires_in>0)a.expiresAt=now()+result.expires_in*1000;
         await verifyConfiguration(c,a);
         const t=await api('/v2/teams/'+c.team,a),team=t.team??t;

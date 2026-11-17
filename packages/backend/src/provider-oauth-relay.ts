@@ -3,6 +3,7 @@ import {Hono} from 'hono';
 import type {SecretCipher} from './db/secret-cipher.js';
 import {createProviderOAuth,type OAuthAuthorization,type OAuthProvider,type ProviderOAuthClient,type OAuthActor} from './provider-oauth.js';
 import {refreshOAuthAuthorization} from './provider-oauth-refresh.js';
+import {vercelRenewalProof,readVercelRenewalProof} from './provider-oauth-renewal-proof.js';
 import {providerOAuthVault,type OAuthVault} from './provider-oauth-vault.js';
 export interface OAuthRelayTarget {
     origin:string;host:'cloudflare'|'vercel'|'docker';purpose:'install'|'connect';
@@ -46,20 +47,30 @@ export function createProviderOAuthRelay(deps:OAuthRelayDeps){
         await deps.vault.purge();return next();
     });
     app.get('/health',c=>c.json({status:'ok',providers:Object.keys(deps.clients)}));
-    app.post('/supabase/refresh',async c=>{
-        const client=deps.clients.supabase;
+    app.post('/:provider/refresh',async c=>{
+        const provider=c.req.param('provider') as OAuthProvider;
+        const client=['supabase','cloudflare','vercel'].includes(provider)?deps.clients[provider]:undefined;
         if(!client||!deps.verifyReceiver||c.req.header('origin')||c.req.header('cookie')||c.req.header('content-type')?.split(';')[0]!=='application/json')
             return c.json({error:'relay_refused'},403);
         const input=await readBody(c.req.raw,24576),target=input?.target as OAuthRelayTarget;
         if(!target||target.purpose!=='connect'||Object.keys(target).some(k=>!['origin','host','purpose'].includes(k))
-            ||Object.keys(input).some(k=>!['target','verifier','refreshToken'].includes(k))
-            ||!validToken(input.verifier)||typeof input.refreshToken!=='string'||!input.refreshToken||input.refreshToken.length>16384
-            ||!deps.admit(target,'supabase')||!await deps.verifyReceiver(target,await hash(input.verifier)))
+            ||Object.keys(input).some(k=>!['target','verifier','refreshToken','renewalProof'].includes(k))
+            ||!validToken(input.verifier)
+            ||!deps.admit(target,provider)||!await deps.verifyReceiver(target,await hash(input.verifier)))
             return c.json({error:'relay_refused'},403);
-        const renewed=await refreshOAuthAuthorization(client,{
-            provider:'supabase',accessToken:'',refreshToken:input.refreshToken,accounts:[],scopes:[],
-        },{fetch:deps.fetch,now});
-        return c.json({accessToken:renewed.accessToken,refreshToken:renewed.refreshToken,expiresAt:renewed.expiresAt,scopes:renewed.scopes});
+        const authorization:OAuthAuthorization={provider,accessToken:'',accounts:[],scopes:[]};
+        if(provider==='vercel'){
+            const bound=await readVercelRenewalProof(deps.cipher,target,input.renewalProof);
+            authorization.installationId=bound.installationId;
+            authorization.accounts=[{id:bound.teamId,name:''}];
+            authorization.renewalProof=input.renewalProof;
+        }else{
+            if(typeof input.refreshToken!=='string'||!input.refreshToken||input.refreshToken.length>16384)return c.json({error:'relay_refused'},403);
+            authorization.refreshToken=input.refreshToken;
+        }
+        const renewed=await refreshOAuthAuthorization(client,authorization,{fetch:deps.fetch,now});
+        return c.json({accessToken:renewed.accessToken,refreshToken:renewed.refreshToken,expiresAt:renewed.expiresAt,scopes:renewed.scopes,
+            ...(renewed.installationId?{installationId:renewed.installationId,renewalProof:renewed.renewalProof}:{})});
     });
     app.post('/receivers',async c=>{
         // No provider credential is accepted here. Registration binds a public
@@ -104,6 +115,8 @@ export function createProviderOAuthRelay(deps:OAuthRelayDeps){
         if(record.target.purpose==='connect'&&deps.verifyReceiver&&!await deps.verifyReceiver(record.target,record.proof))return c.json({error:'relay_refused'},403);
         if(!await deps.vault.take('ticket:'+input.ticket,raw))return c.json({error:'relay_refused'},403);
         if(record.target.purpose==='install'&&(!deps.claimInstallation||!await deps.claimInstallation(record.target,record.proof)))return c.json({error:'relay_refused'},403);
+        if(record.authorization.provider==='vercel'&&record.authorization.installationId)
+            record.authorization.renewalProof=await vercelRenewalProof(deps.cipher,record.target,record.authorization);
         return c.json({authorization:record.authorization,target:record.target});
     });
     app.all('/api/provider-oauth/*',async c=>{

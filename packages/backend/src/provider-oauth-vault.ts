@@ -46,7 +46,7 @@ export function providerOAuthVault(vault:OAuthVault,cipher:SecretCipher,actor:OA
         for(const record of await records()){
             const client=clients[record.authorization.provider];
             if(!expiringAuthorization(record.authorization,now())){fresh.push(record.authorization);continue;}
-            if(!record.authorization.refreshToken||!client)continue;
+            if(!client||(!record.authorization.refreshToken&&!(record.authorization.provider==='vercel'&&record.authorization.installationId)))continue;
             try{
                 const rotated=await refreshOAuthAuthorization(client,record.authorization,deps);
                 if(await replace(record.key,record.raw,await seal({actor,authorization:rotated,createdAt:record.createdAt}))){fresh.push(rotated);continue;}

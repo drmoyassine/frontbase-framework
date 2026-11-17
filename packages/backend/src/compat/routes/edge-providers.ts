@@ -88,11 +88,11 @@ export function registerEdgeProvidersRoutes(
     initResourceStrategies(externalFetch);
 
     const readCredentials=async (tenant:string,id:string,provider:string)=>{
-        if(provider==='supabase'&&managementConfig)return managementConfig(tenant,id);
+        if(['supabase','cloudflare','vercel','upstash'].includes(provider)&&managementConfig)return managementConfig(tenant,id);
         return await p2(tenant).getEdgeResourceConfig(id)??{};
     };
-    const renewalMessage=(error:unknown)=>error instanceof Error&&error.message==='supabase_renewal_in_progress'
-        ? 'Supabase authorization is renewing. Try again in a moment.'
+    const renewalMessage=(error:unknown)=>error instanceof Error&&error.message==='oauth_renewal_in_progress'
+        ? 'Account authorization is renewing. Try again in a moment.'
         : 'Could not use this account. Check the connection in Connected Accounts.';
     const encryptedConfig = async (config: unknown): Promise<string | undefined> => {
         if (config === undefined) return undefined;
@@ -250,9 +250,17 @@ export function registerEdgeProvidersRoutes(
         const store = p2(c.get('tenant'));
         const provider = await providerFor(c.get('tenant'), c.req.param('provider_id'));
         if (!provider) return providerNotFound(c);
+        // An authenticated account owner can verify renewal ahead of expiry.
+        // The server selects the saved grant; callers cannot supply a token,
+        // installation ID, recipient or replacement account configuration.
+        const options=await c.req.json().catch(()=>({})) as {renew_authorization?:boolean};
         let config:Record<string,unknown>;
-        try{config=await readCredentials(c.get('tenant'),c.req.param('provider_id'),String(provider.provider??''));}
-        catch(error){return c.json({success:false,detail:renewalMessage(error)});}
+        try{
+            const saved=options.renew_authorization===true?await store.getEdgeResourceConfig(c.req.param('provider_id')):null;
+            config=saved?.oauth&&managementConfig
+                ?await managementConfig(c.get('tenant'),c.req.param('provider_id'),String(saved.access_token??''))
+                :await readCredentials(c.get('tenant'),c.req.param('provider_id'),String(provider.provider??''));
+        }catch(error){return c.json({success:false,detail:renewalMessage(error)});}
         // Match product behavior: return "No credentials stored" if config is empty
         // rather than passing empty config to testProvider (which returns "Unsupported provider")
         if (Object.keys(config).length === 0) {
@@ -305,11 +313,11 @@ export function registerEdgeProvidersRoutes(
         let result = await discoverResources(provider, creds);
         // Discovery is read-only. If a now-invalid access token was still inside
         // its advertised lifetime, renew once and repeat only the discovery.
-        if(provider==='supabase'&&!result.success&&result.detail==='Supabase API error: 401'&&creds.oauth&&managementConfig){
+        if(['supabase','cloudflare','vercel'].includes(provider)&&!result.success&&/\b401\b/.test(result.detail??'')&&creds.oauth&&managementConfig){
             try{result=await discoverResources(provider,await managementConfig(c.get('tenant'),accountId,String(creds.access_token??'')));}
             catch(error){return c.json({success:false,detail:renewalMessage(error)});}
         }
-        if(provider!=='supabase'||result.success)await setCachedDiscovery(kv, accountId, provider, result, now());
+        if(result.success)await setCachedDiscovery(kv, accountId, provider, result, now());
         return c.json(result);
     });
 

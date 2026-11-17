@@ -19,7 +19,7 @@ const digest=async value=>Buffer.from(await crypto.subtle.digest('SHA-256',new T
 const proof=await digest(registrationKey);
 const client={provider:'supabase',clientId:'relay-client',clientSecret:'server-only-client-secret',scopes:[],
  redirectUri:relayOrigin+'/api/provider-oauth/supabase/callback'};
-let time=Date.parse('2026-11-17T12:00:00Z'),rotations=0,reads=0,tenant='owner',permits=true;
+let time=Date.parse('2026-11-17T12:00:00Z'),rotations=0,reads=0,tenant='owner',permits=true,role='owner';
 const installed={provider:'supabase',accessToken:'old-access',refreshToken:'old-refresh',expiresAt:time-1,
  scopes:['projects:read'],accounts:[{id:'fixture-organization',name:'Fixture'}]};
 const now=()=>new Date(time).toISOString();
@@ -57,7 +57,7 @@ assert.equal(rotations,0);
 
 const externalFetch=(url,init)=>String(url).startsWith(relayOrigin+'/')?relay.fetch(new Request(url,init)):upstream(url,init);
 const options={makeRunner:async()=>db,sessionSecret:secret,externalFetch,now,
- resolvePrincipal:async()=>({tenant,user:{id:'admin',role:'owner'}}),
+ resolvePrincipal:async()=>({tenant,user:{id:'admin',role}}),
  providerOAuth:{origin,clients:{},relay:{target,relayOrigin,registrationKey}}};
 const app=await createCompatApp(options);
 const discover=app=>app.request(origin+'/api/edge-providers/discover-by-account/existing-account',{method:'POST'});
@@ -93,5 +93,15 @@ time+=3601000;
 assert.equal((await local(tenant,'existing-account')).access_token,'access-3','operator-owned OAuth client can refresh directly');
 assert.equal(rotations,3);
 assert.ok(reads>=3);
+const renewedEarly=await app.request(origin+'/api/edge-providers/retest/existing-account',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({renew_authorization:true})});
+assert.equal((await renewedEarly.json()).success,true);
+assert.equal(rotations,4,'explicit same-account check exercises the real renewal path before expiry');
+tenant='foreign';
+assert.equal((await app.request(origin+'/api/edge-providers/retest/existing-account',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({renew_authorization:true})})).status,404);
+assert.equal(rotations,4,'another tenant cannot renew the account');
+tenant='owner';role='viewer';
+assert.equal((await app.request(origin+'/api/edge-providers/retest/existing-account',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({renew_authorization:true})})).status,403);
+assert.equal(rotations,4,'read-only members cannot rotate authorization');
 await db.close?.();await relayDb.close?.();
 console.log('Supabase management renewal: installed discovery, concurrent rotation, encrypted readback, restart, existing account ID, relay admission and direct client PASS');
+await import('./provider-management-renewal.mjs');

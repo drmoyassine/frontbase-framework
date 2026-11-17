@@ -1,4 +1,4 @@
-import {supabaseManagementConfig} from '../supabase-management-renewal.js';
+import {providerManagementConfig} from '../provider-management-renewal.js';
 import {PageNamespaceConflict} from './pages-store.js';
 import { registerDeploymentBindingsRoutes } from './routes/deployment-bindings.js';
 import {createProviderOAuth,type ProviderOAuthClient,type OAuthProvider} from '../provider-oauth.js';
@@ -211,8 +211,8 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         : noopCipher;
     const phase2For = storeCache((t: string) => new Phase2Store(runner, t, secretCipher));
     const accountConfigFor=datasourceAccountConfigFor(phase2For,now);
-    const managementConfig=supabaseManagementConfig(phase2For,{
-        client:deps.providerOAuth?.clients.supabase,relay:deps.providerOAuth?.relay,fetch:externalFetch,now,
+    const managementConfig=providerManagementConfig(phase2For,{
+        clients:deps.providerOAuth?.clients,relay:deps.providerOAuth?.relay,fetch:externalFetch,now,
     });
     accountConfigFor.forManagement=managementConfig;
     // Isolate/app boot time — the uptime source for the system-engine health
@@ -321,7 +321,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         const store=new Phase2Store(runner,actor.tenant,secretCipher);
         for(const row of await store.listEdgeResources('provider')){
             if(String(row.provider)!==provider)continue;
-            const config=provider==='supabase'?await managementConfig(actor.tenant,String(row.id)).catch(()=>null):await store.getEdgeResourceConfig(String(row.id));if(!config?.oauth||typeof config.oauth!=='object')continue;
+            const config=await managementConfig(actor.tenant,String(row.id)).catch(()=>null);if(!config?.oauth||typeof config.oauth!=='object')continue;
             const meta=config.oauth as {accounts?:Array<{id:string;name:string}>;scopes?:string[];capabilities?:Array<'vectorize'>;expires_at?:number|null;refresh_token?:string|null;management?:{email:string;apiKey:string}};
             if(typeof meta.expires_at==='number'&&meta.expires_at<=Date.now())continue;
             const accessToken=String(config.access_token??'');if(!accessToken)continue;

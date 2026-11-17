@@ -13,13 +13,15 @@ export interface OAuthPending extends OAuthActor {
 }
 export interface OAuthAuthorization {
     provider: OAuthProvider; accessToken: string; refreshToken?: string; expiresAt?: number;
+    installationId?:string;
+    renewalProof?:string;
     /** Server-probed optional capabilities; never accepted from a wizard snapshot. */
     management?: {email:string;apiKey:string};
     capabilities?: Array<'vectorize'>;
     scopes: string[]; accounts: Array<{id:string;name:string}>;
 }
 export interface ProviderOAuthStore {
-    connections(actor:OAuthActor):Promise<Array<{id:string;provider:OAuthProvider;label:string;accountId:string;reconnectRequired:boolean;capabilities?:Array<'vectorize'>}>>;
+    connections(actor:OAuthActor):Promise<Array<{id:string;provider:OAuthProvider;label:string;accountId:string;reconnectRequired:boolean;expiresAt?:number;capabilities?:Array<'vectorize'>}>>;
     put(id: string, pending: OAuthPending): Promise<void>;
     /** Atomic one-use claim; include actor/provider/expiry in the storage predicate. */
     consume(id: string, actor: OAuthActor, provider: OAuthProvider, now: number): Promise<OAuthPending | null>;
@@ -122,6 +124,7 @@ export function createProviderOAuth(deps:ProviderOAuthDeps){
         if(!accounts.length||accounts.length>50||accounts.some(a=>typeof a.id!=='string'||!a.id||typeof a.name!=='string'))throw Error('oauth_refused');
         const scopes=typeof token.scope==='string'?token.scope.split(' ').filter(Boolean):[];
         const authorization:OAuthAuthorization={provider,accessToken:management?.apiKey??token.access_token,scopes,accounts,...(management?{management}:{})};
+        if(provider==='vercel'&&typeof token.installation_id==='string'&&/^icfg_[A-Za-z0-9]+$/.test(token.installation_id))authorization.installationId=token.installation_id;
         if(provider!=='upstash'&&typeof token.refresh_token==='string'&&token.refresh_token.length<=16384)authorization.refreshToken=token.refresh_token;
         if(provider!=='upstash'&&Number.isFinite(token.expires_in)&&token.expires_in>0)authorization.expiresAt=now()+token.expires_in*1000;
         if(provider==='cloudflare'){

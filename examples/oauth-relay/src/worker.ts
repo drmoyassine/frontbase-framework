@@ -3,6 +3,7 @@ import {sqlOAuthRelayVault,sqlOAuthNativeClaims,sqlOAuthNativeReceiver,sqlOAuthR
 import {relayTargetPolicy,publicNativeRelayTargetPolicy} from '../../../packages/backend/src/provider-oauth-relay-target.js';
 import {providerOAuthClients} from '../../../packages/backend/src/provider-oauth-config.js';
 import {createSecretCipher} from '../../../packages/backend/src/db/secret-cipher.js';
+import {vercelRenewalProof} from '../../../packages/backend/src/provider-oauth-renewal-proof.js';
 import {createVercelNativeIntegration} from '../../../packages/backend/src/vercel-native-integration.js';
 import {createSetupOwnerIdentityRelay} from '../../../packages/backend/src/setup-owner-identity.js';
 import {claimNativeInstallation} from '../../cf-full/src/native-claim.js';
@@ -28,7 +29,7 @@ async function service(env:Env){
     if(mode==='public-native'&&(!clients.cloudflare||!clients.cloudflare.scopes.length||!clients.vercel||!clients.vercel.clientSecret||!clients.vercel.integrationSlug))throw Error('relay_clients_required');
     const cipher=await createSecretCipher(env.FRONTBASE_RELAY_SECRET),claimInstallation=await sqlOAuthNativeClaims(runner,Date.now,mode==='public-native'?100000:1024);
     const app=createProviderOAuthRelay({origin:env.FRONTBASE_PUBLIC_ORIGIN,clients,cipher,vault,...(notices?{notices:notices as {privacy:string;terms:string}}:{}),claimInstallation,...(mode==='public-native'?{registerReceiver:await sqlOAuthReceiverRegistration(runner)}:{}),fetch:transport,...policy});
-    const native=mode==='public-native'&&clients.vercel?createVercelNativeIntegration({origin:env.FRONTBASE_PUBLIC_ORIGIN,client:clients.vercel,cipher,vault,fetch:transport,verify:policy.verify,claimInstallation,onRefusal:reason=>console.warn('frontbase_native_vercel_refusal:'+reason),establish:(context,authorization)=>claimNativeInstallation(context,authorization,transport)}):undefined;
+    const native=mode==='public-native'&&clients.vercel?createVercelNativeIntegration({origin:env.FRONTBASE_PUBLIC_ORIGIN,client:clients.vercel,cipher,vault,fetch:transport,verify:policy.verify,claimInstallation,onRefusal:reason=>console.warn('frontbase_native_vercel_refusal:'+reason),establish:async(context,authorization)=>{if(authorization.installationId)authorization.renewalProof=await vercelRenewalProof(cipher,context.target,authorization);return claimNativeInstallation(context,authorization,transport);}}):undefined;
     const ownerClient=env.FRONTBASE_VERCEL_OWNER_CLIENT_ID,ownerSecret=env.FRONTBASE_VERCEL_OWNER_CLIENT_SECRET;
     if(ownerSecret!==undefined&&(typeof ownerSecret!=='string'||typeof ownerClient!=='string'))throw Error('incomplete_setup_owner_client');
     const identity=typeof ownerClient==='string'?createSetupOwnerIdentityRelay({origin:env.FRONTBASE_PUBLIC_ORIGIN,clientId:ownerClient,...(typeof ownerSecret==='string'?{clientSecret:ownerSecret}:{}),cipher,vault,fetch:transport,admit:policy.admit,verifyReceiver:await sqlOAuthNativeReceiver(runner)}):undefined;

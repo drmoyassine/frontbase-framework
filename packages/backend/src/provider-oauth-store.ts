@@ -10,7 +10,7 @@ export function providerAuthorizationLabel(authorization: Pick<OAuthAuthorizatio
 }
 export function providerAuthorizationConfig(authorization:OAuthAuthorization){
     const first=authorization.accounts[0]!;
-    return {api_token:authorization.management?.apiKey??authorization.accessToken,...(authorization.management?{email:authorization.management.email}:{}),access_token:authorization.accessToken,account_id:first.id,...(authorization.provider==='vercel'?{team_id:first.id}:{}),oauth:{version:1,...(authorization.management?{management:authorization.management}:{}),provider:authorization.provider,scopes:authorization.scopes,accounts:authorization.accounts,capabilities:authorization.capabilities??[],expires_at:authorization.expiresAt??null,refresh_token:authorization.refreshToken??null}};
+    return {api_token:authorization.management?.apiKey??authorization.accessToken,...(authorization.management?{email:authorization.management.email}:{}),access_token:authorization.accessToken,account_id:first.id,...(authorization.provider==='vercel'?{team_id:first.id}:{}),oauth:{version:1,...(authorization.management?{management:authorization.management}:{}),...(authorization.installationId?{installation_id:authorization.installationId}:{}),...(authorization.renewalProof?{renewal_proof:authorization.renewalProof}:{}),provider:authorization.provider,scopes:authorization.scopes,accounts:authorization.accounts,capabilities:authorization.capabilities??[],expires_at:authorization.expiresAt??null,refresh_token:authorization.refreshToken??null}};
 }
 const hash=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
 /** Reuses the encrypted tenant-scoped resource vault. Transactions never appear in provider lists. */
@@ -23,8 +23,9 @@ export function providerOAuthStore(runner:DbRunner,cipher:SecretCipher,now=Date.
                 if(!['cloudflare','vercel','supabase','upstash'].includes(String(row.provider)))continue;
                 const config=await store.getEdgeResourceConfig(String(row.id));
                 if(!config?.oauth||typeof config.oauth!=='object')continue;
-                const metadata=config.oauth as {expires_at?:number;capabilities?:Array<'vectorize'>};
-                result.push({id:String(row.id),provider:row.provider as 'cloudflare'|'vercel'|'supabase'|'upstash',label:String(row.name),accountId:String(config.account_id??''),reconnectRequired:typeof metadata.expires_at==='number'&&metadata.expires_at<=now(),...(metadata.capabilities?.includes('vectorize')?{capabilities:['vectorize' as const]}:{})});
+                const metadata=config.oauth as {expires_at?:number;refresh_token?:string;installation_id?:string;renewal_proof?:string;capabilities?:Array<'vectorize'>};
+                const renewable=!!metadata.refresh_token||row.provider==='vercel'&&!!metadata.installation_id&&!!metadata.renewal_proof;
+                result.push({id:String(row.id),provider:row.provider as 'cloudflare'|'vercel'|'supabase'|'upstash',label:String(row.name),accountId:String(config.account_id??''),reconnectRequired:typeof metadata.expires_at==='number'&&metadata.expires_at<=now()&&!renewable,...(typeof metadata.expires_at==='number'?{expiresAt:metadata.expires_at}:{}),...(metadata.capabilities?.includes('vectorize')?{capabilities:['vectorize' as const]}:{})});
             }return result;
         },
         async put(id,pending){
