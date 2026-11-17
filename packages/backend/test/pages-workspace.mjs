@@ -10,6 +10,7 @@ import { SitePublicationStore } from '../dist/compat/site-publication-store.js';
 import { pagesWorkspace } from '../dist/compat/pages-workspace.js';
 import { registerPagesWorkspaceRoutes } from '../dist/compat/routes/pages-workspace.js';
 import { registerPagesOrganizationRoutes } from '../dist/compat/routes/pages-organization.js';
+import {LiveLayoutPublicationStore,LIVE_LAYOUT_ACTIVE} from '../dist/compat/live-layout-publication.js';
 
 const db = sqliteRunner(':memory:'); await migrateUp(db);
 const now = '2026-10-12T18:00:00Z', owner = 'workspace-owner', pages = new PagesStore(db, owner);
@@ -61,4 +62,38 @@ assert.equal((await app.request('/api/project/pages-organization/',{method:'PUT'
 // A corrupt capture fails closed rather than reporting every page as an unpublished draft.
 await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',['{}',owner,`site_publication:manifest:v2:${hash}`]);
 assert.equal((await app.request('/api/project/pages-workspace/')).status,503);
+// The live-layout publication is authoritative even when an unused snapshot is corrupt.
+await new SiteConfigurationStore(db,owner).save(cfg,2,now);
+await pages.update(templates[1].pageId,{title:templates[1].title},now);
+const liveStore=new LiveLayoutPublicationStore(db,owner);
+for(const role of ['article-index','article']){
+ const id=crypto.randomUUID(),layout={root:{siteConfiguration:{version:1,role}},content:[]};
+ await pages.create({name:role,slug:'draft-'+role,title:role,layout_data:layout},id,now);
+ templates.push({pageId:id,role,title:role,description:'',layout});
+}
+const liveHash=await liveStore.prepare({schemaVersion:3,runtimeVersion:'live-layout-v1',configuration:cfg,templates,staticPages:[{pageId:homeId,originalPath:'/',title:'Homepage',description:'',layout:home}],locales:['en','ar'],redirects:[]},now);
+await liveStore.publish(liveHash,null,now);
+const liveResponse=await app.request('/api/project/pages-workspace/');
+assert.equal(liveResponse.status,200,'live inventory must work independently of unused corrupt snapshots');
+inventory=await liveResponse.json();
+assert.equal(inventory.publication.hash,liveHash);
+assert.equal(inventory.entries.filter(e=>e.publicationStatus==='published').length,6,'all six entries recognize the active live publication');
+assert.equal(inventory.entries.find(e=>e.role==='article-index').path,'/blog/');
+assert.equal(inventory.entries.find(e=>e.id===tempId).publicationStatus,'draft');
+assert.equal(inventory.entries.find(e=>e.role==='program').serves,undefined,'live inventory does not invent frozen record counts');
+await pages.update(homeId,{title:'Edited homepage'},now);
+assert.equal((await pagesWorkspace(db,owner)).entries.find(e=>e.id===homeId).publicationStatus,'changes-pending');
+await pages.update(homeId,{title:'Homepage'},now);
+await new SiteConfigurationStore(db,owner).save({...cfg,site:{...cfg.site,name:'New draft site name'}},3,now);
+assert.equal((await pagesWorkspace(db,owner)).entries.find(e=>e.role==='program').publicationStatus,'changes-pending');
+assert.equal((await liveStore.activeForServing()).pointer.hash,liveHash,'inventory never publishes or modifies the pointer');
+let pointerReads=0;
+const racing={...db,query:async(sql,params)=>{
+ const rows=await db.query(sql,params);
+ if(params?.[1]===LIVE_LAYOUT_ACTIVE&&++pointerReads===2)return rows.map(row=>({...row,value:JSON.stringify({...JSON.parse(row.value),generation:2})}));
+ return rows;
+}};
+await assert.rejects(pagesWorkspace(racing,owner),/workspace_publication_changed/,'a publication race must not return mixed statuses');
+await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',['{}',owner,LIVE_LAYOUT_ACTIVE]);
+assert.equal((await app.request('/api/project/pages-workspace/')).status,503,'corrupt live publication must not fall back to stale snapshot or Draft');
 console.log('pages-workspace: owner-scoped inventory, route/layout status, draft/config changes, foreign denial and corrupt capture refusal PASS');

@@ -6,11 +6,11 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const clear = { schemaVersion:1,coverage:'stored-pages',publicRecordsChecked:false,status:'clear',issues:[],resourcesChecked:2,truncated:false,installAvailable:false };
 const reply = (body:unknown, status=200) => new Response(JSON.stringify(body),{status});
 describe('page URL audit', () => {
-    it('shows capture version and refuses inconsistent coverage',async()=>{
+    it('shows truthful coverage without site versions and refuses inconsistent coverage',async()=>{
         const capture={schemaVersion:1,generation:2,hash:'a'.repeat(64)};
         const fetcher=vi.fn().mockResolvedValueOnce(reply({...clear,coverage:'stored-pages-and-active-capture',publicRecordsChecked:true,capture})).mockResolvedValueOnce(reply({...clear,publicRecordsChecked:true}));
         vi.stubGlobal('fetch',fetcher);render(<PageRouteAudit/>);fireEvent.click(screen.getByRole('button',{name:'Check page URLs'}));
-        await screen.findByText(/Includes published capture/);expect(screen.getByText(/generation 2/)).toBeInTheDocument();
+        await screen.findByText(/Includes record URLs from the published address index/);expect(screen.queryByText(/generation 2|a{64}/)).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button',{name:'Check again'}));await screen.findByRole('alert');expect(screen.queryByText(/No conflicts found/)).not.toBeInTheDocument();
     });
     it('runs only on demand with cookies and truthful coverage',async()=>{
@@ -18,7 +18,7 @@ describe('page URL audit', () => {
         expect(fetcher).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Check page URLs'}));
         await screen.findByText(/No conflicts found/);expect(fetcher.mock.calls[0][0]).toBe('/api/project/page-route-audit/');
         expect(fetcher.mock.calls[0][1].credentials).toBe('include');expect(fetcher.mock.calls[0][1].cache).toBe('no-store');
-        expect(screen.getByText(/No published capture: listing and blog record URLs were not checked/)).toBeInTheDocument();
+        expect(screen.getByText(/Checks saved page addresses only/)).toBeInTheDocument();
     });
     it('renders conflicts, trash and shortened reports without actions that change data',async()=>{
         vi.stubGlobal('fetch',vi.fn().mockResolvedValue(reply({...clear,status:'conflicts',truncated:true,issues:[{code:'route_conflict',resources:[{source:'compat',id:'id',path:'/College',deleted:true}]}]})));

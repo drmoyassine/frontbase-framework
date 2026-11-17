@@ -5,7 +5,8 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Badge} from '@/components/ui/badge';
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter} from '@/components/ui/dialog';
-import {Folder, FolderPlus, LayoutGrid, List, GripVertical, Move, Pencil, RefreshCw, Eye, Database, Settings2, MoreHorizontal, Box, FileText, Trash2} from 'lucide-react';
+import {Folder, FolderPlus, Plus, Search, LayoutGrid, List, GripVertical, Move, Pencil, RefreshCw, Eye, Database, Settings2, MoreHorizontal, Box, FileText, Trash2} from 'lucide-react';
+import {PageRouteAudit} from '../PageRouteAudit';
 import {toast} from 'sonner';
 import {DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator} from '@/components/ui/dropdown-menu';
 import DataPreviewModal from '@/modules/dbsync/components/DataPreviewModal';
@@ -15,14 +16,15 @@ import {type WorkspaceEntry, type Organization, emptyOrganization, isOrganizatio
 interface Props {
   scope: string; pages: any[]; search: string; filterStatus: string;
   edit: (id: string) => void; actions: (page: any) => React.ReactNode;
+  onSearchChange?: (value:string)=>void; onCreatePage?:()=>void; onInstallTemplate?:()=>void; onShowTrash?:()=>void;
 }
-interface Inventory {schemaVersion: 1; publication: {hash: string; generation: number} | null; entries: WorkspaceEntry[]}
-export function PagesWorkspace({scope, pages, search, filterStatus, edit, actions}: Props) {
+interface Inventory {schemaVersion: 1; entries: WorkspaceEntry[]}
+export function PagesWorkspace({scope, pages, search, filterStatus, edit, actions, onSearchChange, onCreatePage, onInstallTemplate, onShowTrash}: Props) {
   const navigate = useNavigate(), location=useLocation();
   const sourceRequest=useRef<string>();
   const [inventory, setInventory] = useState<Inventory | null>(null), [organization, setOrganization] = useState<Organization>(emptyOrganization);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [saving, setSaving] = useState(false), [ready, setReady] = useState(false);
-  const [view, setView] = useState<'cards'|'list'>('cards'), [folderId, setFolderId] = useState<string | null | 'all'>('all');
+  const [view, setView] = useState<'cards'|'list'>('cards'), [folderId, setFolderId] = useState<string>('all');
   const [selection, setSelection] = useState<string[]>([]), [development, setDevelopment] = useState(false);
   const [folderSelection, setFolderSelection] = useState<string[]>([]);
   const [dialog, setDialog] = useState<{kind: 'new'|'rename'|'move-entries'|'move-folder'|'remove'|'move-folders'|'remove-folders'; id?: string} | null>(null);
@@ -97,7 +99,7 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
     if (dialog.kind === 'remove') next=removeFolder(organization,dialog.id!);
     if (dialog.kind === 'move-folders') {next=moveEntries(normalized(),selection,destination||null);for (const id of folderSelection) next=moveFolder(next,id,destination||null);}
     if (dialog.kind === 'remove-folders') for (const id of folderSelection) next=removeFolder(next,id);
-    if (await save(next)) {if(folderId!=='all'&&folderId!==null&&!next.folders.some(f=>f.id===folderId))setFolderId('all');setDialog(null);setSelection([]);setFolderSelection([]);toast.success('Organization saved');}
+    if (await save(next)) {if(folderId!=='all'&&!next.folders.some(f=>f.id===folderId))setFolderId('all');setDialog(null);setSelection([]);setFolderSelection([]);toast.success('Organization saved');}
   }
   const drop = async (event: React.DragEvent, target: string|null, beforeId?:string) => {
     event.preventDefault(); if (!ready || saving) return;
@@ -131,14 +133,14 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
   const visibleFolders = organization.folders.filter(f => ((folderId==='all'&&!!search.trim())||f.parentId === (folderId === 'all' ? null : folderId)) && folderId !== null && f.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>a.order-b.order||a.name.localeCompare(b.name));
   const folderCount = (id:string) => {const descendants=folderDescendants(organization,id);return entries.filter(e=>descendants.has(placement.get(e.id)?.folderId??'') && (development||!e.developmentOnly)).length;};
   const ancestors: Organization['folders'] = [];
-  if (folderId !== 'all' && folderId !== null) {
+  if (folderId !== 'all') {
     const seen = new Set<string>(); let cursor: string|null = folderId;
     while (cursor && !seen.has(cursor)) {
       seen.add(cursor); const folder = organization.folders.find(f=>f.id===cursor); if (!folder) break;
       ancestors.unshift(folder); cursor=folder.parentId;
     }
   }
-  const navigateFolder = (id:string|null) => {setFolderId(id);setSelection([]);setFolderSelection([]);};
+  const navigateFolder = (id:string) => {setFolderId(id);setSelection([]);setFolderSelection([]);};
   const crumbClass = 'rounded px-1 py-1 text-left transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
   const address = (entry:WorkspaceEntry) => entry.path ?? (entry.paths?.length ? `${entry.paths.length} URLs` : entry.kind==='layout'?'Multiple URLs':'No public address');
   const typeColor = (entry:WorkspaceEntry) => entry.kind==='layout'
@@ -153,10 +155,22 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
   const folderCheckbox = (id:string,label:string) => <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={`Select folder ${label}`} checked={folderSelection.includes(id)} onChange={()=>setFolderSelection(ids=>ids.includes(id)?ids.filter(value=>value!==id):[...ids,id])}/>;
   const entryCheckbox = (entry:WorkspaceEntry) => <input type="checkbox" className="h-4 w-4 shrink-0" aria-label={`Select ${entry.name}`} checked={selection.includes(entry.id)} onChange={()=>{setSelection(ids=>ids.includes(entry.id)?ids.filter(id=>id!==entry.id):[...ids,entry.id]);}}/>;
   const dragProps = (entry:WorkspaceEntry) => ({draggable:ready&&!saving,onDragStart:(event:React.DragEvent)=>event.dataTransfer.setData('application/x-frontbase-page',JSON.stringify({kind:'entries',ids:selection.includes(entry.id)?selection:[entry.id]})),onDragOver:(event:React.DragEvent)=>event.preventDefault(),onDrop:(event:React.DragEvent)=>{event.stopPropagation();void drop(event,placement.get(entry.id)?.folderId??null,entry.id);}});
+  const allSelected=selection.length+folderSelection.length>0&&selection.length===matches.length&&folderSelection.length===visibleFolders.length;
+  const toggleAll=()=>{setSelection(allSelected?[]:matches.map(e=>e.id));setFolderSelection(allSelected?[]:visibleFolders.map(f=>f.id));};
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="text-sm text-muted-foreground">{inventory ? inventory.publication ? `Published site version · generation ${inventory.publication.generation}` : 'No active whole-site version' : 'Publication inventory unavailable'} <Button variant="ghost" size="sm" onClick={()=>void load()} disabled={loading||saving}><RefreshCw className="mr-1 h-3 w-3"/>Reload</Button></div>
-      <div className="flex flex-wrap items-center justify-end gap-2"><Button variant="outline" size="sm" disabled={!ready||saving} onClick={()=>openDialog({kind:'new'})}><FolderPlus className="mr-2 h-4 w-4"/>New folder</Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm">Filters</Button></DropdownMenuTrigger><DropdownMenuContent align="end"><label className="flex items-center gap-2 p-2 text-sm"><input type="checkbox" checked={development} onChange={e=>setDevelopment(e.target.checked)}/>Show migration/test documents</label></DropdownMenuContent></DropdownMenu><Button variant="ghost" size="sm" onClick={()=>navigateFolder(null)}>Unfiled</Button><div className="inline-flex rounded-md border p-1" role="group" aria-label="Page view"><Button variant={view==='cards'?'secondary':'ghost'} size="sm" aria-pressed={view==='cards'} onClick={()=>changeView('cards')}><LayoutGrid className="mr-1 h-4 w-4"/>Cards</Button><Button variant={view==='list'?'secondary':'ghost'} size="sm" aria-pressed={view==='list'} onClick={()=>changeView('list')}><List className="mr-1 h-4 w-4"/>List</Button></div></div>
+    <div className="flex items-center gap-2 overflow-x-auto pb-1" role="toolbar" aria-label="Pages toolbar">
+      <div className="relative min-w-[10rem] max-w-sm flex-1"><Search aria-hidden="true" className="absolute left-2 top-2 h-4 w-4 text-muted-foreground"/><Input aria-label="Search pages" placeholder="Search pages…" value={search} onChange={e=>onSearchChange?.(e.target.value)} className="h-8 pl-8"/></div>
+      <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="shrink-0">Filters</Button></DropdownMenuTrigger><DropdownMenuContent align="end"><label className="flex items-center gap-2 p-2 text-sm"><input type="checkbox" checked={development} onChange={e=>setDevelopment(e.target.checked)}/>Show migration/test documents</label></DropdownMenuContent></DropdownMenu>
+      <div className="inline-flex shrink-0 rounded-md border" role="group" aria-label="Page view"><Button variant={view==='cards'?'secondary':'ghost'} size="sm" aria-pressed={view==='cards'} onClick={()=>changeView('cards')}><LayoutGrid className="mr-1 h-4 w-4"/>Cards</Button><Button variant={view==='list'?'secondary':'ghost'} size="sm" aria-pressed={view==='list'} onClick={()=>changeView('list')}><List className="mr-1 h-4 w-4"/>List</Button></div>
+      <Button variant="outline" size="sm" className="shrink-0" disabled={!ready||saving} onClick={()=>openDialog({kind:'new'})}><FolderPlus className="mr-1 h-4 w-4"/>New folder</Button>
+      {onCreatePage&&<Button variant="outline" size="sm" className="shrink-0" onClick={onCreatePage}><Plus className="mr-1 h-4 w-4"/>New page</Button>}
+      <PageRouteAudit key={scope} trigger={check=><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="shrink-0" aria-label="Page tools"><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+        {onInstallTemplate&&<DropdownMenuItem onSelect={onInstallTemplate}>Install template</DropdownMenuItem>}
+        <DropdownMenuItem onSelect={check}>Check page URLs</DropdownMenuItem>
+        <DropdownMenuItem disabled={loading||!matches.length&&!visibleFolders.length} onSelect={toggleAll}>{allSelected?'Deselect all':'Select all'}</DropdownMenuItem>
+        <DropdownMenuItem disabled={loading||saving} onSelect={()=>void load()}><RefreshCw className="mr-2 h-4 w-4"/>Reload</DropdownMenuItem>
+        {onShowTrash&&<><DropdownMenuSeparator/><DropdownMenuItem onSelect={onShowTrash}><Trash2 className="mr-2 h-4 w-4"/>Trash</DropdownMenuItem></>}
+      </DropdownMenuContent></DropdownMenu>}/>
     </div>
     {error && <div role="alert" className="rounded-md border border-destructive/40 p-3 text-sm">{error}</div>}
     <div className="min-w-0">
@@ -164,9 +178,8 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
         <div className="flex flex-wrap items-center justify-between gap-2"><nav aria-label="Folder breadcrumb" className="min-w-0"><ol className="flex flex-wrap items-center gap-1 text-sm">
             <li>{folderId==='all'?<span aria-current="page" className="font-medium">All site documents</span>:<button className={crumbClass} onClick={()=>navigateFolder('all')}>All site documents</button>}</li>
             {ancestors.map((folder,index)=><React.Fragment key={folder.id}><li aria-hidden="true" className="text-muted-foreground">/</li><li className="min-w-0 break-words">{index===ancestors.length-1?<span aria-current="page" className="font-medium">{folder.name}</span>:<button className={crumbClass} onClick={()=>navigateFolder(folder.id)}>{folder.name}</button>}</li></React.Fragment>)}
-            {folderId===null&&<><li aria-hidden="true" className="text-muted-foreground">/</li><li><span aria-current="page" className="font-medium">Unfiled</span></li></>}
           </ol></nav>
-          <div className="flex flex-wrap justify-end gap-2"><Button variant="ghost" size="sm" onClick={()=>{const all=selection.length===matches.length&&folderSelection.length===visibleFolders.length;setSelection(all?[]:matches.map(e=>e.id));setFolderSelection(all?[]:visibleFolders.map(f=>f.id));}}>{selection.length+folderSelection.length>0&&selection.length===matches.length&&folderSelection.length===visibleFolders.length?'Deselect all':'Select all'}</Button>{selection.length+folderSelection.length>0&&<Button variant="outline" size="sm" disabled={!ready||saving} onClick={()=>openDialog({kind:folderSelection.length?'move-folders':'move-entries'})}>Move {selection.length+folderSelection.length} selected</Button>}{folderSelection.length>0&&<Button variant="outline" size="sm" disabled={!ready||saving} onClick={()=>openDialog({kind:'remove-folders'})}><Trash2 className="mr-1 h-4 w-4"/>Delete {folderSelection.length} folders</Button>}</div>
+          <div className="flex flex-wrap justify-end gap-2">{selection.length+folderSelection.length>0&&<Button variant="outline" size="sm" disabled={!ready||saving} onClick={()=>openDialog({kind:folderSelection.length?'move-folders':'move-entries'})}>Move {selection.length+folderSelection.length} selected</Button>}{folderSelection.length>0&&<Button variant="outline" size="sm" disabled={!ready||saving} onClick={()=>openDialog({kind:'remove-folders'})}><Trash2 className="mr-1 h-4 w-4"/>Delete {folderSelection.length} folders</Button>}</div>
         </div>
         {loading && <p role="status" className="text-sm text-muted-foreground">Loading site structure…</p>}
         {view==='cards' ? <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3" aria-label="Site items">{visibleFolders.map(folder=><article key={`folder:${folder.id}`} className="flex min-w-0 flex-col gap-3 rounded-lg border bg-card p-4" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.stopPropagation();void drop(e,folder.id);}}>
@@ -183,7 +196,7 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
     <Dialog open={!!dialog} onOpenChange={open=>{if(!open&&!saving)setDialog(null);}}><DialogContent><DialogHeader><DialogTitle>{dialog?.kind==='new'?'Create folder':dialog?.kind==='rename'?'Rename folder':dialog?.kind==='remove'?'Delete folder':dialog?.kind==='remove-folders'?'Delete folders':dialog?.kind==='move-folder'?'Move folder':dialog?.kind==='move-folders'?'Move selected items':'Move documents'}</DialogTitle><DialogDescription>{(dialog?.kind==='remove'||dialog?.kind==='remove-folders')?'Only the selected folders are removed. Documents and child folders move to the nearest remaining parent. No pages or content are deleted.':'Organization changes do not change public URLs or publication.'}</DialogDescription></DialogHeader>
       {error&&<p role="alert" className="text-sm text-destructive">{error} Close this dialog to reload.</p>}
       {(dialog?.kind==='new'||dialog?.kind==='rename')&&<label className="space-y-2 text-sm">Folder name<Input autoFocus value={name} maxLength={100} onChange={e=>setName(e.target.value)}/></label>}
-      {dialog&&['new','move-entries','move-folder','move-folders'].includes(dialog.kind)&&<label className="space-y-2 text-sm">Destination folder<select className="block w-full rounded-md border bg-background p-2" value={destination} onChange={e=>setDestination(e.target.value)}><option value="">Unfiled / root</option>{organization.folders.filter(f=>(dialog.kind!=='move-folder'||!folderDescendants(organization,dialog.id!).has(f.id))&&(dialog.kind!=='move-folders'||!folderSelection.some(id=>folderDescendants(organization,id).has(f.id)))).map(f=><option value={f.id} key={f.id}>{folderTrail(organization,f.id)}</option>)}</select></label>}
+      {dialog&&['new','move-entries','move-folder','move-folders'].includes(dialog.kind)&&<label className="space-y-2 text-sm">Destination folder<select className="block w-full rounded-md border bg-background p-2" value={destination} onChange={e=>setDestination(e.target.value)}><option value="">Top level</option>{organization.folders.filter(f=>(dialog.kind!=='move-folder'||!folderDescendants(organization,dialog.id!).has(f.id))&&(dialog.kind!=='move-folders'||!folderSelection.some(id=>folderDescendants(organization,id).has(f.id)))).map(f=><option value={f.id} key={f.id}>{folderTrail(organization,f.id)}</option>)}</select></label>}
       <DialogFooter><Button variant="outline" disabled={saving} onClick={()=>setDialog(null)}>Cancel</Button><Button disabled={!ready||saving||((dialog?.kind==='new'||dialog?.kind==='rename')&&!name.trim())} onClick={()=>void confirmDialog()}>{saving?'Saving…':dialog?.kind==='remove'?'Delete folder':dialog?.kind==='remove-folders'?'Delete folders':'Save'}</Button></DialogFooter>
     </DialogContent></Dialog>
     {routes?.kind==='layout'&&routes.pageId?<TemplateUrls initialSection={new URLSearchParams(location.search).get('recordSource')===routes.role?'source':'urls'} key={routes.pageId} pageId={routes.pageId} name={routes.name} onClose={()=>setRoutes(null)} onSaved={()=>void load()} onContent={routes.contentAction?record=>{const entry={...routes,name:record.title,contentAction:{...routes.contentAction!,...(['article','editorial'].includes(routes.role??'')?{recordId:String(record.id),contentRole:(routes.role==='article'?'article':'page') as 'article'|'page'}:{recordKey:{column:routes.contentAction!.keyColumn??'id',value:String(record.id)}})}};setRoutes(null);void openContent(entry);}:undefined} design={()=>{const id=routes.pageId!;setRoutes(null);edit(id);}}/>:<Dialog open={!!routes} onOpenChange={open=>{if(!open)setRoutes(null);}}><DialogContent><DialogHeader><DialogTitle>Public URLs · {routes?.name}</DialogTitle><DialogDescription>{routes?.kind==='layout'?'This layout is reused across these published records.':'Public route for this site entry.'}</DialogDescription></DialogHeader><div className="max-h-80 space-y-2 overflow-auto">{(routes?.paths?.length?routes.paths:routes?.path?[routes.path]:[]).map(path=><a key={path} href={path} target="_blank" rel="noopener noreferrer" className="block break-all text-sm text-primary underline">{path}</a>)}</div></DialogContent></Dialog>}

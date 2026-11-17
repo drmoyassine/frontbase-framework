@@ -1,4 +1,5 @@
-import {directorySource} from '@frontbase/edge-core/directory/configuration';
+import {directorySource,projectSharedDirectoryPreview} from '@frontbase/edge-core/directory/configuration';
+import {LiveLayoutPublicationStore} from './live-layout-publication.js';
 import {templateRoute} from './template-route.js';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { stableStringify } from '@frontbase/compiler/manifest';
@@ -18,12 +19,22 @@ export interface WorkspaceEntry {
 /** Authoring inventory, not a public catalog dump. Never reads connected data or credentials. */
 export async function pagesWorkspace(db: DbRunner, owner: string) {
     if (!owner) throw Error('workspace_owner_required');
-    const store = new SitePublicationStore(db, owner), active = await store.activeVersion();
-    const configuration = (await new SiteConfigurationStore(db, owner).get())?.configuration ?? active?.artifact.configuration;
+    const store = new SitePublicationStore(db, owner), liveStore = new LiveLayoutPublicationStore(db,owner);
+    const live=await liveStore.activeForServing();
+    // Live layout publication is authoritative. Read historical captures only
+    // for installations which have not moved to the live serving contract.
+    const active = live ? null : await store.activeVersion();
+    const publishedConfiguration=live?.layout.configuration??active?.artifact.configuration;
+    const configuration = (await new SiteConfigurationStore(db, owner).get())?.configuration ?? publishedConfiguration;
     const rows = active ? publicationRows(active.artifact) : undefined;
-    const templates = active?.artifact.templates ?? [];
-    const sharedChanged = active && configuration && stableStringify(configuration) !== stableStringify(active.artifact.configuration);
-    const statics = active?.artifact.schemaVersion === 2 ? active.artifact.staticPages ?? [] : [];
+    const expand=async <T extends Parameters<NonNullable<typeof live>['loadLayout']>[0]>(page:T)=>({...page,layout:(await live!.loadLayout(page)).layout});
+    const [liveTemplates,liveStatics]=await Promise.all([
+        Promise.all((live?.layout.templates??[]).map(page=>expand(page))),
+        Promise.all((live?.layout.staticPages??[]).map(page=>expand(page))),
+    ]);
+    const templates = live ? liveTemplates : active?.artifact.templates ?? [];
+    const sharedChanged = publishedConfiguration && configuration && stableStringify(configuration) !== stableStringify(publishedConfiguration);
+    const statics = live ? liveStatics : active?.artifact.schemaVersion === 2 ? active.artifact.staticPages ?? [] : [];
     const rolePaths: Record<string, string[]> = {
         directory: configuration ? [configuration.routes.directory] : [],
         'article-index': configuration ? [configuration.routes.blog] : [],
@@ -34,9 +45,9 @@ export async function pagesWorkspace(db: DbRunner, owner: string) {
     };
     if(active?.artifact.schemaVersion===2){for(const role of ['institution','program','article','editorial'])rolePaths[role]=active.artifact.index.filter(row=>row.originalPath&&templateRoute(active.artifact as any,row.originalPath)?.role===role).map(row=>row.originalPath!);}
     // URLs shown for published layouts must come from the published configuration.
-    if (active) {
-        rolePaths.directory = [active.artifact.configuration.routes.directory];
-        rolePaths['article-index'] = [active.artifact.configuration.routes.blog];
+    if (publishedConfiguration) {
+        rolePaths.directory = [publishedConfiguration.routes.directory];
+        rolePaths['article-index'] = [publishedConfiguration.routes.blog];
     }
     const entries: WorkspaceEntry[] = [];
     const pages = new PagesStore(db, owner), saved = await pages.list();
@@ -48,12 +59,13 @@ export async function pagesWorkspace(db: DbRunner, owner: string) {
         const paths = role ? rolePaths[role] ?? [] : [];
         const collection = role === 'institution' ? 'institution' : role === 'program' ? 'program' : role === 'article' || role === 'article-index' || role === 'editorial' ? 'article' : undefined;
         const mapping = collection && configuration ? directorySource(configuration,collection) : undefined;
-        const unchanged = captured && !!page.is_public && stableStringify(layout) === stableStringify(captured.layout)
+        const comparable=live&&configuration?projectSharedDirectoryPreview(layout,configuration):layout;
+        const unchanged = captured && !!page.is_public && stableStringify(comparable) === stableStringify(captured.layout)
             && (page.title ?? page.name) === captured.title && (page.description ?? '') === captured.description
             && (!('originalPath' in captured) || captured.originalPath === (page.is_homepage ? '/' : page.slug.startsWith('/') ? page.slug : '/' + page.slug));
         entries.push({ id: page.id, pageId: page.id, name: page.name,
             kind: role === 'directory' || role === 'article-index' ? 'page' : role ? 'layout' : 'page',
-            ...(role ? { role, paths, serves: role === 'directory' ? (rows?.institutions.length ?? 0) + (rows?.programs.length ?? 0) : role === 'article-index' ? rows?.articles.length ?? 0 : paths.length,
+            ...(role ? { role, paths, ...(!live?{serves: role === 'directory' ? (rows?.institutions.length ?? 0) + (rows?.programs.length ?? 0) : role === 'article-index' ? rows?.articles.length ?? 0 : paths.length}:{}),
                 ...(paths.length === 1 ? { path: paths[0] } : {}) } : { path: page.is_homepage ? '/' : page.slug.startsWith('/') ? page.slug : '/' + page.slug }),
             publicationStatus: captured ? unchanged && (!(role || layout.root?.directoryLanding) || !sharedChanged) ? 'published' : 'changes-pending' : page.is_published ? 'published' : 'draft',
             developmentOnly: !captured && /^(Editorial migration review|Shared settings proof)/i.test(page.name), source: 'saved',
@@ -72,11 +84,14 @@ export async function pagesWorkspace(db: DbRunner, owner: string) {
     }
     const directory = entries.find(e => e.role === 'directory');
     if (directory && configuration) {
-        const path = (active?.artifact.configuration ?? configuration).routes.directory;
+        const path = (publishedConfiguration ?? configuration).routes.directory;
         directory.paths = [path, path + '?type=institution', path + '?type=program'];
     }
-    const after = await store.activeVersion();
+    const liveAfter=await liveStore.activeForServing();
+    if(stableStringify(live?.pointer??null)!==stableStringify(liveAfter?.pointer??null))throw Error('workspace_publication_changed');
+    const after = live ? null : await store.activeVersion();
     if (stableStringify(active?.pointer ?? null) !== stableStringify(after?.pointer ?? null)) throw Error('workspace_publication_changed');
     if (stableStringify(saved) !== stableStringify(await pages.list())) throw Error('workspace_pages_changed');
-    return { schemaVersion: 1 as const, publication: active ? { hash: active.pointer.hash, generation: active.pointer.generation } : null, entries };
+    const pointer=live?.pointer??active?.pointer;
+    return { schemaVersion: 1 as const, publication: pointer ? { hash: pointer.hash, generation: pointer.generation } : null, entries };
 }

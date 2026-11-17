@@ -6,7 +6,8 @@ const run=()=>spawnSync(process.execPath,['test/pages-workspace.mjs'],{cwd:fileU
 assert.equal(run().status,0,'baseline must pass');
 const cases=[
  ['owner-scope','../dist/compat/pages-workspace.js','new PagesStore(db, owner)','new PagesStore(db, "foreign")'],
- ['pending-shared-settings','../dist/compat/pages-workspace.js','const sharedChanged = active && configuration &&','const sharedChanged = false && active && configuration &&'],
+ ['pending-shared-settings','../dist/compat/pages-workspace.js','const sharedChanged = publishedConfiguration && configuration &&','const sharedChanged = false && publishedConfiguration && configuration &&'],
+ ['live-publication-precedence','../dist/compat/pages-workspace.js','liveStore.activeForServing()','Promise.resolve(null)'],
  ['organization-ownership','../dist/compat/pages-organization.js','(ownedEntries && !ownedEntries.has(p.entryId))','(false && ownedEntries && !ownedEntries.has(p.entryId))'],
  ['administrator-gate','../dist/compat/routes/pages-workspace.js','if (![','if (false && !['],
 ];

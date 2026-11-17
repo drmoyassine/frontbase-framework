@@ -15,6 +15,30 @@ const org={schemaVersion:1,revision:2,folders:[{id:'dir',name:'Directory',parent
 function mount(){return render(<MemoryRouter><PagesWorkspace scope="owner:1" pages={pages} search="" filterStatus="all" edit={vi.fn()} actions={()=>null}/></MemoryRouter>);}
 beforeEach(()=>{localStorage.clear();vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:{hash:'capture',generation:12},entries}:options?.method==='PUT'?{...org,revision:3,...JSON.parse(String(options.body))}:org),{status:200})));});
 describe('site pages workspace',()=>{
+  it('keeps bulk selection in Page tools without a second persistent action bar',async()=>{
+    mount();await screen.findByText('Explore');
+    expect(screen.queryByRole('button',{name:'Select all'})).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button',{name:'Page tools'}));await userEvent.click(screen.getByRole('menuitem',{name:'Select all'}));
+    expect(screen.getByRole('button',{name:'Move 3 selected'})).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button',{name:'Page tools'}));await userEvent.click(screen.getByRole('menuitem',{name:'Deselect all'}));
+    expect(screen.queryByRole('button',{name:/Move .* selected/})).not.toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.every(([,options])=>!options?.method)).toBe(true);
+  });
+  it('uses one compact toolbar and keeps the URL audit dialog mounted after its menu closes',async()=>{
+    const create=vi.fn(),install=vi.fn(),trash=vi.fn(),search=vi.fn();
+    render(<MemoryRouter><PagesWorkspace scope="owner:1" pages={pages} search="" filterStatus="all" edit={vi.fn()} actions={()=>null} onCreatePage={create} onInstallTemplate={install} onShowTrash={trash} onSearchChange={search}/></MemoryRouter>);
+    await screen.findByText('Explore');
+    const bar=screen.getByRole('toolbar',{name:'Pages toolbar'});
+    expect(screen.getAllByRole('toolbar')).toHaveLength(1);
+    expect(within(bar).getByRole('button',{name:'New page'}).parentElement).toBe(within(bar).getByRole('button',{name:'New folder'}).parentElement);
+    fireEvent.click(within(bar).getByRole('button',{name:'New page'}));expect(create).toHaveBeenCalledOnce();
+    fireEvent.change(within(bar).getByRole('textbox',{name:'Search pages'}),{target:{value:'Blog'}});expect(search).toHaveBeenCalledWith('Blog');
+    expect(screen.queryByText(/whole-site version|Published site version|Unfiled/)).not.toBeInTheDocument();
+    await userEvent.click(within(bar).getByRole('button',{name:'Page tools'}));
+    expect(screen.getByRole('menuitem',{name:'Install template'})).toBeInTheDocument();expect(screen.getByRole('menuitem',{name:'Trash'})).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('menuitem',{name:'Check page URLs'}));
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Page URL checks');
+  });
   it.each(['URLs', 'Configure Programs'])('opens %s for a reusable template before its first publication', async action => {
     const layouts=[{id:'template',pageId:'template',name:'Programs',kind:'layout',role:'program',publicationStatus:'draft',paths:[],source:'saved'}];
     vi.stubGlobal('fetch',vi.fn(async(url:string)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:null,entries:layouts}:org))));
