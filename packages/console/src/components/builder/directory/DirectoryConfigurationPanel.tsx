@@ -65,6 +65,21 @@ export function DirectoryConfigurationPanel({ value, onChange, onApplyLayout, pe
         </fieldset>}
         {section!=='site'&&<fieldset className="space-y-3"><legend className="font-semibold">Data and relationships</legend><div id="binding-datasourceId" tabIndex={-1}><DataSourceSelector autoSelect={false} value={value.datasourceId} onValueChange={datasourceId => onChange({ ...value, datasourceId, collections: emptyDirectoryConfiguration().collections })} /></div>
             {directoryRoles.filter(role => role !== 'pathway').map(role => <CollectionMapping key={`${role}:${value.datasourceId}:${value.collections[role].table}`} role={role} config={value} onChange={onChange} identityInUrls={section==='data'&&identityRolesInUrls.includes(role)} />)}
+            {persistenceScope==='site'&&<details className="rounded border p-3">
+                <summary className="cursor-pointer">Directory fields and media</summary>
+                <label className="mt-3 flex gap-2 text-sm"><input type="checkbox" checked={!!value.directoryViewProjection} onChange={event=>onChange({...value,directoryViewProjection:event.target.checked?{logoReplacements:[]}:undefined})}/>Use mapped directory fields in lists that share a detail Saved View</label>
+                {value.directoryViewProjection&&<>
+                    {value.directoryViewProjection.logoReplacements.map((rule,index)=>{
+                        const update=(patch:Partial<typeof rule>)=>onChange({...value,directoryViewProjection:{logoReplacements:value.directoryViewProjection!.logoReplacements.map((existing,position)=>index===position?{...existing,...patch}:existing)}});
+                        return <div key={index} className="mt-3 grid gap-2">
+                            {edit('Original logo URL',rule.from,from=>update({from}),'url')}
+                            {edit('Replacement logo URL',rule.to,to=>update({to}),'url')}
+                            <button type="button" className="text-left text-sm underline" onClick={()=>onChange({...value,directoryViewProjection:{logoReplacements:value.directoryViewProjection!.logoReplacements.filter((_,position)=>position!==index)}})}>Remove replacement</button>
+                        </div>;
+                    })}
+                    <button type="button" className="mt-3 text-sm underline" disabled={value.directoryViewProjection.logoReplacements.length>=20} onClick={()=>onChange({...value,directoryViewProjection:{logoReplacements:[...value.directoryViewProjection!.logoReplacements,{from:'',to:''}]}})}>Add logo replacement</button>
+                </>}
+            </details>}
         </fieldset>}
         {section!=='data'&&!elementBrowsing&&<fieldset className="space-y-3"><legend className="font-semibold">Browsing</legend>
             <label className="block space-y-1 text-sm">Default collection<select aria-label="Default collection" className={inputClass} value={value.browsing.defaultCollection} onChange={e => onChange({ ...value, browsing: { ...value.browsing, defaultCollection: e.target.value as DirectoryRole } })}>{(!['institution', 'program'].includes(value.browsing.defaultCollection) ? [value.browsing.defaultCollection, 'institution', 'program'] : ['institution', 'program']).map(role => <option key={role} disabled={!['institution', 'program'].includes(role)}>{role}{!['institution', 'program'].includes(role) ? ' (unsupported)' : ''}</option>)}</select></label>

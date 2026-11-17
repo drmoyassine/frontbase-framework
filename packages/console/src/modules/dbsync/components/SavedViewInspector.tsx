@@ -1,3 +1,4 @@
+import {Link} from 'react-router-dom';
 import {DatasourceSchemaSelector,useDatasourceSchema} from './DatasourceSchemaSelector';
 import {TableSelector} from '@/components/data-binding/TableSelector';
 import {useEffect,useState} from 'react';
@@ -62,7 +63,7 @@ export function SavedFilterEditor({rules,fields,onChange,depth=0}:{rules:SavedFi
 
 }
 
-export function SavedViewInspector({view,onClose}:{view:ViewAsset;onClose:()=>void}){
+export function SavedViewInspector({view,onClose,onDelete,deleting=false}:{view:ViewAsset;onClose:()=>void;onDelete?:()=>void;deleting?:boolean}){
 
     const client=useQueryClient(),[draft,setDraft]=useState(view),[filters,setFilters]=useState(()=>savedViewFilters(view.filters)),[message,setMessage]=useState(''),[saving,setSaving]=useState(false),[dirty,setDirty]=useState(false),[page,setPage]=useState(1),[revision,setRevision]=useState(view.updated_at);
 
@@ -85,6 +86,18 @@ export function SavedViewInspector({view,onClose}:{view:ViewAsset;onClose:()=>vo
     }catch(error:any){setMessage(error.response?.data?.detail||error.message||'Save failed. Your edits are retained.');}finally{setSaving(false);}}
 
     return <div role="dialog" aria-modal="true" aria-label="Saved view data inspector" className="fixed inset-0 z-50 bg-background overflow-auto p-6"><div className="max-w-6xl mx-auto space-y-6"><div className="flex justify-between gap-4"><div><h2 className="text-xl font-semibold">Data Inspector · {view.name}</h2><p className="text-sm text-muted-foreground">{view.datasource_name} / {view.target_table}</p></div><button type="button" className="underline" onClick={()=>{if(!dirty||window.confirm('Discard unsaved view edits?'))onClose();}}>Close</button></div>
+
+    {onDelete&&<details className="rounded border p-3">
+        <summary className="cursor-pointer">Page usage ({view.usage?.length??0})</summary>
+        {view.usage?.length?<ul className="mt-3 space-y-2">
+            {view.usage.map((usage,index)=><li key={index}>
+                <Link className="underline" to={`/builder/${usage.pageId}`}>{usage.name} · {usage.version}</Link>
+                <span className="ml-2 rounded border px-1 text-xs">{usage.state}</span>
+            </li>)}
+        </ul>:<p className="mt-3 text-sm text-muted-foreground">No page dependencies found.</p>}
+        {view.usage?.length?<p className="mt-3 text-sm">Remove these bindings before deleting the view.</p>:
+            <button type="button" disabled={deleting||dirty} className="mt-3 underline" onClick={onDelete}>Delete view</button>}
+    </details>}
 
     {view.selection_storage==='legacy-sql'&&<p role="alert" className="rounded border p-3">This legacy view still has SQL selection restrictions. Close this inspector and use “Move legacy SQL selection into saved filters” before changing membership.</p>}
 

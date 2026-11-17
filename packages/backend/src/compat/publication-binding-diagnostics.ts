@@ -1,9 +1,9 @@
 import {walkBlockTree,applyBlockVersion} from '@frontbase/edge-core/block-versions';
-import {liveViewBindingSchema,templateRecordFields} from '@frontbase/edge-core/directory/configuration';
+import {directorySources,directoryViewRole,liveViewBindingSchema,templateRecordFields,type DirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
 import type {PageLayoutData} from '@frontbase/edge-core';
 export interface ElementBindingIssue {pageId:string;elementId:string;versionId:string;code:string;message:string}
 /** Read-only authoring preflight. Readers must resolve resources within the authenticated tenant. */
-export async function publicationBindingDiagnostics(pages:{pageId:string;layout:PageLayoutData}[],read:(path:string)=>Promise<any>):Promise<ElementBindingIssue[]> {
+export async function publicationBindingDiagnostics(pages:{pageId:string;layout:PageLayoutData}[],read:(path:string)=>Promise<any>,configuration?:DirectoryConfiguration):Promise<ElementBindingIssue[]> {
  const issues:ElementBindingIssue[]=[],cache=new Map<string,Promise<any>>();
  const get=(path:string)=>{let value=cache.get(path);if(!value){value=read(path);cache.set(path,value);}return value;};
  for(const page of pages){
@@ -28,7 +28,12 @@ export async function publicationBindingDiagnostics(pages:{pageId:string;layout:
     const params=new URLSearchParams();if(effectiveSchema)params.set('schema',effectiveSchema);
     const catalog=await get(base+params);
     if(!Array.isArray(catalog.fields))throw Error('schema');
-    const fields=new Set(catalog.fields.map((field:any)=>field.path));
+    let fields=new Set(catalog.fields.map((field:any)=>field.path));
+    const role=configuration?.directoryViewProjection&&directoryViewRole(configuration,binding);
+    if(role&&configuration){
+      const mapping=directorySources(configuration)[role].fieldMapping;
+      fields=new Set(Object.entries(mapping).filter(([alias,column])=>fields.has(column)&&!['body','gallery','sourceOrigin','contentRole'].includes(alias)).map(([alias])=>alias));
+    }
     const own={id:node.id,type:'Text',props:node.props};
     const used=new Set([...templateRecordFields([own,...node.children??[]]),...binding.columnOrder??[],...binding.searchColumns??[],...Object.values(binding.fieldMapping??{}),...(binding.sorting.column?[binding.sorting.column]:[])]);
     for(const field of used){

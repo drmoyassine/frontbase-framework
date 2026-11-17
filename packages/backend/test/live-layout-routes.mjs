@@ -4,6 +4,8 @@ import {emptyDirectoryConfiguration} from '@frontbase/edge-core/directory/config
 import {migrateUp} from '../dist/db/migrations.js';
 import {createCompatApp} from '../dist/compat/app.js';
 import {LiveLayoutPublicationStore} from '../dist/compat/live-layout-publication.js';
+import {savedViewUsage} from '../dist/compat/view-usage.js';
+import {protectPublishedLiveSource,publishedLiveReadAllowed} from '../dist/compat/published-live-access.js';
 import {PagesStore} from '../dist/compat/pages-store.js';
 import {SiteConfigurationStore} from '../dist/compat/site-configuration-store.js';
 const db=sqliteRunner(':memory:');await migrateUp(db);
@@ -46,5 +48,32 @@ try{
  const workspace=await app.request('/api/project/translation-batches/homepage/workspace/');assert.equal((await workspace.json()).mode,'live');
  const history=await app.request('/api/project/site-configuration/publication/read/',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
  assert.equal(history.status,422,'historical read keeps its existing validation instead of being retired');
+ const binding={componentId:'explore',dataSourceId:'source',viewId:'institutions',tableName:'rows',pagination:{enabled:true,pageSize:12,page:0},sorting:{enabled:false},filtering:{searchEnabled:false,filters:{}},columnOverrides:{}};
+ const explore={root:{siteConfiguration:{version:1,role:'directory'}},content:[{id:'explore',type:'Repeater',props:{binding},versions:[{id:'programs',name:'Programs',when:'url.type == "program"',overrides:{props:{binding:{...binding,viewId:'programs'}}}}]}]};
+ const blog={root:{siteConfiguration:{version:1,role:'article-index'}},content:[{id:'articles',type:'Repeater',props:{directoryQuery:{version:1,queryId:'directory.article.list',params:{}}}}]};
+ const detail=(role)=>({root:{siteConfiguration:{version:1,role}},content:[]});
+ const entries=[['directory','Explore',explore],['article-index','Blog',blog],['institution','Institution detail',detail('institution')],['program','Program detail',detail('program')],['article','Blog article',detail('article')]];
+ const templates=await Promise.all(entries.map(async ([role,title,layout])=>{
+    const saved=await pages.create({name:title,slug:role,layout_data:layout},crypto.randomUUID(),now);
+    return {role,title,layout,pageId:saved.id,description:''};
+ }));
+ const usageConfig={...config,detailViews:{institution:'institutions',program:'programs',article:'articles'},directoryViewProjection:{logoReplacements:[]}};
+ await new SiteConfigurationStore(db,owner).save(usageConfig,1,now);
+ const activeVersion=await liveStore.active();
+ const usageHash=await liveStore.prepare({schemaVersion:3,runtimeVersion:'live-layout-v1',configuration:usageConfig,templates,staticPages:[],locales:['en']},now);
+ await liveStore.publish(usageHash,activeVersion.pointer,now);
+ const usage=await savedViewUsage(db,owner);
+ assert.deepEqual(usage.institutions.map(({name,version,state})=>[name,version,state]),[
+    ['Explore','Default','Published'],['Institution detail','Detail source','Published'],['Program detail','Institution relationship','Published'],
+ ]);
+ assert.deepEqual(usage.programs.map(({name,version,state})=>[name,version,state]),[
+    ['Explore','Programs','Published'],['Program detail','Detail source','Published'],
+ ]);
+ assert.deepEqual(usage.articles.map(({name,version,state})=>[name,version,state]),[
+    ['Blog','Record list','Published'],['Blog article','Detail source','Published'],
+ ]);
+ assert.deepEqual(Object.keys(await savedViewUsage(db,'foreign')),[]);
+ await protectPublishedLiveSource(db,owner,'source',now);
+ assert.equal(await publishedLiveReadAllowed(db,owner,'source','institutions',{table_name:'rows',columns:'*',joins:[]}),false);
  console.log('live layout routes: admin/tenant boundary, bounded requests, no implicit publish, strict contract and element diagnostics PASS');
 }finally{await db.close?.();}

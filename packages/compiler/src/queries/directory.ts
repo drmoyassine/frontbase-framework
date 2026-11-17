@@ -59,6 +59,7 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
     const {configuration:c,sources}=compiled??requireDirectorySourceConfiguration(input);
     const quote = (name: string) => { if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) throw new Error('invalid_mapping'); return `"${name}"`; };
     const city = sources.city, institution = sources.institution;
+    const logos = c.directoryViewProjection && new Map(c.directoryViewProjection.logoReplacements.map(rule=>[rule.from,rule.to]));
     // Cache only validated compiler definitions. Runners, credentials, principals and
     // rows are injected per call and are never retained in this plan cache.
     const planKey=JSON.stringify([owner,dialect]);
@@ -113,7 +114,11 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
                 if (mode === 'detail' && rows.length > 1) throw new Error('directory_path_ambiguous');
                 // Enforce a narrow bounded projection even if a driver returns extra columns.
                 return rows.slice(0, mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1).map(row => Object.fromEntries(selected.map(([key]) => {
-                    const v = row[key];
+                    let v = row[key];
+                    if(logos&&typeof v==='string'&&(key==='logo'||key==='cover')){
+                        v=v.trim()||null;
+                        if(key==='logo'&&typeof v==='string')v=logos.get(v)??v;
+                    }
                     if ((role === 'article' || role === 'page') && key === 'body') return [key, parseEditorialBody(v)];
                     return [key, key === 'originalPath' ? directoryOriginalPath(v, c.site.origin) : typeof v === 'string' ? v.slice(0, key === 'body' ? 60000 : key === 'gallery' ? 12000 : key === 'summary' ? 1000 : 2048) : typeof v === 'number' && Number.isFinite(v) ? v : null];
                 })));

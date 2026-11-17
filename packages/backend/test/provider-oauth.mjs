@@ -18,7 +18,7 @@ let tokenBody;
 let revokeStatus=204;const revokeCalls=[];
 const transport=async(url,init)=>{
  assert.equal(init.redirect,'manual');assert.ok(init.signal);
- if(String(url).endsWith('/token')||String(url).endsWith('/access_token')){calls++;tokenBody=new URLSearchParams(init.body);if(failProvider)return Response.json({access_token:'DO-NOT-LEAK',error:'private-provider-error'},{status:403});return Response.json({access_token:'synthetic-access-token',refresh_token:'synthetic-refresh-token',token_type:'bearer',expires_in:3600,scope:'account:read',team_id:'team_example'});}
+ if(String(url).endsWith('/token')||String(url).endsWith('/access_token')){calls++;tokenBody=new URLSearchParams(init.body);tokenBody.authorization=new Headers(init.headers).get('authorization');if(failProvider)return Response.json({access_token:'DO-NOT-LEAK',error:'private-provider-error'},{status:403});return Response.json({access_token:'synthetic-access-token',refresh_token:'synthetic-refresh-token',token_type:'bearer',expires_in:3600,scope:'account:read',team_id:'team_example'});}
  if(String(url)==='https://api.supabase.com/v1/oauth/revoke'){revokeCalls.push(JSON.parse(String(init.body)));return new Response(null,{status:revokeStatus});}
  assert.equal(init.headers.authorization,'Bearer synthetic-access-token');
  if(String(url).includes('cloudflare.com'))return Response.json({success:true,result:[{id:'a'.repeat(32),name:'Test CF account'}]});
@@ -98,7 +98,7 @@ await accounts.deleteEdgeResource(imported[0].id);await importProviderOAuth(db,c
 await boot.store.save(actor,{provider:'supabase',accessToken:'stale-access',refreshToken:'stale-refresh',expiresAt:time-1,scopes:['projects.read'],accounts:[{id:'testprojectref',name:'Test Supabase project'}]});
 await assert.rejects(boot.store.save(actor,{provider:'supabase',accessToken:'stale-access',scopes:[],accounts:[{id:'testprojectref',name:'Test Supabase project'}]}),/oauth_duplicate_connection/);
 let refreshed=await boot.refresh({supabase:{...clients.supabase,clientSecret:'sb-private'}},{fetch:transport,now:()=>time});
-assert.equal(tokenBody.get('grant_type'),'refresh_token');assert.equal(tokenBody.get('refresh_token'),'stale-refresh');assert.equal(tokenBody.get('client_id'),'sb-public');assert.equal(tokenBody.get('client_secret'),'sb-private');assert.equal(tokenBody.get('redirect_uri'),clients.supabase.redirectUri);
+assert.equal(tokenBody.get('grant_type'),'refresh_token');assert.equal(tokenBody.get('refresh_token'),'stale-refresh');assert.equal(tokenBody.get('client_id'),null);assert.equal(tokenBody.get('client_secret'),null);assert.equal(tokenBody.authorization,'Basic '+btoa('sb-public:sb-private'));assert.equal(tokenBody.get('redirect_uri'),clients.supabase.redirectUri);
 const supaGrant=refreshed.find(g=>g.provider==='supabase');assert.ok(supaGrant,'refreshed supabase grant returned');
 assert.equal(supaGrant.accessToken,'synthetic-access-token');assert.equal(supaGrant.refreshToken,'synthetic-refresh-token');assert.equal(supaGrant.expiresAt,time+3600000);
 assert.ok(refreshed.some(g=>g.accessToken==='persisted-bootstrap-token'),'unexpired grant passes through');
@@ -107,7 +107,7 @@ assert.equal((await boot.store.connections(actor)).find(c=>c.provider==='supabas
 assert.ok(!JSON.stringify([...map]).includes('stale-refresh'));
 // Direct protocol-level refresh call (the module under mutation), separate from the vault integration above.
 await refreshOAuthAuthorization({provider:'supabase',clientId:'sb-public',redirectUri:clients.supabase.redirectUri,scopes:[],clientSecret:'sb-private'},{provider:'supabase',accessToken:'x',refreshToken:'direct-refresh',scopes:[],accounts:[]},{fetch:transport,now:()=>time});
-assert.equal(tokenBody.get('client_secret'),'sb-private');assert.equal(tokenBody.get('grant_type'),'refresh_token');assert.equal(tokenBody.get('refresh_token'),'direct-refresh');assert.equal(tokenBody.get('client_id'),'sb-public');
+assert.equal(tokenBody.get('client_secret'),null);assert.equal(tokenBody.get('grant_type'),'refresh_token');assert.equal(tokenBody.get('refresh_token'),'direct-refresh');assert.equal(tokenBody.get('client_id'),null);assert.equal(tokenBody.authorization,'Basic '+btoa('sb-public:sb-private'));
 await assert.rejects(refreshOAuthAuthorization({provider:'supabase',clientId:'sb-public',redirectUri:clients.supabase.redirectUri,scopes:[],clientSecret:'sb-private'},{provider:'supabase',accessToken:'x',refreshToken:'r',scopes:[],accounts:[]},{fetch:async()=>Response.json({access_token:'macro-token',token_type:'macro',expires_in:100}),now:()=>time}),/oauth_refresh_refused/);
 // A provider that answers without a new refresh token keeps the stored one (non-rotating providers).
 refreshed=await boot.refresh({supabase:clients.supabase},{fetch:async()=>Response.json({access_token:'kept-token',token_type:'bearer',expires_in:3600}),now:()=>time});
@@ -117,15 +117,15 @@ assert.ok(!refreshed.some(g=>g.provider==='supabase'),'unusable grant omitted');
 assert.ok(!JSON.stringify(refreshed).includes('DO-NOT-LEAK'));
 assert.equal((await boot.store.connections(actor)).find(c=>c.provider==='supabase').reconnectRequired,true);
 failProvider=false;
-// Apply-time grant resolution: the supabase binding consumes the actor's stored grant — refreshed
+// Apply-time grant resolution: the supabase binding consumes the actor's stored grant â€” refreshed
 // before use, refused by name when unusable, never via a browser-supplied oauth/ override.
 const supaBinding={bindings:{state:{adapterId:'supabase-postgres',mode:'create',config:{projectRef:'testprojectref',schema:'frontbase_edge_apply'},secretRefs:{token:'oauth/supabase/token'}}}};
 let applyKey;for(const [key,value] of [...map]){if(!key.startsWith('connection:'))continue;const record=JSON.parse(await cipher.decrypt(value));if(record.authorization.provider==='supabase')applyKey=key;}
 assert.ok(applyKey,'supabase vault record present');
 const expireApply=async accessToken=>{const raw=map.get(applyKey),record=JSON.parse(await cipher.decrypt(raw));map.set(applyKey,await cipher.encrypt(JSON.stringify({...record,authorization:{...record.authorization,accessToken,expiresAt:time+1000}})));};
 await expireApply('expiring-apply-token');
-let applyRefreshBody;const applyGrants=await boot.refresh({supabase:{...clients.supabase,clientSecret:'sb-private'}},{fetch:async(url,init)=>{assert.equal(String(url),'https://api.supabase.com/v1/oauth/token');applyRefreshBody=new URLSearchParams(init.body);return Response.json({access_token:'apply-refreshed-token',refresh_token:'apply-rotated-refresh',token_type:'bearer',expires_in:3600});},now:()=>time});
-assert.equal(applyRefreshBody.get('grant_type'),'refresh_token');assert.equal(applyRefreshBody.get('refresh_token'),'synthetic-refresh-token');assert.equal(applyRefreshBody.get('client_id'),'sb-public');
+let applyRefreshBody;const applyGrants=await boot.refresh({supabase:{...clients.supabase,clientSecret:'sb-private'}},{fetch:async(url,init)=>{assert.equal(String(url),'https://api.supabase.com/v1/oauth/token');assert.equal(new Headers(init.headers).get('authorization'),'Basic '+btoa('sb-public:sb-private'));applyRefreshBody=new URLSearchParams(init.body);return Response.json({access_token:'apply-refreshed-token',refresh_token:'apply-rotated-refresh',token_type:'bearer',expires_in:3600});},now:()=>time});
+assert.equal(applyRefreshBody.get('grant_type'),'refresh_token');assert.equal(applyRefreshBody.get('refresh_token'),'synthetic-refresh-token');assert.equal(applyRefreshBody.get('client_id'),null);
 assert.equal(applyGrants.find(g=>g.provider==='supabase').accessToken,'apply-refreshed-token');
 assert.equal(resolveProviderOAuthCredentials(supaBinding,{},applyGrants,time)['oauth/supabase/token'],'apply-refreshed-token');
 assert.ok(!JSON.stringify([...map]).includes('expiring-apply-token')&&!JSON.stringify([...map]).includes('apply-refreshed-token'),'rotated grant exists only as ciphertext');

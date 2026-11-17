@@ -80,7 +80,7 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
             const elementIssues=await publicationBindingDiagnostics(authoredPages,async path=>{
                 const headers=new Headers();for(const name of ['cookie','authorization']){const value=c.req.header(name);if(value)headers.set(name,value);}
                 const response=await app.fetch(new Request(new URL(path,c.req.url),{headers}));if(!response.ok)throw Error('binding_resource_unavailable');return response.json();
-            });
+            },draft.configuration);
             if(elementIssues.length)return c.json({detail:'Resolve the listed element bindings before publishing.',code:'publication_elements_incomplete',elementIssues},422);
             const layout=liveLayoutPublicationSchema.parse({schemaVersion:3,runtimeVersion:'live-layout-v1',configuration:draft.configuration,templates,staticPages,locales:parsed.data.locales});
             const id=await store.prepare(layout,now());return c.json({hash:id,mode:'live',pageCount:templates.length+staticPages.length});

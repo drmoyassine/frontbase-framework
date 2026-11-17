@@ -1,7 +1,7 @@
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {QueryRegistry} from '@frontbase/compiler';
 import type {PageLayoutData,PageEntry,EngineOptions} from '@frontbase/edge-core';
-import {directorySources,compileDirectoryProjection,restorePublishedDirectoryProjection,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectDirectoryBrowsing,type PublishedDirectoryProjectionPlan} from '@frontbase/edge-core/directory/configuration';
+import {directorySources,directoryViewRole,compileDirectoryProjection,restorePublishedDirectoryProjection,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectDirectoryBrowsing,type PublishedDirectoryProjectionPlan} from '@frontbase/edge-core/directory/configuration';
 import {publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import {localeDirection} from '@frontbase/edge-core/localization';
 import {projectPublicationListRows,type PublishedLiveQuery,type LiveListRequest} from './publication-list-source.js';
@@ -83,8 +83,10 @@ export async function resolveLiveLayoutPage(
     })]);
     let projected = plan.project(records, { locale, inactive, liveDetailRecords: true });
     const sourceQuery:PublishedLiveQuery=async(scopedOwner,binding,query)=>{
-        if(scopedOwner!==owner||binding.dataSourceId!=='frontbase:publication')throw Error('live_source_refused');
-        const collection=({institutions:'institution',programs:'program',articles:'article'} as Record<string,string>)[binding.tableName];
+        if(scopedOwner!==owner)throw Error('live_source_refused');
+        const collection=binding.dataSourceId==='frontbase:publication'
+            ? ({institutions:'institution',programs:'program',articles:'article'} as Record<string,string>)[binding.tableName]
+            : c.directoryViewProjection&&directoryViewRole(c,binding as any);
         if(!collection)throw Error('live_source_refused');
         // Legacy source markers are resolved against the live configured source, never their hash.
         const filters=query.filters??[];
@@ -98,15 +100,13 @@ export async function resolveLiveLayoutPage(
         const [rows,count]=await Promise.all([read('directory.'+collection+'.list',params),read('directory.'+collection+'.count',params)]);
         return {rows:rows.slice(0,size),total:Number(count[0]!.total)};
     };
-    projected=await projectPublicationListRows(projected,db,owner,request,user,reader.liveQuery,undefined,context,{sourceQuery,list,directoryListing:listing==='directory',translationCollection:binding=>{
-        if(!c.detailViews||binding.dataSourceId!==c.datasourceId)return undefined;
-        const mappings=directorySources(c);
-        const collections={institution:'institutions',program:'programs',article:'articles'} as const;
-        for(const role of ['institution','program','article'] as const)
-            if(c.detailViews?.[role]===binding.viewId&&mappings[role].tableName===binding.tableName
-                &&mappings[role].fieldMapping.id==='id')return collections[role];
-        return undefined;
-    }});
+    projected=await projectPublicationListRows(projected,db,owner,request,user,reader.liveQuery,undefined,context,{sourceQuery,list,directoryListing:listing==='directory',
+        useDirectoryProjection:binding=>!!c.directoryViewProjection&&!!directoryViewRole(c,binding as any),
+        translationCollection:binding=>{
+            const role=directoryViewRole(c,binding as any);
+            if(!role||!c.directoryViewProjection&&directorySources(c)[role].fieldMapping.id!=='id')return undefined;
+            return {institution:'institutions',program:'programs',article:'articles'}[role];
+        }});
     if(listing && countRows){
         const total=Number(countRows[0]!.total);
         projected=projectDirectoryBrowsing(projected,[{path,locale,collection:listing==='directory'?type as 'institution'|'program':null,q:search,page,sort:sort as 'title-asc'|'title-desc',match:match as 'contains'|'startsWith'|'equals',pageSize:limit,total,hasNext:offset+limit<total&&offset+limit<=19999,searchEnabled:c.browsing.search}]);

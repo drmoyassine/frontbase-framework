@@ -36,6 +36,9 @@ export const directoryFieldNames = ['id', 'title', 'originalPath', 'summary', 'b
 export const directoryEditorialFields = ['contentRole', 'sourceOrigin', 'byline', 'publishedAt', 'coverAlt'] as const;
 const fields = z.object(Object.fromEntries(directoryFieldNames.map(k => [k, identifier])) as Record<typeof directoryFieldNames[number], typeof identifier>)
     .extend({ coverAlt: identifier.default(''), contentRole: identifier.default(''), sourceOrigin: identifier.default(''), byline: identifier.default(''), publishedAt: identifier.default('') }).strict();
+const assetReplacementUrl = z.string().max(2048).refine(value => {
+    try { const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password; } catch { return false; }
+});
 const collection = z.object({
     table: identifier,
     fields,
@@ -51,6 +54,9 @@ export const directoryConfigurationSchema = z.object({
         institution: z.string().min(1).max(128).optional(),
         program: z.string().min(1).max(128).optional(),
         article: z.string().min(1).max(128).optional(),
+    }).strict().optional(),
+    directoryViewProjection: z.object({
+        logoReplacements:z.array(z.object({from:assetReplacementUrl,to:assetReplacementUrl}).strict()).max(20).default([]),
     }).strict().optional(),
     browsing: z.object({ defaultCollection: z.enum(directoryRoles), pageSize: z.union([z.literal(12), z.literal(24), z.literal(48)]),
         search: z.boolean(), cityFilter: z.boolean(), degreeFilter: z.boolean(), intakeFilter: z.boolean(), sort: z.enum(['name', 'latest']) }).strict(),
@@ -198,4 +204,4 @@ export { editorialCoverUrlSchema, editorialEditSchema, editorialReadRequestSchem
 
 export {templateRecordFields,bindingWithTemplateFields} from './live-list.js';
 
-export {sourceBindingsSchema,sourceBindings,directorySource,directorySources,publicationSource,sourceBindingsMatch,storedSourceConfigurationSchema,encodeSourceConfiguration,readSourceConfiguration,type SourceBindings} from './source-contract.js';
+export {sourceBindingsSchema,sourceBindings,directorySource,directorySources,directoryViewRole,publicationSource,sourceBindingsMatch,storedSourceConfigurationSchema,encodeSourceConfiguration,readSourceConfiguration,type SourceBindings} from './source-contract.js';
