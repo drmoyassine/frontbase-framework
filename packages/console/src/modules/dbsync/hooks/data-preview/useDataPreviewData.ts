@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { STALE } from '@/lib/queryCache';
-import { datasourcesApi } from '../../api';
+import { api, datasourcesApi } from '../../api';
 
 interface UseDataPreviewDataProps {
+    savedView?: {id:string;updated_at:string;target_table:string;source_schema?:string|null};
     sourceSchema?:string;
     isOpen: boolean;
     datasourceId?: number | string;
@@ -14,6 +15,7 @@ interface UseDataPreviewDataProps {
 }
 
 export const useDataPreviewData = ({
+    savedView,
     sourceSchema,
     isOpen,
     datasourceId,
@@ -41,7 +43,8 @@ export const useDataPreviewData = ({
     });
 
     // Infinite query for paginated table data
-    const PAGE_SIZE = 50;
+    const savedResults=savedView&&savedView.target_table===selectedTable&&(savedView.source_schema??undefined)===sourceSchema?savedView:undefined;
+    const PAGE_SIZE = savedResults?25:50;
     const {
         data: infiniteData,
         isLoading,
@@ -52,8 +55,12 @@ export const useDataPreviewData = ({
         isFetching: isFetchingData,
         refetch: refetchData
     } = useInfiniteQuery({
-        queryKey: ['tableData', datasourceId, sourceSchema, selectedTable, appliedFilters],
+        queryKey: ['tableData', datasourceId, sourceSchema, selectedTable, appliedFilters, savedResults?.id,savedResults?.updated_at],
         queryFn: async ({ pageParam = 0 }) => {
+            if(savedResults){
+                const {data}=await api.post<{rows:Record<string,unknown>[];total:number;pageSize:number}>(`/views/${encodeURIComponent(savedResults.id)}/preview/`,{page:Math.floor(pageParam/PAGE_SIZE)+1});
+                return {records:data.rows,total:data.total,offset:pageParam,limit:PAGE_SIZE,has_more:pageParam+data.rows.length<data.total};
+            }
             const response = await datasourcesApi.getTablesData(datasourceId!, selectedTable!, PAGE_SIZE, pageParam, appliedFilters, sourceSchema);
             return response.data;
         },

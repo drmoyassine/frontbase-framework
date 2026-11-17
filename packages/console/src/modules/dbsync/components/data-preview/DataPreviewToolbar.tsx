@@ -3,6 +3,7 @@ import { Search, Plus, Trash2, Filter, ChevronDown, RefreshCw, X } from 'lucide-
 import { ColumnsDropdown } from './ColumnsDropdown';
 
 interface DataPreviewToolbarProps {
+    filterEditor?: React.ReactNode;
     filters: { field: string; operator: string; value: string }[];
     updateFilter: (index: number, f_key: 'field' | 'operator' | 'value', value: string) => void;
     removeFilter: (index: number) => void;
@@ -33,6 +34,7 @@ interface DataPreviewToolbarProps {
 }
 
 export const DataPreviewToolbar = ({
+    filterEditor,
     filters,
     updateFilter,
     removeFilter,
@@ -65,7 +67,7 @@ export const DataPreviewToolbar = ({
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-gray-50/50 dark:bg-gray-900/10 border-b border-gray-100 dark:border-gray-700">
             {/* Left: Filters */}
             <div className="flex flex-wrap items-center gap-2">
-                {filters.map((filter, index) => (
+                {filterEditor ?? <>{filters.map((filter, index) => (
                     <div key={index} className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded border border-gray-200 shadow-sm animate-in fade-in slide-in-from-left-2">
                         <select
                             value={filter.field}
@@ -122,7 +124,7 @@ export const DataPreviewToolbar = ({
                         <Filter size={12} />
                         Apply Filters
                     </button>
-                )}
+                )}</>}
             </div>
 
             {/* Right: Controls */}

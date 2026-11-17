@@ -33,3 +33,9 @@ Before the change, the Supabase Management API rejected the saved authorization 
 Connected Accounts discovery, connection testing, resource management and project-key discovery renew an expired Supabase OAuth grant on demand. Installed hosts with local OAuth client credentials use Supabase directly. Hosts connected through the Frontbase relay use the same enrolled receiver proof. The relay exchanges the refresh token server-side. The app writes the rotated grant back to the same encrypted account while retaining its project read credentials. A durable account claim serializes refresh across Workers.
 
 Fixture verification exercises the actual installed API and relay with an expired grant, concurrent requests, rotated storage and a fresh app instance. The fixture replaces Supabase HTTP transport. Live production relay rollout and a real-provider post-expiry observation are separate from that verification.
+
+## Shared Data Inspector correction
+
+Saved View editing now uses the same Data Inspector modal, header, table sidebar, column controls and record display as datasource browsing and new-view creation. Nested selection rules remain available in the filter control. View settings and record translation review are collapsible. Loaded saved views use their owned preview endpoint and bypass temporary browsing sessions, preserving their filters and default ordering. Saves retain the loaded revision for conflict detection and preserve pinned columns, field mappings, linked views and webhooks.
+
+The Data Studio suite passes 46 tests, including shared new-view creation, saved-view opening, nested filter editing, preserved metadata and stale-write refusal. Workspace check and build pass. Production rollout and browser verification of this UI remain pending.

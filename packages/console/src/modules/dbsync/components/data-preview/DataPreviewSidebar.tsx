@@ -64,7 +64,6 @@ export const DataPreviewSidebar = ({
                         key={t}
                         onClick={() => {
                             setSelectedTable(t);
-                            setTimeout(handleManualUpdate, 0);
                         }}
                         className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-all ${selectedTable === t
                             ? 'bg-primary-50 text-primary-700 shadow-sm border border-primary-100'

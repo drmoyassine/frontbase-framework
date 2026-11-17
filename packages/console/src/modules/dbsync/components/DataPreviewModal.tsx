@@ -1,6 +1,8 @@
 import {DatasourceSchemaSelector,useDatasourceSchema} from './DatasourceSchemaSelector';
 import {SavedViewInspectorLoader} from './SavedViewInspector';
-import React, { useEffect, useState } from 'react';
+import {SavedFilterEditor} from './SavedFilterEditor';
+import {RecordLocaleReview} from './RecordLocaleReview';
+import React, { useRef, useState } from 'react';
 import { useDataPreview } from '../hooks/useDataPreview';
 import { DataPreviewModalProps } from '../types/data-preview';
 import { DataPreviewHeader } from './data-preview/DataPreviewHeader';
@@ -11,7 +13,8 @@ import { TableSelectionView } from './data-preview/TableSelectionView';
 import { RelationshipsView } from './data-preview/RelationshipsView';
 import { Table, GitBranch } from 'lucide-react';
 
-const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
+const DataInspector = (props: DataPreviewModalProps) => {
+    const container=useRef<HTMLDivElement>(null);
     const { isOpen, onClose, viewId } = props;
     const {
         state,
@@ -46,8 +49,8 @@ const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div role="dialog" aria-modal="true" aria-label="Data Inspector" className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
+            <div ref={container} className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
                 <DataPreviewHeader
                     currentViewId={currentViewId}
                     viewName={viewName}
@@ -61,12 +64,15 @@ const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
                     isSaving={isSaving}
                     copySuccess={copySuccess}
                     copyToClipboard={actions.copyToClipboard}
-                    handleSaveView={actions.handleSaveView}
+                    handleSaveView={()=>{const invalid=container.current?.querySelector<HTMLInputElement|HTMLTextAreaElement>(':invalid');if(invalid){invalid.reportValidity();invalid.focus();return;}void actions.handleSaveView();}}
                     setCurrentStep={actions.setCurrentStep}
                     setActiveTab={actions.setActiveTab}
-                    onClose={onClose}
+                    onClose={()=>{if(!state.hasViewEdits||window.confirm('Discard unsaved view edits?'))onClose();}}
                 />
 
+                {state.saveError&&<p role="alert" className="px-4 py-2 text-sm text-destructive">{state.saveError}</p>}
+                {saveSuccess&&<p role="status" className="px-4 py-2 text-sm">View saved.</p>}
+                {props.viewTools}
                 {props.schemaSelector}
                 <div className="flex-1 overflow-hidden flex flex-col">
                     {currentStep === 'tables' ? (
@@ -140,6 +146,7 @@ const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
                             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                                 {activeTab === 'table' && (
                                     <DataPreviewToolbar
+                                        filterEditor={props.savedView?<details className="max-h-72 overflow-auto text-sm"><summary className="cursor-pointer">Filters ({state.savedSelection.length})</summary><div className="min-w-72 space-y-3 p-2"><p>Save View applies these filters to every component using this view.</p><SavedFilterEditor rules={state.savedSelection} fields={availableFields} onChange={actions.setSavedSelection}/></div></details>:undefined}
                                         filters={filters}
                                         updateFilter={actions.updateFilter}
                                         removeFilter={actions.removeFilter}
@@ -230,6 +237,31 @@ const LegacyDataPreviewModal = (props: DataPreviewModalProps) => {
                                     setShowDataSearchResults={actions.setShowDataSearchResults}
                                     onSaveView={actions.handleSaveView}
                                 />
+                                {props.savedView && activeTab === 'table' && (
+                                    <details className="border-t p-3 text-sm">
+                                        <summary>View settings and translations</summary>
+                                        <div className="max-h-64 overflow-auto space-y-3 pt-3">
+                                            <label className="block">Description
+                                                <textarea className="block w-full rounded border bg-background p-2" value={state.description} onChange={e=>actions.setDescription(e.target.value)}/>
+                                            </label>
+                                            <label className="block">Default sort
+                                                <select className="ml-2 rounded border bg-background p-2" value={state.defaultSort?.column??''} onChange={e=>actions.setDefaultSort(e.target.value?{column:e.target.value,direction:state.defaultSort?.direction??'asc'}:undefined)}>
+                                                    <option value="">No default</option>
+                                                    {availableFields.map(field=><option key={field}>{field}</option>)}
+                                                </select>
+                                            </label>
+                                            <label>Direction
+                                                <select aria-label="Default sort direction" className="ml-2 rounded border bg-background p-2" value={state.defaultSort?.direction??'asc'} onChange={e=>{
+                                                    if(state.defaultSort) actions.setDefaultSort({...state.defaultSort,direction:e.target.value as 'asc'|'desc'});
+                                                }}>
+                                                    <option value="asc">Ascending</option>
+                                                    <option value="desc">Descending</option>
+                                                </select>
+                                            </label>
+                                            {tableData&&<RecordLocaleReview view={props.savedView} rows={tableData.records}/>}
+                                        </div>
+                                    </details>
+                                )}
                             </div>
                         </div>
                     )}
@@ -244,9 +276,9 @@ function ScopedDataPreview(props:DataPreviewModalProps){
     if(!metadata.data)return <div role="dialog" aria-label="Data Inspector" className="fixed inset-0 z-50 bg-background p-6"><p>{metadata.error?'Datasource unavailable.':'Loading datasource…'}</p><button onClick={props.onClose}>Close</button></div>;
     const schema=metadata.data.supported?(selected??props.sourceSchema??metadata.data.defaultSchema):undefined;
     const changed=selected!==undefined&&selected!==(props.sourceSchema??metadata.data.defaultSchema);
-    return <LegacyDataPreviewModal {...props} key={JSON.stringify([props.datasourceId,schema])} sourceSchema={schema} readOnly={metadata.data.supported&&(metadata.data.native||schema!=='public'||metadata.data.defaultSchema!=='public')}
+    return <DataInspector {...props} key={JSON.stringify([props.datasourceId,schema])} sourceSchema={schema} readOnly={metadata.data.supported&&(metadata.data.native||schema!=='public'||metadata.data.defaultSchema!=='public')}
         {...changed?{table:'',initialFilters:[],initialViewName:'',initialVisibleColumns:[],initialColumnOrder:[],initialPinnedColumns:[],initialFieldMappings:{},initialLinkedViews:{},initialWebhooks:[]}: {}}
         schemaSelector={schema!==undefined?<DatasourceSchemaSelector datasourceId={props.datasourceId} value={schema} onChange={setSelected}/>:undefined}/>;
 }
-const DataPreviewModal=(props:DataPreviewModalProps)=>!props.isOpen?null:props.viewId?<SavedViewInspectorLoader id={props.viewId} datasourceName={props.datasourceName} onClose={props.onClose}/>:<ScopedDataPreview {...props}/>;
+const DataPreviewModal=(props:DataPreviewModalProps)=>!props.isOpen?null:props.viewId&&!props.savedView?<SavedViewInspectorLoader id={props.viewId} datasourceName={props.datasourceName} onClose={props.onClose}/>:<ScopedDataPreview {...props}/>;
 export default DataPreviewModal;
