@@ -51,11 +51,12 @@ export const useDataPreview = ({
     const [showSyncConfirm, setShowSyncConfirm] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [saveError,setSaveError]=useState('');
-    const [savedSelection,setSavedSelection]=useState<SavedFilter[]>(()=>savedViewFilters(savedView?.filters));
+    const sameSavedSource=savedView?.target_table===table&&(savedView?.source_schema??'public')===(sourceSchema??'public');
+    const [savedSelection,setSavedSelection]=useState<SavedFilter[]>(()=>savedViewFilters(sameSavedSource?savedView?.filters:[]));
     const [revision,setRevision]=useState(savedView?.updated_at);
     const [savedPreview,setSavedPreview]=useState(savedView);
     const [description,setDescription]=useState(savedView?.description??'');
-    const [defaultSort,setDefaultSort]=useState(savedView?.default_sort);
+    const [defaultSort,setDefaultSort]=useState(sameSavedSource?savedView?.default_sort:undefined);
     const [activeTab, setActiveTab] = useState<'table' | 'record' | 'linked' | 'api' | 'webhooks' | 'relationships'>('table');
     const [isRenamingView, setIsRenamingView] = useState(false);
     const [showDataSearchResults, setShowDataSearchResults] = useState(false);
@@ -403,7 +404,7 @@ export const useDataPreview = ({
             filterState.setFilters(nextFilters); filterState.setAppliedFilters(nextFilters);
             setFieldMappings(initialFieldMappings || {}); setLinkedViews(initialLinkedViews || {});
             initializeLayout({ pinnedColumns: (initialPinnedColumns as string[]) || [], columnOrder: (initialColumnOrder as string[]) || [], visibleColumns: initialVisibleColumns || [] });
-            if (viewId) { setCurrentViewId(viewId); setCurrentStep('records'); setIsSidebarCollapsed(!savedView); }
+            if (viewId) { setCurrentViewId(viewId); setCurrentStep(table?'records':'tables'); setIsSidebarCollapsed(!savedView); }
             else if (table) { setCurrentViewId(undefined); setCurrentStep('records'); setIsSidebarCollapsed(false); }
             else { setCurrentViewId(undefined); setCurrentStep('tables'); setIsSidebarCollapsed(false); }
             setIsSessionLoading(false); lastProcessedConfig.current = currentPropsKey;
@@ -470,7 +471,14 @@ export const useDataPreview = ({
             setIsSaving, setIsColumnsDropdownOpen, setColumnSearch, setShowSaveForm, setShowSyncConfirm, setSaveSuccess,
             setActiveTab, setGlobalSearch: filterState.setGlobalSearch, setDataSearchQuery: filterState.setDataSearchQuery,
             setShowDataSearchResults, setIsRenamingView, setGlobalSearchStatus: filterState.setGlobalSearchStatus,
-            setGlobalResults: filterState.setGlobalResults, setIsSessionLoading, setCopySuccess, setSelectedTable,
+            setGlobalResults: filterState.setGlobalResults, setIsSessionLoading, setCopySuccess,
+            setSelectedTable:(next:string)=>{
+                if(savedView&&next!==selectedTable){
+                    setSavedSelection([]);setDefaultSort(undefined);setFieldMappings({});setLinkedViews({});
+                    initializeLayout({visibleColumns:[],columnOrder:[],pinnedColumns:[]});
+                }
+                setSelectedTable(next);
+            },
             setTableSearch, setEditingRecord: readOnly ? () => {} : setEditingRecord, setFieldMappings, setLinkedViews, setWebhooks, setCurrentStep,
             setIsSidebarCollapsed, setIsWebhookModalOpen, setEditingWebhookIndex, setWebhookForm,
             setCurrentMatchIndex, setAllMatches, setColumnOrder, setVisibleColumns, togglePin, toggleVisibility,

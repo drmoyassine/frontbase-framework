@@ -70,3 +70,16 @@ it('creates a view through the same inspector and Save View header',async()=>{
  expect(mocks.create.mock.calls[0][1]).toMatchObject({name:'New view',target_table:'institutions'});
  expect(await screen.findByRole('status')).toHaveProperty('textContent','View saved.');
 });
+
+it('switching the table clears source-specific filters, mappings and ordering before saving',async()=>{
+ mocks.tables.mockResolvedValueOnce({data:['institutions','programs']});
+ mocks.rows.mockResolvedValue({data:{records:[],total:0,offset:0,limit:50,has_more:false}});
+ mocks.patch.mockResolvedValue({data:{...asset,target_table:'programs',filters:[],field_mappings:{},default_sort:null,updated_at:'revision-b'}});
+ wrapper(<SavedViewInspector view={asset} onClose={()=>{}}/>);
+ await screen.findByText('Campus');
+ fireEvent.click(screen.getByRole('button',{name:'programs'}));
+ fireEvent.click(screen.getByRole('button',{name:'Save View'}));
+ fireEvent.click(screen.getByRole('button',{name:'Confirm Save'}));
+ await waitFor(()=>expect(mocks.patch).toHaveBeenCalled());
+ expect(mocks.patch.mock.calls[0][1]).toMatchObject({target_table:'programs',filters:[],field_mappings:{},default_sort:null,expected_updated_at:'revision-a'});
+});

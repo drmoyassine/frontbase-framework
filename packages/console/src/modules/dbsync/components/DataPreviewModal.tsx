@@ -277,7 +277,7 @@ function ScopedDataPreview(props:DataPreviewModalProps){
     const schema=metadata.data.supported?(selected??props.sourceSchema??metadata.data.defaultSchema):undefined;
     const changed=selected!==undefined&&selected!==(props.sourceSchema??metadata.data.defaultSchema);
     return <DataInspector {...props} key={JSON.stringify([props.datasourceId,schema])} sourceSchema={schema} readOnly={metadata.data.supported&&(metadata.data.native||schema!=='public'||metadata.data.defaultSchema!=='public')}
-        {...changed?{table:'',initialFilters:[],initialViewName:'',initialVisibleColumns:[],initialColumnOrder:[],initialPinnedColumns:[],initialFieldMappings:{},initialLinkedViews:{},initialWebhooks:[]}: {}}
+        {...changed?{table:'',initialFilters:[],initialViewName:props.savedView?.name??'',initialVisibleColumns:[],initialColumnOrder:[],initialPinnedColumns:[],initialFieldMappings:{},initialLinkedViews:{},initialWebhooks:[]}: {}}
         schemaSelector={schema!==undefined?<DatasourceSchemaSelector datasourceId={props.datasourceId} value={schema} onChange={setSelected}/>:undefined}/>;
 }
 const DataPreviewModal=(props:DataPreviewModalProps)=>!props.isOpen?null:props.viewId&&!props.savedView?<SavedViewInspectorLoader id={props.viewId} datasourceName={props.datasourceName} onClose={props.onClose}/>:<ScopedDataPreview {...props}/>;
