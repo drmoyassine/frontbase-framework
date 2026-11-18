@@ -44,4 +44,34 @@ await test('responsive menu copies share one staged field while independent equa
  dom.window.fetch=async path=>Response.json(String(path).includes('capability')?{enabled:true}:{fields,token:'x'});await dom.window.eval(FRONTEND_EDITOR_SCRIPT);
  const spans=dom.window.document.querySelectorAll('[data-fb-copy="a"]');assert.equal(spans.length,2);assert.equal(dom.window.document.querySelectorAll('#managed-menu-ambiguous [data-fb-copy]').length,0);spans[0].click();spans[0].textContent='Courses';[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='Done').click();assert.equal(spans[1].textContent,'Courses');assert.match(dom.window.document.querySelector('[role=status]').textContent,/1 unsaved/);dom.window.close();
 });
+
+await test('leaving edit mode persists through navigation and reopening fetches the current page inventory',async()=>{
+ const page=(path,preference,allowed=true)=>{
+  const dom=new JSDOM('<html lang="en"><body><h1 id="hero">Title</h1></body></html>',{url:'https://site.example'+path,runScripts:'outside-only'});
+  const w=dom.window,requests=[];
+  if(preference)w.localStorage.setItem('frontbase:frontend-edit',preference);
+  w.fetch=async path=>{requests.push(path);return Response.json(path.includes('capability')?{enabled:allowed}:{fields:[{id:'title',blockId:'hero',path:['text'],text:'Title',label:'Title'}]});};
+  return {w,requests};
+ };
+ const first=page('/',null);
+ await first.w.eval(FRONTEND_EDITOR_SCRIPT);
+ const toggle=first.w.document.querySelector('[role=switch]');assert.equal(toggle.getAttribute('aria-checked'),'true');
+ assert.equal(first.w.document.querySelector('[data-frontbase-editor] a').pathname,'/frontbase-admin/');
+ const edit=first.w.document.querySelector('[data-fb-copy]');edit.click();edit.textContent='Unsaved';
+ first.w.confirm=()=>false;toggle.click();assert.equal(toggle.getAttribute('aria-checked'),'true');assert.equal(edit.textContent,'Unsaved');
+ first.w.confirm=()=>true;toggle.click();
+ assert.equal(first.w.document.getElementById('hero').textContent,'Title');
+ assert.equal(toggle.getAttribute('aria-checked'),'false');assert.equal(first.w.document.querySelector('[data-fb-copy]'),null);
+ const second=page('/another/',first.w.localStorage.getItem('frontbase:frontend-edit'));
+ first.w.close();
+ await second.w.eval(FRONTEND_EDITOR_SCRIPT);
+ assert.equal(second.requests.length,1);
+ const nextToggle=second.w.document.querySelector('[role=switch]');assert.equal(nextToggle.getAttribute('aria-checked'),'false');
+ nextToggle.click();await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(nextToggle.getAttribute('aria-checked'),'true');
+ assert.equal(second.requests.length,2);assert.ok(second.requests[1].includes(encodeURIComponent('/another/')));
+ assert.ok(second.w.document.querySelector('[data-fb-copy]'));second.w.close();
+ const visitor=page('/',null,false);await visitor.w.eval(FRONTEND_EDITOR_SCRIPT);
+ assert.equal(visitor.w.document.querySelector('[data-frontbase-editor]'),null);visitor.w.close();
+});
 console.log(count+' frontend editing groups passed');
