@@ -1,6 +1,6 @@
 # Pages publication and toolbar correction
 
-Owner-approved implementation: items 1–4 only. Items 5–6 (row actions, labels, View and click behavior) remain a proposal requiring explicit approval.
+Items 1–4 are deployed on Study-in-USA. The owner subsequently approved items 5–6 and asked to remove the temporary rows shown during loading.
 
 ## Implemented scope
 
@@ -25,7 +25,7 @@ The existing `compat_pages.is_published` column is **not unused**: individual ta
 
 The current row Configure action, Settings template redirect and BindingReadiness diagnostic links still reference the retired `?setup=collections` location. Their replacement belongs to the row/settings navigation proposal below; do not silently implement items 5–6 under cleanup.
 
-## Proposed unified row actions — NOT IMPLEMENTED
+## Approved row actions
 
 There are six installed entries, comprising three ordinary/list pages and three detail templates. They should have the same visible action structure: **Edit · View · More**. Any permission restrictions continue to come from the existing authorization rules.
 
@@ -37,7 +37,7 @@ More would contain Page settings (including URLs), Records where applicable, and
 
 | Entry | Edit / row destination | View | Contextual action under More |
 | --- | --- | --- | --- |
-| Homepage | Existing visual editor | Published `/`, or its existing draft preview | Page settings, including its homepage URL/SEO |
+| Homepage | Existing visual editor | Published `/` | Page settings, including its homepage URL/SEO |
 | Explore | Existing visual editor, retaining Institutions/Programs Block Versions | Published `/explore/`, with the current version selector | Browse records → Institutions or Programs Saved View; page settings |
 | Blog | Existing visual editor | Published `/blog/` | Browse records → configured Articles Saved View; page settings |
 | Institution detail | Existing visual editor | Select an eligible institution, then open its existing public URL | Browse records → configured Institutions Saved View; template settings |
@@ -48,7 +48,7 @@ Content is currently inconsistent: when present it opens underlying datasource r
 
 Proposed click behavior: a page-name link and a non-interactive row-background click both open the existing editor. The name link supplies keyboard and open-in-new-tab behavior. Checkbox, menu, View, other links/buttons, text selection and drag/drop must not trigger navigation. Do not turn a row containing buttons into a second nested button or add duplicate keyboard stops. Draft-only entries should offer their existing preview rather than a non-existent public link. No implicit publication or record mutation follows from Edit, View or Browse records.
 
-Rename every visible Edit/Design action to **Edit** only after approval of this matrix. Existing row labels/buttons remain unchanged in the 1–4 implementation.
+Approval covers the shared **Edit** label and the same action layout for list and card views. Draft previews remain in the editor.
 
 ## Verification and delivery
 
@@ -60,4 +60,14 @@ Rename every visible Edit/Design action to **Edit** only after approval of this 
 - Hosted Pages inventory and signed-in browser both show six Published entries. The browser verified the single toolbar, peer creation actions, existing menu/dialog behavior and clear URL-audit coverage. Row actions remain unchanged for approval. `/health`, `/`, `/ar/`, `/explore/`, `/ar/explore/` remain HTTP 200 and byte-identical to the pre-task baseline; public HTML remains no-store.
 - Operator receipts and the final screenshot are in private `study-in-usa-ops/pages-toolbar-261118-r2`. No provider, source-record, folder or publication write was used for this verification. This is hosted Cloudflare evidence; no new Vercel deployment is claimed.
 
-Next approval: approve or amend the Edit / View / More matrix and row/name-link behavior. Implementation of items 5–6 remains blocked on that explicit approval, not on a technical dependency.
+## Row actions and loading follow-up
+
+The first screenshot showed a temporary inventory made from Builder pages. Its placeholder type, draft slug and status changed when the Pages API finished. The workspace now displays a loading state until the API returns real rows. A background refresh keeps the last inventory visible. A failed initial load gives a reload instruction.
+
+Page names link to Builder. Clicking the rest of a page row opens the same editor. Controls, links, text selection and drag interactions retain their own behavior. Edit, View and More appear in both display modes. View uses the published path and enabled languages. Reusable templates request a bounded set of live record addresses through the same scoped query used by the sitemap. More opens existing settings, configured Saved Views and the editorial draft editor where available. The matrix above illustrates Study-in-USA only. Page names, record tables and Saved View IDs come from configuration.
+
+Removed the fabricated inventory, the Pages link to the retired collections screen and the redundant URL dialog. Historical route settings and publication readers still serve existing installations. This change adds no database schema and leaves the migration/test naming convention in place for older documents.
+
+Local verification passed: workspace check and build, 23 Pages UI tests, the published-layout route suite and five inventory mutation checks.
+
+Study-in-USA runs Cloudflare Worker `0e8b832b-6bab-4f22-981b-0d75cf9e6ff1`. Rollback reference is `c93601e5-292a-47b1-b0b3-222c9fa10fa7`. Three signed-in visits showed a loading message with no rows before the six published entries appeared. All six Edit links and row clicks reached the expected editor, and checkboxes stayed on Pages. All six More menus opened and their settings destinations were verified. View provided six valid addresses, including one live record from each reusable template. All six returned HTTP 200 and no-store. All 15 bindings and sampled English and Arabic public response hashes matched the pre-deployment baseline.

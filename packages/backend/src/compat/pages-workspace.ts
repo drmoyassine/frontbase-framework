@@ -1,4 +1,5 @@
-import {directorySource,projectSharedDirectoryPreview} from '@frontbase/edge-core/directory/configuration';
+import {directorySource,liveViewBindings,projectSharedDirectoryPreview} from '@frontbase/edge-core/directory/configuration';
+import type {PageLayoutData} from '@frontbase/edge-core';
 import {LiveLayoutPublicationStore} from './live-layout-publication.js';
 import {templateRoute} from './template-route.js';
 import type { DbRunner } from '@frontbase/edge-infra';
@@ -13,6 +14,11 @@ export interface WorkspaceEntry {
     pageId?: string; role?: string; path?: string; paths?: string[]; serves?: number;
     publicationStatus: 'published' | 'changes-pending' | 'draft' | 'unknown';
     developmentOnly: boolean; source: 'saved' | 'derived';
+    liveRecords?: boolean;
+    publishedPath?: string;
+    locales?: string[];
+    sourceLocale?: string;
+    recordViews?: {id:string;name:string}[];
     contentAction?: { datasourceId: string; table: string; keyColumn?:string; recordKey?:{column:string;value:string}; recordId?: string; contentRole?: 'page' | 'article' };
 }
 
@@ -60,6 +66,17 @@ export async function pagesWorkspace(db: DbRunner, owner: string) {
         const collection = role === 'institution' ? 'institution' : role === 'program' ? 'program' : role === 'article' || role === 'article-index' || role === 'editorial' ? 'article' : undefined;
         const mapping = collection && configuration ? directorySource(configuration,collection) : undefined;
         const comparable=live&&configuration?projectSharedDirectoryPreview(layout,configuration):layout;
+        const views=new Map<string,string>();
+        try {
+            for(const binding of liveViewBindings(layout as PageLayoutData))views.set(binding.viewId,binding.viewName||binding.tableName);
+        } catch {
+            // Incomplete draft bindings remain editable in Builder.
+        }
+        const detailView=collection&&configuration?.detailViews?.[collection];
+        if(detailView)views.set(detailView,views.get(detailView)??mapping?.tableName??'Saved View');
+        const publishedPaths=captured&&'role' in captured?rolePaths[String(captured.role)]??[]:[];
+        const liveRecords=!!live&&!!captured&&publishedPaths.length===0&&live.layout.templates.some(template=>template.pageId===page.id);
+        const publishedPath=captured&&'originalPath' in captured?captured.originalPath:publishedPaths.length===1?publishedPaths[0]:undefined;
         const unchanged = captured && !!page.is_public && stableStringify(comparable) === stableStringify(captured.layout)
             && (page.title ?? page.name) === captured.title && (page.description ?? '') === captured.description
             && (!('originalPath' in captured) || captured.originalPath === (page.is_homepage ? '/' : page.slug.startsWith('/') ? page.slug : '/' + page.slug));
@@ -69,7 +86,11 @@ export async function pagesWorkspace(db: DbRunner, owner: string) {
                 ...(paths.length === 1 ? { path: paths[0] } : {}) } : { path: page.is_homepage ? '/' : page.slug.startsWith('/') ? page.slug : '/' + page.slug }),
             publicationStatus: captured ? unchanged && (!(role || layout.root?.directoryLanding) || !sharedChanged) ? 'published' : 'changes-pending' : page.is_published ? 'published' : 'draft',
             developmentOnly: !captured && /^(Editorial migration review|Shared settings proof)/i.test(page.name), source: 'saved',
-            ...(mapping?.tableName && configuration?.datasourceId ? { contentAction: { datasourceId: configuration.datasourceId, table: mapping.tableName, keyColumn:mapping.fieldMapping.id, ...(role === 'editorial' ? { contentRole: 'page' as const } : {}) } } : {}),
+            ...(liveRecords?{liveRecords}:{}),
+            ...(publishedPath?{publishedPath}:{}),
+            ...(live&&captured?{locales:live.layout.locales,sourceLocale:live.layout.configuration.site.locale}:{}),
+            ...(views.size?{recordViews:[...views].map(([id,name])=>({id,name}))}:{}),
+            ...(mapping?.tableName && configuration?.datasourceId ? { contentAction: { datasourceId: configuration.datasourceId, table: mapping.tableName, keyColumn:mapping.fieldMapping.id, ...(role === 'editorial' || role === 'article' ? { contentRole: role==='article'?'article' as const:'page' as const } : {}) } } : {}),
         });
     }
     // Ordinary captured pages are individually discoverable; article/program catalogs remain collection views.

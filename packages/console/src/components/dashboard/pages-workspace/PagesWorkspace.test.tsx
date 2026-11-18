@@ -15,6 +15,30 @@ const org={schemaVersion:1,revision:2,folders:[{id:'dir',name:'Directory',parent
 function mount(){return render(<MemoryRouter><PagesWorkspace scope="owner:1" pages={pages} search="" filterStatus="all" edit={vi.fn()} actions={()=>null}/></MemoryRouter>);}
 beforeEach(()=>{localStorage.clear();vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:{hash:'capture',generation:12},entries}:options?.method==='PUT'?{...org,revision:3,...JSON.parse(String(options.body))}:org),{status:200})));});
 describe('site pages workspace',()=>{
+  it('waits for authoritative rows and uses configured view links',async()=>{
+    let release!:(value:Response)=>void;
+    const pending=new Promise<Response>(resolve=>{release=resolve;});
+    vi.stubGlobal('fetch',vi.fn((url:string)=>url.includes('pages-workspace')?pending:Promise.resolve(new Response(JSON.stringify(org)))));
+    const edit=vi.fn();
+    render(<MemoryRouter><PagesWorkspace scope="owner:1" pages={pages} search="" filterStatus="all" edit={edit} actions={()=>null}/></MemoryRouter>);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading site structure');
+    expect(screen.queryByText('Homepage')).not.toBeInTheDocument();
+    release(new Response(JSON.stringify({schemaVersion:1,entries:[{
+      id:'custom',pageId:'custom',kind:'layout',name:'Speaker profile',publicationStatus:'published',paths:['/conference/olivia/'],
+      recordViews:[{id:'conference-speakers',name:'Approved speakers'}],source:'saved'
+    }]})));
+    expect(await screen.findByRole('link',{name:'Speaker profile'})).toHaveAttribute('href','/builder/custom');
+    expect(screen.getByRole('link',{name:'Edit'})).toHaveAttribute('href','/builder/custom');
+    fireEvent.click(screen.getByLabelText('Select Speaker profile'));
+    expect(edit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('heading',{name:'Speaker profile'}).closest('article')!);
+    expect(edit).toHaveBeenCalledWith('custom');
+    fireEvent.click(screen.getByRole('button',{name:'View',exact:true}));
+    expect(await screen.findByRole('link',{name:'/conference/olivia/'})).toHaveAttribute('href','/conference/olivia/');
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(screen.getByRole('button',{name:'Actions for Speaker profile'}));
+    expect(screen.getByRole('menuitem',{name:'Browse records · Approved speakers'})).toHaveAttribute('href','/data-studio/saved-views?view=conference-speakers');
+  });
   it('keeps bulk selection in Page tools without a second persistent action bar',async()=>{
     mount();await screen.findByText('Explore');
     expect(screen.queryByRole('button',{name:'Select all'})).not.toBeInTheDocument();
@@ -39,11 +63,12 @@ describe('site pages workspace',()=>{
     await userEvent.click(screen.getByRole('menuitem',{name:'Check page URLs'}));
     expect(await screen.findByRole('dialog')).toHaveTextContent('Page URL checks');
   });
-  it.each(['URLs', 'Configure Programs'])('opens %s for a reusable template before its first publication', async action => {
+  it('opens template settings before first publication', async () => {
     const layouts=[{id:'template',pageId:'template',name:'Programs',kind:'layout',role:'program',publicationStatus:'draft',paths:[],source:'saved'}];
     vi.stubGlobal('fetch',vi.fn(async(url:string)=>new Response(JSON.stringify(url.includes('pages-workspace')?{schemaVersion:1,publication:null,entries:layouts}:org))));
     mount();
-    fireEvent.click(await screen.findByRole('button',{name:action,exact:true}));
+    await userEvent.click(await screen.findByRole('button',{name:'Actions for Programs'}));
+    await userEvent.click(screen.getByRole('menuitem',{name:'Template settings'}));
     expect(await screen.findByRole('dialog')).toHaveTextContent('Template template: urls');
     expect(vi.mocked(fetch).mock.calls.every(([,options])=>!options?.method)).toBe(true);
   });
@@ -118,7 +143,7 @@ describe('site pages workspace',()=>{
   },15000);
   it('does not mislabel publication or permit moves if inventory cannot load',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>new Response('{}',{status:503})));mount();await screen.findByRole('alert');
-    expect(screen.getAllByText('Status unavailable')).toHaveLength(3);expect(screen.getByRole('button',{name:'New folder'})).toBeDisabled();
+    expect(screen.queryByText('Status unavailable')).not.toBeInTheDocument();expect(screen.queryByText('Homepage')).not.toBeInTheDocument();expect(screen.getByRole('button',{name:'New folder'})).toBeDisabled();
   });
   it('handles a native drag payload through the guarded folder endpoint only',async()=>{
     mount();await screen.findByText('Explore');

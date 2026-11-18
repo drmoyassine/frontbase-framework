@@ -9,7 +9,7 @@ import {SiteConfigurationStore} from '../site-configuration-store.js';
 import {LiveLayoutPublicationStore,liveLayoutPublicationSchema} from '../live-layout-publication.js';
 import {consoleDataAdministrator,protectPublishedLiveSource} from '../published-live-access.js';
 import {TranslationGenerationStore} from '../translation-generation.js';
-import {resolveDirectoryViewScope,type LiveLayoutHost} from '../live-layout-reader.js';
+import {liveLayoutReader,resolveDirectoryViewScope,type LiveLayoutHost} from '../live-layout-reader.js';
 import {renderLiveLayoutPublication} from '../live-layout-serving.js';
 import {publicationBindingDiagnostics} from '../publication-binding-diagnostics.js';
 import {publishedLiveQuery} from '../published-live-query.js';
@@ -31,6 +31,26 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
         const generation=await new TranslationGenerationStore(db,c.get('tenant')).get();
         const source=draft?.configuration.site.locale??'en';
         return c.json({pointer:active?.pointer??null,mode:active?'live':null,pageIds:active?[...active.layout.templates,...active.layout.staticPages].map(page=>page.pageId):[],locales:active?.layout.locales??[source],availableLocales:[...new Set([source,...generation.configuration?.targetLocales??[],...active?.layout.locales??[]])]});
+    });
+    app.get('/api/project/live-layout/records/:id/',async c=>{
+        const offset=Number(c.req.query('offset')??0);
+        if(!Number.isSafeInteger(offset)||offset<0||offset>=20000)return c.json({detail:'Invalid record offset'},422);
+        const owner=c.get('tenant');
+        try {
+            const active=await new LiveLayoutPublicationStore(db,owner).activeForServing();
+            const template=active?.layout.templates.find(page=>page.pageId===c.req.param('id'));
+            if(!active||!template)return c.json({detail:'Published template unavailable'},404);
+            const limit=Math.min(25,active.layout.configuration.browsing.pageSize);
+            const reader=await liveLayoutReader(host,owner,active.layout,publishedLiveQuery(request=>app.fetch(request)));
+            try {
+                const role=template.role==='editorial'?'page':template.role;
+                const query=reader.queries['directory.'+role+'.routes'];
+                if(!query)return c.json({detail:'This page has no record URLs'},404);
+                const rows=await query.execute({offset,limit},{tenant:owner});
+                const records=rows.flatMap(row=>typeof row.originalPath==='string'&&row.id!=null?[{id:String(row.id),path:row.originalPath}]:[]);
+                return c.json({records,nextOffset:rows.length===limit&&offset+limit<20000?offset+limit:null});
+            } finally {await reader.close?.();}
+        } catch {return c.json({detail:'Published record URLs are unavailable. Try again.'},503);}
     });
     app.get('/api/project/live-layout/render/',async c=>{
         try{

@@ -62,6 +62,11 @@ try{
  const activeVersion=await liveStore.active();
  const usageHash=await liveStore.prepare({schemaVersion:3,runtimeVersion:'live-layout-v1',configuration:usageConfig,templates,staticPages:[],locales:['en']},now);
  await liveStore.publish(usageHash,activeVersion.pointer,now);
+ const recordUrls='/api/project/live-layout/records/'+templates[2].pageId+'/';
+ role='viewer';assert.equal((await app.request(recordUrls)).status,403);role='owner';
+ tenant='other';assert.equal((await app.request(recordUrls)).status,404);tenant=owner;
+ assert.equal((await app.request(recordUrls+'?offset=-1')).status,422);
+ assert.equal((await app.request(recordUrls)).status,503,'an unavailable source is reported without returning draft routes');
  const usage=await savedViewUsage(db,owner);
  assert.deepEqual(usage.institutions.map(({name,version,state})=>[name,version,state]),[
     ['Explore','Default','Published'],['Institution detail','Detail source','Published'],['Program detail','Institution relationship','Published'],
