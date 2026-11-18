@@ -422,7 +422,7 @@ export const PropertiesPanel = () => {
               />
             </fieldset>
 
-            {(selectedComponent.props.directoryBrowsing !== undefined || selectedComponent.props.directoryQuery !== undefined || selectedComponent.props.recordBindings !== undefined) && <DirectoryBindingProperties layout={currentPage?.layoutData} node={selectedComponent} update={updateComponentProp} />}
+            {(selectedComponent.props.directoryBrowsing !== undefined || selectedComponent.props.directoryQuery !== undefined || selectedComponent.props.recordBindings !== undefined || selectedComponent.props.directoryResultsFor !== undefined) && <DirectoryBindingProperties layout={currentPage?.layoutData} node={selectedComponent} update={updateComponentProp} />}
             <fieldset disabled={!!selectedVersion && selectedVersion!=='default' && !Object.hasOwn(defaultComponent?.versions?.find(v=>v.id===selectedVersion)?.overrides.props??{},'binding')}>
               {selectedComponent.props.directoryQuery === undefined && renderPropertyFields('general')}
             </fieldset>

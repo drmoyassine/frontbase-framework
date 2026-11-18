@@ -13,6 +13,7 @@ import { mergeAccountConfig, type AccountConfigFor } from '../providers/merge-ac
 import type { CompatFetch } from '../external-http.js';
 import {readPublicationList,publicationListBindingSchema,publicationListRequestSchema} from '../publication-list-source.js';
 import {templateRoute} from '../template-route.js';
+import {resolveDirectoryViewScope} from '../live-layout-reader.js';
 
 export function registerDirectoryPreviewRoutes(app: Hono<{ Variables: ConsoleAuthVars }>, control: DbRunner,
     storeFor: (tenant: string) => SyncStore, externalFetch: CompatFetch, accounts: AccountConfigFor): void {
@@ -66,9 +67,12 @@ export function registerDirectoryPreviewRoutes(app: Hono<{ Variables: ConsoleAut
         const datasource = await storeFor(tenant).getDatasource(draft.configuration.datasourceId);
         if (!datasource) return c.json({ detail: 'Directory datasource is unavailable' }, 403);
         if (!['supabase', 'postgres', 'neon', 'sqlite', 'turso', 'd1'].includes(datasource.kind)) return c.json({ detail: 'Directory preview requires a supported SQL datasource' }, 422);
+        let db: ReturnType<typeof datasourceRunner> | undefined;
         try {
-            const db = datasourceRunner(datasource.kind, await mergeAccountConfig(accounts, externalFetch, tenant, datasource.kind, datasource.config), externalFetch);
-            const registry = createDirectoryQueries(draft.configuration, tenant, dialectOf(datasource.kind), (sql, params) => db.query(sql, params));
+            const scope = await resolveDirectoryViewScope({syncFor:storeFor,accountConfigFor:accounts,externalFetch}, tenant, draft.configuration, datasource);
+            const runner = datasourceRunner(datasource.kind, await mergeAccountConfig(accounts, externalFetch, tenant, datasource.kind, datasource.config), externalFetch);
+            db = runner;
+            const registry = createDirectoryQueries(draft.configuration, tenant, dialectOf(datasource.kind), runner.query.bind(runner), scope);
             const queryId = `directory.${request.data.role}.${request.data.mode}`;
             const query = registry[queryId];
             if (!query || !query.params?.safeParse(request.data.params).success) return c.json({ detail: 'Invalid directory preview parameters' }, 422);
@@ -78,5 +82,6 @@ export function registerDirectoryPreviewRoutes(app: Hono<{ Variables: ConsoleAut
             const rows = request.data.mode === 'list' ? all.slice(0, limit) : all;
             return c.json({ revision: draft.revision, queryId, rows, hasMore: request.data.mode === 'list' && all.length > limit, publicationAvailable: false, purpose: 'authoring-preview' });
         } catch { return c.json({ detail: 'Directory preview failed. Check saved mappings and connection permissions.', code: 'directory_preview_unavailable' }, 502); }
+        finally { await db?.close?.(); }
     });
 }

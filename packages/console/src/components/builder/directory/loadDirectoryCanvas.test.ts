@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { loadDirectoryCanvas, selectedDirectoryCollection } from './loadDirectoryCanvas';
 import { addDirectoryTemplate } from './addDirectoryTemplate';
+import {createBookingDetail} from '@frontbase/edge-core/directory/starter';
 afterEach(()=>vi.unstubAllGlobals());
 const saved={schemaVersion:1 as const,revision:2,configuration:emptyDirectoryConfiguration()};
 const binding={version:1 as const,queryId:'directory.institution.list' as const,params:{q:'College'}};
@@ -96,4 +97,25 @@ it('keeps an unconnected installed template visually editable without a publishe
  expect(fetcher).not.toHaveBeenCalled();expect(preview.content.length).toBe(layout.content.length);
  const index=layout.content.findIndex(n=>n.props.directoryQuery);expect(index).toBeGreaterThanOrEqual(0);expect(preview.content[index].children).toEqual(layout.content[index].children?.map(n=>expect.objectContaining({id:n.id,type:n.type})));
  expect(JSON.stringify(layout)).toBe(before);expect(layout.content[index].props.directoryQuery).toBeDefined();
+});
+
+it.each(['institution','program'] as const)('previews only related records on the redesigned %s layout', async role => {
+    const layout = { root: {bookingForX:{version:1,role},siteConfiguration:{version:1,role}},
+        content:createBookingDetail(role) } as Parameters<typeof loadDirectoryCanvas>[0];
+    const fetcher = vi.fn(async (_url, request) => {
+        const input = JSON.parse(request.body);
+        return {ok:true,json:async()=>({revision:saved.revision,queryId:'directory.'+input.role+'.'+input.mode,
+            rows:[input.role === 'program' ? {id:8,institutionId:7,title:'Program'} : {id:7,title:'Institution'}]})};
+    });
+    vi.stubGlobal('fetch',fetcher);
+    const configuration={...saved.configuration,datasourceId:'fixture'};
+    const snapshot=JSON.stringify(layout);
+    await loadDirectoryCanvas(layout,{...saved,configuration},new AbortController().signal);
+    const calls=fetcher.mock.calls.map(([,request])=>JSON.parse(request.body));
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toMatchObject({source:'connected',role,mode:'detail'});
+    expect(calls[1]).toMatchObject(role==='institution'
+        ? {source:'connected',role:'program',mode:'list',params:{institutionId:7}}
+        : {source:'connected',role:'institution',mode:'detail',params:{id:7}});
+    expect(JSON.stringify(layout)).toBe(snapshot);
 });

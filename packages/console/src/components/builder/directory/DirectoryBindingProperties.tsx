@@ -1,8 +1,27 @@
 import React from 'react';
-import { directoryQueryBindingSchema, directoryRecordBindingSchema, directoryBrowsingSchema } from '@frontbase/edge-core/directory/configuration';
+import { detailFieldLabels, detailTextFields, directoryQueryBindingSchema, directoryRecordBindingSchema, directoryBrowsingSchema } from '@frontbase/edge-core/directory/configuration';
 import type { ComponentData } from '@/types/builder';
 
 export function DirectoryBindingProperties({ node, update, layout }: { node: ComponentData; layout?: {content: ComponentData[]}; update: (key: string, value: unknown) => void }) {
+    if (typeof node.props.directoryResultsFor === 'string') {
+        const queryElements: ComponentData[] = [];
+        const collect = (nodes: ComponentData[]) => {
+            for (const child of nodes) {
+                if (child.props.directoryQuery) queryElements.push(child);
+                if (child.children) collect(child.children);
+            }
+        };
+        collect(layout?.content ?? []);
+        return <section className="space-y-2 rounded border p-3" aria-label="Directory result visibility">
+            <label className="block text-sm">Show when this element has results
+                <select className="mt-1 w-full rounded border bg-background p-2" value={node.props.directoryResultsFor}
+                    onChange={event => update('directoryResultsFor', event.target.value)}>
+                    <option value="">Always show</option>
+                    {queryElements.map(element => <option key={element.id} value={element.id}>{element.props._layerName || element.props.directoryQuery.queryId}</option>)}
+                </select>
+            </label>
+        </section>;
+    }
     const findControls=(nodes:ComponentData[]):Record<string,unknown>|undefined=>{for(const child of nodes){if(child.props.directoryBrowsing)return child.props.directoryBrowsing;const found=findControls(child.children||[]);if(found)return found;}};
     const controls=node.props.directoryControls??findControls(layout?.content||[])??{version:1,tabs:false,search:false,pagination:false};
     const browsing = directoryBrowsingSchema.safeParse(node.props.directoryBrowsing);
@@ -24,6 +43,10 @@ export function DirectoryBindingProperties({ node, update, layout }: { node: Com
                 value={detail ? (binding.params as { path: string }).path : (binding.params as { q?: string }).q || ''}
                 onChange={e => update('directoryQuery', { ...binding, params: { ...binding.params, [detail ? 'path' : 'q']: e.target.value } })} /></label>
             {'institutionId' in binding.params && <p className="text-sm">Linked institution: {binding.params.institutionId}</p>}
+            <label className="flex gap-2 text-sm">
+                <input type="checkbox" checked={node.props.hideWhenNoRecords === true}
+                    onChange={event => update('hideWhenNoRecords', event.target.checked)}/>Hide this element if no records match
+            </label>
             {!detail && <>
                 <fieldset className="space-y-2"><legend>Visitor controls</legend>{(['tabs','search','pagination','recordCount','sorting','filters'] as const).map(key=><label className="flex gap-2 text-sm" key={key}><input type="checkbox" checked={(controls as Record<string,boolean>)?.[key] ?? false} onChange={e=>update('directoryControls',{version:1,tabs:false,search:false,pagination:false,...controls,[key]:e.target.checked})}/>{{tabs:'Collection tabs',search:'Search',pagination:'Pagination',recordCount:'Record count',sorting:'Ordering',filters:'Title match filter'}[key]}</label>)}</fieldset>
                 <label className="block text-sm">Pagination style<select aria-label="Repeater pagination style" className="mt-1 w-full rounded border bg-background p-2" value={controls.paginationMode || 'previous-next'} onChange={e=>update('directoryControls',{...controls,paginationMode:e.target.value})}><option value="previous-next">Previous / Next</option><option value="numbered">Page numbers</option></select></label>
@@ -41,7 +64,30 @@ export function DirectoryBindingProperties({ node, update, layout }: { node: Com
     if (record.success && node.props.recordBindings !== undefined) return <section className="space-y-2 rounded border p-3" aria-label="Directory record binding">
         <p className="text-sm font-medium">Field from the current directory record</p>
         {record.data.text && <label className="block text-sm">Text field<select aria-label="Directory text field" className="mt-1 w-full rounded border bg-background p-2" value={record.data.text}
-            onChange={e => { const { format, ...rest } = record.data; update('recordBindings', { ...rest, text: e.target.value, ...(e.target.value === 'publishedAt' && format ? { format } : {}) }); }}><option value="title">Title</option><option value="summary">Summary</option><option value="body">Full description</option><option value="byline">Byline</option><option value="publishedAt">Original publication date</option></select></label>}
+            onChange={e => { const { format, fallbackText, ...rest } = record.data; update('recordBindings', { ...rest, text: e.target.value, ...(e.target.value === 'publishedAt' && format ? { format } : {}), ...(e.target.value === 'body' && fallbackText ? { fallbackText } : {}) }); }}><option value="title">Title</option><option value="summary">Summary</option><option value="body">Full description</option><option value="byline">Byline</option><option value="publishedAt">Original publication date</option>
+            {detailTextFields.map(field => <option key={field} value={field}>{detailFieldLabels[field]}</option>)}
+        </select></label>}
+        {record.data.sectionText && <label className="block text-sm">Show section when this record field has a value
+            <select className="mt-1 w-full rounded border bg-background p-2" value={record.data.sectionText} onChange={event => {
+                const { fallbackText, ...rest } = record.data;
+                update('recordBindings', { ...rest, sectionText: event.target.value, ...(event.target.value === 'body' && fallbackText ? { fallbackText } : {}) });
+            }}>
+                <option value="body">Full description</option><option value="summary">Summary</option>
+                {detailTextFields.map(field => <option key={field} value={field}>{detailFieldLabels[field]}</option>)}
+            </select>
+        </label>}
+        {(record.data.text === 'body' || record.data.sectionText === 'body') && <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={record.data.fallbackText === 'summary'} onChange={event => {
+                const { fallbackText, ...rest } = record.data;
+                update('recordBindings', { ...rest, ...(event.target.checked ? { fallbackText: 'summary' } : {}) });
+            }}/>Use the summary when the full description is empty
+        </label>}
+        {node.type === 'Gallery' && <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={record.data.media === 'gallery'} onChange={event => {
+                const { media, ...rest } = record.data;
+                update('recordBindings', { ...rest, ...(event.target.checked ? { media: 'gallery' } : {}) });
+            }}/>Use the record gallery when available
+        </label>}
         {record.data.text === 'publishedAt' && <label className="block text-sm">Date display<select aria-label="Directory date display" className="mt-1 w-full rounded border bg-background p-2" value={record.data.format || 'raw'} onChange={e => { const { format, ...rest } = record.data; update('recordBindings', { ...rest, ...(e.target.value === 'date' ? { format: 'date' } : {}) }); }}><option value="raw">Original stored text</option><option value="date">Site language (UTC date)</option></select></label>}
         {record.data.blocks && <p className="text-sm">Semantic article body. Edit canonical content through the review workflow when available; this template controls its placement.</p>}
         {record.data.src && <label className="block text-sm">Image field<select aria-label="Directory image field" className="mt-1 w-full rounded border bg-background p-2" value={record.data.src}
@@ -50,6 +96,18 @@ export function DirectoryBindingProperties({ node, update, layout }: { node: Com
         {record.data.alt === 'coverAlt' && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={record.data.altFallback==='title'} onChange={e=>{ const { altFallback, ...rest } = record.data; update('recordBindings',{...rest,...(e.target.checked ? { altFallback:'title' } : {})}); }}/>Use record title when cover alt text is empty</label>}
         {record.data.src && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={record.data.hideWhenEmpty===true} onChange={e=>update('recordBindings',{...record.data,hideWhenEmpty:e.target.checked})}/>Hide when this record has no image</label>}
         {record.data.href && <p className="text-sm">Links use the original WordPress path.</p>}
+        {record.data.href && <label className="block text-sm">Record link destination
+            <select className="mt-1 w-full rounded border bg-background p-2" value={record.data.href} onChange={event => {
+                const { hideWhenEmpty, ...rest } = record.data;
+                update('recordBindings', { ...rest, href: event.target.value, ...(event.target.value === 'website' ? { hideWhenEmpty: hideWhenEmpty ?? true } : {}) });
+            }}>
+                <option value="originalPath">Original record URL</option><option value="website">Institution website</option>
+            </select>
+        </label>}
+        {record.data.href === 'website' && <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={record.data.hideWhenEmpty === true}
+                onChange={event => update('recordBindings', { ...record.data, hideWhenEmpty: event.target.checked })}/>Hide when the website is unavailable
+        </label>}
         {record.data.href && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={record.data.ariaLabel==='title'} onChange={e=>{ const { ariaLabel, ...rest } = record.data; update('recordBindings',{...rest,...(e.target.checked ? { ariaLabel:'title' } : {})}); }}/>Include record title in link accessible name</label>}
     </section>;
     return null;

@@ -20,21 +20,32 @@ export async function loadDirectoryCanvas(layout: PageLayoutLike, saved: SiteCon
     let pageSize=saved.configuration.browsing.pageSize as number;
     let captureHash:string|undefined,configuration=saved.configuration,hasNext=false,total:number|undefined;
     const role=(layout.root?.siteConfiguration as {role?:string}|undefined)?.role;
+    const redesignedDetail = !!layout.root?.bookingForX && (role === 'institution' || role === 'program')
+        && layout.content.some(node => node.id === 'bfx-' + role + '-page');
     const inactive=new Set<string>();let q='',sort:'title-asc'|'title-desc'='title-asc',match:'contains'|'startsWith'|'equals'='contains',page=1;
     for (const { id, binding } of directoryLayoutQueries(layout)) {
-        const [, role, mode] = binding.queryId.split('.');
-        const params=landingQueryParams(layout,id,binding.params);
+        const [, queryRole, mode] = binding.queryId.split('.');
+        const baseParams = landingQueryParams(layout,id,binding.params);
+        let params = baseParams;
+        if (redesignedDetail && queryRole !== role) {
+            const relatedId = role === 'institution' ? currentRecord.id : currentRecord.institutionId;
+            if (typeof relatedId !== 'string' && typeof relatedId !== 'number') {
+                rows.set(id, []);
+                continue;
+            }
+            params = role === 'institution' ? { ...baseParams, institutionId: relatedId } : { id: relatedId };
+        }
         const response = await fetch('/api/project/site-configuration/preview/', { method: 'POST', credentials: 'include', signal,
-            headers: { 'content-type': 'application/json' }, body: JSON.stringify({ source:'published',expectedCapture:captureHash,expectedRevision: saved.revision, role, mode, params }) });
+            headers: { 'content-type': 'application/json' }, body: JSON.stringify({ source:redesignedDetail?'connected':'published',expectedCapture:captureHash,expectedRevision: saved.revision, role:queryRole, mode, params }) });
         if (!response.ok) throw new Error('Directory preview unavailable; reload shared settings and check the query.');
         const result = await response.json();
         if (result.revision !== saved.revision || result.queryId !== binding.queryId || !Array.isArray(result.rows)) throw new Error('Directory preview revision mismatch');
         if(result.captureHash){captureHash=result.captureHash;configuration=result.configuration;}
         const pageRole=(layout.root?.siteConfiguration as {role?:string}|undefined)?.role;
-        if(pageRole==='directory' && mode==='list' && ['institution','program'].includes(role) && role!==(previewCollection||configuration.browsing.defaultCollection)){inactive.add(id);continue;}
+        if(pageRole==='directory' && mode==='list' && ['institution','program'].includes(queryRole) && queryRole!==(previewCollection||configuration.browsing.defaultCollection)){inactive.add(id);continue;}
         if(mode==='list'){pageSize=result.pageSize??Math.min(('limit' in params?params.limit:undefined)||configuration.browsing.pageSize,configuration.browsing.pageSize);hasNext=!!result.hasMore;total=result.total;q=('q' in params?params.q:'')||'';sort=('sort' in params?params.sort:undefined)||'title-asc';match=('match' in params?params.match:undefined)||'contains';page=Math.floor((('offset' in params?params.offset:0)||0)/pageSize)+1;}
         rows.set(id, result.rows);
-        if(mode==='detail'&&role===(layout.root?.siteConfiguration as {role?:string}|undefined)?.role&&result.rows[0]){currentRecord=result.rows[0];recordContext={recordId:currentRecord.id,parentId:currentRecord.institutionId??currentRecord.cityId??null,collection:role==='institution'?'institutions':role==='program'?'programs':role==='article'?'articles':'pages',attached:!!(currentRecord._templateRoute as any)?.attached,path:currentRecord.originalPath,siteName:configuration.site.name,locale:configuration.site.locale};}
+        if(mode==='detail'&&queryRole===role&&result.rows[0]){currentRecord=result.rows[0];recordContext={recordId:currentRecord.id,parentId:currentRecord.institutionId??currentRecord.cityId??null,collection:role==='institution'?'institutions':role==='program'?'programs':role==='article'?'articles':'pages',attached:!!(currentRecord._templateRoute as any)?.attached,path:currentRecord.originalPath,siteName:configuration.site.name,locale:configuration.site.locale};}
     }
     if(layout.root?.templatePolicy){const policy=readTemplatePolicy(layout.root);recordContext.settings=resolveTemplatePolicy(policy,`${recordContext.collection}:${recordContext.recordId}`,configuration.site.locale,currentRecord,recordContext).values;}
     const bindContext=(nodes:PageLayoutLike['content']):PageLayoutLike['content']=>nodes.map(node=>{

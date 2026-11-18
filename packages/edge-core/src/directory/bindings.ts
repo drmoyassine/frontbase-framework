@@ -3,6 +3,8 @@ import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 import { projectEditorialBody } from './editorial.js';
 import { validateDirectoryBrowsing, directoryBrowsingSchema } from './browsing.js';
 import { landingQueryLimit, landingRootSchema, projectTemplatePresentation, publishedLandingPresentation, templateSettingsSchema } from './template-settings.js';
+import { detailTextFields, numericDetailFields } from './detail-fields.js';
+const numericFields = new Set<string>(numericDetailFields);
 
 const path = z.string().max(400).refine(v => {
     try { const decoded = decodeURIComponent(v); return v.startsWith('/') && !decoded.startsWith('//') && !/[\\?#{}\s\x00-\x20]/.test(decoded) && !decoded.split('/').some(p => p === '.' || p === '..'); }
@@ -21,10 +23,13 @@ export const directoryQueryBindingSchema = z.discriminatedUnion('queryId', [
 ]);
 export type DirectoryQueryBinding = z.infer<typeof directoryQueryBindingSchema>;
 export const directoryRecordBindingSchema = z.object({
-    text: z.enum(['title', 'summary', 'body', 'byline', 'publishedAt']).optional(), href: z.literal('originalPath').optional(),
+    text: z.enum(['title', 'summary', 'body', 'byline', 'publishedAt', ...detailTextFields]).optional(), href: z.enum(['originalPath','website']).optional(),
+    fallbackText: z.literal('summary').optional(),
+    sectionText: z.enum(['body', 'summary', ...detailTextFields]).optional(),
     blocks: z.literal('body').optional(),
     ariaLabel: z.literal('title').optional(),
     src: z.enum(['cover', 'logo']).optional(), alt: z.enum(['title','coverAlt']).optional(),
+    media: z.literal('gallery').optional(),
     altFallback: z.literal('title').optional(),
     hideWhenEmpty: z.boolean().optional(),
     format: z.literal('date').optional(),
@@ -37,8 +42,7 @@ export const directoryListCollections: Record<string, 'institutions' | 'programs
 const liveDetailRecordCollections: Readonly<Record<string,string>> = Object.freeze({
     'directory.institution.detail':'institutions', 'directory.program.detail':'programs', 'directory.article.detail':'articles',
 });
-/** Record text columns a list row may own as a translatable unit — dates and plain bodies never do. */
-const stampableRecordColumns = new Set(['title', 'summary', 'coverAlt', 'byline']);
+const stampableRecordColumns = new Set(['title', 'summary', 'coverAlt', 'byline', ...detailTextFields.filter(field => !numericFields.has(field))]);
 
 export const siteBindingsSchema = z.object({
     text: z.enum(['site.name', 'site.destination']).optional(),
@@ -79,6 +83,10 @@ function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: Publ
             }
             if(props.templateMenu!==undefined){z.object({version:z.literal(1)}).strict().parse(props.templateMenu);if(node.type!=='Container'||inQuery||layout.root?.directoryLanding===undefined)throw new Error('invalid_template_component');}
             validateDirectoryBrowsing(node, inQuery);
+            if (props.directoryResultsFor !== undefined) {
+                if (typeof props.directoryResultsFor !== 'string' || props.directoryResultsFor.length > 160)
+                    throw new Error('invalid_directory_query_reference');
+            }
             if(props.directoryControls !== undefined){controls.set(node, directoryBrowsingSchema.parse(props.directoryControls));if(node.type!=='Repeater'||inQuery||props.directoryQuery===undefined)throw new Error('invalid_repeater_controls');}
             if (props.directoryBrowsing !== undefined && (++browsing > 1 || !['directory', 'article-index'].includes(String((layout.root?.siteConfiguration as {role?:string} | undefined)?.role)))) throw new Error('invalid_directory_browsing_role');
             validateSiteBinding(node);
@@ -94,12 +102,15 @@ function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: Publ
                 const record = directoryRecordBindingSchema.parse(props.recordBindings);
                 records.set(node, record);
                 if (record.text && !['Text', 'Heading', 'Paragraph', 'Link'].includes(node.type)
+                    || record.fallbackText && (record.text ?? record.sectionText) !== 'body'
+                    || record.sectionText && (node.type !== 'Container' || Object.keys(record).length !== (record.fallbackText ? 2 : 1))
                     || record.format && record.text !== 'publishedAt'
-                    || record.altFallback && (node.type !== 'Image' || record.alt !== 'coverAlt')
+                    || record.altFallback && (!['Image', 'Gallery'].includes(node.type) || record.alt !== 'coverAlt')
                     || record.ariaLabel && (node.type !== 'Link' || !record.href)
-                    || record.href && node.type !== 'Link' || (record.src || record.alt) && node.type !== 'Image'
+                    || record.href && node.type !== 'Link' || (record.src || record.alt) && !['Image', 'Gallery'].includes(node.type)
+                    || record.media && node.type !== 'Gallery'
                     || record.blocks && (node.type !== 'Container' || !articleQuery || Object.keys(record).length !== 1 || (node.children?.length ?? 0) > 0)
-                    || record.hideWhenEmpty !== undefined && (node.type !== 'Image' || !record.src)
+                    || record.hideWhenEmpty !== undefined && !(node.type === 'Image' && record.src || node.type === 'Link' && record.href === 'website')
                     || props.siteBindings !== undefined) throw new Error('invalid_record_binding_component');
             }
             const path = publishNode ? Object.freeze([...(parent ?? []), index]) : undefined;
@@ -115,7 +126,7 @@ export function directoryLayoutQueries(layout: PageLayoutData): DirectoryQuery[]
 }
 
 const literal = (value: unknown) => typeof value === 'string' ? value.replace(/\{(?=[{%])/g, '{\u200b') : '';
-const imageUrl = (value: unknown) => {
+const httpsUrl = (value: unknown) => {
     if (typeof value !== 'string' || /["'<>\\\x00-\x20]/.test(value)) return '';
     try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : ''; } catch { return ''; }
 };
@@ -300,6 +311,11 @@ function projectCompiledDirectory<T extends PageLayoutData>(
     const walk = (node: PageComponent, row?: Record<string, unknown>, index = 0, collection?: string): PageComponent => {
         if (++projected > 4000) throw new Error('directory_projection_size');
         const props = { ...node.props }; const query = props.directoryQuery;
+        const resultSource = props.directoryResultsFor;
+        if (typeof resultSource === 'string' && resultSource) {
+            delete props.directoryResultsFor;
+            if (!records.get(resultSource)?.length) return { id: node.id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+        }
         if(controlsOwned && props.directoryBrowsing!==undefined)return {...node,props:{},styles:{display:'none'},children:[]};
         if (query !== undefined) {
             const parsed = queries.get(node.id);
@@ -318,7 +334,8 @@ function projectCompiledDirectory<T extends PageLayoutData>(
             const projected: PageComponent = { ...node, type: 'Container', props: rest,
                 ...(list ? { styles: { gap: '24px', ...node.styles } } : {}),
                 children: rows.length ? rows.flatMap((record, i) => visible(node.children || []).map(child => walk(child, record, i, rowCollection)))
-                    : controls === undefined ? [{ id: `${node.id}-empty`, type: 'Text', props: { text: 'No records matched this preview.' } }] : [] };
+                    : controls === undefined && !props.hideWhenNoRecords ? [{ id: `${node.id}-empty`, type: 'Text', props: { text: 'No records matched this preview.' } }] : [] };
+            if (!rows.length && props.hideWhenNoRecords) return { ...projected, styles: { ...projected.styles, display: 'none' } };
             if(list && controls !== undefined){
                 const options=instructions.controls.get(node)!,position=options.paginationPosition||'top';
                 const top:PageComponent={id:`${node.id}-controls`,type:'Container',props:{directoryBrowsing:{...options,pagination:options.pagination && position!=='bottom'}}};
@@ -333,28 +350,43 @@ function projectCompiledDirectory<T extends PageLayoutData>(
             const b = instructions.records.get(node)!;
             if (!row) throw new Error('record_context_unavailable');
             if (b.blocks) { const children = projectEditorialBody(row.body, id); projected += children.reduce((n,c) => n + 1 + (c.children?.length ?? 0), 0); if (projected > 4000) throw new Error('directory_projection_size'); return { ...node, id, props: rest, children }; }
+            const hasText = (field: string) => numericFields.has(field)
+                ? (typeof row[field] === 'number' || typeof row[field] === 'string') && Number.isFinite(Number(row[field])) && Number(row[field]) > 0
+                : typeof row[field] === 'string' && String(row[field]).trim().length > 0;
+            const sourceText = (field: string) => hasText(field) ? field : b.fallbackText && hasText(b.fallbackText) ? b.fallbackText : undefined;
+            if (b.sectionText && !sourceText(b.sectionText)) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+            const textField = b.text && sourceText(b.text);
             if (b.text) {
                 delete rest.content; delete rest.value;
-                rest.text = b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(row[b.text]);
+                rest.text = b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(textField ? String(row[textField]) : '');
                 if (b.format === 'date' && !rest.text) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
                 // Date output is re-formatted from the row in the page language at serve time; the
                 // marker keeps extraction from owning it as a translatable text unit.
                 if (b.format === 'date') rest.translationLiteral = b.text;
+                if (b.fallbackText && textField === 'body' && String(rest.text).length > 12000) rest.translationLiteral = 'body';
             }
-            if (b.href) rest.href = path.safeParse(row.originalPath).success ? row.originalPath : '';
+            if (b.href) {
+                rest.href = b.href === 'website' ? httpsUrl(row.website) : path.safeParse(row.originalPath).success ? row.originalPath : '';
+                if (b.hideWhenEmpty && !rest.href) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+            }
             if (b.ariaLabel) {
                 const title = literal(row.title);
                 rest.ariaLabel = title ? `${literal(String(rest.text || rest.label || rest.children || 'Link'))}: ${title}` : '';
             }
-            if (b.src) { delete rest.url; rest.src = imageUrl(row[b.src]); }
-            if (b.src && b.hideWhenEmpty && !rest.src) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+            if (b.src) {
+                delete rest.url;
+                const src = httpsUrl(row[b.src]);
+                if (b.hideWhenEmpty && !src) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+                rest[node.type === 'Gallery' ? 'coverSrc' : 'src'] = src;
+            }
             if (b.alt) rest.alt = literal(row[b.alt]) || (b.altFallback === 'title' ? literal(row.title) : '');
+            if (b.media && typeof row[b.media] === 'string' && String(row[b.media]).trim()) rest.media = row[b.media];
             const recordColumns: Record<string, string> = {};
-            if (b.text === 'title' || b.text === 'summary' || b.text === 'byline') recordColumns.text = b.text;
+            if (textField && rest.translationLiteral === undefined && (stampableRecordColumns.has(textField) || textField === 'body' && b.fallbackText)) recordColumns.text = textField;
             // A composed link label is a record unit keyed to the composite column (`ariaLabel:<textCol>`)
             // so capture, discovery and translation memory agree on one identity — never row position.
             // Date-bound or fallback text columns never compose: their output is not the stored source.
-            if (b.ariaLabel && recordColumns.text) recordColumns.ariaLabel = `ariaLabel:${b.text}`;
+            if (b.ariaLabel && recordColumns.text) recordColumns.ariaLabel = `ariaLabel:${textField}`;
             if (b.alt) recordColumns.alt = b.alt;
             if (collection && (typeof row.id === 'string' || typeof row.id === 'number') && Object.keys(recordColumns).length) {
                 rest.translationRecord = { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id as string | number }] };

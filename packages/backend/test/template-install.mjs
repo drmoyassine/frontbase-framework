@@ -13,6 +13,7 @@ import {resolveAppMenuLayout} from '../dist/compat/menus-runtime.js';
 import {MenusStore} from '../dist/compat/menus-store.js';
 import {projectSharedDirectoryPreview,projectDirectoryRecords,projectTemplatePresentation} from '@frontbase/edge-core/directory/configuration';
 import {pagesWorkspace} from '../dist/compat/pages-workspace.js';
+import {upgradeBookingDetail} from '@frontbase/edge-core/directory/starter';
 const db=sqliteRunner(':memory:');await migrateUp(db);const now='2026-11-01T12:00:00Z';
 let tenant='alpha',role='owner',authenticated=true;
 const app=await createCompatApp({makeRunner:async()=>db,resolvePrincipal:async()=>({user:authenticated?{id:'owner',role}:null,tenant}),sessionSecret:'template-installer-test'});
@@ -48,6 +49,33 @@ for(const locale of ['en','ar'])for(const page of pages){const authored=JSON.par
  const html=await renderPage(withMenus,{user:{},page:{title:page.name},app:{name:config.site.name},visitor:{},url:{},system:{},cookies:{},local:{},session:{}});assert(html.includes('Explore')||html.includes('Institutions'));assert(html.includes(config.site.name));assert(!html.includes('PRIVATE_'));assert(!html.includes('/privacy-policy/'));
 }
 console.log('PASS six saved templates: existing shared menus, editable bindings and English/Arabic record projection through the real renderer');
+for (const role of ['institution','program']) {
+ const prefix='bfx-'+role+'-';
+ const oldFields=[
+  {id:prefix+'3',type:'Image',props:{recordBindings:{src:'cover',hideWhenEmpty:true}}},
+  {id:prefix+'4',type:'Heading',props:{text:'Custom title',level:'1',recordBindings:{text:'title'}},styles:{color:'#0b4012'}},
+  {id:prefix+'5',type:'Paragraph',props:{recordBindings:{text:'body'}}},
+ ];
+ const extra={id:'owner-content',type:'Text',props:{text:'Never overwrite this block'}};
+ const old={root:{bookingForX:{version:1,role},siteConfiguration:{version:1,role},custom:true},
+  content:[{id:prefix+'1',type:'Container',props:{directoryQuery:{version:1,queryId:'directory.'+role+'.detail',params:{path:'/original-preview/'}}},
+      children:[{id:prefix+'2',type:'Container',props:{},children:oldFields}]},extra]};
+ const unchanged=JSON.stringify(old);
+ const upgraded=upgradeBookingDetail(old);
+ assert.equal(JSON.stringify(old),unchanged,'existing layout is not mutated');
+ assert.equal(upgraded.root,old.root);
+ assert.equal(upgraded.content[1],extra);
+ assert.equal(directoryLayoutQueries(upgraded)[0].binding.params.path,'/original-preview/');
+ const nodes=new Map();
+ const walk=children=>children.forEach(node=>{nodes.set(node.id,node);walk(node.children??[]);});
+ walk(upgraded.content);
+ assert.equal(nodes.get(prefix+'4').styles.color,'#0b4012');
+ assert.equal(nodes.get(prefix+'5').props.recordBindings.fallbackText,'summary');
+ assert.equal(upgradeBookingDetail(upgraded),undefined,'repeated upgrade inserts nothing');
+ const extended=structuredClone(old);
+ extended.content[0].children[0].children.push(extra);
+ assert.equal(upgradeBookingDetail(extended),undefined,'edited starter with extra content requires ordinary manual editing');
+}
 const workspace=await pagesWorkspace(db,'alpha');assert.equal(workspace.entries.length,6);assert.equal(workspace.entries.filter(e=>e.kind==='layout').length,3);assert(workspace.entries.every(e=>e.publicationStatus==='draft'));
 await seed.ensureHomepage(now);assert.equal((await seed.list()).length,6,'boot never adds a seventh welcome');
 response=await call('install',{...input,reviewHash:review.reviewHash,operationId});assert.equal(response.status,200,'exact repeat is status-only');assert.equal((await seed.list()).length,6);assert.equal((await call('install',{...input,reviewHash:'0'.repeat(64),operationId})).status,409,'changed request cannot reuse receipt');

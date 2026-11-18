@@ -73,4 +73,13 @@ await store.save(articleConfig,1,now);const articleResponse=await call({expected
 await db.exec("UPDATE catalog_articles SET body='[{\"kind\":\"html\",\"runs\":[]}]' WHERE id=1");assert.equal((await call({expectedRevision:2,role:'article',mode:'detail',params:{path:'/blog/article-1/'}})).status,502);
 const broken=structuredClone(config);broken.collections.institution.fields.title='missing_column';await store.save(broken,2,now);
 const failure=await call({expectedRevision:3,role:'institution',mode:'list'});assert.equal(failure.status,502);const text=await failure.text();assert.ok(!text.includes('missing_column'));assert.ok(!text.includes('PRIVATE_PROVIDER_CANARY'));
+await db.exec('INSERT INTO datasource_views (id,tenant_slug,datasource_id,name,target_table,filters,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)',
+ ['scope-view','alpha','owned','Scoped institutions','catalog_institutions',JSON.stringify([{field:'id',operator:'neq',value:512}]),now,now]);
+await store.save({...config,detailViews:{institution:'scope-view'}},3,now);
+const related=await call({source:'connected',expectedRevision:4,role:'institution',mode:'detail',params:{id:512}});
+assert.equal(related.status,200);
+assert.deepEqual((await related.json()).rows,[], 'the related record cannot bypass its Saved View');
+const relatedPrograms=await call({source:'connected',expectedRevision:4,role:'program',mode:'list',params:{institutionId:512}});
+assert.equal(relatedPrograms.status,200);
+assert.deepEqual((await relatedPrograms.json()).rows,[], 'a program whose institution is outside its Saved View is excluded');
 console.log('directory-preview: actual SQLite fixed scopes/parents/cities, path fidelity/ambiguity, injection/bounds/projection, browser exclusion, authenticated route/owner/revision/role and opaque errors passed');
