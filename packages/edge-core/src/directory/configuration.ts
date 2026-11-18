@@ -1,6 +1,8 @@
 import {parseDirectorySourceConfiguration} from './source-contract.js';
 export {immutableDirectoryConfiguration} from './source-contract.js';
 import { z } from 'zod';
+import { detailTextFields, type DetailTextField } from './detail-fields.js';
+export { detailTextFields, detailFieldLabels, institutionDetailFields, programDetailFields } from './detail-fields.js';
 export {liveViewBindingSchema,liveViewBindings} from './live-list.js';
 export { projectRelativeSiteLinks } from './navigation.js';
 export { templateSettingsSchema, landingRootSchema, defaultTemplateSettings, readLandingSettings, projectTemplatePresentation, landingQueryParams, templateContrastIssues, type TemplateSettings } from './template-settings.js';
@@ -35,7 +37,8 @@ export type DirectoryRole = typeof directoryRoles[number];
 export const directoryFieldNames = ['id', 'title', 'originalPath', 'summary', 'body', 'cover', 'logo', 'gallery', 'cityId', 'institutionId'] as const;
 export const directoryEditorialFields = ['contentRole', 'sourceOrigin', 'byline', 'publishedAt', 'coverAlt'] as const;
 const fields = z.object(Object.fromEntries(directoryFieldNames.map(k => [k, identifier])) as Record<typeof directoryFieldNames[number], typeof identifier>)
-    .extend({ coverAlt: identifier.default(''), contentRole: identifier.default(''), sourceOrigin: identifier.default(''), byline: identifier.default(''), publishedAt: identifier.default('') }).strict();
+    .extend({ coverAlt: identifier.default(''), contentRole: identifier.default(''), sourceOrigin: identifier.default(''), byline: identifier.default(''), publishedAt: identifier.default(''), website: identifier.optional() })
+    .extend(Object.fromEntries(detailTextFields.map(key => [key, identifier.optional()])) as Record<DetailTextField, z.ZodOptional<typeof identifier>>).strict();
 const assetReplacementUrl = z.string().max(2048).refine(value => {
     try { const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password; } catch { return false; }
 });

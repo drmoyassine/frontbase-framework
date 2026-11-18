@@ -1,6 +1,6 @@
 import React,{useEffect} from 'react';
 import {BindingReadiness,focusBindingSetting} from './BindingReadiness';
-import { directoryConfigurationIssues, directoryFieldNames, directoryEditorialFields, directoryRoles, emptyDirectoryConfiguration, type DirectoryConfiguration, type DirectoryRole } from '@frontbase/edge-core/directory/configuration';
+import { directoryConfigurationIssues, directoryFieldNames, directoryEditorialFields, directoryRoles, emptyDirectoryConfiguration, detailFieldLabels, institutionDetailFields, programDetailFields, type DirectoryConfiguration, type DirectoryRole } from '@frontbase/edge-core/directory/configuration';
 import { DataSourceSelector } from '@/components/data-binding/DataSourceSelector';
 import { TableSelector } from '@/components/data-binding/TableSelector';
 import { useBindingColumns } from '@/hooks/data/useBindingColumns';
@@ -18,7 +18,7 @@ interface Props {
 }
 const inputClass = 'w-full rounded-md border bg-background p-2 text-sm';
 const fieldLabels: Record<typeof directoryFieldNames[number], string> = {
-    id: 'Record ID', title: 'Title', originalPath: 'Original URL/path', summary: 'Summary', body: 'Content', cover: 'Cover image', logo: 'Logo', gallery: 'Gallery', cityId: 'City relationship', institutionId: 'Institution relationship',
+    id: 'Record ID', title: 'Title', originalPath: 'Original URL/path', summary: 'Summary', body: 'Full description', cover: 'Cover image', logo: 'Logo', gallery: 'Gallery media', cityId: 'City relationship', institutionId: 'Institution relationship',
 };
 
 function CollectionMapping({ role, config, onChange,identityInUrls=false }: { role: DirectoryRole; config: DirectoryConfiguration; onChange: Props['onChange'];identityInUrls?:boolean }) {
@@ -33,6 +33,15 @@ function CollectionMapping({ role, config, onChange,identityInUrls=false }: { ro
         <div id={prefix+'table'} tabIndex={-1}><TableSelector label={`${role} table`} value={mapping.table} dataSourceId={config.datasourceId} disabled={!config.datasourceId} onValueChange={table => update({ table, fields: emptyDirectoryConfiguration().collections[role].fields, scope: { field: '', value: '' } })} /></div>
         {!columns.length && mapping.table && <p className="text-xs text-muted-foreground">Connect the datasource and load its schema to select fields. Existing mappings are retained.</p>}
         {directoryFieldNames.filter(name => name !== 'gallery').filter(name=>!identityInUrls||!['id','originalPath'].includes(name)).filter(name => name !== 'institutionId' || role === 'program' || role === 'pathway').filter(name => name !== 'cityId' || role === 'institution' || role === 'program').map(name => <React.Fragment key={name}>{picker(fieldLabels[name], mapping.fields[name], field => update({ fields: { ...mapping.fields, [name]: field } }),'fields-'+name)}</React.Fragment>)}
+        {(role === 'institution' || role === 'program') && <details className="space-y-2">
+            <summary className="cursor-pointer">Optional detail fields</summary>
+            {picker(fieldLabels.gallery, mapping.fields.gallery, field => update({ fields: { ...mapping.fields, gallery: field } }), 'fields-gallery')}
+            {role === 'institution' && picker('Institution website', mapping.fields.website ?? '', field =>
+                update({ fields: { ...mapping.fields, website: field } }), 'fields-website')}
+            {(role === 'institution' ? institutionDetailFields : programDetailFields).map(name => <React.Fragment key={name}>
+                {picker(detailFieldLabels[name], mapping.fields[name] ?? '', field => update({ fields: { ...mapping.fields, [name]: field } }), 'fields-' + name)}
+            </React.Fragment>)}
+        </details>}
         {identityInUrls&&<a className="block text-sm underline" href={'/frontbase-admin/pages?recordSource='+role}>Configure record ID and original URL in the template’s URLs panel</a>}
         {role === 'article' && <div id={prefix+'editorial'} tabIndex={-1}><p className="text-xs text-muted-foreground">Article content uses semantic blocks. Source site and content type constrain this deployment's article preview.</p>{directoryEditorialFields.map(name => <React.Fragment key={name}>{picker({contentRole:'Content type',sourceOrigin:'Source site',byline:'Byline',publishedAt:'Original publication date',coverAlt:'Cover alt text'}[name], mapping.fields[name], field => update({ fields: { ...mapping.fields, [name]: field } }),'fields-'+name)}</React.Fragment>)}</div>}
         {picker('Scope field', mapping.scope.field, field => update({ scope: { ...mapping.scope, field } }), 'scope')}

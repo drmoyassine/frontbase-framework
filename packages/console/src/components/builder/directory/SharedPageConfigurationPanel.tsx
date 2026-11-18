@@ -13,6 +13,7 @@ import { addDirectoryTemplate } from './addDirectoryTemplate';
 import { LiveLayoutPublicationPanel as SitePreparationPanel } from './LiveLayoutPublicationPanel';
 import { addDirectoryBrowsing, hasDirectoryBrowsing } from './addDirectoryBrowsing';
 import { TemplateSettingsEditor } from './TemplateSettingsEditor';
+import { upgradeBookingDetail } from '@frontbase/edge-core/directory/starter';
 
 export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenChange }: { page: Page; onChange: (layout: NonNullable<Page['layoutData']>) => void; onEditorialOpenChange?: (open:boolean)=>void }) {
     const [sharedOpen,setSharedOpen]=useState(false);
@@ -39,6 +40,8 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
     const copy = page.layoutData?.root.directoryConfiguration;
     const conflict = copy !== undefined && (!draft || !directoryCopiesMatch(copy, draft.configuration));
     const landing=page.layoutData?readLandingSettings(page.layoutData):undefined;
+    const redesignedDetail = React.useMemo(() => page.layoutData
+        ? upgradeBookingDetail(page.layoutData) as Page['layoutData'] : undefined, [page.layoutData]);
     const sharedControls=<div className="space-y-3">
         <Button variant="outline" disabled={editorialOpen} aria-expanded={mappingsOpen} onClick={()=>setMappingsOpen(value=>!value)}>Directory source fields</Button>
         {mappingsOpen&&<SiteConfigurationForm section="data" onSaved={()=>setReload(value=>value+1)}/>}
@@ -50,6 +53,10 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
     if(landing)return <div className="space-y-4">{sharedControls}<p>Save the page draft, then review and publish its layout. Connected records remain live.</p><TemplateSettingsEditor scope={page.layoutData?.root.elementSettingsVersion===1?'appearance':'all'} value={landing} onChange={settings=>{if(page.layoutData)onChange({...page.layoutData,root:{...page.layoutData.root,directoryLanding:{version:1,settings}}});}}/>{draft&&<SitePreparationPanel draft={draft}/>}</div>;
     return <div className="space-y-3">
         {sharedControls}
+        {redesignedDetail && <div className="space-y-2">
+            <Button variant="outline" disabled={editorialOpen} onClick={() => onChange(redesignedDetail)}>Use updated Booking for X detail layout</Button>
+            <p className="text-sm text-muted-foreground">Updates the installed starter in this draft. Review it on desktop and mobile before publishing.</p>
+        </div>}
         {current.success&&['institution','program','article'].includes(current.data.role)&&<>
             <Button variant="outline" disabled={editorialOpen} aria-expanded={identityOpen} onClick={()=>setIdentityOpen(value=>!value)}>Detail source and URLs</Button>
             {identityOpen&&<SiteConfigurationForm identityRole={current.data.role as RecordIdentityRole} onSaved={()=>setReload(value=>value+1)}/>}

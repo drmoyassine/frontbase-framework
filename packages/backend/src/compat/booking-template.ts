@@ -2,7 +2,7 @@ import {createMenuDefinition,publicMenuAudience,menuDocumentSchema} from '@front
 import {publicationHash} from './publication-hash.js';
 import type {PageLayoutData,PageComponent} from '@frontbase/edge-core';
 import {createEducationLanding,createVersionedExploreDraft,defaultTemplateSettings,directoryLayoutQueries,directoryQueryBindingSchema,emptyDirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
-import {addDirectoryTemplate} from '@frontbase/edge-core/directory/starter';
+import {addDirectoryTemplate,createBookingDetail} from '@frontbase/edge-core/directory/starter';
 
 export const bookingTemplate = {id:'booking-for-x',version:1,name:'Booking for X',description:'An editable directory with listing, institution, program and article layouts. Configure it for your education site.',roles:['home','directory','article-index','institution','program','article']} as const;
 export async function templateId(owner:string,role:string){const hash=await digest('booking-for-x:v1:'+owner+':'+role);return `${hash.slice(0,8)}-${hash.slice(8,12)}-5${hash.slice(13,16)}-a${hash.slice(17,20)}-${hash.slice(20,32)}`;}
@@ -22,6 +22,7 @@ export async function bookingPages(owner:string){
  for(const [role,name,slug]of definitions){
   let layout:PageLayoutData;
   if(role==='home')layout=createEducationLanding(defaultTemplateSettings());
+  else if(role==='institution'||role==='program')layout={root:{siteConfiguration:{version:1,role}},content:createBookingDetail(role)};
   else {layout={root:{siteConfiguration:{version:1,role}},content:[]};
    const collection=role==='directory'?'institution':role==='article-index'?'article':role;
    layout=addDirectoryTemplate({layoutData:layout},directoryQueryBindingSchema.parse({version:1,queryId:`directory.${collection}.${role==='directory'||role==='article-index'?'list':'detail'}` as any,params:role==='directory'||role==='article-index'?{limit:12}:{path:'/preview-record/'}}));
@@ -36,7 +37,7 @@ export async function bookingPages(owner:string){
   // Every document uses normal authored nodes; no remote HTML, copied records or special runtime renderer.
   const containsFooter=(n:PageComponent):boolean=>n.props?.href==='/privacy-policy/'||(n.children??[]).some(containsFooter);
   let sequence=0;const walk=(nodes:PageComponent[]):PageComponent[]=>nodes.filter(n=>n.props?.templateStyle!=='header'&&!(n.props?.templateStyle==='soft'&&containsFooter(n))).filter(n=>!['/privacy-policy/','/terms-of-service/','/cookie-policy/'].includes(String(n.props?.href))).map(n=>({...n,id:`bfx-${role}-${++sequence}`,...(n.children?{children:walk(n.children)}:{})}));
-  layout={...layout,root:{...layout.root,bookingForX:{version:1,role},appMenus:{schemaVersion:1,hash:menuHash,pageId:await templateId(owner,role)},containerStyles:{backgroundColor:'#f8fafc',color:'#0f172a'}},content:walk(layout.content)};
+  layout={...layout,root:{...layout.root,bookingForX:{version:1,role},appMenus:{schemaVersion:1,hash:menuHash,pageId:await templateId(owner,role)},containerStyles:{backgroundColor:'#f8fafc',color:'#0f172a'}},content:role==='institution'||role==='program'?layout.content:walk(layout.content)};
   if(role==='directory')layout=createVersionedExploreDraft(layout,emptyDirectoryConfiguration().browsing);
   directoryLayoutQueries(layout);
   pages.push({id:await templateId(owner,role),role,name,slug,layout});

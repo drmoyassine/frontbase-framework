@@ -2,6 +2,7 @@ import type { PageLayoutData, PageComponent } from '../ssr/types.js';
 import { applyBlockVersion } from '../block-versions.js';
 import {templateRecordFields} from '../directory/live-list.js';
 import {resolvePath,compileInterpolation,type CompiledInterpolation} from '../liquid-core/sync.js';
+import { detailTextFields, numericDetailFields } from '../directory/detail-fields.js';
 
 export const homepageSearchLabels = { region:'Find study options', collection:'Explore', collectionAria:'Search collection', programs:'Programs', institutions:'Institutions', question:'What would you like to study?', placeholder:'Search by program or institution title', searchAria:'Search titles', submit:'Search' };
 export const homepageHeroLabels = { region:'Study options', eyebrow:'Explore your next chapter', controls:'Hero slideshow controls', previous:'Previous image', next:'Next image', pause:'Pause slideshow', resume:'Resume slideshow', slideStatus:'{index} / {count}' };
@@ -34,7 +35,8 @@ function rowRecord(node:PageComponent,p:Record<string,unknown>,row:Record<string
     if(typeof value==='number'&&Number.isFinite(value))return {connectionId,collection,key:[{column:'id',value}]};
     return undefined;
 }
-const stampableColumns=new Set(['title','summary','coverAlt','byline']),stampableKeys=new Set(['content','text','value','label','alt','ariaLabel','placeholder']);
+const numericFields = new Set<string>(numericDetailFields);
+const stampableColumns=new Set(['title','summary','body','coverAlt','byline',...detailTextFields.filter(field => !numericFields.has(field))]),stampableKeys=new Set(['content','text','value','label','alt','ariaLabel','placeholder']);
 /** Record identity `projectDirectoryRecords` stamps onto materialized directoryQuery rows. Authored
  *  layouts refuse these props; extraction re-validates and falls back to positional on any mismatch. */
 function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:Map<string,string>}|undefined{

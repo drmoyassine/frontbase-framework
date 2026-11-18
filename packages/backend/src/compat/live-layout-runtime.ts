@@ -71,9 +71,11 @@ export async function resolveLiveLayoutPage(
         const [,collection,mode]=query.binding.queryId.split('.');
         if(listing==='directory'&&mode==='list'&&['institution','program'].includes(collection!)&&collection!==type){inactive.add(query.id);return;}
         if(mode==='detail'&&route&&collection===(role==='editorial'?'page':role)){records.set(query.id,[row!]);return;}
+        const relatedPrograms = role === 'institution' && collection === 'program' && mode === 'list';
+        const relatedLimit = relatedPrograms && 'limit' in query.binding.params ? Math.min(limit, query.binding.params.limit ?? limit) : limit;
         const params:Record<string,unknown>=mode==='detail'?{path}:role==='static'
             ?{...query.binding.params,limit:query.landingLimit??limit}
-            :{q:search,sort,match,offset,limit,...(role==='institution'&&collection==='program'?{institutionId:row!.id}:{})};
+            :{q:search,sort,match,offset,limit:relatedLimit,...(relatedPrograms?{institutionId:row!.id}:{})};
         if(mode==='detail'&&role==='program'&&collection==='institution'){
             // A related parent comes from a live relationship lookup, never a saved catalog.
             const parent=await read('directory.institution.detail',{id:row!.institutionId});
