@@ -72,9 +72,13 @@ Local verification passed: workspace check and build, 23 Pages UI tests, the pub
 
 Study-in-USA runs Cloudflare Worker `0e8b832b-6bab-4f22-981b-0d75cf9e6ff1`. Rollback reference is `c93601e5-292a-47b1-b0b3-222c9fa10fa7`. Three signed-in visits showed a loading message with no rows before the six published entries appeared. All six Edit links and row clicks reached the expected editor, and checkboxes stayed on Pages. All six More menus opened and their settings destinations were verified. View provided six valid addresses, including one live record from each reusable template. All six returned HTTP 200 and no-store. All 15 bindings and sampled English and Arabic public response hashes matched the pre-deployment baseline.
 
-## Remaining work
+## Navigation and historical upgrade follow-up
 
-The Pages toolbar, publication status, loading state and shared row actions passed Study-in-USA acceptance. Pull request #15 tracks CI and merge to main.
+The Pages toolbar, publication status, loading state and shared row actions passed Study-in-USA acceptance and merged in [PR #15](https://github.com/drmoyassine/frontbase-framework/pull/15).
 
-- Update the remaining template redirect in Settings and the binding diagnostic links in Builder to point to their existing configuration panels. Verify those entry points outside Pages.
-- Keep the historical publication reader and individual page publication fields while they have active callers. Remove them only after migrating those callers and verifying upgrades for older installations.
+- The legacy Settings template bookmark opens Saved Views. Builder diagnostics focus the existing field when it is in the current panel, keep record identity links pointed at Template settings, and guide users to the Directory settings in Builder when the editor must be opened first.
+- Node 22 verification passed the workspace build and check, the targeted template type check, 30 console tests, the built CMS smoke test, the Pages workspace, live-layout routes and schema suites, and all ten Pages inventory and backup mutations with restored passing baselines.
+- The v22 SQLite upgrade applied migrations 23–26 and preserved the individually published page row, public URL, resolver output and Published status. A different tenant could not resolve the page. A second migration run made no changes.
+- A backup exported from a v25 fixture with an active reviewed capture restored into v26. The Pages entry retained its published address and publication hash. The compatibility renderer returned byte-identical HTML on both the homepage and the secondary page. These are local upgrade and restore proofs.
+
+Keep the individual publication fields and historical publication reader. They still support public resolution for individually published pages, Pages inventory for historical captures, and backup verification. Before retiring either path, migrate its callers and verify a deployed upgrade on representative older state. For installations with only a reviewed capture, prove an explicit move to live layouts with URL and locale parity before considering retirement.

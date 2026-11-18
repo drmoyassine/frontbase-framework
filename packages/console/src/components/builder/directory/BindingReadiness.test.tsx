@@ -22,7 +22,8 @@ it('routes specific problems to their existing authoring owners without displayi
  const configuration=emptyDirectoryConfiguration();configuration.datasourceId='source';configuration.collections.program.table='programs';configuration.collections.program.scope={field:'',value:'private-scope-value'};
  render(<BindingReadiness configuration={configuration}/>);
  expect(screen.getByRole('link',{name:'Site identity: enter the public site name.',hidden:true})).toHaveAttribute('href','/frontbase-admin/settings?tab=general');
- expect(screen.getByRole('link',{name:'Programs: select the institution relationship field.',hidden:true})).toHaveAttribute('href','/frontbase-admin/data-studio/datasources?setup=collections#binding-collections-program-fields-institutionId');
+ expect(screen.getByRole('link',{name:'Programs: select the institution relationship field.',hidden:true})).toHaveAttribute('href','/frontbase-admin/pages');
+ expect(screen.getAllByText('In Builder, open Page settings → Directory → Directory source fields.').length).toBeGreaterThan(0);
  expect(screen.queryByText(/private-scope-value/)).toBeNull();
  expect(screen.queryByText(/configuration items remain/)).toBeNull();
 });

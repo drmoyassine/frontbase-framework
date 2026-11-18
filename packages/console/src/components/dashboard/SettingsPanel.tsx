@@ -44,7 +44,7 @@ export const SettingsPanel: React.FC = () => {
   };
 
   if (rawTab === 'translations') { const next = new URLSearchParams(searchParams); next.set('tab','general'); next.set('section','translations'); return <Navigate replace to={'/settings?'+next.toString()} />; }
-  if (rawTab === 'template') return <Navigate replace to="/data-studio/datasources?setup=collections" />;
+  if (rawTab === 'template') return <Navigate replace to="/data-studio/saved-views" />;
 
   return (
     <div className="space-y-6">

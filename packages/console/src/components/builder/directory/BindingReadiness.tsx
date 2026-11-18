@@ -16,11 +16,19 @@ export function BindingReadiness({configuration,area,localData=false,identityRol
         <ul className="mt-3 space-y-2">{issues.map(issue=>{
             const fragment='binding-'+issue.key.replace(/\./g,'-');
             const identity=identityRolesInUrls.includes(issue.collection??'')&&/\.fields\.(id|originalPath)$/.test(issue.key);
-            const href=identity?'/frontbase-admin/pages?recordSource='+issue.collection+'#'+fragment:issue.area==='general'?'/frontbase-admin/settings?tab=general':issue.area==='routes'?'/frontbase-admin/pages':
-                (localData?'':'/frontbase-admin/data-studio/datasources?setup=collections')+'#'+fragment;
-            return <li key={issue.key} className="break-words"><a href={href} className="underline" onClick={localData&&issue.area==='data'&&!identity?event=>{
-                if(focusBindingSetting(fragment))event.preventDefault();
-            }:undefined}>{issue.message}</a>{issue.area==='routes'&&<span> Open Page settings → Shared routes.</span>}</li>;
+            const focusLocalField = issue.area === 'data' && localData && !identity;
+            let href = '/frontbase-admin/pages';
+            if (identity) href += '?recordSource='+issue.collection+'#'+fragment;
+            else if (issue.area === 'general') href = '/frontbase-admin/settings?tab=general';
+            else if (focusLocalField) href = '#'+fragment;
+
+            return <li key={issue.key} className="break-words">
+                <a href={href} className="underline" onClick={focusLocalField ? event => {
+                    if (focusBindingSetting(fragment)) event.preventDefault();
+                } : undefined}>{issue.message}</a>
+                {issue.area === 'routes' && <span> In Builder, open Page settings → Directory → Shared routes.</span>}
+                {issue.area === 'data' && !identity && !localData && <span> In Builder, open Page settings → Directory → Directory source fields.</span>}
+            </li>;
         })}</ul>
         <p className="mt-3 text-xs text-muted-foreground">Existing publication filters and relationships remain enforced.</p>
     </details>;

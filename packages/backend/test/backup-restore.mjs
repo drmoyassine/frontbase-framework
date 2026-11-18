@@ -5,9 +5,9 @@ import {join} from 'node:path';
 import {sqliteRunner} from '@frontbase/edge-infra';
 import {emptyDirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
 import {createMenuDefinition} from '@frontbase/edge-core/menus';
-import {migrateUp} from '../dist/db/migrations.js';
+import {appliedVersions,MIGRATIONS,migrateUp} from '../dist/db/migrations.js';
 import {createSecretCipher} from '../dist/db/secret-cipher.js';
-import {PagesStore} from '../dist/compat/pages-store.js';
+import {pagesWorkspace} from '../dist/compat/pages-workspace.js';
 import {SitePublicationManifestStore} from '../dist/compat/site-publication-manifest.js';
 import {SitePublicationReviewStore} from '../dist/compat/site-publication-review-store.js';
 import {MenusSnapshotStore} from '../dist/compat/menus-snapshot.js';
@@ -16,7 +16,8 @@ import {exportStateBackup, restoreStateBackup, verifyStateIntegrity} from '../di
 const now='2026-10-22T00:00:00Z',tenant='alpha';
 const stateDb=()=>{const dir=mkdtempSync(join(tmpdir(),'frontbase-backup-'));return sqliteRunner('file:'+join(dir,'state.db').replaceAll('\\','/'));};
 const source=stateDb(),restored=stateDb(),scratch=stateDb(),torn=stateDb(),drifted=stateDb();
-await migrateUp(source,()=>now);
+// Exercise export from the preceding schema and restore into current code.
+await migrateUp(source,()=>now,MIGRATIONS.filter(migration=>migration.version<=25));
 // Build a real deployment state through the REAL stores: menus snapshot, chunked publication
 // (pages + managed menu region), draft pages, an at-rest secret, branding asset chunks, and
 // the boot-session-secret provenance row.
@@ -34,7 +35,8 @@ const store=new SitePublicationManifestStore(source,tenant);
 const hash=await store.prepare({configurationRevision:1,configuration:config,templates:[],staticPages,redirects:[]},{cities:[],institutions:[],programs:[],articles:[]},now);
 await new SitePublicationReviewStore(source,tenant).approve({hash,checks:{content:true,media:true,layout:true,urls:true,ctas:true},note:'Backup fixture reviewed'},'reviewer',now);
 await new SitePublicationReviewStore(source,tenant).activate(hash,null,now);
-await new PagesStore(source,tenant).create({name:'Homepage',slug:'home',is_homepage:true,layout_data:staticPages[0].layout},pageId,now);
+await source.exec('INSERT INTO compat_pages (id,tenant_slug,name,slug,description,is_homepage,layout_data,created_at,updated_at) VALUES (?,?,?,?,?,1,?,?,?)',
+ [pageId,tenant,'Home','home',staticPages[0].description,JSON.stringify(staticPages[0].layout),now,now]);
 const cipher=await createSecretCipher('backup-suite-secret');
 await source.exec('INSERT INTO variables (tenant_slug,key,value,is_secret,updated_at) VALUES (?,?,?,?,?)',[tenant,'stripe_key',await cipher.encrypt('sk_live_fixture'),1,now]);
 await source.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?)',[tenant,'project_asset:logo.png',JSON.stringify({chunks:2,mime:'image/png'}),now]);
@@ -67,10 +69,17 @@ try{
  // THE CROWN: restore into a fresh DB and the deployed site renders BYTE-IDENTICAL HTML.
  const {report}=await restoreStateBackup(restored,backup,now,{confirmEmptyTarget:true});
  assert.equal(report.ok,true,JSON.stringify(report.checks));
+ assert.deepEqual(await appliedVersions(restored),MIGRATIONS.map(migration=>migration.version));
+ const workspace=await pagesWorkspace(restored,tenant);
+ assert.equal(workspace.publication?.hash,hash);
+ const homepage=workspace.entries.find(entry=>entry.pageId===pageId);
+ assert.equal(homepage?.publicationStatus,'published');
+ assert.equal(homepage?.publishedPath,'/');
  const home=await render(source,'/'),home2=await render(restored,'/');
  assert.equal(home.status,200);assert.equal(home2.status,200);
  assert.equal(home.text,home2.text,'restored deployment renders byte-identical public HTML');
  const about=await render(restored,'/about/');assert.equal(about.status,200);assert.ok(about.text.includes('About our programs'));
+ assert.deepEqual(about,await render(source,'/about/'),'reviewed secondary route survives the upgrade');
  // The integrity walk also runs standalone against a live DB (no export to reconcile).
  const live=await verifyStateIntegrity(source);assert.equal(live.ok,true,JSON.stringify(live.checks));
  // Tamper: one byte flipped inside the stored manifest must fail its pointer↔artifact re-hash
