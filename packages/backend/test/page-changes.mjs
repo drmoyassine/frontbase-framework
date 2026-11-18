@@ -7,8 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { sqliteRunner } from '@frontbase/edge-infra';
 import { migrateUp, MIGRATIONS, schemaFingerprint } from '../dist/db/migrations.js';
 import { PagesStore } from '../dist/compat/pages-store.js';
+import { pagesWorkspace } from '../dist/compat/pages-workspace.js';
 import { PageChangeStore, PageChangeConflict } from '../dist/compat/page-change-store.js';
 import { createCompatApp } from '../dist/compat/app.js';
+import { resolvePublishedPageForTenant } from '../dist/tenancy/serving.js';
 
 const time = '2026-10-08T12:00:00Z';
 let count = 0;
@@ -25,13 +27,21 @@ await test('fresh and v22-upgraded schemas converge without replacing pages', as
     const db = sqliteRunner(':memory:'); await migrateUp(db, () => time, MIGRATIONS.filter(m => m.version < 23));
     // Seed through the historical v22 schema, not a current store requiring later columns.
     const page={id:crypto.randomUUID()};
-    await db.exec('INSERT INTO compat_pages(id,tenant_slug,name,slug,is_public,is_homepage,is_published,layout_data,created_at,updated_at) VALUES(?,?,?,?,1,0,0,?,?,?)',[page.id,'alpha','Old','old',JSON.stringify({root:{},content:[]}),time,time]);
+    await db.exec('INSERT INTO compat_pages(id,tenant_slug,name,slug,is_public,is_homepage,is_published,layout_data,created_at,updated_at) VALUES(?,?,?,?,1,0,1,?,?,?)',[page.id,'alpha','Old','old',JSON.stringify({root:{},content:[]}),time,time]);
     const before=(await db.query('SELECT * FROM compat_pages WHERE tenant_slug=? AND id=?',['alpha',page.id]))[0];
+    const publishedBefore = await resolvePublishedPageForTenant(db, 'alpha', '/old/');
+    assert.equal(publishedBefore?.pageId, page.id);
     assert.deepEqual(await migrateUp(db), [23, 24, 25, 26]);
     const pages=new PagesStore(db,'alpha');assert.equal((await pages.get(page.id)).name, 'Old');
     const after=(await db.query('SELECT * FROM compat_pages WHERE tenant_slug=? AND id=?',['alpha',page.id]))[0];
     for(const [key,value]of Object.entries(before))assert.deepEqual(after[key],value,'historical '+key+' preserved');
     assert.equal(after.namespace_key,null,'migration does not rewrite historical route ownership');
+    assert.deepEqual(await resolvePublishedPageForTenant(db, 'alpha', '/old/'), publishedBefore);
+    assert.equal(await resolvePublishedPageForTenant(db, 'beta', '/old/'), null);
+    const { entries } = await pagesWorkspace(db, 'alpha');
+    const legacyPage = entries.find(entry => entry.pageId === page.id);
+    assert.equal(legacyPage?.publicationStatus, 'published');
+    assert.equal(legacyPage?.path, '/old');
     const fresh = sqliteRunner(':memory:'); await migrateUp(fresh);
     assert.equal(await schemaFingerprint(db), await schemaFingerprint(fresh));
     assert.deepEqual(await migrateUp(db), []);

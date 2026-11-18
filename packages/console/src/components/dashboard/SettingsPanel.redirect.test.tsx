@@ -19,8 +19,8 @@ afterEach(cleanup);
 function Destination(){const location=useLocation();return <p>{location.pathname+location.search}</p>;}
 describe('retired template settings route',()=>{
  it('redirects once within the admin router basename',async()=>{
-  render(<MemoryRouter basename="/frontbase-admin" initialEntries={['/frontbase-admin/settings?tab=template']}><Routes><Route path="/settings" element={<SettingsPanel/>}/><Route path="/data-studio/datasources" element={<Destination/>}/></Routes></MemoryRouter>);
-  expect(await screen.findByText('/data-studio/datasources?setup=collections')).toBeInTheDocument();
+  render(<MemoryRouter basename="/frontbase-admin" initialEntries={['/frontbase-admin/settings?tab=template']}><Routes><Route path="/settings" element={<SettingsPanel/>}/><Route path="/data-studio/saved-views" element={<Destination/>}/></Routes></MemoryRouter>);
+  expect(await screen.findByText('/data-studio/saved-views')).toBeInTheDocument();
  });
  it('redirects the old translations link under General preserving other parameters',async()=>{
   render(<MemoryRouter basename="/frontbase-admin" initialEntries={['/frontbase-admin/settings?tab=translations&from=legacy']}><Routes><Route path="/settings" element={<><SettingsPanel/><Destination/></>}/></Routes></MemoryRouter>);
