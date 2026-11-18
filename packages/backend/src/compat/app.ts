@@ -64,7 +64,9 @@ import { registerEdgeDatabasesRoutes } from './routes/edge-databases.js';
 import { registerAuthFormsRoutes } from './routes/auth-forms.js';
 import { registerWorkflowsRoutes } from './routes/workflows.js';
 import { registerActionsRoutes } from './routes/actions.js';
-import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes } from './routes/auth-compat.js';
+import { registerPasskeyRoutes } from './routes/passkeys.js';
+import { registerAccountRoutes, type AccountMail } from './routes/account.js';
+import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes, setSession } from './routes/auth-compat.js';
 import type { CloudIdentityProvider } from './supabase-cloud-auth.js';
 import { registerBillingRoutes, registerBillingWebhookRoute, type StripeBillingConfig } from './routes/billing.js';
 import { authRateLimitMiddleware } from './rate-limit-store.js';
@@ -115,6 +117,9 @@ export interface CreateCompatAppDeps {
     /** Deliver a raw reset capability out-of-band. The public response remains
      * identical for existing and unknown email addresses. */
     passwordResetDelivery?: (email: string, token: string) => Promise<void>;
+    accountMail?: AccountMail;
+    /** Fixed HTTPS origin for self-hosted administrator passkeys. */
+    adminPasskeyOrigin?: string;
     /** Match the product deployment mode. Cloud-only signup and slug checks are
      * disabled by default because the framework worker is self-hosted. */
     cloudMode?: boolean;
@@ -391,6 +396,12 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
         );
     }
 
+    const passkeys = !deps.cloudMode && deps.adminPasskeyOrigin && deps.sessionSecret && deps.userStoreFor
+        ? {db:runner,users:deps.userStoreFor,now,origin:deps.adminPasskeyOrigin,
+            signIn:(c:Parameters<typeof setSession>[0],user:Parameters<typeof setSession>[1],version:number)=>setSession(c,user,deps.sessionSecret!,version)}
+        : undefined;
+    if (passkeys) registerPasskeyRoutes(app,passkeys,'public');
+
     // Public inert bootstrap and capability probe: no field inventory or privileged data.
     app.get('/api/frontend-edit/script.js',c=>new Response(FRONTEND_EDITOR_SCRIPT,{headers:{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}}));
     app.get('/api/frontend-edit/capability/',async c=>{
@@ -460,7 +471,9 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
 
     // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).
     if (deps.sessionSecret && deps.userStoreFor) {
-    registerAuthCompatAuthedRoutes(app, kvFor, secretCipher, now);
+        registerAuthCompatAuthedRoutes(app, kvFor, secretCipher, now);
+        registerAccountRoutes(app,{db:runner,users:deps.userStoreFor,now,mail:deps.accountMail});
+        if (passkeys) registerPasskeyRoutes(app,passkeys,'account');
     }
     if (deps.billing) registerBillingRoutes(app, runner, deps.billing, now);
 

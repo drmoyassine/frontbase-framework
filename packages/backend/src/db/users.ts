@@ -69,6 +69,15 @@ export class UserStore {
         return r ? { id: String(r.id), email: String(r.email), role: String(r.role), tenantSlug: String(r.tenant_slug) } : null;
     }
 
+    /** Credential verification for the authenticated, tenant-scoped account owner. */
+    async findByIdForVerify(id: string): Promise<UserRecord | null> {
+        const rows = await this.runner.query(
+            'SELECT id, email, password_hash, role, tenant_slug, created_at FROM users WHERE id = ? AND tenant_slug = ?',
+            [id, this.tenant],
+        );
+        return toRecord(rows[0]);
+    }
+
     async getSessionVersion(id: string): Promise<number> {
         const rows = await this.runner.query(
             'SELECT version FROM user_session_versions WHERE user_id = ? AND tenant_slug = ?',

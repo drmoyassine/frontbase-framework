@@ -1,3 +1,4 @@
+import { MyAccount } from '@/modules/dbsync/components/MyAccount';
 import { MenusPanel } from '@/components/dashboard/MenusPanel';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -182,6 +183,7 @@ const AdminApp = () => {
                   <Route path="/storage" element={<StoragePanel />} />
                   <Route path="/edge" element={<EdgeInfrastructurePanel />} />
                   <Route path="/settings" element={<SettingsPanel />} />
+                  <Route path="/my-account" element={<MyAccount />} />
 
                   {/* Admin Tools Gated Routes */}
                   <Route element={<AdminRoute />}>

@@ -77,3 +77,19 @@ export function createResendPasswordResetDelivery(
             });
     };
 }
+
+/** Account verification emails contain a code entered on the signed-in account page. */
+export function createResendAccountMail(opts: Pick<ResendDeliveryOptions,'apiKey'|'from'|'fetchImpl'>) {
+    const fetchImpl: typeof fetch = (input,init)=>guardedExternalFetch(opts.fetchImpl??globalThis.fetch.bind(globalThis),input,init);
+    const send = (email: string,subject: string,html: string) => sendResendMessage({...opts,fetchImpl},{
+        from:opts.from ?? 'Frontbase <onboarding@resend.dev>',to:[email],subject,html,
+    });
+    return {
+        async verifyAddress(email: string,code: string) {
+            await send(email,'Verify your new Frontbase email address',`<p>Enter this code in My account within 15 minutes.</p><p><strong>${escapeHtml(code)}</strong></p><p>If you did not request this change, ignore this message.</p>`);
+        },
+        async notifyOldAddress(email: string) {
+            await send(email,'Your Frontbase sign-in email changed','<p>Your Frontbase sign-in address was changed. If you did not authorize this change, contact your site administrator.</p>');
+        },
+    };
+}

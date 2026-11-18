@@ -32,7 +32,7 @@ import {audienceConditionUser} from '@frontbase/edge-core';
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import type { PageEntry } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, createSupabaseCloudAuth, assertStripeKeyMode, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
+import { createConsole, createCompatApp, createSupabaseCloudAuth, assertStripeKeyMode, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, createResendAccountMail, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { s3StorageProvider, kvCache, createNativeR2Storage, NATIVE_R2_ACCESS_PATH, type R2BucketBinding, type KVNamespaceBinding, type CacheProvider, type DbRunner, type StorageProvider, type StorageProviderFactory } from '@frontbase/edge-infra';
@@ -422,6 +422,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         ? async (req: Request) => scopePrincipalToHost(await rawResolvePrincipal(req), hostTenantFor(req))
         : rawResolvePrincipal;
     const compatApp = await createCompatApp({
+        adminPasskeyOrigin: opts.publicOrigin,
         ...(opts.publicOrigin?{providerOAuth:{origin:opts.publicOrigin,clients:providerOAuthClients(opts.providerOAuthEnv??{},opts.publicOrigin),relay:providerOAuthRelay(opts.providerOAuthEnv??{},opts.publicOrigin)}}:{}),
         makeRunner: () => opts.runner,
         translationExecutionEnabled: opts.translationExecutionEnabled===true,
@@ -477,6 +478,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         ...(cloud && opts.billing ? { billing: opts.billing } : {}),
         ...(opts.resend && (cloud || opts.publicOrigin)
             ? {
+                ...(opts.resend.from ? { accountMail: createResendAccountMail({...opts.resend,fetchImpl:opts.externalFetch}) } : {}),
                 passwordResetDelivery: createResendPasswordResetDelivery({
                     apiKey: opts.resend.apiKey,
                     from: opts.resend.from,

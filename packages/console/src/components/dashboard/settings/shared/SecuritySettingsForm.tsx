@@ -37,7 +37,6 @@ import {
     Trash2,
     Plus,
     RefreshCw,
-    Sliders,
     FileText,
     Globe
 } from 'lucide-react';
@@ -74,12 +73,6 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
     const [botWidgetSize, setBotWidgetSize] = React.useState<'normal' | 'compact' | 'invisible'>('normal');
     const [botAutoBanLockoutHours, setBotAutoBanLockoutHours] = React.useState(24);
     
-    const [botMetrics, setBotMetrics] = React.useState({
-        solve_rate: 0.0,
-        total_challenges: 0,
-        blocked_solves: 0,
-        banned_ips: 0
-    });
     const [isSavingBot, setIsSavingBot] = React.useState(false);
     
     // New ban form states
@@ -88,10 +81,23 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
     const [isBanning, setIsBanning] = React.useState(false);
 
     // Diagnostics calculation
+    const [observedHeaders, setObservedHeaders] = React.useState<Record<string, string | null>>();
+    const [headerFailed, setHeaderFailed] = React.useState(false);
+    React.useEffect(() => {
+        const controller = new AbortController();
+        fetch(window.location.pathname, {cache:'no-store', credentials:'same-origin', signal:controller.signal})
+            .then(response => {
+                if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) throw Error('Header observation unavailable');
+                const names = ['X-Frame-Options','X-Content-Type-Options','Strict-Transport-Security','Content-Security-Policy'];
+                setObservedHeaders(Object.fromEntries(names.map(name=>[name,response.headers.get(name)])));
+                void response.body?.cancel().catch(()=>{});
+            })
+            .catch(() => { if (!controller.signal.aborted) setHeaderFailed(true); });
+        return () => controller.abort();
+    }, []);
+
     const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
     
-    const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '';
-    const hasTurnstile = turnstileSiteKey !== '' || (botEnabled && botSiteKey !== '');
 
     // Fetch data
     const fetchSecurityData = async (silent = false) => {
@@ -102,8 +108,7 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
             // Conditionally fetch global data (WAF and Audit Logs) only for master admin
             const endpoints = [
                 api.get('/api/auth/security/blocklist'),
-                api.get('/api/auth/security/bot-protection'),
-                api.get('/api/auth/security/bot-protection/metrics')
+                api.get('/api/auth/security/bot-protection')
             ];
             
             let wafRes, auditRes;
@@ -116,11 +121,10 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
             
             const blockRes = results[0];
             const botSettingsRes = results[1];
-            const botMetricsRes = results[2];
 
             if (isMaster) {
-                wafRes = results[3];
-                auditRes = results[4];
+                wafRes = results[2];
+                auditRes = results[3];
                 setWafEnabled(wafRes.data.enabled);
                 setAuditLogs(auditRes.data);
             }
@@ -140,7 +144,6 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
             setBotAutoBanLockoutHours(botSettingsRes.data.auto_ban_lockout_hours);
             
             // Bot metrics
-            setBotMetrics(botMetricsRes.data);
         } catch (err: any) {
             console.error('Failed to load security settings:', err);
             toast({
@@ -197,10 +200,8 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
             await api.post('/api/auth/security/waf', { enabled: checked });
             setWafEnabled(checked);
             toast({
-                title: checked ? 'WAF Enabled' : 'WAF Disabled',
-                description: checked 
-                    ? 'Incoming requests are now scanned for injection and XSS patterns.' 
-                    : 'Web Application Firewall inspection has been deactivated.',
+                title: 'Anomaly inspector preference saved',
+                description: 'Enforcement is configured at your deployment host.',
             });
             // Refresh audit logs
             const auditRes = await api.get('/api/auth/security/audit-logs');
@@ -231,7 +232,7 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
             
             toast({
                 title: 'IP Address Blocked',
-                description: `Successfully added block rules for ${ipToBan}`,
+                description: `Saved IP blocklist entries for ${ipToBan}`,
             });
             
             setNewIpOrRange('');
@@ -360,207 +361,40 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
 
                 {/* Tab 1: Firewall & Security Headers */}
                 <TabsContent value="firewall" className="space-y-6 outline-none">
-                    {/* Section 1: Security Health & Diagnostics Checklist */}
-                    <div className="grid gap-4 md:grid-cols-3">
-                        {/* Master Email Status */}
-                        <Card className="border-l-4 border-l-green-500 bg-green-500/5 transition-all duration-200 hover:shadow-md">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Master Admin Email</CardTitle>
-                                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-lg font-bold">
-                                    Custom Email Configured
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Master account email is customized and secured.
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        {/* Connection Protocol */}
-                        <Card className={`border-l-4 transition-all duration-200 hover:shadow-md ${isHttps ? 'border-l-green-500 bg-green-500/5' : 'border-l-amber-500 bg-amber-500/5'}`}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Connection Security</CardTitle>
-                                {isHttps ? (
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                ) : (
-                                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                )}
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-lg font-bold">
-                                    {isHttps ? 'HTTPS Connection' : 'HTTP Unsecured'}
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {isHttps 
-                                        ? 'Traffic between browser and Edge Server is fully encrypted.' 
-                                        : 'Warning: Frontbase is running over plain HTTP. Setup SSL/HTTPS for production.'
-                                    }
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        {/* Bot Protection status */}
-                        <Card className={`border-l-4 transition-all duration-200 hover:shadow-md ${botEnabled ? 'border-l-green-500 bg-green-500/5' : hasTurnstile ? 'border-l-green-500 bg-green-500/5' : 'border-l-blue-500 bg-blue-500/5'}`}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Bot Protection Status</CardTitle>
-                                {(botEnabled || hasTurnstile) ? (
-                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                ) : (
-                                    <Info className="h-4 w-4 text-blue-500" />
-                                )}
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-lg font-bold">
-                                    {botEnabled 
-                                        ? botProvider === 'cloudflare' 
-                                            ? 'Cloudflare Turnstile Active' 
-                                            : botProvider === 'recaptcha_v2'
-                                                ? 'reCAPTCHA v2 Active'
-                                                : 'reCAPTCHA v3 Active'
-                                        : hasTurnstile 
-                                            ? 'Cloudflare Turnstile Active (Env)' 
-                                            : 'Honeypot Shield Only'}
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {(botEnabled || hasTurnstile)
-                                        ? 'CAPTCHA verification is actively protecting authentication endpoints.' 
-                                        : 'Default invisible honeypot shield is active. Configure bot protection settings for CAPTCHAs.'}
-                                </p>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <Card><CardHeader><CardTitle>Connection</CardTitle><CardDescription>
+                            {isHttps ? 'This console is loaded over HTTPS.' : 'This console is loaded over HTTP. Configure HTTPS at your ingress for production.'}
+                        </CardDescription></CardHeader></Card>
+                        <Card><CardHeader><CardTitle>Host protections</CardTitle><CardDescription>Configure traffic controls at your deployment host.</CardDescription></CardHeader>
+                            <CardContent className="space-y-2 text-sm">
+                                <p><strong>Cloudflare Workers</strong> — Access, zone WAF and rate limits.</p>
+                                <p><strong>Vercel</strong> — project firewall and Deployment Protection.</p>
+                                <p><strong>Docker</strong> — HTTPS and traffic rules at your reverse proxy or ingress.</p>
                             </CardContent>
                         </Card>
                     </div>
-
-                    {/* Section 2: WAF Firewall & Security Headers */}
-                    <div className="grid gap-6 md:grid-cols-2">
-                        {/* WAF Switch Card */}
-                        <Card className="transition-all duration-200 hover:shadow-md">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                                    <Bot className="h-5 w-5 text-primary" />
-                                    Web Application Firewall (WAF)
-                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 rounded font-normal">
-                                        Anomaly Engine
-                                    </Badge>
-                                </CardTitle>
-                                <CardDescription>
-                                    Scan incoming write payloads for SQL Injection and Cross-Site Scripting (XSS) using recursive decoding and weighted anomaly scoring.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
-                                    <div className="space-y-1">
-                                        <Label htmlFor="waf-toggle" className="font-semibold block cursor-pointer">
-                                            Local Anomaly Inspector
-                                        </Label>
-                                        <span className="text-xs text-muted-foreground block">
-                                            {wafEnabled ? 'Scanning JSON fields recursively (block threshold: 5).' : 'Activate payload inspection rules.'}
-                                        </span>
-                                    </div>
-                                    <Switch
-                                        id="waf-toggle"
-                                        checked={wafEnabled}
-                                        onCheckedChange={handleWafToggle}
-                                        disabled={isSavingWaf}
-                                    />
-                                </div>
-                                <div className="text-xs space-y-1.5 text-muted-foreground p-3 border rounded border-dashed">
-                                    <p className="font-semibold text-primary">Advanced Protections:</p>
-                                    <ul className="list-disc pl-4 space-y-1">
-                                        <li><strong>Obfuscation Resilient:</strong> Decodes double URL encoding, HTML entities, and comment tricks.</li>
-                                        <li><strong>Weighted Scoring:</strong> Isolated terms are allowed; combined malicious signals trigger block.</li>
-                                        <li><strong>Admin Exemption:</strong> Design actions are logged but never blocked for authenticated admins.</li>
-                                    </ul>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* HTTP Security Headers Info Card */}
-                        <Card className="transition-all duration-200 hover:shadow-md">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                                    <Sliders className="h-5 w-5 text-primary" />
-                                    HTTP Security Headers
-                                </CardTitle>
-                                <CardDescription>
-                                    Global parameters injected into HTTP response streams to harden the client browser environment.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="rounded-lg border p-4 bg-muted/20 space-y-3">
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="font-semibold">X-Frame-Options</span>
-                                        <Badge variant="secondary" className="font-mono bg-green-500/10 text-green-600 border-none">SAMEORIGIN</Badge>
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="font-semibold">X-Content-Type-Options</span>
-                                        <Badge variant="secondary" className="font-mono bg-green-500/10 text-green-600 border-none">nosniff</Badge>
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="font-semibold">Strict-Transport-Security (HSTS)</span>
-                                        <Badge variant="secondary" className="font-mono bg-blue-500/10 text-blue-600 border-none">max-age=31536000</Badge>
-                                    </div>
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="font-semibold">Lockout Threshold</span>
-                                        <Badge variant="secondary" className="font-mono bg-amber-500/10 text-amber-600 border-none">5 Failed Attempts</Badge>
-                                    </div>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground">
-                                    * Strict-Transport-Security (HSTS) becomes active when <span className="font-semibold">DEPLOYMENT_MODE</span> matches production.
-                                </p>
-                            </CardContent>
-                        </Card>
+                    <Card><CardHeader><CardTitle>Console response headers</CardTitle><CardDescription>Observed on an uncached request for this console page. Other routes may return different headers.</CardDescription></CardHeader>
+                        <CardContent>
+                            {!observedHeaders ? <p role="status">{headerFailed ? 'The response headers could not be checked.' : 'Checking response headers…'}</p> : <dl className="space-y-2 text-sm">
+                                {Object.entries(observedHeaders).map(([name,value])=><div key={name} className="grid gap-1 sm:grid-cols-2">
+                                    <dt className="font-medium">{name}</dt><dd className="break-words text-muted-foreground">{value ?? 'Absent on this response'}</dd>
+                                </div>)}
+                            </dl>}
+                        </CardContent>
+                    </Card>
+                    <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                        <p className="font-semibold">Saved settings</p>
+                        <p>The current runtime does not enforce the saved anomaly inspector, bot rules, or IP blocklist.</p>
+                        {isMaster && <div className="mt-3 flex items-center gap-3">
+                            <Switch id="waf-toggle" checked={wafEnabled} onCheckedChange={handleWafToggle} disabled={isSavingWaf} />
+                            <Label htmlFor="waf-toggle">Save anomaly inspector preference</Label>
+                        </div>}
                     </div>
                 </TabsContent>
 
                 {/* Tab 1.5: Bot Protection Configuration */}
                 <TabsContent value="bot" className="space-y-6 outline-none">
-                    {/* Metrics Dashboard Grid */}
-                    <div className="grid gap-4 md:grid-cols-4">
-                        <Card className="transition-all duration-200 hover:shadow-sm">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Solve Success Rate</CardTitle>
-                                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{botMetrics.solve_rate}%</div>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">Percentage of solved checks</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="transition-all duration-200 hover:shadow-sm">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Challenges</CardTitle>
-                                <Sliders className="h-4 w-4 text-blue-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{botMetrics.total_challenges}</div>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">Presented CAPTCHA tokens</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="transition-all duration-200 hover:shadow-sm">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Blocked Bots</CardTitle>
-                                <AlertTriangle className="h-4 w-4 text-red-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{botMetrics.blocked_solves}</div>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">Failed verification tokens</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="transition-all duration-200 hover:shadow-sm">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Auto-Banned IPs</CardTitle>
-                                <Lock className="h-4 w-4 text-orange-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{botMetrics.banned_ips}</div>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">Banned on repeated failures</p>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Settings Form */}
+                    <p className="rounded-lg border bg-muted/30 p-3 text-sm">These settings are stored for reference. Configure enforcement at your deployment host.</p>
                     <Card className="transition-all duration-200 hover:shadow-md">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -568,7 +402,7 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
                                 Bot Protection Settings
                             </CardTitle>
                             <CardDescription>
-                                Secure your administration panel endpoints using Cloudflare Turnstile or Google reCAPTCHA.
+                                Store the preferred provider for future enforcement.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -577,10 +411,10 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
                                 <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
                                     <div className="space-y-1">
                                         <Label htmlFor="bot-toggle" className="font-semibold block cursor-pointer">
-                                            Enable Bot Protection
+                                            Save bot protection preference
                                         </Label>
                                         <span className="text-xs text-muted-foreground block">
-                                            {botEnabled ? 'Verification is actively enforced.' : 'Allow logins without interactive CAPTCHA widgets.'}
+                                            Stores the preferred bot verification mode.
                                         </span>
                                     </div>
                                     <Switch
@@ -749,6 +583,7 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
 
                 {/* Tab 2: IP Blocklist Access Control */}
                 <TabsContent value="access" className="space-y-6 outline-none">
+                    <p className="rounded-lg border bg-muted/30 p-3 text-sm">These settings are stored for reference. Configure enforcement at your deployment host.</p>
                     {/* Section 3: IP Blocklist Access Control */}
                     <Card className="transition-all duration-200 hover:shadow-md">
                         <CardHeader>
@@ -803,7 +638,7 @@ export function SecuritySettingsForm({ withCard = false }: SecuritySettingsFormP
                                         {blocklist.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={4} className="h-24 text-center text-muted-foreground text-sm">
-                                                    No active manual IP blocklist rules configured.
+                                                    No IP blocklist entries saved.
                                                 </TableCell>
                                             </TableRow>
                                         ) : (

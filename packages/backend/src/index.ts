@@ -320,7 +320,7 @@ export {
 export type { PlanLimits } from './compat/plans/gates.js';
 // A-25 Phase 4 cloud: password-reset email delivery (Resend).
 export {
-    RESEND_ENDPOINT, passwordResetLink, resetEmailHtml, createResendPasswordResetDelivery,
+    RESEND_ENDPOINT, passwordResetLink, resetEmailHtml, createResendPasswordResetDelivery, createResendAccountMail,
 } from './compat/email/resend.js';
 export type { ResendDeliveryOptions } from './compat/email/resend.js';
 // A-25 Phase 4 cloud: platform-admin tenant management (master_admin surface).

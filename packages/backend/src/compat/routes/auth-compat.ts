@@ -79,7 +79,7 @@ function userPayload(
     };
 }
 
-async function setSession(
+export async function setSession(
     c: Context<{ Variables: ConsoleAuthVars }>,
     user: { id: string; email: string; role: string; tenantSlug: string },
     sessionSecret: string,
@@ -96,7 +96,7 @@ async function setSession(
         sessionSecret,
         Math.floor(Date.now() / 1000),
     );
-    c.header('Set-Cookie', SESSION_COOKIE(token));
+    c.header('Set-Cookie', SESSION_COOKIE(token), { append:true });
 }
 
 /**
