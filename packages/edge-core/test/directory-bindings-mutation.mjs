@@ -2,7 +2,7 @@ import { withSourceMutation, buildPackage, runGate, expectRed, summarize, repoRo
 const pkg='@frontbase/edge-core',dir=repoRoot+'packages/edge-core/';
 if (!buildPackage(pkg) || runGate(dir,'test/directory-bindings.mjs') !== 0) process.exit(2);
 for (const [label,find,replacement] of [
-    ['record field allowlist', "text: z.enum(['title', 'summary', 'body', 'byline', 'publishedAt']).optional()", 'text: z.string().optional()'],
+    ['record field allowlist', "text: z.enum(['title', 'summary', 'body', 'byline', 'publishedAt', ...detailTextFields]).optional()", 'text: z.string().optional()'],
     ['nested query refusal', 'if (inQuery || requests.length >= 8 || requests.some(r => r.id === node.id) || props.binding || node.binding)', 'if (false)'],
     ['record text is literal', "value.replace(/\\{(?=[{%])/g, '{\\u200b')", 'value'],
 ]) await withSourceMutation(label,'packages/edge-core/src/directory/bindings.ts',find,replacement,async()=>{
@@ -19,9 +19,9 @@ for (const [label,file,find,replacement] of [
     ['optional contacts collapse','configuration.ts',"binding.hideWhenEmpty && !props.href",'false'],
     ['contact component validation','bindings.ts',"binding.hideWhenEmpty !== undefined && (node.type !== 'Link' || !binding.href)",'false'],
     ['date format field allowlist','bindings.ts',"record.format && record.text !== 'publishedAt'",'false'],
-    ['explicit date projection','bindings.ts',"b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(row[b.text])",'literal(row[b.text])'],
+    ['explicit date projection','bindings.ts',"b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(textField ? String(row[textField]) : '')",'literal(row[b.text])'],
     ['invalid calendar rejection','bindings.ts',"day > days[month - 1]!",'false'],
-    ['alt fallback component and field refusal','bindings.ts',"record.altFallback && (node.type !== 'Image' || record.alt !== 'coverAlt')",'false'],
+    ['alt fallback component and field refusal','bindings.ts',"record.altFallback && (!['Image', 'Gallery'].includes(node.type) || record.alt !== 'coverAlt')",'false'],
     ['explicit literal title fallback','bindings.ts',"(b.altFallback === 'title' ? literal(row.title) : '')","''"],
     ['accessible link binding refusal','bindings.ts',"record.ariaLabel && (node.type !== 'Link' || !record.href)",'false'],
 ]) await withSourceMutation(label,'packages/edge-core/src/directory/'+file,find,replacement,async()=>{
