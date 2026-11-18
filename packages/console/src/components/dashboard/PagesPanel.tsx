@@ -28,22 +28,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, MoreHorizontal, Eye, Edit, Copy, Trash2, FileText, RotateCcw, Trash, CheckSquare, Square, Download, Globe, GlobeLock, Upload as UploadIcon } from 'lucide-react';
+import { Search, MoreHorizontal, Edit, Trash2, FileText, RotateCcw, CheckSquare, Square } from 'lucide-react';
 import { PageExportEnvelope } from '@/types/page-export';
 import { toast } from 'sonner';
-import { resolvePreviewUrl } from '@/lib/edgeUtils';
+
 import {InstallTemplateDialog} from './InstallTemplateDialog';
 import { CreatePageDialog } from './CreatePageDialog';
 import { EdgePublishDialog } from './settings/shared/EdgePublishDialog';
-import { PageRouteAudit } from './PageRouteAudit';
 import { PagesWorkspace } from './pages-workspace/PagesWorkspace';
 
 export const PagesPanel: React.FC = () => {
   const navigate = useNavigate();
-  const { project, pages, createPage, createPageInDatabase, deletePage, restorePage, permanentDeletePage, setCurrentPageId, loadPagesFromDatabase, publishPageToTarget, publishPageToTargets, unpublishPageFromTarget } = useBuilderStore(useShallow(s => ({
-    project: s.project,
+  const { pages, createPageInDatabase, deletePage, restorePage, permanentDeletePage, setCurrentPageId, loadPagesFromDatabase, publishPageToTarget, unpublishPageFromTarget } = useBuilderStore(useShallow(s => ({
     pages: s.pages,
-    createPage: s.createPage,
     createPageInDatabase: s.createPageInDatabase,
     deletePage: s.deletePage,
     restorePage: s.restorePage,
@@ -51,13 +48,11 @@ export const PagesPanel: React.FC = () => {
     setCurrentPageId: s.setCurrentPageId,
     loadPagesFromDatabase: s.loadPagesFromDatabase,
     publishPageToTarget: s.publishPageToTarget,
-    publishPageToTargets: s.publishPageToTargets,
     unpublishPageFromTarget: s.unpublishPageFromTarget
   })));
   const { isAuthenticated, isLoading, tenant, user } = useAuthStore();
   const tenantSlug = tenant?.slug || user?.tenant_slug;
   const { searchQuery, setSearchQuery, filterStatus } = useDashboardStore();
-  const [isCreating, setIsCreating] = useState(false);
   const [isLoadingPages, setIsLoadingPages] = useState(true);
   const [showTrash, setShowTrash] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -106,45 +101,6 @@ export const PagesPanel: React.FC = () => {
     return matchesTrashView && matchesSearch && matchesFilter;
   });
 
-  // Safe window.open — validates the URL before opening to prevent DOMException
-  const safeOpen = (url: string | undefined | null, context?: string) => {
-    const trimmed = (url ?? '').trim();
-    if (!trimmed) {
-      console.error(`[Preview] Empty URL. Context: ${context}, tenantSlug=${tenantSlug}`);
-      toast.error('Preview URL could not be resolved — no valid URL found.');
-      return;
-    }
-    try {
-      new URL(trimmed); // Validate it's a parseable URL
-    } catch {
-      console.error(`[Preview] Invalid URL: "${trimmed}". Context: ${context}, tenantSlug=${tenantSlug}`);
-      toast.error(`Preview URL is invalid: ${trimmed}`);
-      return;
-    }
-    window.open(trimmed, '_blank');
-  };
-
-  // Get a browser-accessible preview URL for a deployment.
-  const getPreviewUrl = (pagePath: string, targetUrl?: string, storedPreviewUrl?: string | null, isShared?: boolean) => {
-    // If it's a shared community engine, forcibly dynamically resolve it since stored URLs might just be the backend request origin.
-    if (isShared && tenantSlug) {
-      const resolved = resolvePreviewUrl(targetUrl, pagePath, isShared, tenantSlug);
-      if (resolved) return resolved;
-    }
-
-    // 1. Prefer the stored previewUrl — it's the exact URL returned by the edge on publish
-    //    and correctly reflects tenant-aware subdomain routing (tenant.frontbase.dev/slug)
-    if (storedPreviewUrl) return storedPreviewUrl;
-
-    // 2. Fallback to resolution 
-    const fallbackResolved = resolvePreviewUrl(targetUrl, pagePath, isShared, tenantSlug);
-    if (fallbackResolved) return fallbackResolved;
-
-    // 3. Absolute fallback: use the current browser origin (reverse proxy handles routing)
-    const cleanPath = pagePath.replace(/^\//, '');
-    return `${window.location.origin}/${cleanPath}`;
-  };
-
   const handlePageCreated = (pageId: string) => {
     setCurrentPageId(pageId);
     navigate(`/builder/${pageId}`);
@@ -154,35 +110,6 @@ export const PagesPanel: React.FC = () => {
   const handleEditPage = (pageId: string) => {
     setCurrentPageId(pageId);
     navigate(`/builder/${pageId}`);
-  };
-
-  const handlePreviewPage = (page: any) => {
-    const pagePath = page.isHomepage ? '' : page.slug;
-    // Try to use the first published deployment's stored previewUrl (tenant-aware)
-    const publishedDep = page.deployments?.find((d: any) => d.status === 'published');
-    const url = getPreviewUrl(pagePath, publishedDep?.target?.url, publishedDep?.previewUrl, publishedDep?.target?.is_shared);
-    safeOpen(url, `handlePreviewPage slug=${page.slug} isShared=${publishedDep?.target?.is_shared} targetUrl=${publishedDep?.target?.url} storedPreviewUrl=${publishedDep?.previewUrl}`);
-  };
-
-  const handleSyncAllTargets = async (pageId: string) => {
-    try {
-      // Fetch active full-scope engines and publish in batch
-      const response = await fetch('/api/edge-engines/active/by-scope/full');
-      const engines = await response.json();
-      if (!Array.isArray(engines) || engines.length === 0) {
-        toast.error('No active deployment targets found');
-        return;
-      }
-      const result = await publishPageToTargets(pageId, engines.map((eng: any) => eng.id));
-      if (result) {
-        const succeeded = result.results?.filter((r: any) => r.success) || [];
-        const failed = result.results?.filter((r: any) => !r.success) || [];
-        if (succeeded.length > 0) toast.success(`Synced to ${succeeded.length} target(s)`);
-        if (failed.length > 0) toast.error(`Failed to sync ${failed.length} target(s)`);
-      }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to sync targets');
-    }
   };
 
   const handleSyncTarget = async (pageId: string, engineId: string) => {
@@ -347,42 +274,6 @@ export const PagesPanel: React.FC = () => {
     }
   };
 
-  const handleBulkExport = () => {
-    const pagesToExport = pages.filter(p => selectedPages.has(p.id));
-    for (const page of pagesToExport) {
-      handleExportPage(page);
-    }
-    toast.success(`Exported ${pagesToExport.length} page(s)`);
-  };
-
-  // --- Badge computation helpers ---
-  const getPageBadges = (page: any) => {
-    const badges: { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }[] = [];
-
-    if (page.isHomepage) {
-      badges.push({ label: 'Homepage', variant: 'outline' });
-    }
-
-    const hasDeployments = page.deployments && page.deployments.length > 0;
-    const hasAnyPublished = hasDeployments && page.deployments.some((d: any) => d.status === 'published');
-
-    if (hasAnyPublished) {
-      // Actually deployed to at least one target
-      badges.push({ label: 'Live', variant: 'default', className: 'bg-emerald-600 hover:bg-emerald-700' });
-      if (page.hasUnpublishedChanges) {
-        badges.push({ label: 'Changes pending', variant: 'secondary', className: 'bg-amber-100 text-amber-800 border-amber-300' });
-      }
-    } else if (hasDeployments) {
-      // Has deployments but none are "published" (all failed or pending)
-      badges.push({ label: 'Deploy failed', variant: 'destructive' });
-    } else {
-      // Never deployed
-      badges.push({ label: 'Not deployed', variant: 'secondary' });
-    }
-
-    return badges;
-  };
-
   return (
     <div className="space-y-6">
       <InstallTemplateDialog key={`${tenantSlug??'_root'}:${user?.id??'anonymous'}`} open={showInstallTemplate} onOpenChange={setShowInstallTemplate} onInstalled={()=>{void loadPagesFromDatabase(false,true);}} />
@@ -393,27 +284,10 @@ export const PagesPanel: React.FC = () => {
             {showTrash ? 'Pages will be permanently deleted after 14 days' : 'Manage your website pages and content'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {isAuthenticated && <PageRouteAudit key={`${tenantSlug ?? '_root'}:${user?.id ?? ''}:${user?.role ?? ''}`} />}
-          <Button
-            variant={showTrash ? "secondary" : "ghost"}
-            onClick={() => setShowTrash(!showTrash)}
-            className="gap-2"
-          >
-            <Trash className="h-4 w-4" />
-            {showTrash ? 'View Pages' : 'Trash'}
-          </Button>
-          {!showTrash && canShowTemplateInstaller(user?.role) && <Button variant="outline" onClick={()=>setShowInstallTemplate(true)}>Install Template</Button>}
-          {!showTrash && (
-            <Button onClick={() => setShowCreateDialog(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Page
-            </Button>
-          )}
-        </div>
+        {showTrash && <Button variant="outline" size="sm" onClick={()=>setShowTrash(false)}>View pages</Button>}
       </div>
 
-      <div className="flex items-center justify-between">
+      {showTrash && <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -427,7 +301,7 @@ export const PagesPanel: React.FC = () => {
         </div>
 
         {/* Bulk actions */}
-        {showTrash && filteredPages.length > 0 && (
+        {filteredPages.length > 0 && (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -445,34 +319,8 @@ export const PagesPanel: React.FC = () => {
 
             {selectedPages.size > 0 && (
               <>
-                {!showTrash && (
-                  <>
-                    {/* Bulk Publish */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowPublishDialog(true)}
-                      disabled={isBulkPublishing}
-                      className="gap-2"
-                    >
-                      <Globe className="h-4 w-4" />
-                      {isBulkPublishing ? 'Publishing...' : `Publish (${selectedPages.size})`}
-                    </Button>
 
-                    {/* Bulk Export */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleBulkExport}
-                      className="gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Export ({selectedPages.size})
-                    </Button>
-                  </>
-                )}
-
-                {showTrash && (
+                {(
                   <Button
                     variant="outline"
                     size="sm"
@@ -491,27 +339,25 @@ export const PagesPanel: React.FC = () => {
                       className="gap-2"
                     >
                       <Trash2 className="h-4 w-4" />
-                      {showTrash ? 'Delete Forever' : 'Trash'} ({selectedPages.size})
+                      {'Delete Forever'} ({selectedPages.size})
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>
-                        {showTrash ? 'Permanently Delete Pages?' : 'Move Pages to Trash?'}
+                        {'Permanently Delete Pages?'}
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        {showTrash
-                          ? `This will permanently delete ${selectedPages.size} pages. This action cannot be undone.`
-                          : `This will move ${selectedPages.size} pages to trash. You can restore them later.`}
+                        {`This will permanently delete ${selectedPages.size} pages. This action cannot be undone.`}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={handleBulkDelete}
-                        className={showTrash ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+                        className={"bg-destructive text-destructive-foreground hover:bg-destructive/90"}
                       >
-                        {showTrash ? 'Delete Forever' : 'Move to Trash'}
+                        {'Delete Forever'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -522,8 +368,11 @@ export const PagesPanel: React.FC = () => {
         )}
       </div>
 
-      {!showTrash && isAuthenticated && <PagesWorkspace
+      }
+      {!showTrash && isAuthenticated && <PagesWorkspace key={`${tenantSlug ?? '_root'}:${user?.id ?? ''}:${user?.role ?? ''}`}
         scope={`${tenantSlug ?? '_root'}:${user?.id ?? ''}`} pages={pages} search={searchQuery} filterStatus={filterStatus}
+        onSearchChange={setSearchQuery} onCreatePage={()=>setShowCreateDialog(true)} onShowTrash={()=>setShowTrash(true)}
+        onInstallTemplate={canShowTemplateInstaller(user?.role)?()=>setShowInstallTemplate(true):undefined}
         edit={handleEditPage}
         actions={page => <>
           <DropdownMenuItem onClick={() => handleDuplicatePage(page)}>Duplicate</DropdownMenuItem>
@@ -540,7 +389,6 @@ export const PagesPanel: React.FC = () => {
       {showTrash && <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPages.map((page) => {
-          const badges = getPageBadges(page);
 
           return (
             <Card
@@ -568,7 +416,7 @@ export const PagesPanel: React.FC = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {showTrash ? (
+                      {(
                         <>
                           <DropdownMenuItem onClick={() => restorePage(page.id)}>
                             <RotateCcw className="mr-2 h-4 w-4" />
@@ -603,53 +451,6 @@ export const PagesPanel: React.FC = () => {
                             </AlertDialogContent>
                           </AlertDialog>
                         </>
-                      ) : (
-                        <>
-                          <DropdownMenuItem onClick={() => handleEditPage(page.id)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicatePage(page)}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExportPage(page)}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Export
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {page.isPublic && (
-                            <DropdownMenuItem onClick={() => handleSyncAllTargets(page.id)}>
-                              <Globe className="mr-2 h-4 w-4" />
-                              Publish to All Targets
-                            </DropdownMenuItem>
-                          )}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem
-                                onSelect={(e) => e.preventDefault()}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Page?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will move the page to trash. You can restore it later or permanently delete it.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeletePage(page.id)}>
-                                  Move to Trash
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </>
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -658,64 +459,12 @@ export const PagesPanel: React.FC = () => {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {showTrash ? (
+                    {(
                       <Badge variant="destructive">Trashed</Badge>
-                    ) : (
-                      badges.map((badge, i) => (
-                        <Badge key={i} variant={badge.variant} className={badge.className}>
-                          {badge.label}
-                        </Badge>
-                      ))
                     )}
                   </div>
 
                   {/* Deployments list (only for full edge engines where we published) */}
-                  {!showTrash && page.deployments && page.deployments.length > 0 && (
-                    <div className="flex flex-col gap-2 mt-4">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Targets</span>
-                      {page.deployments.map((dep: any) => (
-                        <div key={dep.id} className="flex items-center justify-between text-sm bg-muted/30 p-2 rounded-md border">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{dep.target?.name || 'Unknown'}</span>
-                            <Badge
-                              variant={dep.status === 'failed' ? 'destructive' : 'outline'}
-                              className={`text-[10px] px-1.5 py-0 h-4 ${dep.status === 'published' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : ''}`}
-                            >
-                              {dep.status}
-                            </Badge>
-                          </div>
-                          <div className="flex gap-1">
-                            {dep.status === 'published' && dep.target?.url && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 px-2 text-xs"
-                              onClick={() => safeOpen(getPreviewUrl(page.isHomepage ? '' : page.slug, dep.target?.url, dep.previewUrl, dep.target?.is_shared), `inline slug=${page.slug} isShared=${dep.target?.is_shared} targetUrl=${dep.target?.url} storedPreviewUrl=${dep.previewUrl}`)}
-                              >
-                                Preview
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-6 px-2 text-xs"
-                              onClick={() => handleSyncTarget(page.id, dep.engineId)}
-                            >
-                              {dep.status === 'failed' ? 'Retry' : 'Sync'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 px-2 text-xs text-destructive hover:text-destructive"
-                              onClick={() => handleUnpublishTarget(page.id, dep.engineId)}
-                            >
-                              Unpublish
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
                   <div className="flex gap-2 pt-2">
                     <Button
@@ -727,16 +476,6 @@ export const PagesPanel: React.FC = () => {
                       Edit
                     </Button>
 
-                    {(!showTrash && !page.hasUnpublishedChanges && page.isPublic) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handlePreviewPage(page)}
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        Preview
-                      </Button>
-                    )}
                   </div>
                 </div>
               </CardContent>
