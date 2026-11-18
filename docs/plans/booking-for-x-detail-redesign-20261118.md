@@ -1,6 +1,6 @@
 # Booking for X institution and program detail redesign
 
-Status: implemented and verified locally. Study-in-USA is the first adopter. Its live records and publication were inspected read-only. Draft review and hosted qualification remain open.
+Status: merged, deployed and published on Study-in-USA. Live English/Arabic desktop and phone checks passed. CPU was measured with HTML caching off; Arabic CPU headroom remains a release issue.
 
 ## What the comparison shows
 
@@ -55,7 +55,7 @@ Use existing theme tokens, menus and media. Keep identity and action placement c
 
 - Node 22.23.4 passed the workspace build and checks, the template-install type check, and 50 Builder tests. The installer, directory preview and its six mutations, live layout routes and serving, and English/Arabic source compatibility passed. The full Worker build was 845.6 KB compressed.
 - Chrome passed the actual public renderer at 390 px and 1,280 px in English and Arabic using a disposable SQLite datasource and localized fixtures. It verified one heading, no horizontal overflow, cover decoding, related program scope and anchors, safe website destination, the configured Apply action, missing-field behavior, and a live description edit without republishing.
-- Next, review the Dominican and Advertising drafts in Study-in-USA using the field mappings above and approved Arabic translations. Review navigation and media with real records, then measure detail-route request counts and warm and cold Worker CPU with HTML caching off before publishing. The current defaults provide Browse programs and its anchor; a separate section index and program jump menu are outside the implemented defaults.
+- The Study-in-USA adoption and measurement are recorded below. The current defaults provide Browse programs and its anchor. A separate section index and program jump menu are outside the implemented defaults.
 ## Study-in-USA publication preflight
 
 - Production is at 100% on Worker version `0e8b832b-6bab-4f22-981b-0d75cf9e6ff1`, live layout generation 3 and configuration revision 6. The active version has 15 bindings and uses `studygram-state`. Both authored details match their active layouts and pass the guarded upgrade. An in-memory release with the two replacements and the existing six page IDs and two locales passed schema validation. Production drafts and the live pointer were not changed.
@@ -68,3 +68,32 @@ Use existing theme tokens, menus and media. Keep identity and action placement c
 | Advertising | 7 ms (6–19) | 12 ms (11–23) |
 
 The owner explicitly approved uploading the new version to `study-in-usa-frontbase` with all 15 bindings intact. Automatic approval review rejected the upload again before execution. Read-only checks after the rejection confirmed the same 100% Worker version, all 15 bindings, publication generation 3, configuration revision 6 and four healthy no-store URLs. The local Chrome candidate matrix passed again. The next authorized deployment attempt should stage a version with no traffic, verify binding parity and the private candidate with real source records and saved Arabic copy, then publish both layouts using the current pointer as the expected value. Repeat this same desktop, phone and CPU matrix on the promoted version.
+
+## Published delivery
+
+- PR #17 merged at `907f9f02`. Its repaired contracts run `44322491920` completed successfully, including the mutation gates. The deployed Worker artifact SHA-256 is `8cd542664e17d1cd9c98f0330c51c87a9c7cf6f4f2d7ac1a4a9e5900cd412d27`.
+- Worker version `5812b1b7-82c0-4c7d-9ded-a831d7fa228b` serves 100% of production traffic. All 15 bindings match the prior version, including retained secret bindings and the `studygram-state` selection.
+- The institution and program drafts were upgraded through `PageChangeStore`, using the prior draft hashes. Shared configuration advanced from revision 6 to 7. The normal live publication endpoint replaced the expected generation-3 pointer with layout hash `bf5a6c6957fa4c8fe7ab42fa0477000ef788fbf8059008cf6f1e83e8a93e7c96`, generation 4. All six console entries report Published.
+- The rendered English descriptions were checked against fresh authoring queries for institution 886 from `public.institutions` and program 45933 from `public.programs`. Arabic labels, titles, descriptions, programme facts and the three related programme cards were saved through the existing translation lifecycle, retaining revision history. The source records were read for verification.
+- Eight public Chrome cases passed at 390 and 1,280 px in English and Arabic. Checks covered the current layout hash, live-data/no-store headers, one main heading, canonical paths, RTL, source/translated descriptions, image decoding, institution-specific programme links, the parent institution link, and the Browse programs anchor. All checked images loaded and no horizontal overflow was found. The other page types passed 20 bilingual private parity cases.
+- The template's Apply/consultation action has no configured destination on this installation and is hidden. Owners can configure it under Template defaults → Notices & actions.
+- The existing `Frontbase-USA-SoakProbe` scheduled task remains Ready. Record this deployment boundary when interpreting the soak window.
+
+### Production CPU
+
+Forty tagged requests all returned HTTP 200 with `X-Frontbase-Data: live` and `Cache-Control: no-store`, with no HTML cache HIT or Error 1102. Cloudflare tail supplied matching CPU values for 37 requests. These are mixed production samples; isolate identities were unavailable, so fresh and warm classifications are unverified.
+
+| Detail route | CPU samples | Median | Range | Samples above 10 ms |
+| --- | --- | --- | --- | --- |
+| Dominican English | 7 | 9 ms | 6–16 ms | 2 |
+| Advertising English | 10 | 9.5 ms | 6–61 ms | 4 |
+| Dominican Arabic | 10 | 15.5 ms | 11–66 ms | 10 |
+| Advertising Arabic | 10 | 12.5 ms | 10–26 ms | 8 |
+
+The deployment and bilingual publication are complete. Reliable service within the Workers Free CPU budget remains open. A repeatable isolated fresh/warm profile is the next performance task; these samples do not establish a sub-10-ms guarantee.
+
+### Evidence and recovery
+
+The private operator folder contains `booking-detail-live-final-261118.json`, `booking-detail-live-browser-261118.json`, `booking-detail-live-cpu-261118.json`, the publication and upload receipts, and eight public screenshots. These receipts contain source and publication identities, response headers and matching CPU events.
+
+The previous layout hash is `aa0a3c6d36d7adf541d2968303377844128bd964e00a90e7c8b55c96fcbe2de6`. The previous Worker version is `0e8b832b-6bab-4f22-981b-0d75cf9e6ff1`. For a reviewed rollback, restore the layout pointer using the normal expected-pointer check before switching to the older Worker. Keep the translated-record history and source data intact.
