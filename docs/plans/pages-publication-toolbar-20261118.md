@@ -19,11 +19,11 @@ The corrected read-only inventory against unchanged production state reports all
 
 ## Cleanup boundary
 
-Removed the superseded toolbar/status rendering, unreachable Unfiled browsing state, redundant trash-view branches, unused legacy badge/preview/bulk-export helpers and unused imports/subscriptions in the touched Pages component. Row interactions are deliberately unchanged.
+Removed the superseded toolbar/status rendering, unreachable Unfiled browsing state, redundant trash-view branches, unused legacy badge/preview/bulk-export helpers and unused imports/subscriptions in the touched Pages component. The initial toolbar rollout left row interactions unchanged. The follow-up below replaced them.
 
 The existing `compat_pages.is_published` column is **not unused**: individual target publishing, unpublishing and edit guards still reference it. The historical publication reader also serves compatibility and historical installations. Do not drop these columns, tables or stored history based on the incorrect Pages label. This task adds no schema objects and requires no DDL. This is a dependency audit of the touched surface, not a claim that every table/column in the entire framework has been audited.
 
-The current row Configure action, Settings template redirect and BindingReadiness diagnostic links still reference the retired `?setup=collections` location. Their replacement belongs to the row/settings navigation proposal below; do not silently implement items 5–6 under cleanup.
+The follow-up removed the Pages Configure action. The Settings template redirect and Builder binding diagnostics still reference the older `?setup=collections` destination.
 
 ## Approved row actions
 
@@ -57,7 +57,7 @@ Approval covers the shared **Edit** label and the same action layout for list an
 - Edited TSX files have a dedicated semantic type check because the workspace console check intentionally covers only selected legacy surfaces.
 - Workspace `pnpm -r check` and `pnpm -r build` passed. The isolated Node 22 candidate backend, console and Worker builds passed. The final 15 workspace UI cases plus four template-URL, four organization-model and six URL-audit cases passed (29 total); all five backend mutation cases passed.
 - Study-in-USA now runs Worker `c93601e5-292a-47b1-b0b3-222c9fa10fa7` at 100% traffic. The first toolbar release was `8034a7ca-3b7a-42f9-bb2a-7bd319885a60`; the final console wording correction followed it. Pre-task rollback reference is `e8f3c76f-f5d2-4739-b351-4532109076f5`. All 15 bindings, existing credentials, settings, pages, URLs and publication pointer were preserved.
-- Hosted Pages inventory and signed-in browser both show six Published entries. The browser verified the single toolbar, peer creation actions, existing menu/dialog behavior and clear URL-audit coverage. Row actions remain unchanged for approval. `/health`, `/`, `/ar/`, `/explore/`, `/ar/explore/` remain HTTP 200 and byte-identical to the pre-task baseline; public HTML remains no-store.
+- Hosted Pages inventory and signed-in browser both show six Published entries. The browser verified the single toolbar, peer creation actions, existing menu/dialog behavior and clear URL-audit coverage. Row actions were verified separately in the follow-up below. `/health`, `/`, `/ar/`, `/explore/`, `/ar/explore/` remain HTTP 200 and byte-identical to the pre-task baseline; public HTML remains no-store.
 - Operator receipts and the final screenshot are in private `study-in-usa-ops/pages-toolbar-261118-r2`. No provider, source-record, folder or publication write was used for this verification. This is hosted Cloudflare evidence; no new Vercel deployment is claimed.
 
 ## Row actions and loading follow-up
@@ -71,3 +71,10 @@ Removed the fabricated inventory, the Pages link to the retired collections scre
 Local verification passed: workspace check and build, 23 Pages UI tests, the published-layout route suite and five inventory mutation checks.
 
 Study-in-USA runs Cloudflare Worker `0e8b832b-6bab-4f22-981b-0d75cf9e6ff1`. Rollback reference is `c93601e5-292a-47b1-b0b3-222c9fa10fa7`. Three signed-in visits showed a loading message with no rows before the six published entries appeared. All six Edit links and row clicks reached the expected editor, and checkboxes stayed on Pages. All six More menus opened and their settings destinations were verified. View provided six valid addresses, including one live record from each reusable template. All six returned HTTP 200 and no-store. All 15 bindings and sampled English and Arabic public response hashes matched the pre-deployment baseline.
+
+## Remaining work
+
+The Pages toolbar, publication status, loading state and shared row actions passed Study-in-USA acceptance. Pull request #15 tracks CI and merge to main.
+
+- Update the remaining template redirect in Settings and the binding diagnostic links in Builder to point to their existing configuration panels. Verify those entry points outside Pages.
+- Keep the historical publication reader and individual page publication fields while they have active callers. Remove them only after migrating those callers and verifying upgrades for older installations.
