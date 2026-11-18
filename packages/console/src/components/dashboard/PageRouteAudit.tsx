@@ -13,7 +13,7 @@ const reportSchema = z.union([
 const labels = { unsupported_path: 'Address needs review', reserved_path: 'Reserved address', route_conflict: 'Duplicate address', potential_alias_conflict: 'Possible case or slash conflict' };
 
 /** Mounted with an identity key: account/owner changes discard the entire view. */
-export function PageRouteAudit() {
+export function PageRouteAudit({trigger}: {trigger?:(check:()=>void)=>React.ReactNode} = {}) {
     const [open, setOpen] = useState(false), [pending, setPending] = useState(false);
     const [report, setReport] = useState<z.infer<typeof reportSchema>>(), [error, setError] = useState('');
     const request = useRef<AbortController | undefined>(undefined), generation = useRef(0);
@@ -37,16 +37,16 @@ export function PageRouteAudit() {
         } finally { if (run === generation.current && !controller.signal.aborted) setPending(false); }
     }
     return <>
-        <Button variant="outline" onClick={check}>Check page URLs</Button>
+        {trigger ? trigger(check) : <Button variant="outline" onClick={check}>Check page URLs</Button>}
         <Dialog open={open} onOpenChange={close}>
             <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
-                <DialogHeader><DialogTitle>Page URL checks</DialogTitle><DialogDescription>Checks stored pages, including trash and legacy drafts. When a published site capture exists, its listing and blog URLs are included. Uncaptured and draft records are not included. Nothing is changed.</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>Page URL checks</DialogTitle><DialogDescription>Checks saved page addresses, including trash and drafts. The report states whether record URLs were also checked. Nothing is changed.</DialogDescription></DialogHeader>
                 <div aria-live="polite" className="space-y-3 min-w-0">
                     {pending && <p>Checking page URLs…</p>}
                     {error && <p role="alert">{error}</p>}
                     {report?.status === 'unavailable' && <p role="alert">{report.code === 'namespace_changed' ? 'Pages changed during the check. Run it again.' : 'The page inventory could not be checked. Review the connection or inventory limits and try again.'}</p>}
                     {report && report.status !== 'unavailable' && <>
-                        <p className="text-sm text-muted-foreground break-all">{report.capture ? `Includes published capture ${report.capture.hash}, generation ${report.capture.generation}.` : 'No published capture: listing and blog record URLs were not checked.'}</p>
+                        <p className="text-sm text-muted-foreground">{report.publicRecordsChecked ? 'Includes record URLs from the published address index. Live query results are not exhaustively checked.' : 'Checks saved page addresses only. Listing and article record URLs were not checked.'}</p>
                         <p>{report.status === 'clear' ? 'No conflicts found in the checked page inventory.' : 'These page addresses need review.'} Checked {report.resourcesChecked} address claims.</p>
                         {report.truncated && <p role="alert">The report is shortened. More conflicts need review.</p>}
                         <ul className="space-y-3">{report.issues.map((issue, index) => <li key={index} className="rounded-md border p-3 space-y-1">

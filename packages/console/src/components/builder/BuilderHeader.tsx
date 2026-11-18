@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { showApiErrorToast } from '@/components/dashboard/settings/shared/edgeTestToast';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -113,7 +113,8 @@ export const BuilderHeader: React.FC<{
     })));
 
     const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-    const [showPageSettings, setShowPageSettings] = useState(false);
+    const {search}=useLocation();
+    const [showPageSettings, setShowPageSettings] = useState(()=>new URLSearchParams(search).get('panel')==='page-settings');
     const [showVersionHistory, setShowVersionHistory] = useState(false);
     const [publishOpen, setPublishOpen] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);

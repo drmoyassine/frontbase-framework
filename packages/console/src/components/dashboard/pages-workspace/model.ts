@@ -3,6 +3,11 @@ export interface WorkspaceEntry {
   pageId?: string; role?: string; path?: string; paths?: string[]; serves?: number;
   publicationStatus: 'published' | 'changes-pending' | 'draft' | 'unknown';
   developmentOnly: boolean; source: 'saved' | 'derived';
+  liveRecords?: boolean;
+  publishedPath?: string;
+  locales?: string[];
+  sourceLocale?: string;
+  recordViews?: {id:string;name:string}[];
   contentAction?: { datasourceId: string; table: string; keyColumn?:string; recordKey?:{column:string;value:string}; recordId?: string; contentRole?: 'page'|'article' };
 }
 export interface Organization {
