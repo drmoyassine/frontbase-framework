@@ -13,6 +13,7 @@ import type { SecretCipher } from '../../db/secret-cipher.js';
 import { sigv4StorageProvider, supabaseStorageProvider, NATIVE_R2_PROVIDER_ID } from '@frontbase/edge-infra';
 import { checkedExternalUrl, guardedExternalFetch, type CompatFetch } from '../external-http.js';
 import type { StorageProvider, StorageProviderFactory } from '@frontbase/edge-infra';
+import { s3BucketSelection } from '../s3-bucket-selection.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -100,7 +101,9 @@ export function createStorageClientResolver(opts: {
                 return { status: 400, message: `${type} account missing access_key_id / secret_access_key` };
             }
             let publicUrls: Record<string, string> | undefined;
+            let selected: string[] = [];
             try {
+                if (type === 's3') selected = s3BucketSelection(accountConfig.bucket_selection);
                 const bucket = String(accountConfig.public_bucket ?? '');
                 const base = String(accountConfig.public_base_url ?? '');
                 if (bucket || base) {
@@ -111,18 +114,18 @@ export function createStorageClientResolver(opts: {
                 }
                 checkedExternalUrl(String(accountConfig.endpoint ?? 'https://s3.amazonaws.com'));
             } catch {
-                return { status: 400, message: 'Invalid S3 endpoint or public bucket URL configuration' };
+                return { status: 400, message: 'Invalid S3 endpoint, bucket selection or public URL configuration' };
             }
-            return {
-                client: sigv4StorageProvider({
-                    fetch: transport,
-                    publicUrls,
-                    accessKeyId,
-                    secretAccessKey,
-                    endpoint: accountConfig.endpoint ? String(accountConfig.endpoint) : undefined,
-                    region: accountConfig.region ? String(accountConfig.region) : undefined,
-                }),
-            };
+            const client = sigv4StorageProvider({
+                fetch: transport,
+                publicUrls,
+                accessKeyId,
+                secretAccessKey,
+                endpoint: accountConfig.endpoint ? String(accountConfig.endpoint) : undefined,
+                region: accountConfig.region ? String(accountConfig.region) : undefined,
+            });
+            if (!selected.length) return { client };
+            return { client: { ...client, listBuckets: () => Promise.all(selected.map(name => client.getBucket!(name))) } };
         }
 
         if (type === 'supabase') {

@@ -9,7 +9,7 @@ import {
     AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useEdgeProviders, edgeInfrastructureApi } from '@/hooks/useEdgeInfrastructure';
+import { useEdgeProviders, edgeInfrastructureApi, type EdgeProviderAccount } from '@/hooks/useEdgeInfrastructure';
 import { API_BASE, PROVIDER_ICONS } from './edgeConstants';
 import { useQueryClient } from '@tanstack/react-query';
 import { datasourcesApi } from '@/modules/dbsync/api';
@@ -23,7 +23,7 @@ export function EdgeProvidersSection() {
     const [sheetsDialogOpen, setSheetsDialogOpen] = useState(false);
 
     // Edit provider state
-    const [editProvider, setEditProvider] = useState<{ id: string; name: string; provider: string } | null>(null);
+    const [editProvider, setEditProvider] = useState<EdgeProviderAccount | null>(null);
 
     // Re-test state for existing providers
     const [retestingId, setRetestingId] = useState<string | null>(null);
@@ -343,7 +343,7 @@ export function EdgeProvidersSection() {
                                                     variant="ghost"
                                                     size="icon"
                                                     className="text-muted-foreground hover:text-primary"
-                                                    onClick={() => setEditProvider({ id: p.id, name: p.name, provider: p.provider })}
+                                                    onClick={() => setEditProvider(p)}
                                                     title="Edit credentials"
                                                 >
                                                     <Pencil className="w-4 h-4" />

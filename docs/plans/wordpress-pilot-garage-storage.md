@@ -4,6 +4,21 @@ Status (2026-10-05): deployed single-node pilot and authenticated Frontbase tran
 
 Garage supplies object storage; [garage-webui](https://github.com/khairul169/garage-webui) supplies its management UI. This remains an optional, admin-connected S3 service, outside Frontbase's six packages and independent site engines. Supabase retains canonical content rows and media references.
 
+## Studygram self-host move
+
+Status (2026-11-19): Garage 2.3.0 and its management UI are deployed in the existing EasyPanel `frontbase/studygram-selfhost` Compose service. Garage has its own persistent metadata and data volumes. Postgres and PostgREST kept their existing containers, definitions, volume and domains. The Garage admin API, RPC and management UI have no public routes on the destination.
+
+- Destination signed S3 endpoint is `https://frontbase-studygram-storage.4ky7uo.easypanel.host` with region `garage`. The `study-in-usa-media` bucket has a dedicated read/write key with no bucket ownership. Its public base is `https://frontbase-studygram-media.4ky7uo.easypanel.host`.
+- Copied 20 objects (10,314,936 bytes). Object keys, SHA-256 and HTTP metadata matched. All 20 objects were publicly readable at their original and destination URLs with matching bytes after the destination Garage container was recreated. The Frontbase S3 adapter passed bucket discovery, upload, read, move, signed and public URL checks. Anonymous access to the signed endpoint returned 403. Final inventory contained only the 20 migrated objects.
+- Custom hostname cutover (2026-11-19): `s3.studygram.me` now serves the new Garage instance. EasyPanel routes the signed S3 API to port 3900 and `/public-images` to port 3902, strips the path prefix and resolves the existing host alias to `study-in-usa-media`. All 20 legacy paths returned exact bytes and MIME types directly from the new origin and through Cloudflare. Signed list, upload, read and delete passed on the custom hostname with the destination key. Anonymous S3 reads returned 403; the verification object was removed.
+- Live Explore and Dominican University detail pages returned 200 in English and Arabic. All 12 unique Garage image URLs extracted from those pages matched the migrated checksums. Existing database URLs work as written. Frontbase's upload provider registration and the old pilot are independent of public image serving.
+- Direct cross-origin presigned PUT preflight returned 403. The console currently uploads through its own API. If direct browser uploads are enabled later, configure and verify a bucket CORS rule for the intended site origins.
+- The protected Compose rollback snapshot and per-object verification manifest are stored locally. This verified the migrated objects and recreation on the destination VPS. Scheduled off-host backups and recovery of an entire Garage instance remain open.
+
+## Connected-account bucket selection
+
+2026-11-19: implement and verify an opt-in S3 bucket list. Preserve discovery for existing connections and verify Study-in-USA through its existing Garage account.
+
 ## Deployment requirements
 
 - Dedicated Garage service with persistent metadata and object-data volumes, pinned engine and UI versions, and documented recovery credentials kept outside Git.

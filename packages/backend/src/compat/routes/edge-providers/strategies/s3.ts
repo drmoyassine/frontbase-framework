@@ -1,6 +1,7 @@
 import { sigv4StorageProvider } from '@frontbase/edge-infra';
 import { checkedExternalUrl, guardedExternalFetch, type CompatFetch } from '../../../external-http.js';
 import type { ProviderTestStrategy, ProviderTestResult } from './types.js';
+import { s3BucketSelection } from '../../../s3-bucket-selection.js';
 
 /** Read-only probe: a scoped bucket avoids requiring account-wide list permission. */
 export class S3Strategy implements ProviderTestStrategy {
@@ -14,6 +15,9 @@ export class S3Strategy implements ProviderTestStrategy {
         if (!accessKeyId || !secretAccessKey || !endpoint) {
             return { success: false, detail: 'S3 endpoint and access credentials are required' };
         }
+        let selected: string[];
+        try { selected = s3BucketSelection(credentials.bucket_selection); }
+        catch { return { success: false, detail: 'Enter up to 32 valid S3 bucket names separated by commas.' }; }
         try {
             checkedExternalUrl(endpoint);
             const bucket = String(credentials.public_bucket ?? '');
@@ -29,7 +33,8 @@ export class S3Strategy implements ProviderTestStrategy {
                 fetch: (input, init) => guardedExternalFetch(this.externalFetch, input instanceof Request ? input.url : input, init),
             });
             const testBucket = String(credentials.test_bucket ?? '');
-            if (testBucket) await client.getBucket!(testBucket);
+            const buckets = [...new Set([...selected, ...(testBucket ? [testBucket] : [])])];
+            if (buckets.length) await Promise.all(buckets.map(name => client.getBucket!(name)));
             else await client.listBuckets!();
             return { success: true, detail: 'S3 read access verified; uploads and public serving require separate verification' };
         } catch {

@@ -11,7 +11,7 @@
  *   - Turso save flow          — Inline (find-or-create + add DB) — small enough
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useId } from 'react';
 import {CONNECTED_ACCOUNTS_PATH,connectProvider,readProviderConnections} from '@/components/deployment/provider-connect';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -27,7 +27,7 @@ import {
     Dialog, DialogContent, DialogDescription, DialogFooter,
     DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { edgeInfrastructureApi } from '@/hooks/useEdgeInfrastructure';
+import { edgeInfrastructureApi, type EdgeProviderAccount } from '@/hooks/useEdgeInfrastructure';
 import { API_BASE, CAPABILITY_LABELS } from './edgeConstants';
 import type { ProviderCapability } from './edgeConstants';
 import { useConnectProvider } from './connect-dialog/useConnectProvider';
@@ -44,7 +44,7 @@ interface ConnectProviderDialogProps {
     onOpenChange: (open: boolean) => void;
     onConnected?: (accountId: string) => void;
     hideDisplayName?: boolean;
-    editProvider?: { id: string; name: string; provider: string } | null;
+    editProvider?: Pick<EdgeProviderAccount, 'id' | 'name' | 'provider' | 'provider_metadata'> | null;
 }
 
 // ============================================================================
@@ -61,6 +61,7 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
     editProvider,
 }) => {
     const effectiveLockedProvider = editProvider?.provider || lockedProvider;
+    const bucketSelectionId = useId();
     const queryClient = useQueryClient();
     const state = useConnectProvider(effectiveLockedProvider, open, editProvider);
     const {
@@ -261,11 +262,33 @@ export const ConnectProviderDialog: React.FC<ConnectProviderDialogProps> = ({
                             <Input
                                 type={field.type || 'text'}
                                 value={credFields[field.key] || ''}
-                                onChange={e => setCredFields(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                onChange={e => {
+                                    setCredFields(prev => ({ ...prev, [field.key]: e.target.value }));
+                                    if (effectiveProvider === 's3') state.setTestResult(null);
+                                }}
+                                autoComplete={effectiveProvider === 's3' && field.type === 'password' ? 'new-password' : undefined}
                                 placeholder={editProvider ? `Leave blank to keep current ${field.label.toLowerCase()}` : field.placeholder}
                             />
                         </div>
                     ))}
+                    {manualAvailable && effectiveProvider === 's3' && (
+                        <div className="space-y-2">
+                            <Label htmlFor={bucketSelectionId}>Buckets to show</Label>
+                            <Input
+                                id={bucketSelectionId}
+                                value={credFields.bucket_selection ?? ''}
+                                onChange={e => {
+                                    setCredFields(prev => ({ ...prev, bucket_selection: e.target.value }));
+                                    state.setTestResult(null);
+                                }}
+                                placeholder="Discover all buckets"
+                                aria-describedby={`${bucketSelectionId}-help`}
+                            />
+                            <p id={`${bucketSelectionId}-help`} className="text-xs text-muted-foreground">
+                                Leave blank to discover all buckets, or enter bucket names separated by commas.
+                            </p>
+                        </div>
+                    )}
 
                     {/* WordPress API mode toggle */}
                     {effectiveProvider === 'wordpress_rest' && (

@@ -27,6 +27,7 @@ import {
 import { enrichProviderConfig } from '../connect-enrichment.js';
 import type { OAuthProvider, ProviderOAuthClient } from '../../provider-oauth.js';
 import { revokeOAuthAuthorization } from '../../provider-oauth-refresh.js';
+import { s3BucketSelection } from '../s3-bucket-selection.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -37,6 +38,13 @@ function asProvider(row: Record<string, unknown>): Record<string, unknown> {
     const legacySupabaseName = base.provider === 'supabase' && Array.isArray(accounts) && accounts.length > 1
         && base.name === `${accounts[0]?.name} (supabase)`;
     delete base._unused;
+    const config = row.config as Record<string, unknown> | undefined;
+    let metadata = null;
+    if (base.provider === 's3') {
+        try {
+            metadata = { s3_buckets: s3BucketSelection(config?.bucket_selection) };
+        } catch { /* An invalid legacy value is rejected when opening storage. */ }
+    }
     return {
         id: base.id,
         name: legacySupabaseName ? 'Supabase account' : base.name,
@@ -51,7 +59,7 @@ function asProvider(row: Record<string, unknown>): Record<string, unknown> {
             && value !== null
             && value !== undefined
             && value !== ''),
-        provider_metadata: null,
+        provider_metadata: metadata,
         created_at: base.created_at,
         updated_at: base.updated_at,
     };
@@ -133,6 +141,10 @@ export function registerEdgeProvidersRoutes(
         // bare token (Supabase api-keys+jwt_secret, Cloudflare account_id, …).
         // Best-effort — returns input unchanged on any failure.
         const baseConfig = providerAccountConfig(provider, (b.config ?? b.provider_credentials ?? {}) as Record<string, unknown>);
+        if (provider === 's3') {
+            try { s3BucketSelection(baseConfig.bucket_selection); }
+            catch { return c.json({ detail: 'Enter up to 32 valid S3 bucket names separated by commas.' }, 400); }
+        }
         const enrichedConfig = await enrichProviderConfig(provider, baseConfig, externalFetch);
         await store.upsertEdgeResource({
             id,
@@ -193,10 +205,26 @@ export function registerEdgeProvidersRoutes(
         const provider = b.provider ?? String(existing.provider ?? 'local');
         let configToStore = existing.config as string | undefined;
         if (b.config !== undefined || b.provider_credentials !== undefined) {
-            const baseConfig = providerAccountConfig(provider, (b.config ?? b.provider_credentials) as Record<string, unknown>);
+            let baseConfig = providerAccountConfig(provider, b.config ?? b.provider_credentials ?? {});
+            if (provider === 's3' && existing.provider === 's3') {
+                const stored = await store.getEdgeResourceConfig(id);
+                baseConfig = { ...stored, ...baseConfig };
+            }
+            if (provider === 's3') {
+                try { s3BucketSelection(baseConfig.bucket_selection); }
+                catch { return c.json({ detail: 'Enter up to 32 valid S3 bucket names separated by commas.' }, 400); }
+            }
             // Re-enrich when credentials change (e.g. rotated PAT).
             const enrichedConfig = await enrichProviderConfig(provider, baseConfig ?? {}, externalFetch);
             configToStore = await encryptedConfig(enrichedConfig);
+            if (provider === 's3' && existing.provider === 's3' && configToStore !== undefined) {
+                const name = String(existing.name);
+                const updated = await store.updateS3Account(id,
+                    { name, config: String(existing.config ?? '') },
+                    { name: b.name ?? name, config: configToStore }, now());
+                if (!updated) return c.json({ detail: 'This account changed. Reopen it and try again.' }, 409);
+                return c.json(await providerView(store, await store.getEdgeResource(id) ?? existing));
+            }
         }
         await store.upsertEdgeResource({
             id,

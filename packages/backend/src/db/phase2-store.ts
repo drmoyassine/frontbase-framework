@@ -241,6 +241,16 @@ export class Phase2Store {
         await this.runner.exec("UPDATE edge_resources SET config = ?, updated_at = ? WHERE tenant_slug = ? AND id = ? AND kind = 'provider' AND provider = 'supabase' AND config = ?",[encrypted,now,this.tenant,id,raw]);
     }
 
+    async updateS3Account(
+        id: string, before: { name: string; config: string }, after: { name: string; config: string }, now: string,
+    ): Promise<boolean> {
+        if (!this.cipher.isEncrypted(after.config)) throw new Error('secret_not_encrypted');
+        return await this.runner.exec(
+            "UPDATE edge_resources SET name = ?, config = ?, updated_at = ? WHERE tenant_slug = ? AND id = ? AND kind = 'provider' AND provider = 's3' AND name = ? AND COALESCE(config, '') = ?",
+            [after.name, after.config, now, this.tenant, id, before.name, before.config],
+        ) === 1;
+    }
+
     async upsertEdgeResource(input: EdgeResourceInput, now: string): Promise<void> {
         const currentRows = await this.runner.query(
             'SELECT provider, config, status FROM edge_resources WHERE id = ? AND tenant_slug = ?',
