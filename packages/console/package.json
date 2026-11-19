@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@frontbase/edge-core": "workspace:*",
-    "@simplewebauthn/browser": "^13.3.0"
+    "@simplewebauthn/browser": "^13.3.0",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@ai-sdk/react": "3.0.161",

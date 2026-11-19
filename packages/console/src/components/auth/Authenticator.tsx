@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
+import qrcode from 'qrcode-generator';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,7 +20,48 @@ export async function authenticatorRequest(path = '', body?: object) {
 
 type Enrollment = {secret:string;recoveryCodes:string[];ticket:string};
 
-export function AuthenticatorSetup({required = false,mailAvailable = false}: {required?:boolean;mailAvailable?:boolean}) {
+function AuthenticatorQr({secret, accountEmail}: {secret:string;accountEmail?:string}) {
+    const qr = useMemo(() => {
+        try {
+            const issuer = 'Frontbase';
+            const account = [accountEmail, window.location.hostname].filter(Boolean).join(' @ ');
+            const label = encodeURIComponent(issuer) + ':' + encodeURIComponent(account);
+            const params = new URLSearchParams({secret,issuer,algorithm:'SHA1',digits:'6',period:'30'});
+            const code = qrcode(0,'M');
+            code.addData('otpauth://totp/' + label + '?' + params.toString());
+            code.make();
+            const count = code.getModuleCount();
+            const quietZone = 4;
+            const modules: string[] = [];
+            for (let row = 0; row < count; row++) {
+                for (let column = 0; column < count; column++) {
+                    if (code.isDark(row,column)) modules.push('M' + (column+quietZone) + ',' + (row+quietZone) + 'h1v1h-1z');
+                }
+            }
+            return {size:count + 2*quietZone,path:modules.join('')};
+        } catch {
+            return null;
+        }
+    },[secret,accountEmail]);
+
+    return <div className="space-y-3">
+        {qr ? <>
+            <p>Scan this QR code with your authenticator app.</p>
+            <svg role="img" aria-label="Authenticator setup QR code" className="block h-auto w-56 max-w-full rounded p-0"
+                viewBox={'0 0 ' + qr.size + ' ' + qr.size} shapeRendering="crispEdges">
+                <rect width={qr.size} height={qr.size} fill="#fff" />
+                <path d={qr.path} fill="#000" />
+            </svg>
+        </> : <p role="status">The QR code is unavailable. You can enter the setup key manually.</p>}
+        <details open={qr ? undefined : true}>
+            <summary className="w-fit cursor-pointer underline">Enter setup key manually</summary>
+            <p className="mt-2">Choose a time-based account in your authenticator app and enter this key.</p>
+            <code className="mt-2 block break-all rounded border p-3 select-all">{secret}</code>
+        </details>
+    </div>;
+}
+
+export function AuthenticatorSetup({required = false,mailAvailable = false,accountEmail}: {required?:boolean;mailAvailable?:boolean;accountEmail?:string}) {
     const [emailStep,setEmailStep] = useState(false);
     const [pending,setPending] = useState<Enrollment>();
     const [busy,setBusy] = useState(false);
@@ -72,8 +114,7 @@ export function AuthenticatorSetup({required = false,mailAvailable = false}: {re
                 <Button type="button" variant="ghost" disabled={busy} onClick={()=>setEmailStep(false)}>Use an authenticator</Button>
             </form> :             <form key={pending ? 'verify' : 'start'} onSubmit={submit} className="space-y-4">
                 {pending ? <>
-                    <p>In your authenticator app add a time-based account with this setup key.</p>
-                    <code className="block break-all rounded border p-3 select-all">{pending.secret}</code>
+                    <AuthenticatorQr secret={pending.secret} accountEmail={accountEmail} />
                     <p>Save these one-time recovery codes offline. To reset your password, use one recovery code and a fresh authenticator code.</p>
                     <ul className="rounded border p-3 font-mono text-sm break-all select-all">{pending.recoveryCodes.map(code=><li key={code}>{code}</li>)}</ul>
                     <label className="flex items-center gap-2"><input type="checkbox" name="saved" required /> I saved my recovery codes.</label>

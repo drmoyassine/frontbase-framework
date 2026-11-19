@@ -95,7 +95,7 @@ const persister = createSyncStoragePersister({
 const AdminApp = () => {
   const { fetchConnections } = useDashboardStore();
   const { loadPagesFromDatabase, loadVariablesFromDatabase, loadProjectFromDatabase } = useBuilderStore(useShallow(s => ({ loadPagesFromDatabase: s.loadPagesFromDatabase, loadVariablesFromDatabase: s.loadVariablesFromDatabase, loadProjectFromDatabase: s.loadProjectFromDatabase })));
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const recovery=useSyncExternalStore(subscribeRecovery,recoverySnapshot,recoverySnapshot);
   const sessionDataGate=useRef(new SessionDataGate());
   const [mailAvailable,setMailAvailable] = useState(false);
@@ -181,7 +181,7 @@ const AdminApp = () => {
               <Route element={<ProtectedRoute />}>
                 <Route element={enrollment === 'ready' ? <Outlet /> :
                   <main className="flex min-h-screen items-center justify-center p-4">
-                    {enrollment === 'required' ? <AuthenticatorSetup required mailAvailable={mailAvailable} /> :
+                    {enrollment === 'required' ? <AuthenticatorSetup required mailAvailable={mailAvailable} accountEmail={user?.email} /> :
                         enrollment === 'error' ? <p role="alert">Could not check account setup. Reload to try again.</p> :
                         <p role="status">Checking account setup…</p>}
                   </main>}>

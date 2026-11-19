@@ -1730,3 +1730,9 @@ Worker versions `e8e66351-6c23-44a1-b91a-c4743af590ec` and then `07c34246-ed71-4
 After the owner verified the destination, Study-in-USA was promoted to Worker version `af0d0912-48a6-47f9-8d88-3414591238a9` with all 15 original bindings plus two mail bindings. The send binding is limited to the verified inbox. Cloudflare recorded the matching preview test email as delivered. Production owner sign-in, health, and both no-store homepages passed. The test code was retired and the administrator email was preserved. The Pages upgrade test failed in run 44475618743 due to a stale expected migration list. Commit 593cb507 fixes that expectation and passed the focused test. Replacement run 44486770286 covers the correction.
 
 GitHub contracts run 44486770286 completed successfully on code and test commit 593cb507, including the browser, backend, conformance, and mutation gates.
+
+## 2026-11-19 authenticator QR setup
+
+Add a locally rendered enrollment QR code to the shared console and retain manual entry. Verify decoding, enrollment and sign-in on a disposable installation before updating Study-in-USA with binding parity.
+
+Both desktop and mobile screenshots of the QR on a disposable live Cloudflare Worker decoded with an independent scanner. The manual key matched the decoded key. Start over generated a fresh QR. A code derived from the decoded key completed enrollment and the next sign-in, without the secret appearing in a network request. The first browser run found that the self-hosted cookie client dropped the authenticator challenge and code. The client fix passed its regression test and the repeated live browser run. Both disposable cloud resources were removed. Node 22 workspace checks and builds, the updated console build and check, and administrator MFA regression tests passed.

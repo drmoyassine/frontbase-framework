@@ -70,13 +70,14 @@ export class CookieAuthClient implements AuthClient {
           password: credentials.password,
           website: credentials.website,
           turnstile_token: credentials.turnstileToken,
+          authenticator_code: credentials.authenticatorCode,
         }),
       });
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({} as any));
         const detail = typeof data.detail === 'string' ? data.detail : 'Login failed';
-        return { success: false, error: detail };
+        return { success: false, error: detail, requiresAuthenticator: data.error === 'authenticator_required' };
       }
 
       const data = await response.json();
