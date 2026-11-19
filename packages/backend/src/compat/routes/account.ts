@@ -60,15 +60,16 @@ export function registerAccountRoutes(app: Hono<{ Variables: ConsoleAuthVars }>,
         const local = !!atomic && user.passwordHash !== 'supabase-managed';
         return c.json({email:user.email,changePassword:local,changeEmail:local && !!mail});
     });
+    app.get('/api/account/authenticator/', async c => {
+        const user = await account(c.get('principal').user,c.get('tenant'));
+        if (!user) return c.json({detail:'Account unavailable.'},404);
+        if (!mfa) return c.json({enrolled:false,required:false,mailAvailable:false,available:false});
+        const enrolled = Boolean(await mfa.factor(user.tenantSlug,user.id));
+        const mailAvailable = Boolean(mail?.verifyRecoveryAddress);
+        const required = Boolean(deps.requireMfa && !await mfa.setupComplete(user.tenantSlug,user.id,mailAvailable));
+        return c.json({enrolled,required,mailAvailable,available:mfa.available && user.passwordHash !== 'supabase-managed'});
+    });
     if (mfa) {
-        app.get('/api/account/authenticator/', async c => {
-            const user = await account(c.get('principal').user,c.get('tenant'));
-            if (!user) return c.json({detail:'Account unavailable.'},404);
-            const enrolled = Boolean(await mfa.factor(user.tenantSlug,user.id));
-            const mailAvailable = Boolean(mail?.verifyRecoveryAddress);
-            const required = Boolean(deps.requireMfa && !await mfa.setupComplete(user.tenantSlug,user.id,mailAvailable));
-            return c.json({enrolled,required,mailAvailable,available:mfa.available && user.passwordHash !== 'supabase-managed'});
-        });
         app.post('/api/account/authenticator/mail/', async c => {
             const user = await account(c.get('principal').user,c.get('tenant'));
             const deliver = mail?.verifyRecoveryAddress;
