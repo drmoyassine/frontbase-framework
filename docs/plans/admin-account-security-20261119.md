@@ -50,3 +50,15 @@ Existing installations keep their sign-in and may enroll from **My account**. Cl
 ## Verification
 
 Local SQLite tests cover same-origin credential changes, existing session rejection, current-password verification, isolated email confirmation, and challenge reuse rejection. Chrome with virtual authenticators covers enrolling two passkeys, signing in, rejecting a replay, removing a passkey, and signing back in with a password. The live Worker was checked for mail bindings. Neither the key nor sender is configured. No production account was modified.
+
+## Study-in-USA rollout
+
+The code build from commit `2e75f421` is at 100% on Workers version `e8e66351-6c23-44a1-b91a-c4743af590ec`. The staged preview and production both returned 200 for health and the English and Arabic homepages. Public HTML returned `Cache-Control: no-store`. The anonymous account endpoint returned 401. All 15 bindings matched the previous version, including the existing `studygram-state` binding. The established owner signed in and My account confirmed authenticator enrollment is available and optional.
+
+Cloudflare accepted the registration of the requested Workers Free test inbox. Destination confirmation is still pending. The application has no production mail binding at this checkpoint. No plan upgrade was requested or performed.
+
+For rollback, the preceding Worker version is `5812b1b7-82c0-4c7d-9ded-a831d7fa228b`. That binary predates MFA enforcement. After any production account enrolls, keep the administrator entry points restricted during a rollback that uses that binary.
+
+The compatibility follow-up in `66d9a689` serves a successful unavailable status where an installation has no HTTPS MFA capability. It fixed the original GitHub dashboard acceptance failure and passed the same targeted Chromium test locally. The updated artifact is live at 100% on Worker version `07c34246-ed71-496d-bd7c-c4bf49519a46`. Production binding parity, owner sign-in, My account, unauthorized authentication, health, and both no-store homepages passed again.
+
+A disposable live Worker and D1 verified first-run enrollment, password plus authenticator sign-in, password recovery, replay rejection, old-session invalidation, and sign-in with the new password. Cloudflare confirmed both disposable resources absent after cleanup. Two focused fault tests also proved that the local suite detects a missing authenticator check and a reusable recovery code.
