@@ -48,6 +48,11 @@ const ticketSchema = z.object({
     id:z.string(), tenant:z.string(), passwordHash:z.string(), expiry:z.number(),
     secret:z.string().regex(/^[A-Z2-7]{32}$/), codes:z.array(z.string().regex(/^[0-9a-f]{64}$/)).length(8),
 });
+const renewalTicket = ticketSchema.omit({secret:true}).extend({
+    purpose:z.literal('renew-recovery-codes'),
+    previous:z.string(),
+});
+type PasskeyProof = {credentialKey:string; credentialValue:string};
 type Factor = { encrypted: string; codes: string; step: number };
 const verifiedKey = (id: string) => 'admin_recovery_mail_verified:v1:' + id;
 const pendingKey = (id: string) => 'admin_recovery_mail_pending:v1:' + id;
@@ -112,22 +117,59 @@ export function createAdminMfa(db: DbRunner, cipher: SecretCipher, now: () => st
         return (await factor(user.tenantSlug,user.id))?.encrypted === encrypted;
     }
 
-    async function recover(user: UserRecord, code: string, backup: string, password: string) {
-        if (!atomic || !isLocalAdmin(user.role) || await accountReauthLimited(db,now,user.tenantSlug,user.id,'offline-recovery')) return false;
+    async function renewalOptions(user: UserRecord) {
+        if (!atomic || !isLocalAdmin(user.role) || user.passwordHash === 'supabase-managed') return null;
+        const active = await factor(user.tenantSlug,user.id);
+        if (!active || !cipher.isEncrypted(active.encrypted)) return null;
+        const recoveryCodes = Array.from({length:8},randomHex);
+        const ticket = await cipher.encrypt(JSON.stringify({
+            purpose:'renew-recovery-codes', id:user.id, tenant:user.tenantSlug, passwordHash:user.passwordHash,
+            expiry:Date.parse(now()) + 600_000, previous:await hash(active.codes), codes:await Promise.all(recoveryCodes.map(hash)),
+        }));
+        return {recoveryCodes,ticket};
+    }
+
+    async function renew(user: UserRecord, ticket: string, password: string, code: string) {
+        if (!atomic || !isLocalAdmin(user.role) || !cipher.isEncrypted(ticket)
+            || user.passwordHash === 'supabase-managed'
+            || await accountReauthLimited(db,now,user.tenantSlug,user.id,'renew-recovery-codes')) return false;
+        let pending: z.infer<typeof renewalTicket>;
+        try { pending = renewalTicket.parse(JSON.parse(await cipher.decrypt(ticket))); }
+        catch { return false; }
+        if (pending.id !== user.id || pending.tenant !== user.tenantSlug || pending.expiry <= Date.parse(now())
+            || pending.passwordHash !== user.passwordHash || !await verifyPassword(password,user.passwordHash)) return false;
+        const active = await factor(user.tenantSlug,user.id);
+        if (!active || !cipher.isEncrypted(active.encrypted) || await hash(active.codes) !== pending.previous) return false;
+        const step = await matchingStep(await cipher.decrypt(active.encrypted),code,Date.parse(now()),active.step);
+        if (step === null) return false;
+        return (await db.exec(
+            'UPDATE user_admin_mfa SET recovery_hashes=?,last_step=? WHERE tenant_slug=? AND user_id=? AND encrypted_secret=? AND recovery_hashes=? AND last_step<? AND EXISTS (SELECT 1 FROM users WHERE tenant_slug=? AND id=? AND password_hash=?)',
+            [JSON.stringify(pending.codes),step,user.tenantSlug,user.id,active.encrypted,active.codes,step,user.tenantSlug,user.id,user.passwordHash],
+        )) === 1;
+    }
+
+    async function recover(user: UserRecord, proof: string | PasskeyProof, backup: string, password: string) {
+        if (!atomic || !isLocalAdmin(user.role) || user.passwordHash === 'supabase-managed'
+            || await accountReauthLimited(db,now,user.tenantSlug,user.id,'offline-recovery')) return false;
         const active = await factor(user.tenantSlug,user.id);
         if (!active || !cipher.isEncrypted(active.encrypted)) return false;
         const digest = await hash(backup);
         const hashes = JSON.parse(active.codes) as string[];
         if (!hashes.includes(digest)) return false;
-        const step = await matchingStep(await cipher.decrypt(active.encrypted),code,Date.parse(now()),active.step);
+        const secret = await cipher.decrypt(active.encrypted);
+        const passkey = typeof proof === 'object' ? proof : undefined;
+        const code = typeof proof === 'string' ? proof : undefined;
+        const step = passkey ? active.step : await matchingStep(secret,code,Date.parse(now()),active.step);
         if (step === null) return false;
         const replacement = await hashPassword(password);
-        // Serialize contenders on the factor row before touching the credential.
-        // The new encrypted value is a unique receipt for this batch.
-        const receipt = await cipher.encrypt(await cipher.decrypt(active.encrypted));
+        // A unique encrypted value ties the password write to this code consumption.
+        const receipt = await cipher.encrypt(secret);
+        const credentialGuard = passkey ? " AND EXISTS (SELECT 1 FROM settings WHERE tenant_slug='_global' AND key=? AND value=?)" : '';
         await atomic([
-            {sql:'UPDATE user_admin_mfa SET encrypted_secret=?,recovery_hashes=?,last_step=? WHERE tenant_slug=? AND user_id=? AND encrypted_secret=? AND recovery_hashes=? AND last_step<?',
-                params:[receipt,JSON.stringify(hashes.filter(value=>value!==digest)),step,user.tenantSlug,user.id,active.encrypted,active.codes,step]},
+            {sql:'UPDATE users SET password_hash=password_hash WHERE id=? AND tenant_slug=?',params:[user.id,user.tenantSlug]},
+            {sql:'UPDATE user_admin_mfa SET encrypted_secret=?,recovery_hashes=?,last_step=? WHERE tenant_slug=? AND user_id=? AND encrypted_secret=? AND recovery_hashes=? AND last_step=? AND EXISTS (SELECT 1 FROM users WHERE tenant_slug=? AND id=? AND password_hash=?)'+credentialGuard,
+                params:[receipt,JSON.stringify(hashes.filter(value=>value!==digest)),step,user.tenantSlug,user.id,active.encrypted,active.codes,active.step,
+                    user.tenantSlug,user.id,user.passwordHash,...(passkey ? [passkey.credentialKey,passkey.credentialValue] : [])]},
             {sql:'UPDATE users SET password_hash=? WHERE id=? AND tenant_slug=? AND EXISTS (SELECT 1 FROM user_admin_mfa WHERE tenant_slug=? AND user_id=? AND encrypted_secret=?)',
                 params:[replacement,user.id,user.tenantSlug,user.tenantSlug,user.id,receipt]},
             {sql:bumpForPassword,params:[now(),user.id,user.tenantSlug,replacement]},
@@ -185,5 +227,5 @@ export function createAdminMfa(db: DbRunner, cipher: SecretCipher, now: () => st
         return row?.password_hash === passwordHash;
     }
 
-    return {available:Boolean(atomic),factor,validate,options,enroll,recover,setupComplete,requestMailProof,confirmMailProof,emailReset};
+    return {available:Boolean(atomic),factor,validate,options,enroll,renewalOptions,renew,recover,setupComplete,requestMailProof,confirmMailProof,emailReset};
 }

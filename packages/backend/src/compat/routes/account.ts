@@ -70,6 +70,20 @@ export function registerAccountRoutes(app: Hono<{ Variables: ConsoleAuthVars }>,
         return c.json({enrolled,required,mailAvailable,available:mfa.available && user.passwordHash !== 'supabase-managed'});
     });
     if (mfa) {
+        app.post('/api/account/authenticator/recovery-codes/options/', async c => {
+            const user = await account(c.get('principal').user,c.get('tenant'));
+            const options = user ? await mfa.renewalOptions(user) : null;
+            return options ? c.json(options) : c.json({detail:'Set up an authenticator before renewing recovery codes.'},409);
+        });
+        app.post('/api/account/authenticator/recovery-codes/confirm/', async c => {
+            const input = z.object({ticket:z.string().max(3000),password,code:z.string().regex(/^\d{6}$/),saved:z.literal(true)})
+                .safeParse(await c.req.json().catch(()=>null));
+            const user = await account(c.get('principal').user,c.get('tenant'));
+            if (!user || !input.success || !await mfa.renew(user,input.data.ticket,input.data.password,input.data.code)) {
+                return c.json({detail:'The codes could not be replaced. Check your password and use a fresh authenticator code. If the request expired, generate another set.'},400);
+            }
+            return c.json({message:'Recovery codes replaced. Use your new set for future recovery.'});
+        });
         app.post('/api/account/authenticator/mail/', async c => {
             const user = await account(c.get('principal').user,c.get('tenant'));
             const deliver = mail?.verifyRecoveryAddress;

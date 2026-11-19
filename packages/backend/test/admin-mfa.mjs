@@ -67,6 +67,26 @@ try {
     timestamp += 30_000;
     assert.equal((await recover(code(key),recoveryCodes[0],replacement)).status,400);
     assert.equal((await login(password,code(key))).status,401);
-    assert.equal((await login(replacement,code(key))).status,200);
-    console.log('Administrator MFA: enrollment proof, encrypted storage, limited sign-in, atomic recovery, replay refusal and revoked sessions PASS');
+    const renewedLogin = await login(replacement,code(key));
+    assert.equal(renewedLogin.status,200);
+    const renewedSession = renewedLogin.headers.get('set-cookie').split(';')[0];
+    const renewalOptions = cookie => request('/api/account/authenticator/recovery-codes/options/',{},cookie);
+    assert.equal((await renewalOptions()).status,401);
+    const current = (await db.query('SELECT recovery_hashes FROM user_admin_mfa'))[0].recovery_hashes;
+    const draft = await (await renewalOptions(renewedSession)).json();
+    const discarded = await (await renewalOptions(renewedSession)).json();
+    assert.equal(draft.recoveryCodes.length,8);
+    assert.equal((await db.query('SELECT recovery_hashes FROM user_admin_mfa'))[0].recovery_hashes,current);
+    const replaceCodes = (ticket, saved = true, password = replacement) => request('/api/account/authenticator/recovery-codes/confirm/',
+        {ticket,saved,password,code:code(key)},renewedSession);
+    assert.equal((await replaceCodes(draft.ticket)).status,400,'login TOTP cannot renew codes again');
+    timestamp += 30_000;
+    assert.equal((await replaceCodes(draft.ticket,false)).status,400);
+    assert.equal((await replaceCodes(draft.ticket,true,'wrong password')).status,400);
+    assert.equal((await replaceCodes(draft.ticket)).status,200);
+    timestamp += 30_000;
+    assert.equal((await replaceCodes(discarded.ticket)).status,400,'stale issue cannot replace a confirmed set');
+    assert.equal((await recover(code(key),recoveryCodes[1],password)).status,400,'old code no longer works');
+    assert.equal((await recover(code(key),draft.recoveryCodes[0],password)).status,200,'new code works');
+    console.log('Administrator MFA: enrollment proof, encrypted storage, limited sign-in, atomic recovery, code renewal, replay refusal and revoked sessions PASS');
 } finally { db.close(); }

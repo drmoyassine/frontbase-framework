@@ -1,5 +1,6 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import qrcode from 'qrcode-generator';
+import { startAuthentication } from '@simplewebauthn/browser';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,6 +62,60 @@ function AuthenticatorQr({secret, accountEmail}: {secret:string;accountEmail?:st
     </div>;
 }
 
+function RecoveryCodes({codes}: {codes:string[]}) {
+    return <>
+        <ul className="rounded border p-3 font-mono text-sm break-all select-all">{codes.map(code=><li key={code}>{code}</li>)}</ul>
+        <label className="flex items-center gap-2"><input type="checkbox" name="saved" required /> I saved my recovery codes.</label>
+    </>;
+}
+
+export function RecoveryCodeRenewal() {
+    const [pending,setPending] = useState<Pick<Enrollment,'recoveryCodes'|'ticket'>>();
+    const [busy,setBusy] = useState(false);
+    const [status,setStatus] = useState('');
+    const [error,setError] = useState('');
+    async function requestOptions() {
+        setBusy(true);
+        setStatus('');
+        setError('');
+        try { setPending(await authenticatorRequest('recovery-codes/options/',{})); }
+        catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not generate recovery codes.'); }
+        finally { setBusy(false); }
+    }
+    async function confirm(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (!pending) return;
+        const fields = new FormData(event.currentTarget);
+        setBusy(true);
+        setError('');
+        try {
+            const result = await authenticatorRequest('recovery-codes/confirm/',{
+                ticket:pending.ticket,password:fields.get('password'),code:fields.get('code'),saved:fields.has('saved'),
+            });
+            setPending(undefined);
+            setStatus(result.message);
+        } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not replace recovery codes.'); }
+        finally { setBusy(false); }
+    }
+    return <Card>
+        <CardHeader><CardTitle>Recovery codes</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+            {status && <p role="status">{status}</p>}
+            {error && <p role="alert" className="text-destructive">{error}</p>}
+            {pending ? <form onSubmit={confirm} className="space-y-4">
+                <p>Save these codes offline. Confirming the replacement invalidates your previous codes.</p>
+                <RecoveryCodes codes={pending.recoveryCodes} />
+                <div><Label htmlFor="renew-password">Current password</Label>
+                    <Input id="renew-password" name="password" type="password" autoComplete="current-password" maxLength={256} required /></div>
+                <div><Label htmlFor="renew-code">Fresh authenticator code</Label>
+                    <Input id="renew-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required /></div>
+                <Button disabled={busy}>Replace recovery codes</Button>
+                <Button type="button" variant="ghost" disabled={busy} onClick={()=>{setPending(undefined);setError('');}}>Cancel</Button>
+            </form> : <Button type="button" variant="outline" disabled={busy} onClick={()=>void requestOptions()}>Generate new recovery codes</Button>}
+        </CardContent>
+    </Card>;
+}
+
 export function AuthenticatorSetup({required = false,mailAvailable = false,accountEmail}: {required?:boolean;mailAvailable?:boolean;accountEmail?:string}) {
     const [emailStep,setEmailStep] = useState(false);
     const [pending,setPending] = useState<Enrollment>();
@@ -116,8 +171,7 @@ export function AuthenticatorSetup({required = false,mailAvailable = false,accou
                 {pending ? <>
                     <AuthenticatorQr secret={pending.secret} accountEmail={accountEmail} />
                     <p>Save these one-time recovery codes offline. To reset your password, use one recovery code and a fresh authenticator code.</p>
-                    <ul className="rounded border p-3 font-mono text-sm break-all select-all">{pending.recoveryCodes.map(code=><li key={code}>{code}</li>)}</ul>
-                    <label className="flex items-center gap-2"><input type="checkbox" name="saved" required /> I saved my recovery codes.</label>
+                    <RecoveryCodes codes={pending.recoveryCodes} />
                     <div><Label htmlFor="setup-authenticator-code">Authenticator code</Label>
                         <Input id="setup-authenticator-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required /></div>
                     <Button disabled={busy}>Enable authenticator</Button>
@@ -134,10 +188,29 @@ export function AuthenticatorSetup({required = false,mailAvailable = false,accou
     </Card>;
 }
 
+async function recoveryCall(path: string, body: object) {
+    const response = await fetch(path,{
+        method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),
+    });
+    const result = await response.json().catch(()=>null);
+    if (!response.ok || !result) throw Error(result?.detail ?? 'Password recovery is unavailable.');
+    return result;
+}
+
 export function AuthenticatorRecovery() {
+    const [passkeyAvailable,setPasskeyAvailable] = useState(false);
+    const [method,setMethod] = useState<'authenticator'|'passkey'>('authenticator');
     const [busy,setBusy] = useState(false);
     const [error,setError] = useState('');
     const navigate = useNavigate();
+    useEffect(()=>{
+        if (!window.PublicKeyCredential) return;
+        const controller = new AbortController();
+        void fetch('/api/passkeys/recovery/availability/',{cache:'no-store',signal:controller.signal})
+            .then(response=>response.ok ? response.json() : null)
+            .then(result=>{if(result?.enabled)setPasskeyAvailable(true);}).catch(()=>{});
+        return ()=>controller.abort();
+    },[]);
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
@@ -146,30 +219,38 @@ export function AuthenticatorRecovery() {
         setBusy(true);
         setError('');
         try {
-            const response = await fetch('/api/auth/recover-with-authenticator/',{
-                method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({email:fields.get('email'),code:fields.get('code'),
-                    backup:String(fields.get('backup')??'').trim().toLowerCase(),password}),
-            });
-            const result = await response.json().catch(()=>null);
-            if (!response.ok) throw Error(result?.detail ?? 'Authenticator recovery is unavailable.');
+            const input = {email:fields.get('email'),backup:String(fields.get('backup')??'').trim().toLowerCase(),password};
+            let result;
+            if (method === 'passkey') {
+                const optionsJSON = await recoveryCall('/api/passkeys/recovery/options/',{});
+                const assertion = await startAuthentication({optionsJSON});
+                result = await recoveryCall('/api/passkeys/recovery/verify/',{...input,assertion});
+            } else {
+                result = await recoveryCall('/api/auth/recover-with-authenticator/',{...input,code:fields.get('code')});
+            }
             await useAuthStore.getState().logout();
             navigate('/login',{replace:true,state:{accountMessage:result.message}});
-        } catch (cause) { setError(cause instanceof Error ? cause.message : 'Recovery failed.'); }
-        finally { setBusy(false); }
+        } catch (cause) {
+            setError(cause instanceof Error && cause.name !== 'NotAllowedError' ? cause.message : 'Recovery was canceled or could not be completed. Try again.');
+        } finally { setBusy(false); }
     }
     return <main className="flex min-h-screen items-center justify-center p-4">
         <Card className="w-full max-w-md">
-            <CardHeader><CardTitle>Recover with an authenticator</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Recover with a recovery code</CardTitle></CardHeader>
             <CardContent>
                 <form onSubmit={submit} className="space-y-4">
                     {error && <p role="alert" className="text-destructive">{error}</p>}
+                    {passkeyAvailable && <fieldset className="space-y-2" disabled={busy}>
+                        <legend className="mb-2 text-sm font-medium">Verification method</legend>
+                        <label className="flex items-center gap-2"><input type="radio" name="method" checked={method==='authenticator'} onChange={()=>{setMethod('authenticator');setError('');}} /> Authenticator app</label>
+                        <label className="flex items-center gap-2"><input type="radio" name="method" checked={method==='passkey'} onChange={()=>{setMethod('passkey');setError('');}} /> Passkey</label>
+                    </fieldset>}
                     <div><Label htmlFor="recovery-email">Sign-in email</Label><Input id="recovery-email" name="email" type="email" autoComplete="username" required /></div>
-                    <div><Label htmlFor="recovery-authenticator-code">Authenticator code</Label><Input id="recovery-authenticator-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" required /></div>
+                    {method==='authenticator' && <div><Label htmlFor="recovery-authenticator-code">Authenticator code</Label><Input id="recovery-authenticator-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" required /></div>}
                     <div><Label htmlFor="recovery-backup">Unused recovery code</Label><Input id="recovery-backup" name="backup" autoComplete="off" maxLength={32} required /></div>
                     <div><Label htmlFor="recovery-password">New password</Label><Input id="recovery-password" name="password" type="password" autoComplete="new-password" minLength={12} maxLength={256} required /></div>
                     <div><Label htmlFor="recovery-confirm">Confirm new password</Label><Input id="recovery-confirm" name="confirm" type="password" autoComplete="new-password" minLength={12} maxLength={256} required /></div>
-                    <Button disabled={busy}>Reset password</Button>
+                    <Button disabled={busy}>{method==='passkey' ? 'Verify passkey and reset password' : 'Reset password'}</Button>
                     <Button asChild variant="link"><Link to="/login">Back to sign-in</Link></Button>
                 </form>
             </CardContent>

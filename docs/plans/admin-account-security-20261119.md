@@ -13,7 +13,7 @@
 2. Validate the Security view and passkeys on the actual CF, Vercel and Docker runtimes. Separately qualify the live host firewall controls before describing them as installed. A passkey enrolled for a preview hostname does not qualify the production hostname.
 3. After account and sign-in verification, roll out the persistent Edit site switch and bidirectional site/console navigation. Verify Arabic and English on phone and desktop.
 
-Magic links need verified mail delivery and single-use sign-in token handling. Authenticator-app codes need a shared enforcement point for all password login routes plus recovery codes. They are separate follow-ups. Retain the existing password login and recovery until end-to-end passkey recovery is verified.
+Magic links remain a separate follow-up that needs verified mail delivery and single-use sign-in tokens.
 
 
 ## Transactional mail configuration
@@ -43,9 +43,9 @@ Fresh self-hosted installations with a configured HTTPS public origin require re
 
 If mail is unavailable, scan the setup QR code with a time-based authenticator app. Open **Enter setup key manually** if scanning is unavailable. Save the eight single-use codes offline and enter a fresh six-digit code. Frontbase generates the QR code locally in the enrollment screen. Frontbase stores the authenticator key encrypted and the recovery codes as hashes. Enrollment invalidates earlier sessions. Password sign-in and sensitive account changes then require a fresh authenticator code. An existing, user-verified passkey remains a sign-in option.
 
-To reset a forgotten password, open **Forgot password → Use an authenticator and recovery code**. Enter one unused offline code and a fresh authenticator code. Frontbase consumes both proofs, changes the password and invalidates existing sessions. Email reset is unavailable for authenticator-enrolled accounts. An email address change still requires receiving a code at the new inbox. Keep the authenticator and offline codes in separate places. Passkey-assisted password recovery, lost-factor operator recovery and recovery code renewal remain follow-ups. [NIST account recovery guidance](https://pages.nist.gov/800-63-4/sp800-63b.html#account-recovery)
+To reset a forgotten password, open **Forgot password → Use a recovery code**. Enter one unused offline code and verify with an enrolled passkey or a fresh authenticator code. The passkey must verify the user on the installation origin and use a challenge issued for recovery. Frontbase consumes the recovery code, changes the password and invalidates existing sessions. Email reset is unavailable for authenticator-enrolled accounts. An email address change still requires receiving a code at the new inbox. Keep the authenticator and offline codes in separate places. Lost-factor operator recovery remains a follow-up. [NIST account recovery guidance](https://pages.nist.gov/800-63-4/sp800-63b.html#account-recovery)
 
-Existing installations keep their sign-in and may enroll from **My account**. Cloud-managed identity retains its existing provider policy. The no-email flow requires an atomic state adapter. Cloudflare Workers and the shared Vercel and Node runtimes use the same policy.
+In **My account → Recovery codes**, generate a new set, save it offline, then confirm with your current password and a fresh authenticator code. Frontbase replaces the old set only after confirmation. Existing installations keep their sign-in and may enroll from **My account**. Cloud-managed identity retains its existing provider policy. The no-email flow requires an atomic state adapter. Cloudflare Workers and the shared Vercel and Node runtimes use the same policy.
 
 ## Verification
 

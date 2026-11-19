@@ -20,16 +20,23 @@ const credential = z.object({
     counter:z.number().int().nonnegative(), userId:z.string(), tenant:z.string(), origin:z.string(),
     handle:z.string(), name:z.string(), createdAt:z.string(),
 }).strict();
-const challenge = z.object({challenge:z.string(),expires:z.string(),userId:z.string().optional(),tenant:z.string().optional(),version:z.number().optional()}).strict();
+const challenge = z.object({challenge:z.string(),expires:z.string(),userId:z.string().optional(),tenant:z.string().optional(),version:z.number().optional(),purpose:z.literal('password-recovery').optional()}).strict();
 const enrollment = z.object({password:z.string().min(1).max(256),name:z.string().trim().min(1).max(80)}).strict();
 const encoded = z.string().min(1).max(16384).regex(/^[A-Za-z0-9_-]+$/);
 const envelope = z.object({id:credential.shape.id,rawId:credential.shape.id,type:z.literal('public-key'),clientExtensionResults:z.object({})});
 const assertion = envelope.extend({response:z.object({clientDataJSON:encoded,authenticatorData:encoded,signature:encoded,userHandle:encoded})});
 const attestation = envelope.extend({response:z.object({clientDataJSON:encoded,attestationObject:encoded})});
+const recoveryInput = z.object({
+    assertion,
+    email:z.string().email().max(254),
+    backup:z.string().regex(/^[0-9a-f]{32}$/),
+    password:z.string().min(12).max(256),
+}).strict();
+const recoveryError = {detail:'Recovery could not be confirmed. Check your sign-in email and unused recovery code, then try again.'};
 const namespace = '_global';
 const credentialKey = (id:string) => 'admin_passkey:v1:'+id;
 const challengeCookie = '__Host-frontbase-passkey';
-const challengePattern = 'admin!_passkey!_challenge:v1:%';
+const challengePrefix = 'admin_passkey_challenge:v1:';
 const cookie = (value:string,seconds:number) => challengeCookie+'='+value+'; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age='+seconds;
 const readCookie = (c:Ctx) => c.req.header('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(challengeCookie+'='))?.split('=')[1] ?? '';
 function parse(value:unknown) { try { return typeof value==='string' ? JSON.parse(value) : null; } catch { return null; } }
@@ -44,7 +51,7 @@ export function registerPasskeyRoutes(app:App,deps:Deps,phase:'public'|'account'
         db.transaction!(async runner=>{for(const {sql,params} of statements)await runner.exec(sql,params);}) : undefined);
     if(!atomic)return;
     const rpID=target.hostname;
-    const key = (id:string) => 'admin_passkey_challenge:v1:'+id;
+    const key = (id:string) => challengePrefix+id;
     const permitted = (c:Ctx) => new URL(c.req.url).origin===target.origin && c.req.header('origin')===target.origin
         && c.req.header('content-type')?.split(';')[0]==='application/json' && c.req.header('sec-fetch-site')!=='cross-site';
     // Five-minute browser challenges. Reuse the cookie slot for sequential retries.
@@ -52,9 +59,9 @@ export function registerPasskeyRoutes(app:App,deps:Deps,phase:'public'|'account'
         const prior=readCookie(c);
         const id=/^[a-f0-9-]{36}$/.test(prior)?prior:crypto.randomUUID();
         const time=now();
-        await db.exec('DELETE FROM settings WHERE tenant_slug=? AND key LIKE ? ESCAPE ? AND updated_at<=?',[namespace,challengePattern,'!',new Date(Date.parse(time)-300000).toISOString()]);
-        const count=await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM settings WHERE tenant_slug=? AND key=?) OR (SELECT COUNT(*) FROM settings WHERE tenant_slug=? AND key LIKE ? ESCAPE ?)<256 ON CONFLICT(tenant_slug,key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at',
-            [namespace,key(id),JSON.stringify({...value,expires:new Date(Date.parse(time)+300000).toISOString()}),time,namespace,key(id),namespace,challengePattern,'!']);
+        await db.exec('DELETE FROM settings WHERE tenant_slug=? AND substr(key,1,length(?))=? AND updated_at<=?',[namespace,challengePrefix,challengePrefix,new Date(Date.parse(time)-300000).toISOString()]);
+        const count=await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM settings WHERE tenant_slug=? AND key=?) OR (SELECT COUNT(*) FROM settings WHERE tenant_slug=? AND substr(key,1,length(?))=?)<256 ON CONFLICT(tenant_slug,key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at',
+            [namespace,key(id),JSON.stringify({...value,expires:new Date(Date.parse(time)+300000).toISOString()}),time,namespace,key(id),namespace,challengePrefix,challengePrefix]);
         if(count!==1)return false;
         c.header('Set-Cookie',cookie(id,300));
         return true;
@@ -78,31 +85,43 @@ export function registerPasskeyRoutes(app:App,deps:Deps,phase:'public'|'account'
     };
     const ownerPrefix='admin_passkey_owner:v1:';
     const ownerListKey=(id:string)=>ownerPrefix+id;
-    const ownership=(owner:string)=>ownerListKey(owner).replace(/!/g,'!!').replace(/_/g,'!_').replace(/%/g,'!%')+':%';
+    const ownedKeys=(owner:PublicUser, limit?:number) => {
+        const prefix=ownerListKey(owner.id)+':';
+        const sql='SELECT key FROM settings WHERE tenant_slug=? AND substr(key,1,length(?))=?';
+        const params=[owner.tenantSlug,prefix,prefix];
+        return limit===undefined ? db.query(sql,params) : db.query(sql+' LIMIT ?',[...params,limit]);
+    };
     const handle = async(id:string,tenant:string) => new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([target.origin,tenant,id]))));
     const limitBody=bodyLimit({maxSize:32768,onError:c=>c.json(bad,413)});
     if(phase==='public'){
         app.use('/api/passkeys/*',limitBody);
         app.get('/api/passkeys/availability/',c=>{c.header('Cache-Control','no-store');return c.json({enabled:new URL(c.req.url).origin===target.origin});});
-        app.post('/api/passkeys/options/',async c=>{
+        if (deps.mfa?.available) app.get('/api/passkeys/recovery/availability/',c=>{
+            c.header('Cache-Control','no-store');
+            return c.json({enabled:new URL(c.req.url).origin===target.origin});
+        });
+        const optionsFor = (recovery: boolean) => async (c:Ctx) => {
             c.header('Cache-Control','no-store');
             if(!permitted(c))return c.json(bad,403);
             const { generateAuthenticationOptions } = await import('@simplewebauthn/server');
             const options=await generateAuthenticationOptions({rpID,userVerification:'required'});
-            if(!await begin(c,{challenge:options.challenge}))return c.json({detail:'Passkey sign-in is busy. Try again or use your password.'},429);
+            if(!await begin(c,{challenge:options.challenge,...(recovery?{purpose:'password-recovery' as const}:{})}))return c.json({detail:'Passkey sign-in is busy. Try again or use your password.'},429);
             return c.json(options);
-        });
-        app.post('/api/passkeys/verify/',async c=>{
+        };
+        const verifyFor = (recovery: boolean) => async (c:Ctx) => {
             c.header('Cache-Control','no-store');
             if(!permitted(c))return c.json(bad,403);
-            const input=assertion.safeParse(await c.req.json().catch(()=>null));
+            const payload=await c.req.json().catch(()=>null);
+            const parsedRecovery=recovery ? recoveryInput.safeParse(payload) : undefined;
+            const input=parsedRecovery?.success ? parsedRecovery.data.assertion : assertion.safeParse(payload).data;
             const pending=await consume(c);
-            if(!input.success||!pending||pending.userId)return c.json(bad,400);
-            const raw=(await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',[namespace,credentialKey(input.data.id)]))[0]?.value;
+            if(!input || (recovery && !parsedRecovery?.success) || !pending || pending.userId
+                || (pending.purpose === 'password-recovery') !== recovery) return c.json(bad,400);
+            const raw=(await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',[namespace,credentialKey(input.id)]))[0]?.value;
             const saved=credential.safeParse(parse(raw));
             if(!saved.success||saved.data.origin!==target.origin)return c.json(bad,400);
             const passkey=saved.data;
-            if(input.data.response.userHandle!==passkey.handle)return c.json(bad,400);
+            if(input.response.userHandle!==passkey.handle)return c.json(bad,400);
             const user=await users(passkey.tenant).findByIdForVerify(passkey.userId);
             if(!user||!roles.has(user.role)||user.passwordHash==='supabase-managed')return c.json(bad,400);
             // Read the session generation before verification to avoid reissuing a session
@@ -110,16 +129,32 @@ export function registerPasskeyRoutes(app:App,deps:Deps,phase:'public'|'account'
             const version=await users(user.tenantSlug).getSessionVersion(user.id);
             try{
                 const { verifyAuthenticationResponse } = await import('@simplewebauthn/server');
-                const result=await verifyAuthenticationResponse({response:input.data,expectedChallenge:pending.challenge,
+                const result=await verifyAuthenticationResponse({response:input,expectedChallenge:pending.challenge,
                     expectedOrigin:target.origin,expectedRPID:rpID,requireUserVerification:true,
                     credential:{id:passkey.id,publicKey:Uint8Array.from(passkey.publicKey),counter:passkey.counter}});
                 if(!result.verified)return c.json(bad,400);
+                const key=credentialKey(passkey.id);
+                const value=JSON.stringify({...passkey,counter:result.authenticationInfo.newCounter});
                 if(await db.exec('UPDATE settings SET value=?,updated_at=? WHERE tenant_slug=? AND key=? AND value=?',
-                    [JSON.stringify({...passkey,counter:result.authenticationInfo.newCounter}),now(),namespace,credentialKey(passkey.id),raw])!==1)return c.json(bad,409);
+                    [value,now(),namespace,key,raw])!==1)return c.json(bad,409);
+                if (parsedRecovery?.success) {
+                    const {email,backup,password}=parsedRecovery.data;
+                    if (user.email.toLowerCase()!==email.toLowerCase() || !await deps.mfa?.recover(user,{credentialKey:key,credentialValue:value},backup,password)) {
+                        return c.json(recoveryError,400);
+                    }
+                    c.header('Set-Cookie','frontbase_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0',{append:true});
+                    return c.json({message:'Password reset. Sign in with your passkey or your new password and an authenticator code.'});
+                }
                 await deps.signIn(c,user,version);
                 return c.json({success:true});
-            }catch{return c.json(bad,400);}
-        });
+            } catch { return c.json(recovery ? recoveryError : bad,400); }
+        };
+        app.post('/api/passkeys/options/',optionsFor(false));
+        app.post('/api/passkeys/verify/',verifyFor(false));
+        if (deps.mfa?.available) {
+            app.post('/api/passkeys/recovery/options/',optionsFor(true));
+            app.post('/api/passkeys/recovery/verify/',verifyFor(true));
+        }
         return;
     }
     app.use('/api/account/passkeys/*',limitBody);
@@ -127,7 +162,7 @@ export function registerPasskeyRoutes(app:App,deps:Deps,phase:'public'|'account'
         c.header('Cache-Control','no-store');
         const user=await account(c);
         if(!user||new URL(c.req.url).origin!==target.origin)return c.json({enabled:false,passkeys:[]});
-        const byOwner=await db.query('SELECT key FROM settings WHERE tenant_slug=? AND key LIKE ? ESCAPE ?',[user.tenantSlug,ownership(user.id),'!']);
+        const byOwner=await ownedKeys(user);
         const passkeys=[];
         for(const {key:ownerKey} of byOwner){
             const id=String(ownerKey).slice(ownerListKey(user.id).length+1);
@@ -149,7 +184,7 @@ export function registerPasskeyRoutes(app:App,deps:Deps,phase:'public'|'account'
         if(!await verifyPassword(input.data.password,user.passwordHash))return c.json({detail:'The current password is incorrect.'},403);
         const proof = await deps.mfa?.validate(user,c.req.header('x-frontbase-authenticator-code'));
         if (proof === 'required' || proof === 'invalid') return c.json({detail:'Enter a fresh code from your authenticator app.'},403);
-        const ids=await db.query('SELECT key FROM settings WHERE tenant_slug=? AND key LIKE ? ESCAPE ? LIMIT 10',[user.tenantSlug,ownership(user.id),'!']);
+        const ids=await ownedKeys(user,10);
         if(ids.length>=10)return c.json({detail:'Remove a passkey before adding another.'},409);
         const { generateRegistrationOptions } = await import('@simplewebauthn/server');
         const options=await generateRegistrationOptions({rpName:'Frontbase',rpID,userName:user.email,userID:await handle(user.id,user.tenantSlug),

@@ -1653,3 +1653,7 @@ Use configured Cloudflare Email Service on Workers and support Resend on Vercel 
 ## 2026-11-19 administrator recovery enrollment
 
 Gate the first console session of a fresh self-hosted HTTPS installation until either its sign-in mailbox or its authenticator is verified. Keep established installations accessible with voluntary enrollment. Separate the authenticator's time-based proof from the offline recovery code, hash the latter, and atomically revoke old sessions on recovery. Do not treat an accepted email send as proof of mailbox control. See the [recovery setup plan](../plans/admin-account-security-20261119.md#administrator-recovery-setup).
+
+## 2026-11-19 passkey-assisted password recovery and code renewal
+
+Use a purpose-bound WebAuthn challenge and an unused offline recovery code for passkey-assisted password reset. Require user verification on the installation origin and consume the recovery code in the same transaction as the credential replacement and session invalidation. Keep existing codes active while a replacement is displayed. Confirm replacement only after the administrator acknowledges saving the new set and supplies the current password and a fresh authenticator code.

@@ -210,7 +210,7 @@ export default function ForgotPasswordPage() {
                         </p>
                     </form>
                 </CardContent>
-                {!isCloud() && <div className="px-6 pb-6 text-center text-sm"><Link className="underline" to="/recover-with-authenticator">Use an authenticator and recovery code</Link></div>}
+                {!isCloud() && <div className="px-6 pb-6 text-center text-sm"><Link className="underline" to="/recover-with-authenticator">Use a recovery code</Link></div>}
             </Card>
         </div>
     );

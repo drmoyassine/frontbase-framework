@@ -1,4 +1,4 @@
-import { AuthenticatorSetup, authenticatorRequest } from '@/components/auth/Authenticator';
+import { AuthenticatorSetup, RecoveryCodeRenewal, authenticatorRequest } from '@/components/auth/Authenticator';
 import { startRegistration } from '@simplewebauthn/browser';
 
 import { useEffect, useState, type FormEvent } from 'react';
@@ -112,7 +112,7 @@ export function MyAccount() {
         {error && <p role="alert" className="text-destructive">{error}</p>}
         {message && <p role="status">{message}</p>}
         {authenticator?.available && (authenticator.enrolled
-            ? <p role="status">Authenticator enabled. Keep your recovery codes somewhere safe.</p> : <AuthenticatorSetup accountEmail={account?.email} />)}
+            ? <RecoveryCodeRenewal /> : <AuthenticatorSetup accountEmail={account?.email} />)}
         {passkeys?.enabled && window.PublicKeyCredential && <Card>
             <CardHeader><CardTitle>Passkeys</CardTitle><CardDescription>Add a passkey to sign in with your device. Your password remains available for recovery.</CardDescription></CardHeader>
             <CardContent className="space-y-4">
