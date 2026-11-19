@@ -1,3 +1,4 @@
+import { AuthenticatorRecovery,AuthenticatorSetup,authenticatorRequest } from '@/components/auth/Authenticator';
 import { MyAccount } from '@/modules/dbsync/components/MyAccount';
 import { MenusPanel } from '@/components/dashboard/MenusPanel';
 import { Toaster } from "@/components/ui/toaster";
@@ -6,8 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect,useRef,useSyncExternalStore } from "react";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { useEffect,useRef,useState,useSyncExternalStore } from "react";
 import {SessionDataGate,recoverySnapshot,subscribeRecovery} from "@/lib/sessionRecovery";
 import { useDashboardStore } from "@/stores/dashboard";
 import { useBuilderStore } from "@/stores/builder";
@@ -97,11 +98,24 @@ const AdminApp = () => {
   const { isAuthenticated } = useAuth();
   const recovery=useSyncExternalStore(subscribeRecovery,recoverySnapshot,recoverySnapshot);
   const sessionDataGate=useRef(new SessionDataGate());
+  const [mailAvailable,setMailAvailable] = useState(false);
+  const [enrollment,setEnrollment] = useState<'loading'|'required'|'ready'|'error'>('loading');
+  useEffect(() => {
+    let active = true;
+    if (!isAuthenticated || isCloud()) {
+      setEnrollment(isCloud() ? 'ready' : 'loading');
+      return;
+    }
+    void authenticatorRequest().then(status=>{if(active){setMailAvailable(Boolean(status.mailAvailable));setEnrollment(status.required ? 'required' : 'ready');}})
+      .catch(()=>{if(active)setEnrollment('error');});
+    return ()=>{active=false;};
+  },[isAuthenticated]);
 
     // authCheck is handled automatically by useAuth(autoCheck = true) on mount
 
   // Initialize app data only when authenticated
   useEffect(() => {
+    if (isAuthenticated && enrollment !== 'ready') return;
     const sessionAction=sessionDataGate.current.decide(isAuthenticated,recovery.status);
     if(sessionAction==='hold')return;
     if (sessionAction==='clear') {
@@ -130,7 +144,7 @@ const AdminApp = () => {
     }, 0);
 
     return () => clearTimeout(timeoutId);
-  }, [isAuthenticated, recovery.status, fetchConnections, loadProjectFromDatabase, loadPagesFromDatabase, loadVariablesFromDatabase]);
+  }, [isAuthenticated, enrollment, recovery.status, fetchConnections, loadProjectFromDatabase, loadPagesFromDatabase, loadVariablesFromDatabase]);
 
   return (
     <ErrorBoundary>
@@ -145,7 +159,7 @@ const AdminApp = () => {
             {/* GDPR consent banner — EU users only, dismissible (Sprint 3D) */}
             <ConsentBanner />
             {/* Global Chat Overlay (Protected via state) */}
-            {isAuthenticated && (
+            {isAuthenticated && enrollment === 'ready' && (
               <>
                 <GlobalAgentChat />
                 <MasterAdminImpersonator />
@@ -158,12 +172,19 @@ const AdminApp = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              {!isCloud() && <Route path="/recover-with-authenticator" element={<AuthenticatorRecovery />} />}
               {isCloud() && <Route path="/signup" element={<SignupPage />} />}
               {isCloud() && <Route path="/accept-invite" element={<AcceptInvitePage />} />}
               <Route path="/embed/auth/:formId" element={<EmbedAuthPage />} />
 
               {/* Protected Routes - Require Authentication */}
               <Route element={<ProtectedRoute />}>
+                <Route element={enrollment === 'ready' ? <Outlet /> :
+                  <main className="flex min-h-screen items-center justify-center p-4">
+                    {enrollment === 'required' ? <AuthenticatorSetup required mailAvailable={mailAvailable} /> :
+                        enrollment === 'error' ? <p role="alert">Could not check account setup. Reload to try again.</p> :
+                        <p role="status">Checking account setup…</p>}
+                  </main>}>
                 {/* Unified App Shell */}
                 <Route element={<UnifiedShell />}>
                   <Route path="/dashboard" element={<Overview />} />
@@ -195,6 +216,7 @@ const AdminApp = () => {
                 {/* Standalone / Fullscreen Pages (Protected) */}
                 <Route path="/builder/:pageId" element={<BuilderPage />} />
                 <Route path="/variables" element={<VariablesPage />} />
+                </Route>
               </Route>
 
               {/* 404 */}

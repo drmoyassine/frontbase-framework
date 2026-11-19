@@ -22,6 +22,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [authenticatorCode,setAuthenticatorCode] = useState('');
+    const [requiresAuthenticator,setRequiresAuthenticator] = useState(false);
     const [website, setWebsite] = useState('');
     const [passkeyAvailable,setPasskeyAvailable] = useState(false);
     const [passkeyBusy,setPasskeyBusy] = useState(false);
@@ -121,8 +123,10 @@ export default function LoginPage() {
             email,
             password,
             website,
+            authenticatorCode: requiresAuthenticator ? authenticatorCode.trim() : undefined,
             turnstileToken: turnstileToken || undefined,
         });
+        if (result.requiresAuthenticator) setRequiresAuthenticator(true);
         if (result.success) {
             navigate(from, { replace: true });
         }
@@ -182,6 +186,12 @@ export default function LoginPage() {
                                 autoComplete="current-password"
                             />
                         </div>
+                        {requiresAuthenticator && <div className="space-y-2">
+                            <Label htmlFor="authenticator-code">Authenticator code</Label>
+                            <Input id="authenticator-code" autoFocus inputMode="numeric" autoComplete="one-time-code"
+                                pattern="[0-9]{6}" maxLength={6} value={authenticatorCode}
+                                onChange={event=>setAuthenticatorCode(event.target.value)} required />
+                        </div>}
 
                         {/* Honeypot field - invisible to users, auto-filled by bots */}
                         <div style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, width: 0, overflow: 'hidden' }} aria-hidden="true">

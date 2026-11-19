@@ -309,6 +309,10 @@ export const MIGRATIONS: Migration[] = [
     {version:24,name:'datasource_view_default_sort',up:['ALTER TABLE datasource_views ADD COLUMN default_sort TEXT'],down:[]},
     {version:25,name:'datasource_view_source_schema',up:['ALTER TABLE datasource_views ADD COLUMN source_schema TEXT'],down:[]},
     {version:26,name:'template_install_namespace',up:['ALTER TABLE compat_pages ADD COLUMN namespace_key TEXT', 'CREATE UNIQUE INDEX compat_pages_namespace ON compat_pages(tenant_slug,namespace_key) WHERE namespace_key IS NOT NULL'],down:[]},
+    {version:27,name:'administrator_mfa',up:[
+        'CREATE TABLE IF NOT EXISTS user_admin_mfa (tenant_slug TEXT NOT NULL, user_id TEXT NOT NULL, encrypted_secret TEXT NOT NULL, recovery_hashes TEXT NOT NULL, last_step INTEGER NOT NULL, PRIMARY KEY (tenant_slug,user_id), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)',
+        "INSERT INTO settings (tenant_slug,key,value,updated_at) SELECT '_root','administrator_mfa_new_install','true','1970-01-01T00:00:00.000Z' WHERE NOT EXISTS (SELECT 1 FROM users) ON CONFLICT(tenant_slug,key) DO NOTHING",
+    ],down:[]},
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

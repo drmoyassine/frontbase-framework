@@ -66,7 +66,7 @@ function engine(): Promise<Hono> {
             const envServices = parseEnvServices(env);
             return createCmsEngine({
                 externalFetch,
-                resend:env.RESEND_API_KEY?{apiKey:env.RESEND_API_KEY,from:env.RESEND_FROM}:undefined,
+                mailEnv: env,
                 publicOrigin:env.FRONTBASE_PUBLIC_ORIGIN,
                 providerOAuthEnv:env,
                 runner: stateDb.runner,

@@ -1,3 +1,4 @@
+import { isCloud } from '@/lib/edition';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -209,6 +210,7 @@ export default function ForgotPasswordPage() {
                         </p>
                     </form>
                 </CardContent>
+                {!isCloud() && <div className="px-6 pb-6 text-center text-sm"><Link className="underline" to="/recover-with-authenticator">Use an authenticator and recovery code</Link></div>}
             </Card>
         </div>
     );

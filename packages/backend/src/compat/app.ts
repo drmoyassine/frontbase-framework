@@ -65,6 +65,7 @@ import { registerAuthFormsRoutes } from './routes/auth-forms.js';
 import { registerWorkflowsRoutes } from './routes/workflows.js';
 import { registerActionsRoutes } from './routes/actions.js';
 import { registerPasskeyRoutes } from './routes/passkeys.js';
+import type { AdminMfa } from './routes/admin-mfa.js';
 import { registerAccountRoutes, type AccountMail } from './routes/account.js';
 import { registerAuthCompatUnauthRoutes, registerAuthCompatAuthedRoutes, setSession } from './routes/auth-compat.js';
 import type { CloudIdentityProvider } from './supabase-cloud-auth.js';
@@ -120,6 +121,9 @@ export interface CreateCompatAppDeps {
     accountMail?: AccountMail;
     /** Fixed HTTPS origin for self-hosted administrator passkeys. */
     adminPasskeyOrigin?: string;
+    adminMfa?: AdminMfa;
+    requireAdminMfa?: boolean;
+    resolvePrincipalChecksSessionVersion?: boolean;
     /** Match the product deployment mode. Cloud-only signup and slug checks are
      * disabled by default because the framework worker is self-hosted. */
     cloudMode?: boolean;
@@ -258,7 +262,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     const invites = new CommunityInviteStore(runner);
     const passwordResets = new PasswordResetStore(runner);
     const tenants = new TenantStore(runner);
-    const resolvePrincipal = deps.userStoreFor
+    const resolvePrincipal = deps.userStoreFor && !deps.resolvePrincipalChecksSessionVersion
         ? withSessionVersion(
             deps.resolvePrincipal as (req: Request) => Promise<any>,
             (tenant, userId) => deps.userStoreFor!(tenant).getSessionVersion(userId),
@@ -393,11 +397,12 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
             deps.cloudMode ?? false,
             pagesFor,
             deps.cloudAuth,
+            deps.adminMfa,
         );
     }
 
     const passkeys = !deps.cloudMode && deps.adminPasskeyOrigin && deps.sessionSecret && deps.userStoreFor
-        ? {db:runner,users:deps.userStoreFor,now,origin:deps.adminPasskeyOrigin,
+        ? {db:runner,users:deps.userStoreFor,now,origin:deps.adminPasskeyOrigin,mfa:deps.adminMfa,
             signIn:(c:Parameters<typeof setSession>[0],user:Parameters<typeof setSession>[1],version:number)=>setSession(c,user,deps.sessionSecret!,version)}
         : undefined;
     if (passkeys) registerPasskeyRoutes(app,passkeys,'public');
@@ -472,7 +477,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).
     if (deps.sessionSecret && deps.userStoreFor) {
         registerAuthCompatAuthedRoutes(app, kvFor, secretCipher, now);
-        registerAccountRoutes(app,{db:runner,users:deps.userStoreFor,now,mail:deps.accountMail});
+        registerAccountRoutes(app,{db:runner,users:deps.userStoreFor,now,mail:deps.accountMail,mfa:deps.adminMfa,requireMfa:deps.requireAdminMfa});
         if (passkeys) registerPasskeyRoutes(app,passkeys,'account');
     }
     if (deps.billing) registerBillingRoutes(app, runner, deps.billing, now);

@@ -5,7 +5,7 @@
  * RULE 2: every table with tenant data has a `tenantSlug` column; every query in
  * the store filters on it. There is no global read path.
  */
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 
 /** Published pages — tenant-scoped. */
 export const publishedPages = sqliteTable('published_pages', {
@@ -319,3 +319,12 @@ export const setupState = sqliteTable('setup_state', {
 
 export type Datasource = typeof datasources.$inferSelect;
 export type Plan = typeof plans.$inferSelect;
+
+/** Tenant-scoped administrator factors. Recovery codes are stored only as hashes. */
+export const userAdminMfa = sqliteTable('user_admin_mfa', {
+    tenantSlug: text('tenant_slug').notNull(),
+    userId: text('user_id').notNull(),
+    encryptedSecret: text('encrypted_secret').notNull(),
+    recoveryHashes: text('recovery_hashes').notNull(),
+    lastStep: integer('last_step').notNull(),
+}, table => ({ pk:primaryKey({ columns:[table.tenantSlug,table.userId] }) }));

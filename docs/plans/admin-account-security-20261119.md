@@ -9,11 +9,43 @@
 
 ## Release order
 
-1. Configure Resend for Study-in-USA using RESEND_API_KEY and RESEND_FROM. The sender must be verified by Resend. Use myassine@studygram.me as the test inbox. Confirm message delivery and a complete recovery with a disposable admin before changing an existing account.
+1. Configure an authorized Cloudflare Email Service sender for Study-in-USA, or configure Resend or a custom API when unrestricted delivery is needed on Workers Free. Use myassine@studygram.me as the test inbox. Confirm message delivery and a complete recovery with a disposable admin before changing an existing account.
 2. Validate the Security view and passkeys on the actual CF, Vercel and Docker runtimes. Separately qualify the live host firewall controls before describing them as installed. A passkey enrolled for a preview hostname does not qualify the production hostname.
 3. After account and sign-in verification, roll out the persistent Edit site switch and bidirectional site/console navigation. Verify Arabic and English on phone and desktop.
 
 Magic links need verified mail delivery and single-use sign-in token handling. Authenticator-app codes need a shared enforcement point for all password login routes plus recovery codes. They are separate follow-ups. Retain the existing password login and recovery until end-to-end passkey recovery is verified.
+
+
+## Transactional mail configuration
+
+Set `FRONTBASE_PUBLIC_ORIGIN` to the installation's exact HTTPS origin. Frontbase uses it to build account reset links. Configure one of the following transports for administrator password reset and email changes.
+
+| Host | Preferred transport | Configuration |
+| --- | --- | --- |
+| Cloudflare Workers | Cloudflare Email Service | Add the `FRONTBASE_EMAIL` binding and set `FRONTBASE_MAIL_FROM` to an authorized sender address. |
+| Vercel | Resend through Vercel Marketplace | Set `RESEND_API_KEY` and `RESEND_FROM`. The integration supplies the key. Use a sender on a verified domain. |
+| Docker / Node | Resend or custom API | Set the corresponding environment variables in the deployment. |
+
+On Workers, attach an Email Sending binding in the dashboard or add this to the deployment's Wrangler configuration. Restrict the binding to the installation's sender where supported.
+
+```toml
+[[send_email]]
+name = "FRONTBASE_EMAIL"
+```
+
+Workers Free can send to addresses already verified as Cloudflare account destinations. Sending to arbitrary addresses, including an arbitrary new sign-in address, requires Workers Paid and an onboarded sender domain. A verified test inbox proves delivery to that inbox only. An existing Free deployment can use Resend or a custom API for unrestricted delivery while remaining on Workers Free. [Cloudflare Email Service](https://developers.cloudflare.com/email-service/) | [Binding configuration](https://developers.cloudflare.com/email-service/configuration/send-bindings/) | [Resend for Vercel](https://vercel.com/marketplace/resend)
+
+An explicit custom API overrides either default. Set `FRONTBASE_MAIL_API_URL`, `FRONTBASE_MAIL_FROM`, and the deployment secret `FRONTBASE_MAIL_API_TOKEN`. The endpoint accepts a JSON `POST` with `from`, `to`, `subject`, `text`, and `html` strings and a bearer authorization header. The endpoint must use HTTPS and return a 2xx status on acceptance. Use an adapter endpoint if the mail vendor expects a different contract. Frontbase refuses redirects. An incomplete custom API configuration disables account delivery until corrected. A delivery failure never sends the same reset link or code to a different provider. Keep all mail API routing and credentials in deployment configuration.
+
+## Administrator recovery setup
+
+Fresh self-hosted installations with a configured HTTPS public origin require recovery setup at the first console sign-in. Binding provisioning remains in the existing deployment wizard. The temporary pre-enrollment session can read identity and complete recovery setup. All other authenticated console APIs and editor access are gated server-side. An installed mail adapter only makes mailbox confirmation available. The administrator must enter the code received in their current sign-in inbox to finish using email.
+
+If mail is unavailable, add a time-based authenticator from the displayed setup key, save the eight single-use codes offline and enter a fresh six-digit code. Frontbase stores the authenticator key encrypted and the recovery codes as hashes. Enrollment invalidates earlier sessions. Password sign-in and sensitive account changes then require a fresh authenticator code. An existing, user-verified passkey remains a sign-in option.
+
+To reset a forgotten password, open **Forgot password → Use an authenticator and recovery code**. Enter one unused offline code and a fresh authenticator code. Frontbase consumes both proofs, changes the password and invalidates existing sessions. Email reset is unavailable for authenticator-enrolled accounts. An email address change still requires receiving a code at the new inbox. Keep the authenticator and offline codes in separate places. Passkey-assisted password recovery, lost-factor operator recovery and recovery code renewal remain follow-ups. [NIST account recovery guidance](https://pages.nist.gov/800-63-4/sp800-63b.html#account-recovery)
+
+Existing installations keep their sign-in and may enroll from **My account**. Cloud-managed identity retains its existing provider policy. The no-email flow requires an atomic state adapter. Cloudflare Workers and the shared Vercel and Node runtimes use the same policy.
 
 ## Verification
 

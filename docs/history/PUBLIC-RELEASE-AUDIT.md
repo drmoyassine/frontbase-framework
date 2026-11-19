@@ -1710,3 +1710,17 @@ Final pnpm -r check/build, directory42/42 across9files, console:stage and subseq
 ## 2026-11-15 live-only data serving — active replacement claim
 
 The owner deprecated all content-snapshot serving. The snapshot export/publication work above is superseded and will not be deployed. Publish layouts and bindings; resolve all record content, translations, route membership, SEO and browsing through existing adapters live. Keep layout history and access controls; no saved-record fallback. See [the ordered implementation and acceptance plan](../plans/live-data-serving-20261115.md). Implementation is open: no live-only deployment or Workers Free qualification is claimed. Prior snapshot CPU/browser receipts remain historical evidence only. Preserve unrelated worktree changes and existing production data.
+
+## 2026-11-19 transactional account mail — implementation claim
+
+Add host-selected account mail adapters and document recovery requirements for deployments without verified outbound delivery. Keep the existing sign-in and recovery policy until enrollment and recovery are implemented and tested.
+
+Node 22.23.4 recursive check and build passed. The Workers artifact is 940.4 KB gzipped against the 1024 KB build budget. The transport, self-hosted reset, administrator account, compatibility security and compatibility conformance tests passed. The rebuilt Worker passed its smoke suite. Its real request handler also sent a reset through a synthetic native binding and accepted the returned token to change the fixture password. Vercel's artifact built successfully. Live sender onboarding and inbox delivery remain open. The [account security plan](../plans/admin-account-security-20261119.md) records the proposed MFA and offline recovery criteria. The no-email setup gate is pending implementation.
+
+The backend mutation harness caught all 24 injected faults and restored its sources. The Vercel artifact also passed its local route and startup smoke tests.
+
+## 2026-11-19 no-email administrator recovery — implementation claim
+
+Implement shared self-hosted authenticator enrollment, sign-in and offline recovery. Keep upgrades accessible to existing owners, preserve account and production bindings, and verify Study-in-USA on Workers Free.
+
+Workspace type checks and builds passed on Node 22.23.4. The Workers artifact is 944.1 KB gzip. Both fresh bundled Worker setup paths passed: required authenticator enrollment without mail, and mailbox confirmation with a simulated native binding. Backend tests passed for password plus authenticator, code replay refusal, two concurrent recovery attempts with exactly one success, previous-session rejection, account email changes, legacy email password reset, and compatible migrations. Cloudflare accepted the requested Workers Free destination registration. Mailbox verification is pending. Existing users retain their current sign-in on upgrade.

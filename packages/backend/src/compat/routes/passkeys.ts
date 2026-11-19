@@ -1,3 +1,4 @@
+import type { AdminMfa } from './admin-mfa.js';
 import { bodyLimit } from 'hono/body-limit';
 import { accountReauthLimited } from './account.js';
 
@@ -10,7 +11,7 @@ import type { UserStore, PublicUser } from '../../db/users.js';
 type App = Hono<{Variables:ConsoleAuthVars}>;
 type Ctx = Context<{Variables:ConsoleAuthVars}>;
 type Deps = {
-    db:DbRunner; users:(tenant:string)=>UserStore; now:()=>string; origin:string;
+    mfa?:AdminMfa; db:DbRunner; users:(tenant:string)=>UserStore; now:()=>string; origin:string;
     signIn:(c:Ctx,user:PublicUser,version:number)=>Promise<void>;
 };
 const roles = new Set(['master_admin','owner','tenant_admin','admin']);
@@ -146,6 +147,8 @@ export function registerPasskeyRoutes(app:App,deps:Deps,phase:'public'|'account'
         if(await accountReauthLimited(db,now,user.tenantSlug,user.id))return c.json({detail:'Too many verification attempts. Try again in ten minutes.'},429);
         const version=await users(user.tenantSlug).getSessionVersion(user.id);
         if(!await verifyPassword(input.data.password,user.passwordHash))return c.json({detail:'The current password is incorrect.'},403);
+        const proof = await deps.mfa?.validate(user,c.req.header('x-frontbase-authenticator-code'));
+        if (proof === 'required' || proof === 'invalid') return c.json({detail:'Enter a fresh code from your authenticator app.'},403);
         const ids=await db.query('SELECT key FROM settings WHERE tenant_slug=? AND key LIKE ? ESCAPE ? LIMIT 10',[user.tenantSlug,ownership(user.id),'!']);
         if(ids.length>=10)return c.json({detail:'Remove a passkey before adding another.'},409);
         const { generateRegistrationOptions } = await import('@simplewebauthn/server');
@@ -187,6 +190,8 @@ export function registerPasskeyRoutes(app:App,deps:Deps,phase:'public'|'account'
         if(!user||!input.success)return c.json(bad,403);
         if(await accountReauthLimited(db,now,user.tenantSlug,user.id))return c.json({detail:'Too many verification attempts. Try again in ten minutes.'},429);
         if(!await verifyPassword(input.data.password,user.passwordHash))return c.json({detail:'The current password is incorrect.'},403);
+        const proof = await deps.mfa?.validate(user,c.req.header('x-frontbase-authenticator-code'));
+        if (proof === 'required' || proof === 'invalid') return c.json({detail:'Enter a fresh code from your authenticator app.'},403);
         const id=input.data.id,ownerKey=ownerListKey(user.id)+':'+id;
         const raw=(await db.query('SELECT value FROM settings WHERE tenant_slug=? AND key=?',[namespace,credentialKey(id)]))[0]?.value;
         const data=credential.safeParse(parse(raw));
