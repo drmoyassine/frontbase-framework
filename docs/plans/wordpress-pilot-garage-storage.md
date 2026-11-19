@@ -17,7 +17,11 @@ Status (2026-11-19): Garage 2.3.0 and its management UI are deployed in the exis
 
 ## Connected-account bucket selection
 
-2026-11-19: implement and verify an opt-in S3 bucket list. Preserve discovery for existing connections and verify Study-in-USA through its existing Garage account.
+2026-11-19: Frontbase adds **Buckets to show** to S3 Connected Accounts. A blank field keeps provider discovery. Enter comma-separated bucket names to use only those names in the storage bucket list. The selection does not grant S3 permissions. It uses the saved bucket-scoped key, leaves the separate public image URL mapping intact and requires no Garage-specific admin access.
+
+Code `69d3d095` is active on Study-in-USA at 100% traffic on Cloudflare Worker version `a7e5c6f4-72bf-4ec8-b8d8-c9a92e132d6f` (rollback `43845589-c04b-4de1-941a-f41d77661182`). All 17 existing bindings and five public route responses were preserved. The deployed console asset matched the local build. Through Connected Accounts, the existing Garage account was set to `study-in-usa-media`; File Storage then showed exactly one bucket. A 68-byte PNG uploaded through File Storage was read back byte-for-byte through signed S3 and anonymously under the existing public image base. All 20 migrated public URLs retained their checksums and content types. The test image and its matching Frontbase metadata were removed.
+
+Node 22 workspace build and type checks passed. The S3 account/transport, upload, security and 175-operation tenant isolation gates passed. The compatibility gate reported zero violations or unreachable cases across 334 operations. The five existing File Storage UI tests passed.
 
 ## Deployment requirements
 
