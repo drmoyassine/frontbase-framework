@@ -205,6 +205,10 @@ ok('shell wraps the body in #root', () => doc.includes('<div id="root">'));
 ok('shell embeds FALLBACK_CSS (no cssBundle passed → base styles)', () => doc.includes('<style>') && doc.includes(FALLBACK_CSS));
 ok('canvas path registers NO /sw.js (registerServiceWorker:false)', () => !doc.includes('/sw.js'));
 ok('renderPage output is a byte-exact substring of renderDocument', () => doc.includes(body));
+const workflowPage = { title: 'Workflow proof', slug: 'workflow-proof', layout: combined };
+const publicShell = { environment: 'edge', registerServiceWorker: false };
+ok('published pages omit UI workflow discovery by default', () => !renderDocument(workflowPage, body, publicShell).includes('data-fb-ui-events'));
+ok('the host can opt a published page in on its hydration script', () => /<script type="module" src="\/static\/react\/hydrate\.js\?v=[^"]+" data-fb-ui-events>/.test(renderDocument(workflowPage, body, { ...publicShell, uiEventWorkflows: true })));
 
 // ── 3. DETERMINISM: identical input → identical bytes (no hidden randomness) ──
 

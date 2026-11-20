@@ -16,6 +16,8 @@ import { escapeHtml, HYDRATE_VERSION } from './ssr/htmlDocument.js';
 
 export interface ShellOptions {
     frontendEditing?: boolean;
+    /** Opt this published page in when the host serves UI event discovery for it. */
+    uiEventWorkflows?: boolean;
     environment: string;
     /** Emit the /sw.js registration script (edge path only — the handover). */
     registerServiceWorker: boolean;
@@ -73,7 +75,7 @@ ${bodyHtml.includes('data-fb-image-fallback')?`<script>${imageFallbackScript()}<
 <body>
 <div id="root">${bodyHtml}</div>
 ${behaviors}
-<script type="module" src="/static/react/hydrate.js?v=${HYDRATE_VERSION}"></script>
+<script type="module" src="/static/react/hydrate.js?v=${HYDRATE_VERSION}"${opts.uiEventWorkflows === true ? ' data-fb-ui-events' : ''}></script>
 ${swRegistration}
 ${opts.frontendEditing ? '<script src="/api/frontend-edit/script.js" defer></script>' : ''}</body>
 </html>`;

@@ -115,7 +115,7 @@ export const BuilderHeader: React.FC<{
     const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
     const {search}=useLocation();
     const [showPageSettings, setShowPageSettings] = useState(()=>new URLSearchParams(search).get('panel')==='page-settings');
-    const [showVersionHistory, setShowVersionHistory] = useState(false);
+    const [showVersionHistory, setShowVersionHistory] = useState(()=>new URLSearchParams(search).get('panel')==='version-history');
     const [publishOpen, setPublishOpen] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     const [loadingTargets, setLoadingTargets] = useState(false);

@@ -40,7 +40,7 @@ export interface EngineOptions {
     /** Console API sub-router, mounted at /api/console (Phase 2). */
     console?: Hono;
     /** Request/capture-bound document metadata. Empty favicon explicitly disables host lookup. */
-    document?: Pick<ShellOptions, 'frontendEditing' | 'faviconUrl' | 'language' | 'direction' | 'alternates' | 'canonicalUrl' | 'robots' | 'openGraph' | 'localesAlternate'>;
+    document?: Pick<ShellOptions, 'frontendEditing' | 'uiEventWorkflows' | 'faviconUrl' | 'language' | 'direction' | 'alternates' | 'canonicalUrl' | 'robots' | 'openGraph' | 'localesAlternate'>;
     /** Resolve a published page by URL path. When set, dynamic CMS pages override
      *  the baked manifest (the manifest becomes a last-resort fallback). Injected
      *  by the host so the engine stays DB-blind. Returns null when no such page.
@@ -143,6 +143,7 @@ export async function renderResolvedPageDocument(
         // decides (product: project settings faviconUrl || default icon).
         faviconUrl: (opts.document?.faviconUrl ?? await engineConfig().resolveFaviconUrl(request)) || undefined,
         frontendEditing: opts.document?.frontendEditing,
+        uiEventWorkflows: opts.document?.uiEventWorkflows,
         language: opts.document?.language,
         direction: opts.document?.direction,
         alternates: opts.document?.alternates,

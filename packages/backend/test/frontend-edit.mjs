@@ -26,11 +26,12 @@ await test('actual browser controller stages/re-edits/reverts/cancels before one
  const {window:w}=dom;let writes=0,finished=false;
  Object.defineProperty(w.crypto,'randomUUID',{value:()=>crypto.randomUUID()});
  w.fetch=async(path,init={})=>{const isWrite=init.method==='POST';if(isWrite)writes++;const response=await f.app.request(new URL(path,w.location.href).href,{...init,headers:{...init.headers,...(isWrite?{Origin:w.location.origin}:{})}});if(isWrite)finished=true;return response;};
+ w.localStorage.setItem('frontbase:frontend-edit-dock','open');
  await w.eval(FRONTEND_EDITOR_SCRIPT);const d=w.document,click=label=>{const b=[...d.querySelectorAll('[data-frontbase-editor] button')].find(b=>b.textContent===label);assert.ok(b,label);b.click();};
  const first=d.querySelector('#hero [data-fb-copy]'),second=d.querySelector('#intro [data-fb-copy]');assert.ok(first);assert.ok(second);
  let pageClickActions=0;d.addEventListener('click',()=>pageClickActions++,true);
  first.click();assert.equal(pageClickActions,0,'editor intercepts configured document click actions');first.textContent='First edit';click('Done');assert.equal(writes,0);assert.ok(first.hasAttribute('data-dirty'));
- first.click();first.textContent='Re-edited';click('Done');assert.equal(first.textContent,'Re-edited');assert.equal(writes,0);
+ first.click();first.textContent='Re-edited';click('Done');assert.equal(first.textContent,'Re-edited');assert.equal(writes,0);click('Undo last edit');assert.equal(first.textContent,'First edit');
  second.click();second.textContent='Second edit';click('Done');first.click();click('Revert this change');assert.equal(first.textContent,'Study in USA');assert.equal(second.textContent,'Second edit');assert.equal(writes,0);
  click('Cancel Changes');assert.equal(second.textContent,'Find your next step');assert.equal((await new FrontendCopyStore(f.db,'alpha').read()).hash,null);
  first.click();first.textContent='Keyboard edit';first.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(first.textContent,'Study in USA');
@@ -41,37 +42,79 @@ await test('actual browser controller stages/re-edits/reverts/cancels before one
 await test('responsive menu copies share one staged field while independent equal labels stay ambiguous',async()=>{
  const fields=[{id:'a',blockId:'managed-menu-header',path:['label'],text:'Programs',label:'Navigation'},{id:'b',blockId:'managed-menu-ambiguous',path:['one'],text:'Same',label:'First'},{id:'c',blockId:'managed-menu-ambiguous',path:['two'],text:'Same',label:'Second'}];
  const dom=new JSDOM('<html lang="en"><body><header id="managed-menu-header"><a href="/programs">Programs</a><a href="/programs">Programs</a></header><div id="managed-menu-ambiguous"><a href="/a">Same</a><a href="/b">Same</a></div></body></html>',{url:'https://site.example/',runScripts:'outside-only'});
+ dom.window.localStorage.setItem('frontbase:frontend-edit-dock','open');
  dom.window.fetch=async path=>Response.json(String(path).includes('capability')?{enabled:true}:{fields,token:'x'});await dom.window.eval(FRONTEND_EDITOR_SCRIPT);
- const spans=dom.window.document.querySelectorAll('[data-fb-copy="a"]');assert.equal(spans.length,2);assert.equal(dom.window.document.querySelectorAll('#managed-menu-ambiguous [data-fb-copy]').length,0);spans[0].click();spans[0].textContent='Courses';[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='Done').click();assert.equal(spans[1].textContent,'Courses');assert.match(dom.window.document.querySelector('[role=status]').textContent,/1 unsaved/);dom.window.close();
+ const spans=dom.window.document.querySelectorAll('[data-fb-copy="a"]');assert.equal(spans.length,2);assert.equal(dom.window.document.querySelectorAll('#managed-menu-ambiguous [data-fb-copy]').length,0);spans[0].click();spans[0].textContent='Courses';[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='Done').click();assert.equal(spans[1].textContent,'Courses');assert.match(dom.window.document.querySelector('[data-edit-status]').textContent,/1 unsaved/);dom.window.close();
 });
 
-await test('leaving edit mode persists through navigation and reopening fetches the current page inventory',async()=>{
+await test('the pencil gates editing, preserves pending edits and restores ordinary interaction when minimized',async()=>{
  const page=(path,preference,allowed=true)=>{
-  const dom=new JSDOM('<html lang="en"><body><h1 id="hero">Title</h1></body></html>',{url:'https://site.example'+path,runScripts:'outside-only'});
+  const dom=new JSDOM('<html lang="ar" dir="rtl"><body><header id="managed-menu-header"><a href="#elsewhere">عنوان</a></header></body></html>',{url:'https://site.example'+path,runScripts:'outside-only'});
   const w=dom.window,requests=[];
-  if(preference)w.localStorage.setItem('frontbase:frontend-edit',preference);
-  w.fetch=async path=>{requests.push(path);return Response.json(path.includes('capability')?{enabled:allowed}:{fields:[{id:'title',blockId:'hero',path:['text'],text:'Title',label:'Title'}]});};
+  if(preference)w.localStorage.setItem('frontbase:frontend-edit-dock',preference);
+  w.fetch=async path=>{requests.push(path);return Response.json(path.includes('capability')?{enabled:allowed}:{pageId:'page-1',locale:'ar',fields:[{id:'title',blockId:'managed-menu-header',path:['text'],text:'عنوان',label:'Title'}]});};
   return {w,requests};
  };
- const first=page('/',null);
- await first.w.eval(FRONTEND_EDITOR_SCRIPT);
- const toggle=first.w.document.querySelector('[role=switch]');assert.equal(toggle.getAttribute('aria-checked'),'true');
- assert.equal(first.w.document.querySelector('[data-frontbase-editor] a').pathname,'/frontbase-admin/');
- const edit=first.w.document.querySelector('[data-fb-copy]');edit.click();edit.textContent='Unsaved';
- first.w.confirm=()=>false;toggle.click();assert.equal(toggle.getAttribute('aria-checked'),'true');assert.equal(edit.textContent,'Unsaved');
- first.w.confirm=()=>true;toggle.click();
- assert.equal(first.w.document.getElementById('hero').textContent,'Title');
- assert.equal(toggle.getAttribute('aria-checked'),'false');assert.equal(first.w.document.querySelector('[data-fb-copy]'),null);
- const second=page('/another/',first.w.localStorage.getItem('frontbase:frontend-edit'));
- first.w.close();
- await second.w.eval(FRONTEND_EDITOR_SCRIPT);
- assert.equal(second.requests.length,1);
- const nextToggle=second.w.document.querySelector('[role=switch]');assert.equal(nextToggle.getAttribute('aria-checked'),'false');
+ const first=page('/',null),w=first.w,d=w.document;
+ await w.eval(FRONTEND_EDITOR_SCRIPT);
+ const toggle=d.querySelector('[data-pencil]');
+ assert.equal(toggle.getAttribute('aria-expanded'),'false');
+ assert.equal(first.requests.length,1);
+ assert.equal(d.querySelector('[data-fb-copy]'),null);
+ toggle.click();await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(toggle.getAttribute('aria-expanded'),'true');
+ assert.equal(d.querySelector('[data-frontbase-editor]').dir,'rtl');
+ assert.deepEqual([...d.querySelectorAll('[data-frontbase-editor] a')].map(a=>[a.pathname,a.search]),[
+  ['/frontbase-admin/builder/page-1',''],['/frontbase-admin/builder/page-1','?panel=version-history']
+ ]);
+ const edit=d.querySelector('[data-fb-copy]');edit.click();edit.textContent='تعديل';edit.dispatchEvent(new w.Event('input',{bubbles:true}));
+ const context=d.querySelector('[data-frontbase-edit-context]');
+ assert.match(context.textContent,/الترويسة المشتركة/);
+ assert.equal(context.hidden,false);
+ assert.equal(edit.getAttribute('aria-describedby'),context.id);
+ assert.equal(d.querySelector('[data-frontbase-editor]').contains(context),false);
+ toggle.click();
+ assert.equal(toggle.getAttribute('aria-expanded'),'false');
+ assert.ok(toggle.hasAttribute('data-dirty'));
+ assert.equal(d.querySelector('[data-fb-copy], [contenteditable]'),null);
+ assert.equal(context.hidden,true);
+ assert.equal(d.querySelector('header').textContent,'عنوان');
+ let ordinaryClicks=0;d.querySelector('header a').addEventListener('click',event=>{ordinaryClicks++;event.preventDefault();});
+ edit.click();assert.equal(ordinaryClicks,1);
+ toggle.click();
+ assert.equal(toggle.getAttribute('aria-expanded'),'true');
+ assert.equal(d.querySelector('[data-fb-copy]').textContent,'تعديل');
+ assert.equal(first.requests.length,2,'reopening without navigation uses the same inventory');
+ [...d.querySelectorAll('[data-frontbase-editor] button')].find(button=>button.textContent==='عرض كزائر').click();
+ const second=page('/another/',w.localStorage.getItem('frontbase:frontend-edit-dock'));w.close();
+ await second.w.eval(FRONTEND_EDITOR_SCRIPT);assert.equal(second.requests.length,1);
+ const nextToggle=second.w.document.querySelector('[data-pencil]');assert.equal(nextToggle.getAttribute('aria-expanded'),'false');
  nextToggle.click();await new Promise(resolve=>setTimeout(resolve,0));
- assert.equal(nextToggle.getAttribute('aria-checked'),'true');
+ assert.equal(nextToggle.getAttribute('aria-expanded'),'true');
  assert.equal(second.requests.length,2);assert.ok(second.requests[1].includes(encodeURIComponent('/another/')));
- assert.ok(second.w.document.querySelector('[data-fb-copy]'));second.w.close();
+ second.w.close();
  const visitor=page('/',null,false);await visitor.w.eval(FRONTEND_EDITOR_SCRIPT);
  assert.equal(visitor.w.document.querySelector('[data-frontbase-editor]'),null);visitor.w.close();
+});
+await test('Edit record targets the detail heading and follows an explicitly selected related record',async()=>{
+ const dom=new JSDOM('<html lang="en"><body><h1 id="program">Advertising</h1><p id="institution">Washington State University</p></body></html>',{url:'https://site.example/program/',runScripts:'outside-only'});
+ const w=dom.window,d=w.document;
+ w.localStorage.setItem('frontbase:frontend-edit-dock','open');
+ w.fetch=async path=>Response.json(path.includes('capability')?{enabled:true}:{locale:'en',fields:[
+  {id:'program',blockId:'program',text:'Advertising',recordScope:'programs'},
+  {id:'institution',blockId:'institution',text:'Washington State University',recordScope:'institutions'}
+ ].map(field=>({...field,path:['text'],recordKey:'same-id',label:'Title',destination:'record'}))});
+ await w.eval(FRONTEND_EDITOR_SCRIPT);
+ const shortcut=[...d.querySelectorAll('button')].find(button=>button.textContent==='Edit record');
+ assert.equal(shortcut.hidden,false);
+ shortcut.click();const program=d.querySelector('#program [contenteditable]');assert.ok(program);
+ program.getClientRects=()=>[{top:180,left:24,right:174,bottom:204}];
+ w.dispatchEvent(new w.Event('scroll'));
+ const context=d.querySelector('[data-frontbase-edit-context]');
+ assert.equal(context.textContent,'English · Record content');
+ assert.equal(context.style.top,'178px');assert.equal(context.style.left,'24px');
+ d.querySelector('#institution [data-fb-copy]').click();
+ shortcut.click();assert.ok(d.querySelector('#institution [contenteditable]'));
+ w.close();
 });
 console.log(count+' frontend editing groups passed');

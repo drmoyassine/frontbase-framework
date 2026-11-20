@@ -84,7 +84,7 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
     });
     app.get('/api/frontend-edit/inventory/',async c=>{
         try{const path=pathSchema.parse(c.req.query('path')),raw=c.req.query('selection');if(raw&&raw.length>16000)throw Error();const selection=raw?selectionSchema.parse(JSON.parse(raw)):undefined,s=await frontendCopySurface(app,db,c.get('tenant'),c.req.raw,path,selection,translationHost);
-            return c.json({token:s.token,locale:s.locale,revision:s.current.hash,fields:s.fields.map(field=>({id:field.id,blockId:field.blockId,versionId:field.versionId,path:field.path,text:field.current,label:field.label,...(field.record?{recordScope:JSON.stringify([field.record.connectionId,field.record.collection]),recordKey:String(field.record.key[0]?.value),fieldKey:field.fieldKey??field.path.at(-1),destination:s.locale===s.sourceLocale?'record':'record-translation'}:{destination:'ui-copy'})}))});
+            return c.json({token:s.token,pageId:s.pageId,locale:s.locale,revision:s.current.hash,fields:s.fields.map(field=>({id:field.id,blockId:field.blockId,versionId:field.versionId,path:field.path,text:field.current,label:field.label,...(field.record?{recordScope:JSON.stringify([field.record.connectionId,field.record.collection]),recordKey:String(field.record.key[0]?.value),fieldKey:field.fieldKey??field.path.at(-1),destination:s.locale===s.sourceLocale?'record':'record-translation'}:{destination:'ui-copy'})}))});
         }catch{return c.json({detail:'This page is unavailable for text editing'},409);}
     });
     app.post('/api/frontend-edit/save/',async c=>{
