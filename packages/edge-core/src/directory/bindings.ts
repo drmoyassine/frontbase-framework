@@ -3,8 +3,10 @@ import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 import { projectEditorialBody } from './editorial.js';
 import { validateDirectoryBrowsing, directoryBrowsingSchema } from './browsing.js';
 import { landingQueryLimit, landingRootSchema, projectTemplatePresentation, publishedLandingPresentation, templateSettingsSchema } from './template-settings.js';
-import { detailTextFields, numericDetailFields } from './detail-fields.js';
+import { dateDetailFields, detailTextFields, numericDetailFields } from './detail-fields.js';
 const numericFields = new Set<string>(numericDetailFields);
+const dateFields = new Set<string>(dateDetailFields);
+let groupedNumber: Intl.NumberFormat | undefined;
 
 const path = z.string().max(400).refine(v => {
     try { const decoded = decodeURIComponent(v); return v.startsWith('/') && !decoded.startsWith('//') && !/[\\?#{}\s\x00-\x20]/.test(decoded) && !decoded.split('/').some(p => p === '.' || p === '..'); }
@@ -29,10 +31,12 @@ export const directoryRecordBindingSchema = z.object({
     blocks: z.literal('body').optional(),
     ariaLabel: z.literal('title').optional(),
     src: z.enum(['cover', 'logo']).optional(), alt: z.enum(['title','coverAlt']).optional(),
+    relatedQuery: z.string().min(1).max(160).optional(),
+    fallbackSrcQuery: z.string().min(1).max(160).optional(),
     media: z.literal('gallery').optional(),
     altFallback: z.literal('title').optional(),
     hideWhenEmpty: z.boolean().optional(),
-    format: z.literal('date').optional(),
+    format: z.enum(['date', 'number']).optional(),
 }).strict();
 /** Manifest collection each legacy list query renders — the shared record-unit identity namespace
  *  that translation discovery and page capture must agree on. */
@@ -101,16 +105,19 @@ function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: Publ
                 if (!inQuery) throw new Error('record_binding_without_query');
                 const record = directoryRecordBindingSchema.parse(props.recordBindings);
                 records.set(node, record);
-                if (record.text && !['Text', 'Heading', 'Paragraph', 'Link'].includes(node.type)
+                if (record.text && !['Text', 'Heading', 'Paragraph', 'Link', 'Badge'].includes(node.type)
                     || record.fallbackText && (record.text ?? record.sectionText) !== 'body'
                     || record.sectionText && (node.type !== 'Container' || Object.keys(record).length !== (record.fallbackText ? 2 : 1))
-                    || record.format && record.text !== 'publishedAt'
+                    || record.format === 'date' && !dateFields.has(record.text ?? '')
+                    || record.format === 'number' && !numericFields.has(record.text ?? '')
+                    || record.relatedQuery && !record.text && !record.href
+                    || record.fallbackSrcQuery && !record.src
                     || record.altFallback && (!['Image', 'Gallery'].includes(node.type) || record.alt !== 'coverAlt')
                     || record.ariaLabel && (node.type !== 'Link' || !record.href)
                     || record.href && node.type !== 'Link' || (record.src || record.alt) && !['Image', 'Gallery'].includes(node.type)
                     || record.media && node.type !== 'Gallery'
                     || record.blocks && (node.type !== 'Container' || !articleQuery || Object.keys(record).length !== 1 || (node.children?.length ?? 0) > 0)
-                    || record.hideWhenEmpty !== undefined && !(node.type === 'Image' && record.src || node.type === 'Link' && record.href === 'website')
+                    || record.hideWhenEmpty !== undefined && !(node.type === 'Image' && record.src || record.text || node.type === 'Link' && record.href === 'website')
                     || props.siteBindings !== undefined) throw new Error('invalid_record_binding_component');
             }
             const path = publishNode ? Object.freeze([...(parent ?? []), index]) : undefined;
@@ -119,6 +126,11 @@ function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: Publ
         }
     };
     walk(layout?.content || []);
+    const institutionQueries = new Set(requests.filter(query => query.binding.queryId === 'directory.institution.detail').map(query => query.id));
+    for (const record of records.values()) {
+        if (record.relatedQuery && !institutionQueries.has(record.relatedQuery)
+            || record.fallbackSrcQuery && !institutionQueries.has(record.fallbackSrcQuery)) throw Error('invalid_related_record_query');
+    }
     return { queries: requests, records, controls, landing };
 }
 export function directoryLayoutQueries(layout: PageLayoutData): DirectoryQuery[] {
@@ -136,7 +148,7 @@ const editorialDateFormatters=new Map<string,Intl.DateTimeFormat>();
 /** ISO-only input; never infer timezone or allow Date.parse calendar rollover. */
 function formatEditorialDate(value: unknown, locale?: string): string {
     if (typeof value !== 'string') return '';
-    const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|[+-]\d{2}:\d{2}))?$/.exec(value);
+    const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2}))?$/.exec(value);
     if (!match) return '';
     const [, y, m, d, h, minute, second, , zone] = match;
     const year = Number(y), month = Number(m), day = Number(d);
@@ -349,20 +361,29 @@ function projectCompiledDirectory<T extends PageLayoutData>(
         if (props.recordBindings !== undefined) {
             const b = instructions.records.get(node)!;
             if (!row) throw new Error('record_context_unavailable');
+            const hidden = (): PageComponent => ({ id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] });
+            if (b.relatedQuery) {
+                row = records.get(b.relatedQuery)?.[0];
+                if (!row) return hidden();
+                collection = options.liveDetailRecords ? 'institutions' : undefined;
+            }
+            const record = row;
             if (b.blocks) { const children = projectEditorialBody(row.body, id); projected += children.reduce((n,c) => n + 1 + (c.children?.length ?? 0), 0); if (projected > 4000) throw new Error('directory_projection_size'); return { ...node, id, props: rest, children }; }
             const hasText = (field: string) => numericFields.has(field)
-                ? (typeof row[field] === 'number' || typeof row[field] === 'string') && Number.isFinite(Number(row[field])) && Number(row[field]) > 0
-                : typeof row[field] === 'string' && String(row[field]).trim().length > 0;
+                ? (typeof record[field] === 'number' || typeof record[field] === 'string') && Number.isFinite(Number(record[field])) && Number(record[field]) > 0
+                : typeof record[field] === 'string' && String(record[field]).trim().length > 0;
             const sourceText = (field: string) => hasText(field) ? field : b.fallbackText && hasText(b.fallbackText) ? b.fallbackText : undefined;
             if (b.sectionText && !sourceText(b.sectionText)) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
             const textField = b.text && sourceText(b.text);
             if (b.text) {
                 delete rest.content; delete rest.value;
-                rest.text = b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(textField ? String(row[textField]) : '');
-                if (b.format === 'date' && !rest.text) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+                rest.text = b.format === 'date' ? formatEditorialDate(row[b.text], options.locale)
+                    : b.format === 'number' && textField ? (groupedNumber ??= new Intl.NumberFormat('en-US', { maximumFractionDigits: 12 })).format(Number(row[textField]))
+                    : literal(textField ? String(row[textField]) : '');
+                if ((b.format === 'date' || b.hideWhenEmpty) && !rest.text) return hidden();
                 // Date output is re-formatted from the row in the page language at serve time; the
                 // marker keeps extraction from owning it as a translatable text unit.
-                if (b.format === 'date') rest.translationLiteral = b.text;
+                if (b.format || b.text === 'updatedAt') rest.translationLiteral = b.text;
                 if (b.fallbackText && textField === 'body' && String(rest.text).length > 12000) rest.translationLiteral = 'body';
             }
             if (b.href) {
@@ -376,7 +397,11 @@ function projectCompiledDirectory<T extends PageLayoutData>(
             if (b.src) {
                 delete rest.url;
                 const src = httpsUrl(row[b.src]);
-                if (b.hideWhenEmpty && !src) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+                if (b.fallbackSrcQuery) {
+                    const fallback = httpsUrl(records.get(b.fallbackSrcQuery)?.[0]?.cover);
+                    if (fallback) rest.fallbackSrc = fallback;
+                }
+                if (b.hideWhenEmpty && !src && !rest.fallbackSrc) return hidden();
                 rest[node.type === 'Gallery' ? 'coverSrc' : 'src'] = src;
             }
             if (b.alt) rest.alt = literal(row[b.alt]) || (b.altFallback === 'title' ? literal(row.title) : '');

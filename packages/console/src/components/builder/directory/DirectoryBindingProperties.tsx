@@ -1,5 +1,5 @@
 import React from 'react';
-import { detailFieldLabels, detailTextFields, directoryQueryBindingSchema, directoryRecordBindingSchema, directoryBrowsingSchema } from '@frontbase/edge-core/directory/configuration';
+import { dateDetailFields, detailFieldLabels, detailTextFields, directoryQueryBindingSchema, directoryRecordBindingSchema, directoryBrowsingSchema, numericDetailFields } from '@frontbase/edge-core/directory/configuration';
 import type { ComponentData } from '@/types/builder';
 
 export function DirectoryBindingProperties({ node, update, layout }: { node: ComponentData; layout?: {content: ComponentData[]}; update: (key: string, value: unknown) => void }) {
@@ -34,6 +34,15 @@ export function DirectoryBindingProperties({ node, update, layout }: { node: Com
     </section>;
     const query = directoryQueryBindingSchema.safeParse(node.props.directoryQuery);
     const record = directoryRecordBindingSchema.safeParse(node.props.recordBindings);
+    const relatedSources: ComponentData[] = [];
+    const collectRelated = (nodes: ComponentData[]) => {
+        for (const item of nodes) {
+            if (item.props.directoryQuery?.queryId === 'directory.institution.detail') relatedSources.push(item);
+            if (item.children) collectRelated(item.children);
+        }
+    };
+    if (record.success && node.props.recordBindings !== undefined) collectRelated(layout?.content ?? []);
+    const relatedOptions = relatedSources.map(source => <option key={source.id} value={source.id}>{source.props._layerName || 'Institution detail'}</option>);
     if (query.success) {
         const binding = query.data; const detail = binding.queryId.endsWith('.detail');
         return <section className="space-y-3 rounded border p-3" aria-label="Directory query binding">
@@ -64,9 +73,19 @@ export function DirectoryBindingProperties({ node, update, layout }: { node: Com
     if (record.success && node.props.recordBindings !== undefined) return <section className="space-y-2 rounded border p-3" aria-label="Directory record binding">
         <p className="text-sm font-medium">Field from the current directory record</p>
         {record.data.text && <label className="block text-sm">Text field<select aria-label="Directory text field" className="mt-1 w-full rounded border bg-background p-2" value={record.data.text}
-            onChange={e => { const { format, fallbackText, ...rest } = record.data; update('recordBindings', { ...rest, text: e.target.value, ...(e.target.value === 'publishedAt' && format ? { format } : {}), ...(e.target.value === 'body' && fallbackText ? { fallbackText } : {}) }); }}><option value="title">Title</option><option value="summary">Summary</option><option value="body">Full description</option><option value="byline">Byline</option><option value="publishedAt">Original publication date</option>
+            onChange={e => { const { format, fallbackText, ...rest } = record.data; update('recordBindings', { ...rest, text: e.target.value, ...(format === 'date' && dateDetailFields.some(field => field === e.target.value) || format === 'number' && numericDetailFields.some(field => field === e.target.value) ? { format } : {}), ...(e.target.value === 'body' && fallbackText ? { fallbackText } : {}) }); }}><option value="title">Title</option><option value="summary">Summary</option><option value="body">Full description</option><option value="byline">Byline</option><option value="publishedAt">Original publication date</option>
             {detailTextFields.map(field => <option key={field} value={field}>{detailFieldLabels[field]}</option>)}
         </select></label>}
+        {!!relatedSources.length && (record.data.text || record.data.href) && <label className="block text-sm">Record source
+            <select className="mt-1 w-full rounded border bg-background p-2" value={record.data.relatedQuery ?? ''} onChange={event => {
+                const { relatedQuery, ...rest } = record.data;
+                update('recordBindings', { ...rest, ...(event.target.value ? { relatedQuery: event.target.value } : {}) });
+            }}><option value="">Current record</option>{relatedOptions}</select>
+        </label>}
+        {node.type === 'Badge' && <>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={node.props.splitValues===true} onChange={event=>update('splitValues',event.target.checked)}/>Show one badge per value</label>
+            {node.props.splitValues && <label className="block text-sm">Value separator<input className="mt-1 w-full rounded border bg-background p-2" maxLength={10} value={node.props.valueSeparator ?? ','} onChange={event=>update('valueSeparator',event.target.value)}/></label>}
+        </>}
         {record.data.sectionText && <label className="block text-sm">Show section when this record field has a value
             <select className="mt-1 w-full rounded border bg-background p-2" value={record.data.sectionText} onChange={event => {
                 const { fallbackText, ...rest } = record.data;
@@ -88,13 +107,26 @@ export function DirectoryBindingProperties({ node, update, layout }: { node: Com
                 update('recordBindings', { ...rest, ...(event.target.checked ? { media: 'gallery' } : {}) });
             }}/>Use the record gallery when available
         </label>}
-        {record.data.text === 'publishedAt' && <label className="block text-sm">Date display<select aria-label="Directory date display" className="mt-1 w-full rounded border bg-background p-2" value={record.data.format || 'raw'} onChange={e => { const { format, ...rest } = record.data; update('recordBindings', { ...rest, ...(e.target.value === 'date' ? { format: 'date' } : {}) }); }}><option value="raw">Original stored text</option><option value="date">Site language (UTC date)</option></select></label>}
+        {dateDetailFields.some(field=>field===record.data.text) && <label className="block text-sm">Date display<select aria-label="Directory date display" className="mt-1 w-full rounded border bg-background p-2" value={record.data.format || 'raw'} onChange={e => { const { format, ...rest } = record.data; update('recordBindings', { ...rest, ...(e.target.value === 'date' ? { format: 'date' } : {}) }); }}><option value="raw">Original stored text</option><option value="date">Site language (UTC date)</option></select></label>}
+        {numericDetailFields.some(field=>field===record.data.text) && <label className="block text-sm">Number display
+            <select className="mt-1 w-full rounded border bg-background p-2" value={record.data.format || 'raw'} onChange={event=>{
+                const { format, ...rest } = record.data;
+                update('recordBindings', { ...rest, ...(event.target.value === 'number' ? { format: 'number' } : {}) });
+            }}><option value="raw">Original value</option><option value="number">Group thousands with commas</option></select>
+        </label>}
         {record.data.blocks && <p className="text-sm">Semantic article body. Edit canonical content through the review workflow when available; this template controls its placement.</p>}
         {record.data.src && <label className="block text-sm">Image field<select aria-label="Directory image field" className="mt-1 w-full rounded border bg-background p-2" value={record.data.src}
             onChange={e => update('recordBindings', { ...record.data, src: e.target.value })}><option value="cover">Cover image</option><option value="logo">Logo</option></select></label>}
+        {record.data.src && !!relatedSources.length && <label className="block text-sm">Fallback cover source
+            <select className="mt-1 w-full rounded border bg-background p-2" value={record.data.fallbackSrcQuery ?? ''} onChange={event=>{
+                const { fallbackSrcQuery, ...rest } = record.data;
+                update('recordBindings', { ...rest, ...(event.target.value ? { fallbackSrcQuery: event.target.value } : {}) });
+            }}><option value="">No related cover</option>{relatedOptions}</select>
+        </label>}
         {record.data.alt && <label className="block text-sm">Image alt text field<select aria-label="Directory image alt text field" className="mt-1 w-full rounded border bg-background p-2" value={record.data.alt} onChange={e=>{ const { altFallback, ...rest } = record.data; update('recordBindings',{...rest,alt:e.target.value,...(e.target.value === 'coverAlt' && altFallback ? { altFallback } : {})}); }}><option value="title">Record title</option><option value="coverAlt">Cover alt text</option></select></label>}
         {record.data.alt === 'coverAlt' && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={record.data.altFallback==='title'} onChange={e=>{ const { altFallback, ...rest } = record.data; update('recordBindings',{...rest,...(e.target.checked ? { altFallback:'title' } : {})}); }}/>Use record title when cover alt text is empty</label>}
-        {record.data.src && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={record.data.hideWhenEmpty===true} onChange={e=>update('recordBindings',{...record.data,hideWhenEmpty:e.target.checked})}/>Hide when this record has no image</label>}
+        {record.data.src && node.type === 'Image' && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={record.data.hideWhenEmpty===true} onChange={e=>update('recordBindings',{...record.data,hideWhenEmpty:e.target.checked})}/>Hide when this record has no image</label>}
+        {record.data.text && !record.data.href && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={record.data.hideWhenEmpty===true} onChange={e=>update('recordBindings',{...record.data,hideWhenEmpty:e.target.checked})}/>Hide when this field is empty</label>}
         {record.data.href && <p className="text-sm">Links use the original WordPress path.</p>}
         {record.data.href && <label className="block text-sm">Record link destination
             <select className="mt-1 w-full rounded border bg-background p-2" value={record.data.href} onChange={event => {
@@ -109,6 +141,7 @@ export function DirectoryBindingProperties({ node, update, layout }: { node: Com
                 onChange={event => update('recordBindings', { ...record.data, hideWhenEmpty: event.target.checked })}/>Hide when the website is unavailable
         </label>}
         {record.data.href && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={record.data.ariaLabel==='title'} onChange={e=>{ const { ariaLabel, ...rest } = record.data; update('recordBindings',{...rest,...(e.target.checked ? { ariaLabel:'title' } : {})}); }}/>Include record title in link accessible name</label>}
+        {record.data.href && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={node.props.target==='_blank'} onChange={event=>update('target',event.target.checked?'_blank':'_self')}/>Open in a new tab</label>}
     </section>;
     return null;
 }

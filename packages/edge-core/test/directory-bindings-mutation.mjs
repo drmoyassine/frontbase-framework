@@ -18,8 +18,9 @@ if (!buildPackage(pkg) || runGate(dir,'test/directory-bindings.mjs') !== 0) proc
 for (const [label,file,find,replacement] of [
     ['optional contacts collapse','configuration.ts',"binding.hideWhenEmpty && !props.href",'false'],
     ['contact component validation','bindings.ts',"binding.hideWhenEmpty !== undefined && (node.type !== 'Link' || !binding.href)",'false'],
-    ['date format field allowlist','bindings.ts',"record.format && record.text !== 'publishedAt'",'false'],
-    ['explicit date projection','bindings.ts',"b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(textField ? String(row[textField]) : '')",'literal(row[b.text])'],
+    ['date format field allowlist','bindings.ts',"record.format === 'date' && !dateFields.has(record.text ?? '')",'false'],
+    ['explicit date projection','bindings.ts',"formatEditorialDate(row[b.text], options.locale)",'literal(row[b.text])'],
+    ['related cover query allowlist','bindings.ts','record.fallbackSrcQuery && !institutionQueries.has(record.fallbackSrcQuery)','false'],
     ['invalid calendar rejection','bindings.ts',"day > days[month - 1]!",'false'],
     ['alt fallback component and field refusal','bindings.ts',"record.altFallback && (!['Image', 'Gallery'].includes(node.type) || record.alt !== 'coverAlt')",'false'],
     ['explicit literal title fallback','bindings.ts',"(b.altFallback === 'title' ? literal(row.title) : '')","''"],

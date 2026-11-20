@@ -4,6 +4,21 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DirectoryBindingProperties } from './DirectoryBindingProperties';
 afterEach(cleanup);
+it('lets the owner choose the linked institution, cover fallback and fee format',async()=>{
+    const update=vi.fn();
+    const layout={content:[{id:'related',type:'Container',props:{_layerName:'Related institution source',directoryQuery:{version:1,queryId:'directory.institution.detail',params:{path:'/sample/'}}}}]};
+    const {rerender}=render(<DirectoryBindingProperties layout={layout} node={{id:'institution',type:'Link',props:{recordBindings:{text:'title',href:'originalPath'}}}} update={update}/>);
+    await userEvent.selectOptions(screen.getByRole('combobox',{name:'Record source'}),'related');
+    expect(update).toHaveBeenCalledWith('recordBindings',{text:'title',href:'originalPath',relatedQuery:'related'});
+    await userEvent.click(screen.getByRole('checkbox',{name:'Open in a new tab'}));
+    expect(update).toHaveBeenCalledWith('target','_blank');
+    rerender(<DirectoryBindingProperties layout={layout} node={{id:'cover',type:'Gallery',props:{recordBindings:{src:'cover'}}}} update={update}/>);
+    await userEvent.selectOptions(screen.getByRole('combobox',{name:'Fallback cover source'}),'related');
+    expect(update).toHaveBeenCalledWith('recordBindings',{src:'cover',fallbackSrcQuery:'related'});
+    rerender(<DirectoryBindingProperties layout={layout} node={{id:'fee',type:'Text',props:{recordBindings:{text:'tuition'}}}} update={update}/>);
+    await userEvent.selectOptions(screen.getByRole('combobox',{name:'Number display'}),'number');
+    expect(update).toHaveBeenCalledWith('recordBindings',{text:'tuition',format:'number'});
+});
 it('makes descriptive link names configurable without altering the visible CTA',async()=>{
     const update=vi.fn();const {rerender}=render(<DirectoryBindingProperties node={{id:'cta',type:'Link',props:{text:'View details',recordBindings:{href:'originalPath'}}}} update={update}/>);
     await userEvent.click(screen.getByRole('checkbox',{name:'Include record title in link accessible name'}));

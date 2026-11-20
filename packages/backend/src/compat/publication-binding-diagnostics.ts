@@ -30,12 +30,15 @@ export async function publicationBindingDiagnostics(pages:{pageId:string;layout:
     if(!Array.isArray(catalog.fields))throw Error('schema');
     let fields=new Set(catalog.fields.map((field:any)=>field.path));
     const role=configuration?.directoryViewProjection&&directoryViewRole(configuration,binding);
+    let optionalFallbackField:string|undefined;
     if(role&&configuration){
       const mapping=directorySources(configuration)[role].fieldMapping;
+      // Directory cards can use the record title when no alt-text column is mapped.
+      if (!mapping.coverAlt) optionalFallbackField='coverAlt';
       fields=new Set(Object.entries(mapping).filter(([alias,column])=>fields.has(column)&&!['body','gallery','sourceOrigin','contentRole'].includes(alias)).map(([alias])=>alias));
     }
     const own={id:node.id,type:'Text',props:node.props};
-    const used=new Set([...templateRecordFields([own,...node.children??[]]),...binding.columnOrder??[],...binding.searchColumns??[],...Object.values(binding.fieldMapping??{}),...(binding.sorting.column?[binding.sorting.column]:[])]);
+    const used=new Set([...templateRecordFields([own,...node.children??[]],optionalFallbackField),...binding.columnOrder??[],...binding.searchColumns??[],...Object.values(binding.fieldMapping??{}),...(binding.sorting.column?[binding.sorting.column]:[])]);
     for(const field of used){
      if(field.split('.').length>2&&!fields.has(field)){
       const relation=field.slice(0,field.lastIndexOf('.')),expanded=new URLSearchParams(params);expanded.set('relationship',relation);

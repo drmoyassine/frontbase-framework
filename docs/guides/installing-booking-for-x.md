@@ -4,6 +4,8 @@ On a clean Frontbase installation, sign in as an administrator and choose **Inst
 
 Booking for X is the public name of the template used for Studygram's education sites. It installs Homepage, Explore and Blog pages, plus reusable Institution detail, Program detail and Blog article layouts. All six are ordinary visually editable builder documents. Shared navigation remains editable in Menus.
 
+For Program detail, use **Builder → Page settings → Directory → Directory source fields** to map the program cover, entry requirements, intake values, tuition, and last-updated date. Map the related institution's cover, city under **Location**, and country there as well. In the element properties, you can change the institution link and its new-tab behavior, cover priority and fallback, badge separator, and number and date formats. For an existing Booking for X starter, **Use updated Booking for X detail layout** applies the changes to its draft for review.
+
 Installation creates drafts. It does not publish content, copy source records, create datasource tables, or implement reservations/payments. After installation, configure data in Data Studio and languages in General, edit the layouts and their bindings, then use the existing reviewed publication flow. The installer has no separate mapping form. One detail layout serves all matching records; installation does not create a page per record.
 
 The installer accepts an empty site or its exact unedited welcome page. It refuses customized sites and repeat installation. Version one has no upgrade, replacement or uninstall operation. The selected state adapter must support atomic writes; unsupported configurations are refused.

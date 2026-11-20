@@ -116,6 +116,8 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
                 // Enforce a narrow bounded projection even if a driver returns extra columns.
                 return rows.slice(0, mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1).map(row => Object.fromEntries(selected.map(([key]) => {
                     let v = row[key];
+                    if (key === 'updatedAt' && v instanceof Date) v = Number.isFinite(v.getTime()) ? v.toISOString() : null;
+                    if (key === 'intakes' && Array.isArray(v)) v = v.slice(0, 100).filter(value => typeof value === 'string').join(',');
                     if(logos&&typeof v==='string'&&(key==='logo'||key==='cover')){
                         v=v.trim()||null;
                         if(key==='logo'&&typeof v==='string')v=logos.get(v)??v;

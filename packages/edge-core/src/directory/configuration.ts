@@ -2,7 +2,7 @@ import {parseDirectorySourceConfiguration} from './source-contract.js';
 export {immutableDirectoryConfiguration} from './source-contract.js';
 import { z } from 'zod';
 import { detailTextFields, type DetailTextField } from './detail-fields.js';
-export { detailTextFields, detailFieldLabels, institutionDetailFields, programDetailFields } from './detail-fields.js';
+export { dateDetailFields, detailTextFields, detailFieldLabels, institutionDetailFields, numericDetailFields, programDetailFields } from './detail-fields.js';
 export {liveViewBindingSchema,liveViewBindings} from './live-list.js';
 export { projectRelativeSiteLinks } from './navigation.js';
 export { templateSettingsSchema, landingRootSchema, defaultTemplateSettings, readLandingSettings, projectTemplatePresentation, landingQueryParams, templateContrastIssues, type TemplateSettings } from './template-settings.js';
