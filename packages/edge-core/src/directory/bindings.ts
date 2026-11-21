@@ -146,18 +146,20 @@ const httpsUrl = (value: unknown) => {
 // Locale configuration only; dates and formatted record values are never retained.
 const editorialDateFormatters=new Map<string,Intl.DateTimeFormat>();
 /** ISO-only input; never infer timezone or allow Date.parse calendar rollover. */
-function formatEditorialDate(value: unknown, locale?: string): string {
+function formatEditorialDate(value: unknown, locale?: string, allowLocalTimestamp = false): string {
     if (typeof value !== 'string') return '';
-    const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2}))?$/.exec(value);
+    const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})?)?$/.exec(value);
     if (!match) return '';
     const [, y, m, d, h, minute, second, , zone] = match;
+    if (h !== undefined && !zone && !allowLocalTimestamp) return '';
     const year = Number(y), month = Number(m), day = Number(d);
     const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
     const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     if (year < 1 || month < 1 || month > 12 || day < 1 || day > days[month - 1]!
         || h !== undefined && (Number(h) > 23 || Number(minute) > 59 || Number(second) > 59)
         || zone && zone !== 'Z' && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4)) > 59)) return '';
-    const date = new Date(h === undefined ? `${value}T00:00:00Z` : value);
+    // A zone-less Postgres timestamp supplies a calendar date without a timezone.
+    const date = new Date(zone ? value : `${y}-${m}-${d}T00:00:00Z`);
     if (!Number.isFinite(date.getTime())) return '';
     const requested=locale&&locale.length<=35&&/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)?locale:'en';
     let formatter=editorialDateFormatters.get(requested);
@@ -373,11 +375,12 @@ function projectCompiledDirectory<T extends PageLayoutData>(
                 ? (typeof record[field] === 'number' || typeof record[field] === 'string') && Number.isFinite(Number(record[field])) && Number(record[field]) > 0
                 : typeof record[field] === 'string' && String(record[field]).trim().length > 0;
             const sourceText = (field: string) => hasText(field) ? field : b.fallbackText && hasText(b.fallbackText) ? b.fallbackText : undefined;
-            if (b.sectionText && !sourceText(b.sectionText)) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+            const formattedUpdate = (field: string) => formatEditorialDate(record[field], options.locale, field === 'updatedAt');
+            if (b.sectionText && (!sourceText(b.sectionText) || b.sectionText === 'updatedAt' && !formattedUpdate(b.sectionText))) return hidden();
             const textField = b.text && sourceText(b.text);
             if (b.text) {
                 delete rest.content; delete rest.value;
-                rest.text = b.format === 'date' ? formatEditorialDate(row[b.text], options.locale)
+                rest.text = b.format === 'date' ? formattedUpdate(b.text)
                     : b.format === 'number' && textField ? (groupedNumber ??= new Intl.NumberFormat('en-US', { maximumFractionDigits: 12 })).format(Number(row[textField]))
                     : literal(textField ? String(row[textField]) : '');
                 if ((b.format === 'date' || b.hideWhenEmpty) && !rest.text) return hidden();

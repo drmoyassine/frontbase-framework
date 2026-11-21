@@ -85,6 +85,11 @@ for(const value of ['Pullman','United States','25,702.5','Secondary school diplo
 assert.doesNotMatch(programHtml, /Offered by/);
 assert.match(programHtml, /id="bfx-program-text-intakes--value-0"[^>]*>Jan</);
 assert.match(programHtml, /id="bfx-program-text-intakes--value-1"[^>]*>Aug</);
+const localizedProgram = await bookingHtml({...program, intakes: 'يناير، أغسطس', updatedAt: '2026-11-21T12:00:00.123456'}, institution, 'ar');
+assert.match(localizedProgram, /id="bfx-program-text-intakes--value-0"[^>]*>يناير</);
+assert.match(localizedProgram, /id="bfx-program-text-intakes--value-1"[^>]*>أغسطس</);
+assert.match(localizedProgram, /id="bfx-program-last-updated-date"[^>]*>[^<]*21[^<]*2026/);
+assert.doesNotMatch(await bookingHtml({...program, updatedAt: '2026-02-30T12:00:00'}, institution), /Last updated:/);
 assert.ok(programHtml.indexOf('src="https://media.example/program.jpg"') > -1);
 assert.ok(programHtml.indexOf('src="https://media.example/program.jpg"') < programHtml.indexOf('src="https://media.example/gallery.jpg"'));
 const fallbackHtml = await bookingHtml({...program, cover: '', requirements: null, updatedAt: null}, institution, 'ar');
