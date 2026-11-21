@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {PageLayoutData} from '@frontbase/edge-core';
-import {homepageDisplayFields,homepageDisplayLayout,applyHomepageDisplayFields,type DisplayField} from '@frontbase/edge-core/localization';
+import {homepageDisplayFields,homepageDisplayLayout,applyHomepageDisplayFields,isSourceRecordScalar,type DisplayField} from '@frontbase/edge-core/localization';
 import {publicationHash} from './publication-hash.js';
 
 const hash=z.string().regex(/^[a-f0-9]{64}$/);
@@ -32,11 +32,11 @@ export function copyDisplayLayout(input:PageLayoutData):PageLayoutData{
     if(input.root?.localeMessages)layout.root={...layout.root,localeMessages:input.root.localeMessages};
     return layout;
 }
-export async function copyFields(pageId:string,layout:PageLayoutData,locale:string,catalog:Catalog|null,includeRecords=true):Promise<CopyField[]>{
+export async function copyFields(pageId:string,layout:PageLayoutData,locale:string,catalog:Catalog|null,includeRecords=true,includeSourceRecordScalars=false):Promise<CopyField[]>{
     const entries=new Map(catalog?.entries.filter(entry=>entry.locale===locale).map(entry=>[entry.id,entry])??[]);
-    return Promise.all(homepageDisplayFields(layout).filter(field=>(includeRecords||!field.record)&&(!field.path.includes('initialRows')||!!field.record)).map(async field=>{
-        const id=await publicationHash(copyFieldIdentity(pageId,field,layout)),source=await publicationHash(field.text),entry=entries.get(id);
-        return {...field,id,source,current:entry?.source===source?entry.text:field.text};
+    return Promise.all(homepageDisplayFields(layout,undefined,{includeSourceRecordScalars}).filter(field=>(includeRecords||!field.record)&&(!field.path.includes('initialRows')||!!field.record)).map(async field=>{
+        const id=await publicationHash(copyFieldIdentity(pageId,field,layout)),source=await publicationHash(field.sourceValue??field.text),entry=entries.get(id);
+        return {...field,id,source,current:!field.sourceOnly&&entry?.source===source?entry.text:field.text};
     }));
 }
 export class FrontendCopyStore{
@@ -83,7 +83,7 @@ export async function projectFrontendCopyRows(db:DbRunner,owner:string,binding:R
         if(typeof row.id!=='string'&&typeof row.id!=='number')return row;
         const result={...row};
         for(const [column,value]of Object.entries(row)){
-            if(column==='id'||typeof value!=='string'||value.length>12000)continue;
+            if(column==='id'||typeof value!=='string'||isSourceRecordScalar(value,binding.dataSourceId==='frontbase:publication'?column:undefined)||value.length>12000)continue;
             const field:DisplayField={blockId:'',path:['props','initialRows','0',column],text:value,label:column,record:{connectionId:binding.dataSourceId,collection:binding.tableName,key:[{column:'id',value:row.id}]}};
             const id=await publicationHash(copyFieldIdentity('',field,{content:[]})),entry=entries.get(id);
             if(entry&&entry.source===await publicationHash(value))result[column]=entry.text;

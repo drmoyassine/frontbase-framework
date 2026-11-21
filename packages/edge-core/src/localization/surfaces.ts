@@ -2,7 +2,7 @@ import type { PageLayoutData, PageComponent } from '../ssr/types.js';
 import { applyBlockVersion } from '../block-versions.js';
 import {templateRecordFields} from '../directory/live-list.js';
 import {resolvePath,compileInterpolation,type CompiledInterpolation} from '../liquid-core/sync.js';
-import { detailTextFields, numericDetailFields } from '../directory/detail-fields.js';
+import { detailTextFields, isSourceDetailField } from '../directory/detail-fields.js';
 
 export const homepageSearchLabels = { region:'Find study options', collection:'Explore', collectionAria:'Search collection', programs:'Programs', institutions:'Institutions', question:'What would you like to study?', placeholder:'Search by program or institution title', searchAria:'Search titles', submit:'Search' };
 export const homepageHeroLabels = { region:'Study options', eyebrow:'Explore your next chapter', controls:'Hero slideshow controls', previous:'Previous image', next:'Next image', pause:'Pause slideshow', resume:'Resume slideshow', slideStatus:'{index} / {count}' };
@@ -18,7 +18,7 @@ export const listComponentLabels={previous:'Previous',next:'Next',pagination:'Pa
 export interface DisplayRecord { connectionId:string; collection:string; key:{column:string; value:string|number|boolean}[] }
 /** `versionId` marks a field that belongs to one alternative Block Version; absent means the Default (inherited) unit.
  *  `fieldKey` names the source record column a projected list row renders — identity uses it while application keeps the display path. */
-export interface DisplayField { blockId:string; path:string[]; text:string; label:string; record?:DisplayRecord; versionId?:string; fieldKey?:string }
+export interface DisplayField { blockId:string; path:string[]; text:string; label:string; record?:DisplayRecord; versionId?:string; fieldKey?:string; sourceOnly?:true; sourceValue?:string; sourceFormat?:'number' }
 const textTypes = new Set(['Text','Heading','Paragraph','Link','Button','Badge']);
 const plainId=(value:unknown):string|undefined=>typeof value==='string'&&value.trim()&&value.length<=160&&!/[\u0000-\u001f]/.test(value)?value:undefined;
 /** Stable record identity for a projected list row: the binding's source plus the row's `id` key. Rows without both stay positional. */
@@ -35,12 +35,16 @@ function rowRecord(node:PageComponent,p:Record<string,unknown>,row:Record<string
     if(typeof value==='number'&&Number.isFinite(value))return {connectionId,collection,key:[{column:'id',value}]};
     return undefined;
 }
-const numericFields = new Set<string>(numericDetailFields);
-const stampableColumns=new Set(['title','summary','body','coverAlt','byline',...detailTextFields.filter(field => !numericFields.has(field))]),stampableKeys=new Set(['content','text','value','label','alt','ariaLabel','placeholder']);
+const stampableColumns=new Set(['title','summary','body','coverAlt','byline',...detailTextFields.filter(field => !isSourceDetailField(field))]),stampableKeys=new Set(['content','text','value','label','alt','ariaLabel','placeholder']);
+
+/** Directory field metadata survives adapters that serialize numerics or dates as text. */
+export function isSourceRecordScalar(value: unknown, directoryField?: string): boolean {
+    return typeof value === 'number' || value instanceof Date || (directoryField !== undefined && isSourceDetailField(directoryField));
+}
 /** Record identity `projectDirectoryRecords` stamps onto materialized directoryQuery rows. Authored
  *  layouts refuse these props; extraction re-validates and falls back to positional on any mismatch. */
-function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:Map<string,string>}|undefined{
-    const record=p.translationRecord as DisplayRecord|undefined,sources=p.translationSources as Record<string,unknown>|undefined;
+function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:Map<string,string>;sourceValue?:string;sourceFormat?:'number'}|undefined{
+    const record=p.translationRecord as (DisplayRecord&{sourceValue?:unknown;sourceFormat?:unknown})|undefined,sources=p.translationSources as Record<string,unknown>|undefined;
     if(!record||!sources||typeof record!=='object'||typeof sources!=='object'||Array.isArray(record)||Array.isArray(sources))return undefined;
     const connectionId=plainId(record.connectionId),collection=plainId(record.collection);
     const part=Array.isArray(record.key)&&record.key.length===1?record.key[0] as Record<string,unknown>|undefined:undefined;
@@ -52,9 +56,11 @@ function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:M
         // Composed link labels stamp the composite column `ariaLabel:<textCol>`; it is a record unit
         // keyed to the composed string, admitted only over a real stampable text column.
         if(key==='ariaLabel'&&name.startsWith('ariaLabel:')&&stampableColumns.has(name.slice('ariaLabel:'.length)))columns.set(key,name);
-        else if(stampableColumns.has(name)&&stampableKeys.has(key))columns.set(key,name);}
+        else if(stampableColumns.has(name)&&stampableKeys.has(key) || key==='text'&&p.translationLiteral===name&&isSourceDetailField(name))columns.set(key,name);}
     if(!columns.size)return undefined;
-    return {record:{connectionId,collection,key:[{column:'id',value}]},columns};
+    return {record:{connectionId,collection,key:[{column:'id',value}]},columns,
+        ...(typeof record.sourceValue==='string'&&record.sourceValue.length<=128?{sourceValue:record.sourceValue}:{}),
+        ...(record.sourceFormat==='number'?{sourceFormat:'number'}:{})};
 }
 /** Explicit display-only surface inventory. Never translates bindings, actions, SQL, URLs or identifiers. */
 export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
@@ -215,13 +221,14 @@ function displayProgram(plan:DisplaySurfacePlan,node:PageComponent,version?:stri
     if(!generated){generated=compileDisplayNode({id:'generated',type:node.type,props:{}});generatedPrograms.set(node.type,generated);}
     return generated;
 }
-export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfacePlan=compileDisplaySurfacePlan(layout)):DisplayField[]{
+export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfacePlan=compileDisplaySurfacePlan(layout),options:{includeSourceRecordScalars?:boolean}={}):DisplayField[]{
     const result:DisplayField[]=[];
     const base=['props'];
     // Per-node display surfaces, shared by the Default tree and every alternative's effective shape.
     const extractNode=(node:PageComponent,versionId:string|undefined,collected:DisplayField[]=[]):DisplayField[]=>{
         const p=node.props??{},stamped=stampedRecord(p),program=displayProgram(plan,node,versionId);
-        const emit=(path:string[],value:unknown,label:string,record?:DisplayRecord,fieldKey?:string)=>{
+        const emit=(path:string[],value:unknown,label:string,record?:DisplayRecord,fieldKey?:string,sourceOnly=false,sourceValue?:string,sourceFormat?:'number')=>{
+            if(sourceOnly&&(!options.includeSourceRecordScalars||!record))return;
             if(typeof value==='string'&&value.length>12000)throw Error('locale_text_limit');
             if(typeof value!=='string'||!value.trim()||/\{\{|@\{/.test(value)||/^(?:https?:|mailto:|tel:|\/)/.test(value))return;
             // Record-keyed emissions agree with the interactive extraction shape: record columns are
@@ -232,11 +239,17 @@ export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfaceP
             if(versionId)field.versionId=versionId;
             if(record)field.record=record;
             if(fieldKey)field.fieldKey=fieldKey;
+            if(sourceOnly){field.sourceOnly=true;field.sourceValue=sourceValue??value;if(sourceFormat)field.sourceFormat=sourceFormat;}
             collected.push(field);};
         const nested=(value:any,path:string[],keys:Set<string>)=>{if(Array.isArray(value)){value.forEach((v,i)=>nested(v,[...path,String(i)],keys));return;}if(value&&typeof value==='object'){for(const [k,v]of Object.entries(value)){if(keys.has(k))emit([...path,k],v,k);else if(v&&typeof v==='object')nested(v,[...path,k],keys);}}};
-        // Date-bound record text carries `translationLiteral` (projection marker): it is
-        // locale-formatted output re-rendered in the page language at serve time — never a unit.
-        if(program.text){const key=['content','text','value','label'].find(k=>typeof p[k]==='string'&&!!p[k]);if(key&&!/\{\{|@\{/.test(String(p[key]))&&p.translationLiteral===undefined){const origin=stamped&&stamped.columns.has(key)?stamped:undefined;if(origin){const column=origin.columns.get(key)!;emit([...base,key],p[key],`Record ${origin.record.collection} / ${column}`,origin.record,column);}else emit([...base,key],p[key],node.type);}}
+        if(program.text){
+            const key=['content','text','value','label'].find(k=>typeof p[k]==='string'&&!!p[k]);
+            if(key){
+                const column=stamped?.columns.get(key);
+                if(stamped&&column)emit([...base,key],p[key],`Record ${stamped.record.collection} / ${column}`,stamped.record,column,isSourceDetailField(column),stamped.sourceValue,stamped.sourceFormat);
+                else if(p.translationLiteral===undefined)emit([...base,key],p[key],node.type);
+            }
+        }
         for(const key of program.fields){const origin=stamped&&stamped.columns.has(key)?stamped:undefined;if(origin){const column=origin.columns.get(key)!;emit([...base,key],p[key],`Record ${origin.record.collection} / ${column}`,origin.record,column);}else emit([...base,key],p[key],key);}
         for(const operation of program.nested){
             if(operation.enabled==='templateMenu'&&!p.templateMenu)continue;
@@ -250,9 +263,13 @@ export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfaceP
         }
         if(Array.isArray(p.templateHeroState))p.templateHeroState.forEach((state:any,i)=>{for(const key of ['heading','introduction'])emit([...base,'templateHeroState',String(i),'settings',key],state.settings[key],key);nested(state.settings.slides,[...base,'templateHeroState',String(i),'settings','slides'],new Set(['alt']));nested(state.labels,[...base,'templateHeroState',String(i),'labels'],new Set(Object.keys(homepageHeroLabels)));});
         if(['Repeater','DataTable','Grid','Card'].includes(node.type)&&(Array.isArray(p.initialRows)||p.binding||node.binding)){
+            const listBinding=(p.binding??node.binding) as {dataSourceId?:string}|undefined;
+            const directorySource=p.directoryTranslationCollection!==undefined||listBinding?.dataSourceId==='frontbase:publication';
             if(Array.isArray(p.initialRows))p.initialRows.forEach((row:any,i)=>{const record=rowRecord(node,p,row);for(const key of program.columns)if(key!=='id'){
-                const raw=resolvePath({record:row},'record.'+key),value=typeof raw==='number'&&Number.isFinite(raw)||typeof raw==='boolean'?String(raw):Array.isArray(raw)&&raw.every(value=>typeof value==='string')?raw.join(','):raw;
-                emit([...base,'initialRows',String(i),key],value,`Record ${String(row.id??i)} / ${key}`,record);
+                const raw=resolvePath({record:row},'record.'+key);
+                const sourceOnly=isSourceRecordScalar(raw,directorySource?key:undefined);
+                const value=(typeof raw==='number'&&Number.isFinite(raw))||typeof raw==='boolean'?String(raw):Array.isArray(raw)&&raw.every(value=>typeof value==='string')?raw.join(','):raw;
+                emit([...base,'initialRows',String(i),key],value,`Record ${String(row.id??i)} / ${key}`,record,undefined,sourceOnly);
             }});
         }
         return collected;};
@@ -298,7 +315,7 @@ function mergeVersionValue(base:unknown,override:Record<string,unknown>,path:str
 /** `partial` keeps source values wherever the map has no entry — the explicit per-unit
  *  missing/outdated fallback used by per-unit locale releases (never silently partial elsewhere). */
 export function applyHomepageDisplayFields(input:PageLayoutData,values:Map<string,string>,opts?:{partial?:boolean;fields?:readonly DisplayField[]}):PageLayoutData{
-    const fields=opts?.fields??homepageDisplayFields(input);
+    const fields=opts?.fields?.filter(field=>!field.sourceOnly)??homepageDisplayFields(input);
     const changedBlocks=new Set(fields.filter(field=>values.has(JSON.stringify([field.blockId,field.versionId??'default',field.path]))).map(field=>field.blockId));
     const seen=new Set<string>(),byBlock=new Map<string,{node:PageComponent;containerVersion?:string}>();
     const copy=(nodes:PageComponent[],containerVersion?:string):PageComponent[]=>{

@@ -4,6 +4,10 @@ export const detailTextFields = [...institutionDetailFields, ...programDetailFie
 export type DetailTextField = typeof detailTextFields[number];
 export const numericDetailFields = ['duration', 'tuition', 'founded'] as const;
 export const dateDetailFields = ['publishedAt', 'updatedAt'] as const;
+const sourceValueFields = new Set<string>([...numericDetailFields, ...dateDetailFields]);
+export function isSourceDetailField(field: string): boolean {
+    return sourceValueFields.has(field);
+}
 
 export const detailFieldLabels: Record<DetailTextField, string> = {
     tagline: 'Tagline',

@@ -13,6 +13,17 @@ import {renderReviewedSitePublication} from '../dist/compat/site-publication-ser
 import {publishedLiveQuery} from '../dist/compat/published-live-query.js';
 import {protectPublishedLiveSource} from '../dist/compat/published-live-access.js';
 import {migrateUp} from '../dist/db/migrations.js';
+import {readLocalizedLiveList} from '../dist/compat/publication-list-source.js';
+
+// Old catalog entries for numeric columns must preserve the current value and
+// its type, even when a translated query sorts on that column.
+const scalarBinding={dataSourceId:'source',tableName:'programs'};
+const legacyFees=[2,10].map((amount,i)=>({record:{connectionId:'source',collection:'programs',key:[{column:'id',value:i+1}]},fieldKey:'amount',text:'old fee',sourceText:String(amount)}));
+const feeRows=[{id:1,amount:2},{id:2,amount:10}];
+for(const sortColumn of ['id','amount']){
+ const result=await readLocalizedLiveList('alpha',scalarBinding,{filters:[],sortColumn,direction:'asc',page:0,pageSize:2},new Request('https://site.test/ar/'),async()=>({rows:feeRows,total:2}),legacyFees);
+ assert.deepEqual(result.rows,feeRows,'numeric values and order survive a historical translation');
+}
 const f=await allowanceFixture(),tenant='alpha';
 // The live store is a real sqlite file the data-execute proxy opens independently of the app DB
 // (pilot-live-lists pattern): source edits below must be visible to the next public serve.

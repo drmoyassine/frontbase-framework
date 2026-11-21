@@ -14,6 +14,7 @@ import { SitePublicationManifestStore } from './site-publication-manifest.js';
 import { verifyManifestEditorial } from './site-publication-approval-check.js';
 import { freshLocalizedIndexTitles, type LocalizedCatalogEntry } from './site-publication-chunk-queries.js';
 import {liveViewBindingSchema} from '@frontbase/edge-core/directory/configuration';
+import {isSourceRecordScalar} from '@frontbase/edge-core/localization';
 import {projectFrontendCopyRows} from './frontend-copy.js';
 
 import {publicationRecordContext} from './publication-record-context.js';
@@ -118,16 +119,18 @@ export async function readLocalizedLiveList(owner:string,binding:Record<string,a
         if(!fields){fields=new Map();released.set(key,fields);}
         if(!fields.has(fieldKey))fields.set(fieldKey,{text:item.text,sourceText:item.sourceText});
     }
+    const mayTranslate=(row:Record<string,unknown>,column:string)=>(typeof row[column]==='string'||typeof row[column]==='boolean')
+        &&!isSourceRecordScalar(row[column],binding.dataSourceId==='frontbase:publication'?column:undefined);
     const localized=!!query.search||query.filters.some((filter:Record<string,any>)=>columns.has(filter.column)&&['eq','neq','contains','starts_with','ends_with','in'].includes(filter.op))||columns.has(query.sortColumn);
     if(!released.size)return liveQuery(owner,binding,query,request);
     // Always join released row text, even when sorting/filtering uses a numeric source column.
-    if(!localized){const result=await liveQuery(owner,binding,query,request);return {...result,rows:result.rows.map(row=>{const copy={...row};for(const column of columns){const field=released.get(String(row.id))?.get(column);if(field&&['string','number','boolean'].includes(typeof row[column])&&(field.sourceText===undefined||field.sourceText===String(row[column])))copy[column]=field.text;}return copy;})};}
+    if(!localized){const result=await liveQuery(owner,binding,query,request);return {...result,rows:result.rows.map(row=>{const copy={...row};for(const column of columns){const field=released.get(String(row.id))?.get(column);if(field&&mayTranslate(row,column)&&(field.sourceText===undefined||field.sourceText===String(row[column])))copy[column]=field.text;}return copy;})};}
     const full=await liveQuery(owner,binding,{...query,page:0,pageSize:LIVE_LOCALIZED_SCAN,search:'',
         // Localized predicates must not prefilter source strings before the effective-text join.
         filters:[...(query.sourceFilters??[]),...query.filters.filter((filter:Record<string,any>)=>!columns.has(filter.column))]},request);
     if(full.total>LIVE_LOCALIZED_SCAN)throw Error('localized_live_query_beyond_cap');
     const effective=(row:Record<string,unknown>,column:string)=>{const entry=released.get(String(row.id))?.get(column);
-        return entry&&(entry.sourceText===undefined||entry.sourceText===String(row[column]??''))?entry.text:String(row[column]??'');};
+        return entry&&mayTranslate(row,column)&&(entry.sourceText===undefined||entry.sourceText===String(row[column]??''))?entry.text:String(row[column]??'');};
     const textOf=(row:Record<string,unknown>,column:string)=>columns.has(column)?effective(row,column):String(row[column]??'');
     const filtered=full.rows.filter(row=>(!query.search||(binding.searchColumns?.length?binding.searchColumns:['title']).some((column:string)=>textOf(row,column).toLowerCase().includes(String(query.search).toLowerCase())))&&query.filters.every((filter:Record<string,any>)=>{
         const op=String(filter.op??'eq');
@@ -139,11 +142,11 @@ export async function readLocalizedLiveList(owner:string,binding:Record<string,a
         if(op==='is_null')return row[filter.column]===null||row[filter.column]===undefined;
         if(op==='not_null')return !(row[filter.column]===null||row[filter.column]===undefined);
         return evaluateCondition({left:{kind:'literal',value:(row[filter.column]??null) as any},operator:op as any,right:{kind:'literal',value:filter.value as any}},()=>undefined);}));
-    if(columns.has(query.sortColumn))filtered.sort((a,b)=>{const av=textOf(a,query.sortColumn),bv=textOf(b,query.sortColumn);
+    if(columns.has(query.sortColumn))filtered.sort((a,b)=>{const column=String(query.sortColumn);const av=typeof a[column]==='number'?a[column]:textOf(a,column),bv=typeof b[column]==='number'?b[column]:textOf(b,column);
         return (av<bv?-1:av>bv?1:0)*(query.direction==='desc'?-1:1)||(String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0);});
     const page=Math.max(0,Number(query.page)||0);
     const rows=filtered.slice(page*query.pageSize,(page+1)*query.pageSize).map(row=>{
-        const copy={...row};for(const column of columns)if(['string','number','boolean'].includes(typeof row[column]))copy[column]=effective(row,column);return copy;
+        const copy={...row};for(const column of columns)if(mayTranslate(row,column))copy[column]=effective(row,column);return copy;
     });
     return {rows,total:filtered.length};
 }

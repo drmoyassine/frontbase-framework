@@ -3,7 +3,7 @@ import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 import { projectEditorialBody } from './editorial.js';
 import { validateDirectoryBrowsing, directoryBrowsingSchema } from './browsing.js';
 import { landingQueryLimit, landingRootSchema, projectTemplatePresentation, publishedLandingPresentation, templateSettingsSchema } from './template-settings.js';
-import { dateDetailFields, detailTextFields, numericDetailFields } from './detail-fields.js';
+import { dateDetailFields, detailTextFields, isSourceDetailField, numericDetailFields } from './detail-fields.js';
 const numericFields = new Set<string>(numericDetailFields);
 const dateFields = new Set<string>(dateDetailFields);
 let groupedNumber: Intl.NumberFormat | undefined;
@@ -46,7 +46,7 @@ export const directoryListCollections: Record<string, 'institutions' | 'programs
 const liveDetailRecordCollections: Readonly<Record<string,string>> = Object.freeze({
     'directory.institution.detail':'institutions', 'directory.program.detail':'programs', 'directory.article.detail':'articles',
 });
-const stampableRecordColumns = new Set(['title', 'summary', 'coverAlt', 'byline', ...detailTextFields.filter(field => !numericFields.has(field))]);
+const stampableRecordColumns = new Set(['title', 'summary', 'coverAlt', 'byline', ...detailTextFields.filter(field => !isSourceDetailField(field))]);
 
 export const siteBindingsSchema = z.object({
     text: z.enum(['site.name', 'site.destination']).optional(),
@@ -384,9 +384,8 @@ function projectCompiledDirectory<T extends PageLayoutData>(
                     : b.format === 'number' && textField ? (groupedNumber ??= new Intl.NumberFormat('en-US', { maximumFractionDigits: 12 })).format(Number(row[textField]))
                     : literal(textField ? String(row[textField]) : '');
                 if ((b.format === 'date' || b.hideWhenEmpty) && !rest.text) return hidden();
-                // Date output is re-formatted from the row in the page language at serve time; the
-                // marker keeps extraction from owning it as a translatable text unit.
-                if (b.format || b.text === 'updatedAt') rest.translationLiteral = b.text;
+                // Formatting is optional. The value's source field owns it in every locale.
+                if (isSourceDetailField(b.text)) rest.translationLiteral = b.text;
                 if (b.fallbackText && textField === 'body' && String(rest.text).length > 12000) rest.translationLiteral = 'body';
             }
             if (b.href) {
@@ -410,14 +409,18 @@ function projectCompiledDirectory<T extends PageLayoutData>(
             if (b.alt) rest.alt = literal(row[b.alt]) || (b.altFallback === 'title' ? literal(row.title) : '');
             if (b.media && typeof row[b.media] === 'string' && String(row[b.media]).trim()) rest.media = row[b.media];
             const recordColumns: Record<string, string> = {};
-            if (textField && rest.translationLiteral === undefined && (stampableRecordColumns.has(textField) || textField === 'body' && b.fallbackText)) recordColumns.text = textField;
+            // A displayed fee can be edited against its unformatted numeric source.
+            // Calendar output and system timestamps are display-only.
+            if (textField && (numericFields.has(textField)
+                || rest.translationLiteral === undefined && (stampableRecordColumns.has(textField) || textField === 'body' && b.fallbackText))) recordColumns.text = textField;
             // A composed link label is a record unit keyed to the composite column (`ariaLabel:<textCol>`)
             // so capture, discovery and translation memory agree on one identity — never row position.
             // Date-bound or fallback text columns never compose: their output is not the stored source.
-            if (b.ariaLabel && recordColumns.text) recordColumns.ariaLabel = `ariaLabel:${textField}`;
+            if (b.ariaLabel && recordColumns.text && rest.translationLiteral === undefined) recordColumns.ariaLabel = `ariaLabel:${textField}`;
             if (b.alt) recordColumns.alt = b.alt;
             if (collection && (typeof row.id === 'string' || typeof row.id === 'number') && Object.keys(recordColumns).length) {
-                rest.translationRecord = { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id as string | number }] };
+                rest.translationRecord = { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id as string | number }],
+                    ...(textField && numericFields.has(textField) ? {sourceValue:String(row[textField]), ...(b.format==='number'?{sourceFormat:'number'}:{})} : {}) };
                 rest.translationSources = recordColumns;
             }
         }

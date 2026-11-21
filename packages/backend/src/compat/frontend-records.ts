@@ -75,9 +75,13 @@ export async function prepareFrontendRecordEdit(host:TranslationStorageHost,db:D
     if(!definition||primary.length!==1||definition.primary_key)throw Error('record_field_read_only');
     const rows=await reader.read(table,key.column,[key.value],[column,primary[0]!.name]);if(rows.length!==1)throw Error('record_identity_ambiguous');
     const before=rows[0]![column],shown=Array.isArray(before)?before.join(','):String(before??'');
-    if(shown!==field.text)throw Error('record_changed');
+    if(shown!==(field.sourceValue??field.text))throw Error('record_changed');
     key={column:primary[0]!.name,value:rows[0]![primary[0]!.name] as string|number|boolean};
-    const after=recordEditValue(text,definition,before);
+    // Accept the grouped form shown by this numeric binding only. Malformed
+    // grouping, other punctuation and units still fail strict type validation.
+    const input=field.sourceFormat==='number'&&/^-?[1-9]\d{0,2}(?:,\d{3})+(?:\.\d+)?$/.test(text.trim())
+        ?text.trim().replaceAll(',',''):text;
+    const after=recordEditValue(input,definition,before);
     // Managed editorial documents retain their existing revision/archive contract.
     // Their approved public snapshot remains pinned until the ordinary review/publication flow.
     const publication=published?.configuration??null;

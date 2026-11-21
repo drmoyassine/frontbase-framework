@@ -70,7 +70,7 @@ export async function frontendCopySurface(app:Hono<{Variables:ConsoleAuthVars}>,
             let installed=false;const visit=(nodes:typeof layout.content)=>{for(const node of nodes){if(node.id===item.componentId){const effective=applyBlockVersion(node,item.versionId);if(!effective.props?.binding)throw Error('record_binding_required');if(item.versionId==='default')node.props={...node.props,initialRows:result.rows};else{const version=node.versions?.find(version=>version.id===item.versionId);if(!version)throw Error('record_version_unavailable');version.overrides.props={...version.overrides.props,initialRows:result.rows};}installed=true;}if(node.children)visit(node.children);for(const version of node.versions??[])if(version.overrides.children)visit(version.overrides.children as typeof nodes);}};visit(layout.content);if(!installed)throw Error('record_selection_unavailable');
         }
     }
-    const store=new FrontendCopyStore(db,owner),current=await store.read(),fields=(await copyFields(pageId,layout,locale,current.catalog)).map(field=>liveSurface&&field.record?{...field,current:field.text}:field);
+    const store=new FrontendCopyStore(db,owner),current=await store.read(),fields=(await copyFields(pageId,layout,locale,current.catalog,true,locale===sourceLocale)).map(field=>liveSurface&&field.record?{...field,current:field.text}:field);
     const translationHash=localized?.kind==='page'?localized.releaseHash:null;
     const token=await publicationHash({owner,path,locale,version,translationHash,copy:current.hash,fields:fields.map(field=>[field.id,field.source,field.current])});
     return {store,current,fields,token,pageId,locale,sourceLocale,version,translationHash,layout,liveData:!!liveSurface};
@@ -84,7 +84,7 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
     });
     app.get('/api/frontend-edit/inventory/',async c=>{
         try{const path=pathSchema.parse(c.req.query('path')),raw=c.req.query('selection');if(raw&&raw.length>16000)throw Error();const selection=raw?selectionSchema.parse(JSON.parse(raw)):undefined,s=await frontendCopySurface(app,db,c.get('tenant'),c.req.raw,path,selection,translationHost);
-            return c.json({token:s.token,pageId:s.pageId,locale:s.locale,revision:s.current.hash,fields:s.fields.map(field=>({id:field.id,blockId:field.blockId,versionId:field.versionId,path:field.path,text:field.current,label:field.label,...(field.record?{recordScope:JSON.stringify([field.record.connectionId,field.record.collection]),recordKey:String(field.record.key[0]?.value),fieldKey:field.fieldKey??field.path.at(-1),destination:s.locale===s.sourceLocale?'record':'record-translation'}:{destination:'ui-copy'})}))});
+            return c.json({token:s.token,pageId:s.pageId,locale:s.locale,revision:s.current.hash,fields:s.fields.map(field=>({id:field.id,blockId:field.blockId,versionId:field.versionId,path:field.path,text:field.current,label:field.label,...(field.sourceValue!==undefined?{sourceValue:field.sourceValue}:{}),...(field.record?{recordScope:JSON.stringify([field.record.connectionId,field.record.collection]),recordKey:String(field.record.key[0]?.value),fieldKey:field.fieldKey??field.path.at(-1),destination:s.locale===s.sourceLocale?'record':'record-translation'}:{destination:'ui-copy'})}))});
         }catch{return c.json({detail:'This page is unavailable for text editing'},409);}
     });
     app.post('/api/frontend-edit/save/',async c=>{
