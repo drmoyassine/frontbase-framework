@@ -40,8 +40,8 @@ try{
  const updates=batch.map(edit=>({...edit,current:edit.text,text:'مراجعة '+edit.field.fieldKey}));
  await writeLiveRecordTranslations(f.host,f.db,tenant,pageId,'en','ar',updates,verifySource);
  assert.equal(sourceChecks,2,'one live source verification per batch');
- assert.deepEqual(f.calls.slice(callsBeforeBatch).map(call=>call.body.p_operation),['read-many','cas','cas','cas','cas']);
- assert.deepEqual(f.calls.slice(callsBeforeBatch+1).map(call=>call.body.p_input.change.revision.text),updates.map(edit=>edit.text));
+ assert.deepEqual(f.calls.slice(callsBeforeBatch).map(call=>call.body.p_operation),['read-many','cas-many']);
+ assert.deepEqual(f.calls.at(-1).body.p_input.changes.map(edit=>edit.change.revision.text),updates.map(edit=>edit.text));
  await assert.rejects(writeLiveRecordTranslations(f.host,f.db,tenant,pageId,'en','ar',updates,verifySource),/record_translation_changed/);
  const selected='siteHash='+baseHash;
  await call('review/?locale=ar',undefined,422);

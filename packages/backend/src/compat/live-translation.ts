@@ -3,7 +3,7 @@ import {homepageDisplayLayout,homepageDisplayFields,applyHomepageDisplayFields,t
     type CurrentTranslationValue,type DisplaySurfacePlan,type DisplayField,type MessageUnit,type LocalizationScope,type TranslationBatchReader} from '@frontbase/edge-core/localization';
 import {translationDisplayText} from './translation-inputs.js';
 import type {DbRunner} from '@frontbase/edge-infra';
-import {TranslationLifecycle,validatePlainRevision} from '@frontbase/edge-core/localization';
+import {translationContextFingerprint,validatePlainRevision,type PersistenceChange} from '@frontbase/edge-core/localization';
 import {configuredTranslationStorage,type TranslationStorageHost} from './translation-storage.js';
 import {displayFieldKey,displayTranslationUnit,preparedTranslationIds,type LiveDisplayField,type TranslationIdentityPlan} from './live-translation-identities.js';
 
@@ -107,11 +107,11 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
     return values.size?applyHomepageDisplayFields(layout,values,{partial:true,fields:translated}):layout;
 }
 
-/** Existing revision/CAS adapter, without creating or publishing a page catalog. */
+/** A transaction writes source history and translation heads for the entire editor selection. */
 export async function writeLiveRecordTranslations(host:TranslationStorageHost,db:DbRunner,owner:string,pageId:string,sourceLocale:string,locale:string,
     edits:{field:DisplayField;current:string;text:string}[],verifySource:()=>Promise<void>){
     if(locale===sourceLocale||!edits.length||edits.length>100||edits.some(edit=>!edit.field.record))throw Error('record_translation_request_invalid');
-    const storage=await configuredTranslationStorage(host,db,owner),engine=new TranslationLifecycle(storage.persistence);
+    const storage=await configuredTranslationStorage(host,db,owner);
     const pending=new Map<string,{unit:MessageUnit;current:string;text:string;fingerprint:string}>();
     for(const edit of edits){
         const unit=displayTranslationUnit(edit.field,storage.scope,pageId,sourceLocale),id=await translationUnitId(storage.scope,unit.resource),fingerprint=await messageSourceFingerprint(unit);
@@ -128,28 +128,25 @@ export async function writeLiveRecordTranslations(host:TranslationStorageHost,db
         if(visible!==item.current)throw Error('record_translation_changed');
         return {id,item,prior};
     });
-    await verifySource();
+    const changes:{unitId:string;expectedVersion:number;change:PersistenceChange}[]=[];
     for (const {id,item,prior} of entries) {
-        let snapshot = prior;
-        if (prior.source?.fingerprint !== item.fingerprint) {
+        let source=prior.source;
+        let expectedVersion=prior.version;
+        if (source?.fingerprint !== item.fingerprint) {
             const context = prior.source?.context ?? {version:1 as const,role:'record-field'};
-            const source = await engine.syncSource(storage.scope,item.unit,prior.source?.sourceVersion??null,context);
-            if (source.status === 'conflict') throw Error('record_source_changed');
-            snapshot = {
-                version:prior.version + 1,
-                head:prior.head,
-                source:{unit:item.unit,sourceVersion:source.sourceVersion,fingerprint:source.sourceFingerprint,
-                    context,contextFingerprint:source.contextFingerprint},
+            source = {
+                unit:item.unit,sourceVersion:(prior.source?.sourceVersion??0)+1,fingerprint:item.fingerprint,
+                context,contextFingerprint:await translationContextFingerprint(context),
             };
+            changes.push({unitId:id,expectedVersion,change:{kind:'source',source}});
+            expectedVersion++;
         }
-        const source = snapshot.source!;
-        const result = await engine.writeNewManual(storage.scope, {
+        changes.push({unitId:id,expectedVersion,change:{kind:'revision',revision:{
             version:1,unitId:id,locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.fingerprint,
             contextFingerprint:source.contextFingerprint,expectedHead:prior.head?.revisionId??null,
-            revisionId:crypto.randomUUID(),text:item.text,
-        }, snapshot);
-        if(result.status==='rejected')throw Error('record_translation_changed');
+            revisionId:crypto.randomUUID(),text:item.text,scope:storage.scope,provenance:'manual',
+        }}});
     }
-    // Public rendering independently checks the current source fingerprint.
-    // A post-write render cannot undo a committed revision and can time out.
+    await verifySource();
+    await storage.persistence.compareAndSwapMany(storage.scope,changes);
 }

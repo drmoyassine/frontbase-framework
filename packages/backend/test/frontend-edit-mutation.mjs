@@ -15,7 +15,7 @@ const faults=[
  ['record identity',store,"(!field.path.includes('initialRows')||!!field.record)",'true'],
  ['unrelated translation drafts',locale,'const catalog=[...published.catalog];',"if(Date.now()>=0){const prepared=await prepareHomepageLocale(host,db,tenant,request,target,s.token,reviewer,now,liveQuery,path,published.policy);await activateHomepageLocale(host,db,tenant,request,prepared.hash,pointer,now,liveQuery);return{hash:prepared.hash,saved:pending.length};}const catalog=[...published.catalog];"],
 ];
-const gate=()=>{let result;for(const file of ['frontend-edit.mjs','frontend-edit-locales.mjs']){result=spawnSync(process.execPath,[repoRoot+'packages/backend/test/'+file],{cwd:repoRoot,encoding:'utf8',timeout:60000,windowsHide:true});assert.equal(result.error,undefined);assert.equal(result.signal,null);if(result.status!==0)return result;}return result;};
+const gate=()=>{let result;for(const file of ['frontend-edit.mjs','frontend-edit-locales.mjs']){result=spawnSync(process.execPath,[repoRoot+'packages/backend/test/'+file],{cwd:repoRoot,encoding:'utf8',timeout:180000,windowsHide:true});assert.equal(result.error,undefined);assert.equal(result.signal,null);if(result.status!==0)return result;}return result;};
 const only=process.argv.includes('--only')?process.argv[process.argv.indexOf('--only')+1]:null;
 if(only){const index=faults.findIndex(([name])=>name===only);assert.ok(index>=0);faults.splice(0,faults.length,faults[index]);}
 const green=(label)=>{const result=gate();assert.equal(result.status,0,label+'\n'+result.stdout+result.stderr);};

@@ -8,6 +8,8 @@ const arabic=document.documentElement.lang.startsWith('ar');
 const words=arabic?{
  edit:'تحرير النص',done:'تم',revert:'تراجع عن هذا التعديل',cancelEdit:'إلغاء التحرير',save:'حفظ التغييرات',cancel:'إلغاء التغييرات',
  saving:'جارٍ الحفظ…',failed:'تعذر تأكيد الحفظ. تم الاحتفاظ بتعديلاتك. أعد تحميل الصفحة في علامة تبويب أخرى للمراجعة.',
+ conflict:'تغيّر أحد الحقول قبل الحفظ. لم تُحفظ أي تعديلات. أعد تحميل الصفحة قبل دمج تغييراتك.',
+ destination:'لم يُحفظ أي تعديل. احفظ نص الصفحة وحقول السجل بشكل منفصل، واحفظ سجلاً واحداً في كل مرة.',
  unsaved:'تعديلات غير محفوظة',open:'فتح محرر الموقع',minimize:'تصغير محرر الموقع',panel:'محرر الموقع',more:'المزيد',
  builder:'فتح في منشئ الصفحات',record:'تحرير السجل',history:'سجل إصدارات التخطيط',visitor:'عرض كزائر',undo:'التراجع عن آخر تعديل',
  page:'نص الصفحة',header:'الترويسة المشتركة',footer:'التذييل المشترك',shared:'قائمة مشتركة',recordScope:'بيانات السجل',
@@ -15,6 +17,8 @@ const words=arabic?{
 }:{
  edit:'Edit text',done:'Done',revert:'Revert this change',cancelEdit:'Cancel editing',save:'Save Changes',cancel:'Cancel Changes',
  saving:'Saving…',failed:'Save could not be confirmed. Your edits are retained. Reload in another tab to review.',
+ conflict:'A field changed before the save. No edits were saved. Reload before merging your changes.',
+ destination:'No edits were saved. Save page copy and record fields separately, and save one source record at a time.',
  unsaved:'unsaved changes',open:'Open site editor',minimize:'Minimize site editor',panel:'Site editor',more:'More',
  builder:'Open in Builder',record:'Edit record',history:'Layout version history',visitor:'View as visitor',undo:'Undo last edit',
  page:'Page copy',header:'Shared header',footer:'Shared footer',shared:'Shared menu',recordScope:'Record content',
@@ -258,8 +262,13 @@ const save=button(actions,words.save,async()=>{
  busy=true;error='';save.textContent=words.saving;update();
  try{
   const saved=await fetch('/api/frontend-edit/save/',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-Frontbase-Editor':'1'},body:JSON.stringify({path:pagePath,token:inventory.token,selection:recordSelection.length?recordSelection:undefined,operationId:crypto.randomUUID(),entries:[...pending].map(([id,text])=>({id,text}))})});
-  if(!saved.ok)throw Error();pending.clear();stop();location.reload();
- }catch{error=words.failed;busy=false;save.textContent=words.save;update();}
+  if(!saved.ok){
+   const {code}=await saved.json().catch(()=>({}));
+   error=code==='editor_atomic_conflict'||code==='copy_conflict'?words.conflict:code==='editor_atomic_destination_required'?words.destination:words.failed;
+   return;
+  }
+  pending.clear();stop();location.reload();
+ }catch{error=words.failed;}finally{busy=false;save.textContent=words.save;update();}
 });save.dataset.save='';
 const cancel=button(actions,words.cancel,()=>{stop();const values=[...pending.keys()].map(id=>({id,text:original.get(id)}));undoStack.length=0;applyValues(values,false);for(const [id]of bound)all(id,original.get(id));});
 function setExpanded(on){

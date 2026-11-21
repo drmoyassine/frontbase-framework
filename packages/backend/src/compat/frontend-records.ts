@@ -6,7 +6,7 @@ import type {DbRunner} from '@frontbase/edge-infra';
 import {datasourceRunner,dialectOf} from '../db/datasource-runner.js';
 import {mergeAccountConfig} from './providers/merge-account.js';
 import {resolveDatasourceConfig} from './credential-resolver.js';
-import {scopedDatasourceConfig} from './datasource-schema.js';
+import {datasourceSchema,scopedDatasourceConfig} from './datasource-schema.js';
 import {guardedExternalFetch} from './external-http.js';
 import {nativePostgrestInspector} from './postgrest-inspector.js';
 import {inspectTable,listRelationships} from './routes/sync.js';
@@ -33,7 +33,18 @@ export function recordEditValue(text:string,column:Column,prior:unknown):string|
     if(prior!==null&&typeof prior!=='string'||!/text|char|string|varchar|citext|enum/.test(column.type))throw Error('record_type_unsupported');
     return text;
 }
-export type PreparedRecordEdit={identity:unknown;before:unknown;after:unknown;commit:()=>Promise<void>};
+type RecordChange = {column:string;before:unknown;after:unknown};
+export type PreparedRecordEdit={
+    identity:unknown;before:unknown;after:unknown;commit:()=>Promise<void>;
+    batch?:{row:string;change:RecordChange;commit:(changes:RecordChange[])=>Promise<void>};
+};
+export async function commitFrontendRecordEdits(edits:PreparedRecordEdit[]):Promise<void>{
+    if(edits.length===0)return;
+    if(edits.length===1){await edits[0]!.commit();return;}
+    const first=edits[0]!.batch;
+    if(!first||edits.some(edit=>edit.batch?.row!==first.row))throw Error('editor_atomic_destination_required');
+    await first.commit(edits.map(edit=>edit.batch!.change));
+}
 export async function prepareFrontendRecordEdit(host:TranslationStorageHost,db:DbRunner,owner:string,field:CopyField,text:string,sourceSchema?:string):Promise<PreparedRecordEdit>{
     if(!field.record||field.record.key.length!==1)throw Error('record_identity_required');
     const record=field.record;let connectionId=record.connectionId,table=record.collection,key=record.key[0]!,path=field.fieldKey??field.path.at(-1)!;
@@ -102,19 +113,37 @@ export async function prepareFrontendRecordEdit(host:TranslationStorageHost,db:D
         }};
     }
 
-    return {identity:[ds.id,sourceSchema??'public',table,key,column],before,after,commit:async()=>{
+    const identity=[ds.id,datasourceSchema(ds.kind,config,sourceSchema)??'public',table,key];
+    const change={column,before,after};
+    const commit=async(changes:RecordChange[])=>{
         if(inspector){
             const options=resolveDatasourceConfig(ds.kind,config),client=supabasePostgrestClient({url:String(options.url),serviceKey:String(options.serviceKey),schema:String(options.schema??'public'),...(options.restUrl?{restUrl:String(options.restUrl)}:{}),...(options.jwt?{jwt:String(options.jwt)}:{}),fetchImpl:(input,init)=>guardedExternalFetch(host.externalFetch,input,init)});
-            let query=client.from(table).update({[column]:after}).eq(key.column,key.value);query=before===null?query.is(column,null):query.eq(column,Array.isArray(before)?'{'+before.map(value=>JSON.stringify(value)).join(',')+'}':before);
-            const result=await query.select([key.column,column].join(','));if(result.error||!Array.isArray(result.data)||result.data.length!==1||JSON.stringify((result.data[0] as unknown as Record<string,unknown>)?.[column])!==JSON.stringify(after))throw Error('record_write_not_confirmed');
-        }else{
+            let query=client.from(table).update(Object.fromEntries(changes.map(item=>[item.column,item.after]))).eq(key.column,key.value);
+            for(const item of changes)query=item.before===null?query.is(item.column,null):query.eq(item.column,Array.isArray(item.before)?'{'+item.before.map(value=>JSON.stringify(value)).join(',')+'}':item.before);
+            const result=await query.select([key.column,...changes.map(item=>item.column)].join(','));
+            if(!result.error&&Array.isArray(result.data)&&result.data.length===0)throw Error(changes.length===1?'record_write_not_confirmed':'editor_atomic_conflict');
+            if(result.error||!Array.isArray(result.data)||result.data.length!==1||changes.some(item=>JSON.stringify((result.data[0] as unknown as Record<string,unknown>)?.[item.column])!==JSON.stringify(item.after)))throw Error('record_write_not_confirmed');
+        }else if(changes.length===1){
             const values:unknown[]=[after,key.value],ph=(index:number)=>dialect==='postgres'?'$'+index:'?';
             const predicate=before===null?`${quote(column)} IS NULL`:`${quote(column)} = ${ph(3)}`;if(before!==null)values.push(before);
             const writer=datasourceRunner(ds.kind,config,host.externalFetch);
             try{const result=await writer.query(`UPDATE ${quote(table)} SET ${quote(column)} = ${ph(1)} WHERE ${quote(key.column)} = ${ph(2)} AND ${predicate} RETURNING ${quote(key.column)},${quote(column)}`,values);
                 if(result.length!==1||JSON.stringify(result[0]![column])!==JSON.stringify(after))throw Error('record_write_not_confirmed');
             }finally{await writer.close?.();}
+        }else{
+            const values:unknown[]=[];
+            const parameter=(value:unknown)=>{values.push(value);return dialect==='postgres'?'$'+values.length:'?';};
+            const assignments=changes.map(item=>`${quote(item.column)} = ${parameter(item.after)}`);
+            const rowPredicate=`${quote(key.column)} = ${parameter(key.value)}`;
+            const predicates=changes.map(item=>item.before===null?`${quote(item.column)} IS NULL`:`${quote(item.column)} = ${parameter(item.before)}`);
+            const writer=datasourceRunner(ds.kind,config,host.externalFetch);
+            try{
+                const result=await writer.query(`UPDATE ${quote(table)} SET ${assignments.join(', ')} WHERE ${[rowPredicate,...predicates].join(' AND ')} RETURNING ${quote(key.column)}`,values);
+                if(result.length===0)throw Error('editor_atomic_conflict');
+                if(result.length!==1)throw Error('record_write_not_confirmed');
+            }finally{await writer.close?.();}
         }
-    }};
+    };
+    return {identity:[...identity,column],before,after,commit:()=>commit([change]),batch:{row:JSON.stringify(identity),change,commit}};
     }finally{await runner?.close?.();}
 }
