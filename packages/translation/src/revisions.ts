@@ -120,13 +120,18 @@ export class TranslationLifecycle {
     }
 
     writeManual(scope: LocalizationScope, intent: RevisionIntent): Promise<RevisionResult> { return this.write(scope, intent, 'manual'); }
+    /** Use a trusted adapter snapshot and a fresh revision ID. CAS still checks the
+     * unit version at commit time. Call writeManual for replayable revision IDs. */
+    writeNewManual(scope: LocalizationScope, intent: RevisionIntent, snapshot: TranslationSnapshot): Promise<RevisionResult> {
+        return this.write(scope, intent, 'manual', undefined, snapshot);
+    }
     writeGenerated(scope: LocalizationScope, intent: RevisionIntent): Promise<RevisionResult> { return this.write(scope, intent, 'ai'); }
     writeImported(scope: LocalizationScope, intent: RevisionIntent): Promise<RevisionResult> { return this.write(scope, intent, 'import'); }
     writeJobResult(scope: LocalizationScope, intent: RevisionIntent, fence: JobCommitFence): Promise<RevisionResult> {
         return this.write(scope, intent, 'ai', jobCommitFenceSchema.parse(fence));
     }
 
-    private async write(scopeInput: LocalizationScope, input: RevisionIntent, provenance: StoredRevision['provenance'], jobFence?: JobCommitFence): Promise<RevisionResult> {
+    private async write(scopeInput: LocalizationScope, input: RevisionIntent, provenance: StoredRevision['provenance'], jobFence?: JobCommitFence, knownSnapshot?: TranslationSnapshot): Promise<RevisionResult> {
         const scope = localizationScopeSchema.parse(scopeInput), request = revisionIntentSchema.parse(input);
         const revision = storedRevisionSchema.parse({ ...request, scope, provenance });
         const replay = async (): Promise<RevisionResult | null> => {
@@ -137,9 +142,9 @@ export class TranslationLifecycle {
             return JSON.stringify(checked) === JSON.stringify(revision) ? { status: 'already-committed', revisionId: request.revisionId }
                 : { status: 'rejected', reason: 'revision-id-conflict' };
         };
-        const prior = jobFence ? null : await replay();
+        const prior = jobFence || knownSnapshot ? null : await replay();
         if (prior) return prior; // Retry acknowledges immutable history; it never restores an old head.
-        const snapshot = checkedSnapshot(await this.persistence.read(scope, request.unitId, request.locale), scope, request.unitId, request.locale);
+        const snapshot = checkedSnapshot(knownSnapshot ?? await this.persistence.read(scope, request.unitId, request.locale), scope, request.unitId, request.locale);
         if (!snapshot.source) return { status: 'rejected', reason: 'missing-source' };
         if (snapshot.source.sourceVersion !== request.sourceVersion) return { status: 'rejected', reason: 'source-version' };
         if (snapshot.source.fingerprint !== request.sourceFingerprint) return { status: 'rejected', reason: 'source-fingerprint' };
@@ -152,7 +157,7 @@ export class TranslationLifecycle {
         const result = await this.persistence.compareAndSwap(scope, request.unitId, snapshot.version, { kind: 'revision', revision, ...(jobFence ? { jobFence } : {}) });
         if (result === 'committed') return { status: 'committed', revisionId: request.revisionId };
         if (result === 'job-fenced') return { status: 'rejected', reason: 'job-fenced' };
-        return (jobFence ? null : await replay()) ?? { status: 'rejected', reason: result === 'revision-id-conflict' ? 'revision-id-conflict' : 'concurrent-write' };
+        return (jobFence || knownSnapshot ? null : await replay()) ?? { status: 'rejected', reason: result === 'revision-id-conflict' ? 'revision-id-conflict' : 'concurrent-write' };
     }
 }
 

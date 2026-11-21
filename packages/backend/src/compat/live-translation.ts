@@ -3,7 +3,7 @@ import {homepageDisplayLayout,homepageDisplayFields,applyHomepageDisplayFields,t
     type CurrentTranslationValue,type DisplaySurfacePlan,type DisplayField,type MessageUnit,type LocalizationScope,type TranslationBatchReader} from '@frontbase/edge-core/localization';
 import {translationDisplayText} from './translation-inputs.js';
 import type {DbRunner} from '@frontbase/edge-infra';
-import {TranslationLifecycle} from '@frontbase/edge-core/localization';
+import {TranslationLifecycle,validatePlainRevision} from '@frontbase/edge-core/localization';
 import {configuredTranslationStorage,type TranslationStorageHost} from './translation-storage.js';
 import {displayFieldKey,displayTranslationUnit,preparedTranslationIds,type LiveDisplayField,type TranslationIdentityPlan} from './live-translation-identities.js';
 
@@ -116,22 +116,40 @@ export async function writeLiveRecordTranslations(host:TranslationStorageHost,db
     for(const edit of edits){
         const unit=displayTranslationUnit(edit.field,storage.scope,pageId,sourceLocale),id=await translationUnitId(storage.scope,unit.resource),fingerprint=await messageSourceFingerprint(unit);
         const text=translationDisplayText(edit.field.text,edit.text),prior=pending.get(id);
+        if (validatePlainRevision(unit,text)) throw Error('record_translation_request_invalid');
         if(prior&&(prior.text!==text||prior.fingerprint!==fingerprint||prior.current!==edit.current))throw Error('conflicting_record_translations');
         pending.set(id,{unit,current:edit.current,text,fingerprint});
     }
-    const entries=await Promise.all([...pending].map(async([id,item])=>{
-        const prior=await storage.persistence.read(storage.scope,id,locale);
+    const snapshots = await storage.persistence.readMany(storage.scope, [...pending.keys()], locale);
+    const entries = [...pending].map(([id,item],index)=>{
+        const prior=snapshots[index]!;
         const fresh=prior.source?.fingerprint===item.fingerprint&&prior.head?.sourceFingerprint===item.fingerprint&&prior.head.sourceVersion===prior.source.sourceVersion&&prior.head.contextFingerprint===prior.source.contextFingerprint;
         const visible=fresh?translationDisplayText(item.unit.text,prior.head!.text):item.unit.text;
         if(visible!==item.current)throw Error('record_translation_changed');
         return {id,item,prior};
-    }));
+    });
     await verifySource();
-    for(const {item,prior} of entries){
-        const source=await engine.syncSource(storage.scope,item.unit,prior.source?.sourceVersion??null,prior.source?.context??{version:1,role:'record-field'});
-        if(source.status==='conflict')throw Error('record_source_changed');
-        const result=await engine.writeManual(storage.scope,{version:1,unitId:source.unitId,locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.sourceFingerprint,contextFingerprint:source.contextFingerprint,expectedHead:prior.head?.revisionId??null,revisionId:crypto.randomUUID(),text:item.text});
+    for (const {id,item,prior} of entries) {
+        let snapshot = prior;
+        if (prior.source?.fingerprint !== item.fingerprint) {
+            const context = prior.source?.context ?? {version:1 as const,role:'record-field'};
+            const source = await engine.syncSource(storage.scope,item.unit,prior.source?.sourceVersion??null,context);
+            if (source.status === 'conflict') throw Error('record_source_changed');
+            snapshot = {
+                version:prior.version + 1,
+                head:prior.head,
+                source:{unit:item.unit,sourceVersion:source.sourceVersion,fingerprint:source.sourceFingerprint,
+                    context,contextFingerprint:source.contextFingerprint},
+            };
+        }
+        const source = snapshot.source!;
+        const result = await engine.writeNewManual(storage.scope, {
+            version:1,unitId:id,locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.fingerprint,
+            contextFingerprint:source.contextFingerprint,expectedHead:prior.head?.revisionId??null,
+            revisionId:crypto.randomUUID(),text:item.text,
+        }, snapshot);
         if(result.status==='rejected')throw Error('record_translation_changed');
     }
-    await verifySource();
+    // Public rendering independently checks the current source fingerprint.
+    // A post-write render cannot undo a committed revision and can time out.
 }
