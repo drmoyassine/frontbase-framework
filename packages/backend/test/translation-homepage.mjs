@@ -9,6 +9,7 @@ import {PagesStore} from '../dist/compat/pages-store.js';
 import {SitePublicationManifestStore} from '../dist/compat/site-publication-manifest.js';
 import {SitePublicationReviewStore} from '../dist/compat/site-publication-review-store.js';
 import {renderReviewedSitePublication} from '../dist/compat/site-publication-serving.js';
+import {writeLiveRecordTranslations} from '../dist/compat/live-translation.js';
 const f=await allowanceFixture(),tenant='alpha',pageId='00000000-0000-4000-8000-000000000020';
 const config=emptyDirectoryConfiguration();config.site={name:'Study site',destination:'USA',origin:'https://site.test',locale:'en'};config.datasourceId='content';
 for(const role of ['institution','program','city']){const m=config.collections[role];m.table=role;m.scope={field:'country',value:22};Object.assign(m.fields,{id:'id',title:'title'});if(role!=='city')m.fields.originalPath='path';}config.collections.institution.fields.cityId='city';config.collections.program.fields.institutionId='institution';
@@ -28,6 +29,20 @@ const root='/api/project/translation-batches/homepage/';
 async function call(path,body,status=200){const r=await app.request('https://site.test'+root+path,{method:body?'POST':'GET',headers:{'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});assert.equal(r.status,status,await r.clone().text());const value=await r.json();assert.doesNotMatch(JSON.stringify(value),/PRIVATE_|serviceKey|data\.example/);return value;}
 const html=async path=>{const r=await renderReviewedSitePublication(f.db,tenant,new Request('https://site.test'+path));return {status:r?.status,headers:r?.headers,text:await r?.text()};};
 try{
+ const batch = ['requirements','curriculum','careers','funding'].map(fieldKey=>({
+  field:{blockId:fieldKey,path:['props','text'],fieldKey,text:'Source '+fieldKey,record:{connectionId:'content',collection:'programs',key:[{column:'id',value:7}]}},
+  current:'Source '+fieldKey,text:'ترجمة '+fieldKey,
+ }));
+ let sourceChecks=0;
+ const verifySource=async()=>{sourceChecks++;};
+ await writeLiveRecordTranslations(f.host,f.db,tenant,pageId,'en','ar',batch,verifySource);
+ const callsBeforeBatch=f.calls.length;
+ const updates=batch.map(edit=>({...edit,current:edit.text,text:'مراجعة '+edit.field.fieldKey}));
+ await writeLiveRecordTranslations(f.host,f.db,tenant,pageId,'en','ar',updates,verifySource);
+ assert.equal(sourceChecks,2,'one live source verification per batch');
+ assert.deepEqual(f.calls.slice(callsBeforeBatch).map(call=>call.body.p_operation),['read-many','cas-many']);
+ assert.deepEqual(f.calls.at(-1).body.p_input.changes.map(edit=>edit.change.revision.text),updates.map(edit=>edit.text));
+ await assert.rejects(writeLiveRecordTranslations(f.host,f.db,tenant,pageId,'en','ar',updates,verifySource),/record_translation_changed/);
  const selected='siteHash='+baseHash;
  await call('review/?locale=ar',undefined,422);
  await call('review/?locale=ar&siteHash='+'0'.repeat(64),undefined,422);

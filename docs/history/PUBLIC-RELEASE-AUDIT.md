@@ -1706,3 +1706,8 @@ Final pnpm -r check/build, directory42/42 across9files, console:stage and subseq
 ## 2026-11-15 live-only data serving — active replacement claim
 
 The owner deprecated all content-snapshot serving. The snapshot export/publication work above is superseded and will not be deployed. Publish layouts and bindings; resolve all record content, translations, route membership, SEO and browsing through existing adapters live. Keep layout history and access controls; no saved-record fallback. See [the ordered implementation and acceptance plan](../plans/live-data-serving-20261115.md). Implementation is open: no live-only deployment or Workers Free qualification is claimed. Prior snapshot CPU/browser receipts remain historical evidence only. Preserve unrelated worktree changes and existing production data.
+
+
+## Atomic frontend editor saves
+
+Production database transaction proofs and authenticated Study-in-USA browser checks passed for English source and Arabic translation batches. Stale saves preserved both committed fields. All four live values matched their originals after restoration. [Delivery and verification](../plans/booking-for-x-detail-redesign-20261118.md#atomic-frontend-editor-saves).

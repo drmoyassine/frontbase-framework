@@ -3,7 +3,7 @@ import {homepageDisplayLayout,homepageDisplayFields,applyHomepageDisplayFields,t
     type CurrentTranslationValue,type DisplaySurfacePlan,type DisplayField,type MessageUnit,type LocalizationScope,type TranslationBatchReader} from '@frontbase/edge-core/localization';
 import {translationDisplayText} from './translation-inputs.js';
 import type {DbRunner} from '@frontbase/edge-infra';
-import {TranslationLifecycle} from '@frontbase/edge-core/localization';
+import {translationContextFingerprint,validatePlainRevision,type PersistenceChange} from '@frontbase/edge-core/localization';
 import {configuredTranslationStorage,type TranslationStorageHost} from './translation-storage.js';
 import {displayFieldKey,displayTranslationUnit,preparedTranslationIds,type LiveDisplayField,type TranslationIdentityPlan} from './live-translation-identities.js';
 
@@ -107,31 +107,46 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
     return values.size?applyHomepageDisplayFields(layout,values,{partial:true,fields:translated}):layout;
 }
 
-/** Existing revision/CAS adapter, without creating or publishing a page catalog. */
+/** A transaction writes source history and translation heads for the entire editor selection. */
 export async function writeLiveRecordTranslations(host:TranslationStorageHost,db:DbRunner,owner:string,pageId:string,sourceLocale:string,locale:string,
     edits:{field:DisplayField;current:string;text:string}[],verifySource:()=>Promise<void>){
     if(locale===sourceLocale||!edits.length||edits.length>100||edits.some(edit=>!edit.field.record))throw Error('record_translation_request_invalid');
-    const storage=await configuredTranslationStorage(host,db,owner),engine=new TranslationLifecycle(storage.persistence);
+    const storage=await configuredTranslationStorage(host,db,owner);
     const pending=new Map<string,{unit:MessageUnit;current:string;text:string;fingerprint:string}>();
     for(const edit of edits){
         const unit=displayTranslationUnit(edit.field,storage.scope,pageId,sourceLocale),id=await translationUnitId(storage.scope,unit.resource),fingerprint=await messageSourceFingerprint(unit);
         const text=translationDisplayText(edit.field.text,edit.text),prior=pending.get(id);
+        if (validatePlainRevision(unit,text)) throw Error('record_translation_request_invalid');
         if(prior&&(prior.text!==text||prior.fingerprint!==fingerprint||prior.current!==edit.current))throw Error('conflicting_record_translations');
         pending.set(id,{unit,current:edit.current,text,fingerprint});
     }
-    const entries=await Promise.all([...pending].map(async([id,item])=>{
-        const prior=await storage.persistence.read(storage.scope,id,locale);
+    const snapshots = await storage.persistence.readMany(storage.scope, [...pending.keys()], locale);
+    const entries = [...pending].map(([id,item],index)=>{
+        const prior=snapshots[index]!;
         const fresh=prior.source?.fingerprint===item.fingerprint&&prior.head?.sourceFingerprint===item.fingerprint&&prior.head.sourceVersion===prior.source.sourceVersion&&prior.head.contextFingerprint===prior.source.contextFingerprint;
         const visible=fresh?translationDisplayText(item.unit.text,prior.head!.text):item.unit.text;
         if(visible!==item.current)throw Error('record_translation_changed');
         return {id,item,prior};
-    }));
-    await verifySource();
-    for(const {item,prior} of entries){
-        const source=await engine.syncSource(storage.scope,item.unit,prior.source?.sourceVersion??null,prior.source?.context??{version:1,role:'record-field'});
-        if(source.status==='conflict')throw Error('record_source_changed');
-        const result=await engine.writeManual(storage.scope,{version:1,unitId:source.unitId,locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.sourceFingerprint,contextFingerprint:source.contextFingerprint,expectedHead:prior.head?.revisionId??null,revisionId:crypto.randomUUID(),text:item.text});
-        if(result.status==='rejected')throw Error('record_translation_changed');
+    });
+    const changes:{unitId:string;expectedVersion:number;change:PersistenceChange}[]=[];
+    for (const {id,item,prior} of entries) {
+        let source=prior.source;
+        let expectedVersion=prior.version;
+        if (source?.fingerprint !== item.fingerprint) {
+            const context = prior.source?.context ?? {version:1 as const,role:'record-field'};
+            source = {
+                unit:item.unit,sourceVersion:(prior.source?.sourceVersion??0)+1,fingerprint:item.fingerprint,
+                context,contextFingerprint:await translationContextFingerprint(context),
+            };
+            changes.push({unitId:id,expectedVersion,change:{kind:'source',source}});
+            expectedVersion++;
+        }
+        changes.push({unitId:id,expectedVersion,change:{kind:'revision',revision:{
+            version:1,unitId:id,locale,sourceVersion:source.sourceVersion,sourceFingerprint:source.fingerprint,
+            contextFingerprint:source.contextFingerprint,expectedHead:prior.head?.revisionId??null,
+            revisionId:crypto.randomUUID(),text:item.text,scope:storage.scope,provenance:'manual',
+        }}});
     }
     await verifySource();
+    await storage.persistence.compareAndSwapMany(storage.scope,changes);
 }

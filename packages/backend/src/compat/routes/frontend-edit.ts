@@ -16,7 +16,7 @@ import {translationDisplayText} from '../translation-inputs.js';
 import {publishedLiveQuery} from '../published-live-query.js';
 import {publishFrontendTranslationEdits,readHomepagePointer} from '../translation-homepage.js';
 import type {TranslationBatchHost} from '../translation-batches.js';
-import {prepareFrontendRecordEdit} from '../frontend-records.js';
+import {commitFrontendRecordEdits,prepareFrontendRecordEdit} from '../frontend-records.js';
 import {applyBlockVersion} from '@frontbase/edge-core/block-versions';
 import {resolveLiveLayoutSurface,renderLiveLayoutPublication} from '../live-layout-serving.js';
 import {writeLiveRecordTranslations} from '../live-translation.js';
@@ -98,9 +98,8 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
             const actor=String((c.get('principal').user as {id?:string}).id??'');if(!actor)throw Error();
             const sourcePath=body.path.startsWith('/'+s.locale+'/')?body.path.slice(s.locale.length+1).split('?')[0]||'/':body.path.split('?')[0]!;
             const records=edits.filter(edit=>edit.field.record),copy=edits.filter(edit=>!edit.field.record);
-            // All destinations and values are validated before the first write. The page batch
-            // spans independent stores; retain a private operation receipt rather than claim a
-            // distributed transaction or blindly replay an uncertain provider response.
+            if(records.length&&copy.length)return c.json({detail:'Save page text and record fields separately. They use different databases.',code:'editor_atomic_destination_required'},422);
+            if(records.length>1&&s.locale!==s.sourceLocale&&!s.liveData)return c.json({detail:'This older publication supports one record translation per save. Publish a live layout to save several together.',code:'editor_atomic_destination_required'},422);
             const prepared=[];
             if(s.locale===s.sourceLocale)for(const edit of records){
                 let schema:string|undefined;
@@ -113,18 +112,26 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
             const unique=new Map<string,typeof prepared[number]>();for(const edit of prepared){const key=JSON.stringify(edit.identity),prior=unique.get(key);if(prior&&JSON.stringify(prior.after)!==JSON.stringify(edit.after))throw Error('conflicting_record_edits');unique.set(key,edit);}
             const receiptKey='frontend_edit_operation:v1:'+body.operationId,receipt={version:1,token:body.token,actor,state:'saving',saved:[] as string[],entries:body.entries};
             if(records.length){const claimed=await db.exec('INSERT INTO settings (tenant_slug,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(tenant_slug,key) DO NOTHING',[c.get('tenant'),receiptKey,JSON.stringify(receipt),now()]);if(claimed!==1)throw Error('editor_operation_already_attempted');}
-            const checkpoint=async(value:string)=>{receipt.saved.push(value);await db.exec('UPDATE settings SET value=?,updated_at=? WHERE tenant_slug=? AND key=?',[JSON.stringify(receipt),now(),c.get('tenant'),receiptKey]);};
-            for(const [key,edit]of unique){await edit.commit();await checkpoint(key);}
+            if(unique.size){await commitFrontendRecordEdits([...unique.values()]);receipt.saved.push('source-record');}
             if(records.length&&s.locale!==s.sourceLocale){
                 const verify=async()=>{const fresh=await frontendCopySurface(app,db,c.get('tenant'),c.req.raw,body.path.slice(s.locale.length+1)||'/',body.selection,translationHost);for(const field of additionalRecords)if(!fresh.fields.some(candidate=>candidate.id===field.id&&candidate.source===field.source))throw Error('record_source_changed');};
                 if(s.liveData)await writeLiveRecordTranslations(translationHost,db,c.get('tenant'),s.pageId,s.sourceLocale,s.locale,records.map(edit=>({field:additionalRecords.find(field=>field.id===edit.field.id)!,current:edit.field.current,text:edit.text})),verify);
                 else await publishFrontendTranslationEdits(translationHost,db,c.get('tenant'),c.req.raw,s.locale,sourcePath,s.translationHash!,records.map(edit=>({...edit.field,replacement:edit.text})),actor,now(),publishedLiveQuery(value=>app.fetch(value)),additionalRecords,verify);
-                await checkpoint('record-translations');
+                receipt.saved.push('record-translations');
             }
             // UI text, including a selected UI translation, belongs to active host state.
             if(copy.length)await s.store.save(s.current.hash,copy.map(edit=>({id:edit.field.id,locale:s.locale,source:edit.field.source,text:edit.text})),body.operationId,actor,now());
-            if(records.length){receipt.state='complete';await checkpoint('complete');}
+            if(records.length){
+                receipt.state='complete';receipt.saved.push('complete');
+                // The remote transaction has already committed. A local receipt
+                // failure must not turn a confirmed write into an ambiguous save.
+                await db.exec('UPDATE settings SET value=?,updated_at=? WHERE tenant_slug=? AND key=?',[JSON.stringify(receipt),now(),c.get('tenant'),receiptKey]).catch(()=>{});
+            }
             return c.json({saved:edits.length,operationId:body.operationId});
-        }catch{return c.json({detail:'Changes could not be confirmed. Keep your edits and reload in another tab before retrying.',code:'copy_not_confirmed'},409);}
+        }catch(error){
+            if(error instanceof Error&&error.message==='editor_atomic_destination_required')return c.json({detail:'Save one record at a time. This selection crosses transaction boundaries.',code:error.message},422);
+            if(error instanceof Error&&error.message==='editor_atomic_conflict')return c.json({detail:'A field changed before the save. No fields were saved. Reload before merging your edits.',code:error.message},409);
+            return c.json({detail:'Changes could not be confirmed. Keep your edits and reload in another tab before retrying.',code:'copy_not_confirmed'},409);
+        }
     });
 }

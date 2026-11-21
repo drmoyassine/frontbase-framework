@@ -5,7 +5,7 @@ import { parsePersistenceKey, parsePersistenceChange, currentTranslationValueSch
 import { translationJobSchema, translationJobIntentSchema, jobErrorSchema,
     type TranslationJobPersistence, type TranslationJob, type TranslationJobIntent, type EnqueueResult, type JobError } from '../jobs.js';
 
-export type TranslationRpcOperation = 'capabilities' | 'read-many' | 'read-revisions' | 'read' | 'read-revision' | 'list-revisions' | 'find-approved-head' | 'read-source' | 'cas' | 'enqueue' | 'read-job'
+export type TranslationRpcOperation = 'capabilities' | 'read-many' | 'read-revisions' | 'read' | 'read-revision' | 'list-revisions' | 'find-approved-head' | 'read-source' | 'cas' | 'cas-many' | 'enqueue' | 'read-job'
     | 'ready-jobs' | 'claim' | 'renew' | 'dispatch' | 'fail' | 'cancel';
 /** Host-injected authenticated HTTP client. No SQL, socket or credential lookup in the engine. */
 export interface TranslationRpcTransport {
@@ -149,6 +149,15 @@ export class PostgrestTranslationJobPersistence implements TranslationJobPersist
         const checked = parsePersistenceChange(scope, unitId, version, change);
         return z.enum(['committed', 'conflict', 'revision-id-conflict', 'job-fenced'])
             .parse(await this.request('cas', checked.scope, { unitId: checked.unitId, expectedVersion: checked.expectedVersion, change: checked.change }));
+    }
+    async compareAndSwapMany(scope:LocalizationScope,changes:{unitId:string;expectedVersion:number;change:PersistenceChange}[]):Promise<void>{
+        if(!changes.length||changes.length>200)throw Error('invalid_translation_batch');
+        const checked=changes.map(({unitId,expectedVersion,change})=>{
+            const parsed=parsePersistenceChange(scope,unitId,expectedVersion,change);
+            return {unitId:parsed.unitId,expectedVersion:parsed.expectedVersion,change:parsed.change};
+        });
+        const result=z.enum(['committed','conflict']).parse(await this.request('cas-many',scope,{changes:checked}));
+        if(result==='conflict')throw Error('editor_atomic_conflict');
     }
     async enqueueJob(scopeInput: LocalizationScope, input: TranslationJobIntent): Promise<EnqueueResult> {
         return z.enum(['created', 'already-exists', 'id-conflict', 'input-changed', 'head-changed', 'manual-protected', 'unsupported-format', 'revision-id-conflict'])
