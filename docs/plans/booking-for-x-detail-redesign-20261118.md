@@ -97,3 +97,15 @@ The deployment and bilingual publication are complete. Reliable service within t
 The private operator folder contains `booking-detail-live-final-261118.json`, `booking-detail-live-browser-261118.json`, `booking-detail-live-cpu-261118.json`, the publication and upload receipts, and eight public screenshots. These receipts contain source and publication identities, response headers and matching CPU events.
 
 The previous layout hash is `aa0a3c6d36d7adf541d2968303377844128bd964e00a90e7c8b55c96fcbe2de6`. The previous Worker version is `0e8b832b-6bab-4f22-981b-0d75cf9e6ff1`. For a reviewed rollback, restore the layout pointer using the normal expected-pointer check before switching to the older Worker. Keep the translated-record history and source data intact.
+
+### Atomic frontend editor saves
+
+Source edits on one record use a single conditional write. Live translations use the additive `translation_write_batch` RPC, which rolls back revision and source-history writes if any change conflicts. Saves that mix page copy and record fields, source records, or multiple legacy record translations are refused before editing content.
+
+The Study-in-USA production databases passed a two-field source test and a service-role translation transaction test. The latter forced a conflict after earlier writes and verified that no units, source history, revisions or heads survived. The temporary installer was removed. Node 22 workspace check and build, focused regression tests, and all 14 frontend mutation cases passed on the deployment branch.
+
+Study-in-USA Worker `096b0ccc-a6c0-4c88-8fbb-fe6bcf61486d` deployed `a4071b09` at 100% with all 17 bindings. Seven routes returned HTTP 200, and public bilingual content used live data with HTML caching off. The preceding Worker was `105f6f36-48e7-45cb-ab2d-398675318830`.
+
+In the signed-in Advertising editor, one Save Changes action stored Curriculum and Careers together in Arabic on November 21 and in English on November 22. The Arabic stale submission returned HTTP 409. The English stale submission reported that a field changed and no edits were saved. In both cases, fresh public reads confirmed that neither winning field was overwritten. An earlier Arabic save could not be confirmed and changed neither field. The Arabic page briefly used source text after the English test save. After restoration, all four rendered field values matched their exact pre-test text in fresh HTTP 200 no-store responses.
+
+The main-targeted patch retains the existing editor dock and source-format behavior while adding the localized conflict and destination messages. The browser evidence was collected on the deployed development branch.
