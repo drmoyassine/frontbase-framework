@@ -1824,9 +1824,3 @@ Text, headings and paragraphs can now reorder with their visible siblings throug
 Node 22 workspace check and build passed, with a focused rebuild for handle positioning and cancellation. Chromium verified preview movement and cleanup, text reordering saved to Builder, exact draft restoration, and the existing English/Arabic mobile touch flows. The draft suite verified cross-parent text moves are refused. Worker size was 967.8 KB gzip.
 
 Worker `5e0f601f-eabb-4133-9a79-f62fe1efbc98` reached 100% with all 17 bindings. Rollback is `01af77aa-9d0d-4518-aee9-303cf3b276b3`. The live Advertising editor moved the Degree label beneath its value, and discarding the test restored the original order. Dropping at the existing position still stages a move. Health, the console asset and six English/Arabic public routes passed. Compatibility conformance reported zero violations and zero unreachable operations across 334 operations.
-
-## Inline text editing and editor toolbar
-
-Claimed the move of text editing onto the selected page element and the redesign of the frontend editor toolbar.
-
-Completed on Study-in-USA in Worker ede5af6d-655d-4c9f-9dd8-78f33a341d1d with 17 matching bindings. Chromium exercised the on-page Tiptap surface, selected-word formatting, toolbar tooltip, variable picker and shared Builder draft on the bilingual desktop/mobile fixture. The backend frontend-edit suite, workspace check and build passed. The two production editor scripts matched the tested build byte for byte, and health and six public routes passed. Production content and drafts were not edited.

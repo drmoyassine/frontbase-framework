@@ -26,25 +26,6 @@ const words=arabic?{
  page:'Page copy',header:'Shared header',footer:'Shared footer',shared:'Shared menu',recordScope:'Record content',
  recordTranslation:'Record translation',invalid:'Text must contain 1–12000 characters.',unavailable:'The site editor could not load.'
 };
-const iconPaths={
- pencil:'m4 16-1 5 5-1L20 8l-4-4Z M14 6l4 4',minimize:'M5 12h14',more:'M4 12h1m6 0h1m6 0h1',
- save:'M4 3h13l3 3v15H4z M8 3v6h8V3 M8 21v-8h8v8',close:'m6 6 12 12M18 6 6 18',
- done:'m4 12 5 5L20 6',undo:'M4 10h9a6 6 0 0 1 0 12 M4 10l5-5m-5 5 5 5',
- eye:'M2 12q10-15 20 0-10 15-20 0z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
- layout:'M3 4h18v16H3z M3 9h18 M10 9v11',history:'M3 11a9 9 0 1 1 2 7 M3 4v7h7 M12 7v6l4 2',
- record:'M5 3h14v18H5z M8 8h8m-8 4h8m-8 4h5',up:'m5 14 7-7 7 7',down:'m5 10 7 7 7-7',
- drag:'M8 5h1m6 0h1m-8 7h1m6 0h1m-8 7h1m6 0h1',narrow:'M2 12h7l-3-3m3 3-3 3m16-3h-7l3-3m-3 3 3 3',
- wide:'M9 12H2l3-3m-3 3 3 3m10-3h7l-3-3m3 3-3 3',match:'M3 3v18m18-18v18M6 8h12M6 16h12',
- bold:'M7 4h6a4 4 0 0 1 0 8H7zm0 8h7a4 4 0 0 1 0 8H7z',italic:'M10 4h9m-5 0-5 16m-5 0h9',
- at:'M16 8v7q5 3 5-4a9 9 0 1 0-5 9 M16 11a4 4 0 1 0-1 4',add:'M12 4v16M4 12h16',
- trash:'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15'
-};
-function tool(control,label,glyph){
- control.title=label;control.setAttribute('aria-label',label);control.classList.add('fb-tool');
- const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('aria-hidden','true');icon.setAttribute('viewBox','0 0 24 24');
- const path=document.createElementNS(icon.namespaceURI,'path');path.setAttribute('d',iconPaths[glyph]);icon.append(path);
- control.replaceChildren(icon);return control;
-}
 const style=document.createElement('style');
 style.textContent=[
  '[data-fb-copy]{position:relative;cursor:text;border-radius:2px}',
@@ -76,11 +57,8 @@ style.textContent=[
  '[data-frontbase-edit-context][hidden]{display:none}',
  '[data-frontbase-editor] [role=alert]{overflow-wrap:anywhere;color:#fecaca}',
  '[data-frontbase-editor] :is(button,a,summary,input):focus-visible{outline:2px solid #93c5fd;outline-offset:1px}',
- '[data-fb-tool-tip]{position:fixed;z-index:2147483647;pointer-events:none;border-radius:5px;padding:4px 8px;color:white;background:#0f172a;font:12px/1.4 system-ui;box-shadow:0 2px 6px #0004}',
- '[data-frontbase-editor] .fb-tool{display:inline-grid;place-items:center;width:38px;height:38px;padding:0;border:0;border-radius:8px;background:transparent;color:#e2e8f0;vertical-align:middle;list-style:none;font:600 19px/1 system-ui}[data-frontbase-editor] .fb-tool svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}[data-frontbase-editor] .fb-tool:hover,[data-frontbase-editor] .fb-tool:focus-visible{background:#334155}[data-frontbase-editor] .fb-tool[aria-pressed=true],[data-frontbase-editor] [data-save]:enabled{background:#1d4ed8;color:white}[data-frontbase-editor] summary::-webkit-details-marker{display:none}',
- '[data-frontbase-editor] select{max-inline-size:100%;border-radius:6px;padding:4px;background:#1e293b;color:inherit}[data-frontbase-editor] .fb-layout-panel{display:grid;gap:6px;padding:5px}[data-frontbase-editor] .fb-tool-group{display:flex;flex-wrap:wrap;align-items:center;gap:3px;border-block-start:1px solid #334155;padding-block-start:4px}[data-frontbase-editor] .fb-edit-section:has(>a){grid-auto-flow:column}[data-fb-inline-editor] .ProseMirror{outline:none;white-space:pre-wrap;overflow-wrap:anywhere;min-inline-size:1ch}[data-fb-inline-editor] .ProseMirror p{font:inherit;color:inherit;margin:0}[data-fb-record-input]{display:grid;gap:4px}[data-fb-record-input] textarea{box-sizing:border-box;width:100%;min-height:2.4em;font:inherit;color:inherit;background:transparent;resize:vertical}',
- '[data-frontbase-editor] [hidden]{display:none!important}[data-frontbase-editor] [hidden],[data-frontbase-editor] :is([role=alert],[role=status]):empty{display:none}',
- '@media(max-width:640px){[data-frontbase-editor]{inset-block-start:auto;inset-block-end:max(12px,env(safe-area-inset-bottom))}body:has(a[href="https://frontbase.dev?ref=badge"]) [data-frontbase-editor]{inset-block-end:max(56px,env(safe-area-inset-bottom))}[data-frontbase-editor] .fb-tool{width:44px;height:44px}}'
+ '[data-frontbase-editor] [hidden],[data-frontbase-editor] :is([role=alert],[role=status]):empty{display:none}',
+ '@media(max-width:640px){[data-frontbase-editor]{inset-block-start:auto;inset-block-end:max(12px,env(safe-area-inset-bottom))}body:has(a[href="https://frontbase.dev?ref=badge"]) [data-frontbase-editor]{inset-block-end:max(56px,env(safe-area-inset-bottom))}[data-frontbase-editor] :is(button,summary){min-block-size:44px}}'
 ].join('');
 document.head.append(style);
 const controls=document.createElement('div');controls.dataset.frontbaseEditor='';controls.dir=arabic?'rtl':'ltr';
@@ -88,18 +66,6 @@ const toolbar=document.createElement('div');toolbar.className='fb-edit-row';cont
 const toggle=document.createElement('button');toggle.type='button';toggle.dataset.pencil='';toggle.setAttribute('aria-controls','fb-editor-tools');toolbar.append(toggle);
 const feedback=document.createElement('div');feedback.setAttribute('role','alert');controls.append(feedback);
 document.body.append(controls);
-const tip=document.createElement('span');tip.dataset.fbToolTip='';tip.hidden=true;tip.setAttribute('aria-hidden','true');document.body.append(tip);
-function showTip(event){
- const button=event.target.closest?.('.fb-tool');
- if(!button||button.disabled||event.pointerType==='touch'){tip.hidden=true;return;}
- const bounds=button.getBoundingClientRect();
- tip.textContent=button.getAttribute('aria-label');tip.dir=controls.dir;tip.hidden=false;
- const rect=tip.getBoundingClientRect();
- tip.style.left=Math.max(6,Math.min(innerWidth-rect.width-6,bounds.left+(bounds.width-rect.width)/2))+'px';
- tip.style.top=(bounds.bottom+rect.height+10<innerHeight?bounds.bottom+6:bounds.top-rect.height-6)+'px';
-}
-for(const type of ['pointerover','focusin'])controls.addEventListener(type,showTip);
-for(const type of ['pointerout','focusout','pointerdown','click'])controls.addEventListener(type,()=>{tip.hidden=true;});
 // Keep the desktop controls below the site navigation and language switcher.
 const header=document.querySelector('header,[role=banner]');
 if(header&&header.getBoundingClientRect().top<48){
@@ -112,7 +78,7 @@ let preferred=false,expanded=false,editor;
 try{preferred=localStorage.getItem(preference)==='open';}catch{}
 function pencil(dirty=false){
  const label=(expanded?words.minimize:words.open)+(!expanded&&dirty?' · '+words.unsaved:'');
- if(toggle.title!==label)tool(toggle,label,expanded?'minimize':'pencil');
+ toggle.textContent=expanded?'−':'✎';toggle.title=label;toggle.setAttribute('aria-label',label);
  toggle.setAttribute('aria-expanded',String(expanded));toggle.toggleAttribute('data-dirty',dirty);
 }
 pencil();
@@ -146,13 +112,13 @@ const bar=document.createElement('div');bar.className='fb-edit-section';tools.ap
 const fieldActions=document.createElement('div');fieldActions.className='fb-edit-row';bar.append(fieldActions);
 const context=document.createElement('span');context.dataset.frontbaseEditContext='';context.id='fb-edit-field-context';context.dir=controls.dir;context.hidden=true;context.setAttribute('role','status');document.body.append(context);
 const actions=document.createElement('div');actions.className='fb-edit-row';row.append(actions);
-const more=document.createElement('details'),summary=document.createElement('summary');tool(summary,words.more,'more');more.append(summary);
+const more=document.createElement('details'),summary=document.createElement('summary');summary.textContent=words.more;more.append(summary);
 const shortcuts=document.createElement('div');shortcuts.className='fb-edit-section';more.append(shortcuts);
 const moreRow=document.createElement('div');moreRow.className='fb-edit-row';moreRow.append(more);row.append(moreRow);
 toolbar.append(tools);
-function button(parent,label,fn){const b=document.createElement('button');b.type='button';tool(b,label,({[words.done]:'done',[words.cancelEdit]:'close',[words.revert]:'history',[words.undo]:'undo',[words.record]:'record',[words.visitor]:'eye',[words.save]:'save',[words.cancel]:'close'})[label]);b.onclick=fn;parent.append(b);return b;}
+function button(parent,label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;parent.append(b);return b;}
 function shortcut(label,path){
- const link=document.createElement('a');link.href=path;tool(link,label,label===words.builder?'layout':'history');link.target='_blank';link.rel='noopener';
+ const link=document.createElement('a');link.href=path;link.textContent=label;link.target='_blank';link.rel='noopener';
  shortcuts.append(link);return link;
 }
 if(typeof inventory.pageId==='string'&&inventory.pageId){
@@ -278,7 +244,7 @@ function markRecord(element,fields){
 }
 function stop(){
  if(!active)return;
- if(active.form)active.form.replaceWith(...active.originalNodes);else{active.span.removeAttribute('contenteditable');active.span.removeAttribute('aria-describedby');active.span.setAttribute('role','button');}
+ if(active.form)active.form.remove();else{active.span.removeAttribute('contenteditable');active.span.removeAttribute('aria-describedby');active.span.setAttribute('role','button');}
  active=null;
 }
 function cancelCurrent(){if(!active)return;const id=active.id;stop();if(id)all(id,pending.get(id)??original.get(id));error='';update();}
@@ -313,7 +279,7 @@ button(shortcuts,words.visitor,()=>void setEditing(false));
 const save=button(actions,words.save,async()=>{
  if(busy||!stage()||!pending.size)return;
  if([...pending.values()].some(text=>!valid(text))){error=words.invalid;update();return;}
- busy=true;error='';tool(save,words.saving,'more');update();
+ busy=true;error='';save.textContent=words.saving;update();
  try{
   const saved=await fetch('/api/frontend-edit/save/',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-Frontbase-Editor':'1'},body:JSON.stringify({path:pagePath,token:inventory.token,selection:recordSelection.length?recordSelection:undefined,operationId:crypto.randomUUID(),entries:[...pending].map(([id,text])=>({id,text}))})});
   if(!saved.ok){
@@ -322,7 +288,7 @@ const save=button(actions,words.save,async()=>{
    return;
   }
   pending.clear();stop();location.reload();
- }catch{error=words.failed;}finally{busy=false;tool(save,words.save,'save');update();}
+ }catch{error=words.failed;}finally{busy=false;save.textContent=words.save;update();}
 });save.dataset.save='';
 const cancel=button(actions,words.cancel,()=>{stop();const values=[...pending.keys()].map(id=>({id,text:original.get(id)}));undoStack.length=0;applyValues(values,false);for(const [id]of bound)all(id,original.get(id));});
 function setExpanded(on){
@@ -347,8 +313,8 @@ function bindRecords(){for(const root of document.querySelectorAll('[data-fb-rec
 let paths;try{paths=JSON.parse(element.dataset.fbRecordFields);}catch{continue;}
 const fields=inventory.fields.filter(field=>field.recordKey===root.dataset.fbRecordKey&&field.recordScope===root.dataset.fbRecordScope&&paths.includes(field.fieldKey));const previous=recordActions.get(element)?.fields;if(previous?.length===fields.length&&fields.every((field,index)=>field.id===previous[index].id))continue;
 if(!fields.length){if(previous){recordActions.delete(element);restoreRecord(element);}continue;}
-const edit=event=>{if(!expanded||busy)return;event.preventDefault();event.stopImmediatePropagation();if(!stage())return;selectedField=fields[0];selectedRecord=element;const form=document.createElement('div');form.className='fb-edit-section';form.setAttribute('aria-describedby',context.id);const inputs=fields.map(field=>{const label=document.createElement('label');label.style.cssText='display:flex;flex-direction:column;gap:4px';label.textContent=field.fieldKey;const input=document.createElement('textarea');input.rows=Math.min(10,Math.max(1,Math.ceil((pending.get(field.id)??original.get(field.id)).length/70)));input.value=pending.get(field.id)??original.get(field.id);input.addEventListener('input',update);input.setAttribute('aria-label',field.fieldKey);input.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();cancelCurrent();}else if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();stage();}});label.append(input);form.append(label);return input;});const originalNodes=[...element.childNodes];form.dataset.fbRecordInput='';element.replaceChildren(form);active={fields,inputs,form,element,originalNodes};inputs[0].focus();update();};
-const first=!recordAttributes.has(element);if(first)recordAttributes.set(element,['data-fb-copy','tabindex','role','aria-label'].map(key=>[key,element.getAttribute(key)]));recordActions.set(element,{edit,fields});recordNodes.add(element);markRecord(element,fields);if(first)element.addEventListener('keydown',event=>{if(!event.target.closest?.('[data-fb-record-input]')&&(event.key==='Enter'||event.key===' '))recordActions.get(element)?.edit(event);});
+const edit=event=>{if(!expanded||busy)return;event.preventDefault();event.stopImmediatePropagation();if(!stage())return;selectedField=fields[0];selectedRecord=element;const form=document.createElement('div');form.className='fb-edit-section';form.setAttribute('aria-describedby',context.id);const inputs=fields.map(field=>{const label=document.createElement('label');label.style.cssText='display:flex;flex-direction:column;gap:4px';label.textContent=field.fieldKey;const input=document.createElement('input');input.type='text';input.value=pending.get(field.id)??original.get(field.id);input.addEventListener('input',update);input.setAttribute('aria-label',field.fieldKey);input.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();cancelCurrent();}else if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();stage();}});label.append(input);form.append(label);return input;});bar.prepend(form);active={fields,inputs,form,element};inputs[0].focus();update();};
+const first=!recordAttributes.has(element);if(first)recordAttributes.set(element,['data-fb-copy','tabindex','role','aria-label'].map(key=>[key,element.getAttribute(key)]));recordActions.set(element,{edit,fields});recordNodes.add(element);markRecord(element,fields);if(first)element.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')recordActions.get(element)?.edit(event);});
 }}
 function bind(){bindRecords();for(const field of inventory.fields){if(field.blockId.startsWith('$')||['alt','ariaLabel','placeholder'].includes(field.path.at(-1)))continue;const root=document.getElementById(field.blockId);if(!root)continue;
 if(field.versionId){const parent=root.closest('[data-block-versions]');if(parent&&parent.dataset.blockActive!==field.versionId)continue;}
@@ -369,7 +335,7 @@ span.addEventListener('paste',event=>{if(active?.span!==span)return;event.preven
 ${FRONTEND_LAYOUT_EDITOR}
 const layoutActive=installLayoutEditor({dock:controls,container:tools});
 // Stop navigation and configured click workflows before their document/element handlers.
-window.addEventListener('click',event=>{if(!expanded||layoutActive()||event.target.closest?.('[data-fb-record-input]'))return;const span=event.target.closest?.('[data-fb-copy]');if(span&&(editActions.has(span)||recordActions.has(span))){if(busy){event.preventDefault();event.stopImmediatePropagation();return;}if(recordActions.has(span))recordActions.get(span).edit(event);else editActions.get(span)(event);}},{capture:true});
+window.addEventListener('click',event=>{if(!expanded||layoutActive())return;const span=event.target.closest?.('[data-fb-copy]');if(span&&(editActions.has(span)||recordActions.has(span))){if(busy){event.preventDefault();event.stopImmediatePropagation();return;}if(recordActions.has(span))recordActions.get(span).edit(event);else editActions.get(span)(event);}},{capture:true});
 const observer=new MutationObserver(records=>{
  if(!expanded||typeof document==='undefined'||!document?.body||records.every(record=>controls.contains(record.target)||context.contains(record.target)))return;
  bind();update();void refreshRecords();
