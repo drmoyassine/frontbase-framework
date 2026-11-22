@@ -1,10 +1,10 @@
 /** Loaded with the authenticated frontend editor. The published document is a
  * local preview while the layout panel is open. Writes target the page draft. */
 export const FRONTEND_LAYOUT_EDITOR = String.raw`
-function installLayoutEditor() {
+function installLayoutEditor({dock=bar,closeControl=null}={}) {
  if(!inventory.layoutDraft)return ()=>false;
  const labels=arabic?{layout:'التخطيط',block:'العنصر',earlier:'نقل للأعلى',later:'نقل للأسفل',drag:'اسحب لنقل العنصر',less:'تضييق',more:'توسيع',save:'حفظ مسودة التخطيط',close:'إغلاق التخطيط',discard:'تجاهل التعديلات',pending:'تعديلات غير محفوظة',saved:'تم حفظ المسودة',conflict:'تغيّرت المسودة. أعد التحميل قبل الحفظ.',failed:'تعذر فتح المسودة أو حفظها.',scope:'مسودة التخطيط المشتركة',desktop:'سطح المكتب',tablet:'جهاز لوحي',mobile:'هاتف'}:{layout:'Layout',block:'Tile',earlier:'Move earlier',later:'Move later',drag:'Drag to move tile',less:'Narrower',more:'Wider',save:'Save layout draft',close:'Close layout',discard:'Discard layout changes',pending:'unsaved layout changes',saved:'Layout draft saved',conflict:'The layout draft changed. Reload before saving.',failed:'The layout draft could not be opened or saved.',scope:'Shared layout draft',desktop:'Desktop',tablet:'Tablet',mobile:'Mobile'};
- let draft, tiles=[], changes=[], selected, waiting=false, dragId=null, activeLayout=false;
+ let draft, tiles=[], originalOrder=[], changes=[], selected, waiting=false, dragId=null, activeLayout=false, visible=true;
  const path=location.pathname+location.search;
  const panel=document.createElement('div');
  panel.hidden=true;panel.style.flexBasis='100%';
@@ -23,7 +23,7 @@ function installLayoutEditor() {
  toolbar.insertBefore(range,more);
  const saveDraft=add(labels.save,save),discard=add(labels.discard,()=>{changes=[];location.reload();}),exit=add(labels.close,()=>location.reload());
  panel.append(scope,chooser,viewportLabel,toolbar,feedback);
- const open=button(labels.layout,load);
+ const open=document.createElement('button');open.type='button';open.textContent=labels.layout;open.onclick=load;bar.append(open);
  bar.append(panel);
  const nodes=new Map(), originalSizes=new Map();
  const viewport=()=>matchMedia('(max-width:640px)').matches?'mobile':matchMedia('(max-width:1024px)').matches?'tablet':'desktop';
@@ -31,16 +31,16 @@ function installLayoutEditor() {
  const width=(tile,mode)=>mode==='desktop'?tile.widths.desktop:mode==='tablet'?tile.widths.tablet??tile.widths.desktop:tile.widths.mobile??tile.widths.tablet??tile.widths.desktop;
  function project(){
   const groups=new Map();
-  for(const tile of tiles){
+  for(const tile of visible?tiles:originalOrder){
    const node=nodes.get(tile.id);
    if(!node?.isConnected)continue;
-   const size=width(tile,viewport()),styles=originalSizes.get(tile.id);
+   const size=visible?width(tile,viewport()):undefined,styles=originalSizes.get(tile.id);
    for(const prop of ['width','max-width']){
     if(size!==undefined)node.style.setProperty(prop,size+'%','important');
     else if(styles[prop][0])node.style.setProperty(prop,...styles[prop]);
     else node.style.removeProperty(prop);
    }
-   node.style.outline=tile.id===selected?'2px solid #3b82f6':styles.outline;
+   node.style.outline=visible&&tile.id===selected?'2px solid #3b82f6':styles.outline;
    if(!groups.has(node.parentElement))groups.set(node.parentElement,new Map());
    const peers=groups.get(node.parentElement);
    if(!peers.has(tile.parentId))peers.set(tile.parentId,[]);
@@ -115,7 +115,8 @@ function installLayoutEditor() {
     originalSizes.set(tile.id,Object.fromEntries(['width','max-width','outline'].map(prop=>[prop,prop==='outline'?node.style.outline:[node.style.getPropertyValue(prop),node.style.getPropertyPriority(prop)]])));
    }
    selected=tiles.find(tile=>nodes.has(tile.id))?.id;
-   activeLayout=true;panel.hidden=false;open.hidden=true;close.hidden=true;status.hidden=true;
+   originalOrder=tiles.filter(tile=>nodes.has(tile.id)).sort((left,right)=>nodes.get(left.id).compareDocumentPosition(nodes.get(right.id))&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
+   activeLayout=true;panel.hidden=false;open.hidden=true;if(closeControl)closeControl.hidden=true;
    project();show(true);
   }catch{error=labels.failed;update();}finally{open.disabled=false;}
  }
@@ -133,7 +134,7 @@ function installLayoutEditor() {
  drag.addEventListener('dragend',()=>{dragId=null;});
  const targetTile=event=>tiles.find(tile=>nodes.get(tile.id)===event.target.closest?.('[id]'))??[...tiles].reverse().find(tile=>nodes.get(tile.id)?.contains(event.target));
  window.addEventListener('click',event=>{
-  if(!activeLayout||bar.contains(event.target))return;
+  if(!activeLayout||!visible||dock.contains(event.target))return;
   event.preventDefault();event.stopImmediatePropagation();
   const tile=targetTile(event);if(tile&&!waiting){selected=tile.id;chooser.value=selected;project();show();}
  },true);
@@ -150,6 +151,8 @@ function installLayoutEditor() {
  });
  window.addEventListener('resize',()=>{if(activeLayout){project();show();}});
  window.addEventListener('beforeunload',event=>{if(changes.length){event.preventDefault();event.returnValue='';}});
- return ()=>activeLayout;
+ const isActive=()=>activeLayout&&visible;
+ isActive.setVisible=value=>{visible=value;dragId=null;if(activeLayout)project();};
+ return isActive;
 }
 `;

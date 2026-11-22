@@ -83,10 +83,13 @@ try {
     const front = await context.newPage();
     const path = locale => (locale === 'ar' ? '/ar' : '') + '/shared-layout/';
     const layoutButton = locale => front.getByRole('button', { exact: true, name: locale === 'ar' ? 'التخطيط' : 'Layout' });
+    const pencil = front.locator('[data-frontbase-editor] [data-pencil]');
     async function openFrontend(locale, width) {
         await front.setViewportSize({ width, height: 860 });
         await front.goto(origin + path(locale));
         await expect(front.locator('html')).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
+        await front.locator('[data-frontbase-editor]').waitFor();
+        if (await pencil.count() && await pencil.getAttribute('aria-expanded') !== 'true') await pencil.click();
         await layoutButton(locale).click();
         await expect(front.getByRole('combobox', { name: locale === 'ar' ? 'العنصر' : 'Tile' })).toBeVisible();
     }
@@ -95,6 +98,14 @@ try {
     await front.getByRole('button', { name: 'Drag to move tile' }).dragTo(front.locator('#about'), { targetPosition: { x: 10, y: 10 } });
     await expect(front.locator('#tiles > div').first()).toHaveAttribute('id', 'address');
     await front.getByRole('button', { name: 'Narrower' }).click();
+    if (await pencil.count()) {
+        await pencil.click();
+        await expect(front.locator('#tiles > div').first()).toHaveAttribute('id', 'about');
+        await expect(front.locator('#address')).toHaveCSS('max-width', 'none');
+        await pencil.click();
+        await expect(front.locator('#tiles > div').first()).toHaveAttribute('id', 'address');
+        await expect(front.locator('#address')).toHaveCSS('max-width', '90%');
+    }
     await front.getByRole('button', { name: 'Save layout draft' }).click();
     await expect(front.getByText('Layout draft saved')).toBeVisible();
 
