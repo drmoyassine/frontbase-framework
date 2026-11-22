@@ -7,6 +7,7 @@
  */
 export { renderPage } from './ssr/PageRenderer.js';
 export type { PageLayoutData, PageComponent } from './ssr/PageRenderer.js';
+export { applyLayoutDraftOperation, layoutDraftTiles, type LayoutDraftOperation } from './layout-draft.js';
 export type { TemplateContext, PageData, SystemContext } from './ssr/lib/context.js';
 export { buildTemplateContext, parseCookies } from './ssr/lib/context.js';
 export { configureEngine, engineConfig, type EngineConfig, type Principal } from './config.js';

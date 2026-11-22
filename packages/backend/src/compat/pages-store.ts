@@ -88,9 +88,9 @@ export class PagesStore {
         return { id, name: input.name, slug: input.slug, title: input.title ?? null, description: input.description ?? null, keywords: null, is_public: 1, is_homepage: 0, is_published: 0, layout_data: layout, seo_data: null, deleted_at: null, content_hash: ch, created_at: now, updated_at: now };
     }
 
-    async update(id: string, patch: { name?: string; title?: string | null; description?: string | null; slug?: string; keywords?: string | null; isPublic?: boolean; isHomepage?: boolean; layoutData?: unknown; layout_data?: unknown }, now: string): Promise<CompatPageRow | null> {
+    async update(id: string, patch: { name?: string; title?: string | null; description?: string | null; slug?: string; keywords?: string | null; isPublic?: boolean; isHomepage?: boolean; layoutData?: unknown; layout_data?: unknown }, now: string, expectedHash?: string): Promise<CompatPageRow | null> {
         const existing = await this.get(id);
-        if (!existing) return null;
+        if (!existing || (expectedHash !== undefined && existing.content_hash !== expectedHash)) return null;
         const merged = {
             name: patch.name ?? existing.name, slug: patch.slug ?? existing.slug,
             title: patch.title !== undefined ? patch.title : existing.title,
@@ -114,22 +114,22 @@ export class PagesStore {
             content_hash = await hash(layout_data);
         }
         const changed = await this.runner.exec(
-            'UPDATE compat_pages SET name=?, slug=?, title=?, description=?, keywords=?, is_public=?, is_homepage=?, layout_data=?, content_hash=?, updated_at=?,namespace_key=CASE WHEN slug=? THEN namespace_key ELSE ? END WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0) AND '+installFree+" AND (slug=? OR NOT EXISTS(SELECT 1 FROM compat_pages other WHERE other.tenant_slug=? AND other.id<>? AND LOWER(RTRIM(LTRIM(other.slug,'/'),'/'))=?))",
-            [merged.name, merged.slug, merged.title, merged.description, merged.keywords, merged.is_public, merged.is_homepage, layout_data,content_hash,now,merged.slug,routeKey(merged.slug),this.tenant,id,hasSitePageReference(layout_data)?1:0,this.tenant,merged.slug,this.tenant,id,routeKey(merged.slug)],
+            'UPDATE compat_pages SET name=?, slug=?, title=?, description=?, keywords=?, is_public=?, is_homepage=?, layout_data=?, content_hash=?, updated_at=?,namespace_key=CASE WHEN slug=? THEN namespace_key ELSE ? END WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0) AND '+installFree+" AND (slug=? OR NOT EXISTS(SELECT 1 FROM compat_pages other WHERE other.tenant_slug=? AND other.id<>? AND LOWER(RTRIM(LTRIM(other.slug,'/'),'/'))=?))" + (expectedHash === undefined ? '' : ' AND deleted_at IS NULL AND content_hash=?'),
+            [merged.name, merged.slug, merged.title, merged.description, merged.keywords, merged.is_public, merged.is_homepage, layout_data,content_hash,now,merged.slug,routeKey(merged.slug),this.tenant,id,hasSitePageReference(layout_data)?1:0,this.tenant,merged.slug,this.tenant,id,routeKey(merged.slug), ...(expectedHash === undefined ? [] : [expectedHash])],
         );
         if (changed !== 1) return null;
         return { ...existing, ...merged, layout_data, content_hash, updated_at: now } as CompatPageRow;
     }
 
-    async setLayout(id: string, layoutData: unknown, now: string): Promise<CompatPageRow | null> {
+    async setLayout(id: string, layoutData: unknown, now: string, expectedLayout?: string): Promise<CompatPageRow | null> {
         const existing = await this.get(id);
-        if (!existing) return null;
+        if (!existing || (expectedLayout !== undefined && existing.layout_data !== expectedLayout)) return null;
         // Strip enrich-on-read artifacts before persisting (see create).
         const layout = typeof layoutData === 'string'
             ? stripLayoutEnrichment(layoutData) as string
             : JSON.stringify(stripLayoutEnrichment(layoutData));
         const ch = await hash(layout);
-        const changed = await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0) AND '+installFree, [layout,ch,now,this.tenant,id,hasSitePageReference(layout)?1:0,this.tenant]);
+        const changed = await this.runner.exec('UPDATE compat_pages SET layout_data=?, content_hash=?, updated_at=? WHERE tenant_slug=? AND id=? AND (? = 0 OR is_published = 0) AND '+installFree + (expectedLayout === undefined ? '' : ' AND deleted_at IS NULL AND layout_data=?'), [layout,ch,now,this.tenant,id,hasSitePageReference(layout)?1:0,this.tenant, ...(expectedLayout === undefined ? [] : [expectedLayout])]);
         if (changed !== 1) return null;
         return { ...existing, layout_data: layout, content_hash: ch, updated_at: now };
     }

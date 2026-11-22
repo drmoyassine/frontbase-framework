@@ -235,6 +235,8 @@ export function registerPagesRoutes(
     // PUT /api/pages/{page_id}/
     app.put('/api/pages/:page_id/', async (c) => {
         const body = await c.req.json().catch(() => ({}));
+        const match = c.req.header('If-Match');
+        if (match && !/^"[a-f0-9]{64}"$/.test(match)) return c.json({ detail: 'Invalid draft revision' }, 400);
         const prior = await storeFor(c.get('tenant')).get(c.req.param('page_id'));
         if (prior?.is_published && hasSitePageReference(body.layoutData ?? body.layout_data ?? prior.layout_data)) return c.json({ detail: 'Unpublish this page before linking shared settings' }, 409);
         // A-25 WA5 plan gate: `private_pages` — the only write path that can
@@ -248,7 +250,8 @@ export function registerPagesRoutes(
         }
         const directoryError = await validateDirectoryLayout(body.layoutData ?? body.layout_data, c.get('tenant'), runner);
         if (directoryError) return c.json(directoryError.body, directoryError.status);
-        const row = await storeFor(c.get('tenant')).update(c.req.param('page_id'), body, now());
+        const row = await storeFor(c.get('tenant')).update(c.req.param('page_id'), body, now(), match?.slice(1, -1));
+        if (!row && match && prior) return c.json({ detail: 'The layout draft changed. Reload before saving.' }, 409);
         if (!row) return c.json({ success: false, error: 'Page not found' }, 404);
         return c.json({ success: true, data: serializePage(row), message: null, error: null });
     });

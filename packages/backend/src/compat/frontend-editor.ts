@@ -1,3 +1,5 @@
+import {FRONTEND_LAYOUT_EDITOR} from './frontend-layout-editor.js';
+
 /** Public bootstrap contains no credentials, field inventory, owner or private source paths.
  * It remains inert until the host's ordinary session resolver confirms editing privilege. */
 export const FRONTEND_EDITOR_SCRIPT=String.raw`(async()=>{
@@ -254,7 +256,7 @@ const done=button(fieldActions,words.done,()=>stage()),cancelEdit=button(fieldAc
 const revert=button(fieldActions,words.revert,()=>{if(!active)return;const values=draftValues().map(({id})=>({id,text:original.get(id)}));stop();applyValues(values,true);});
 const undo=button(shortcuts,words.undo,undoLast);
 function undoLast(){if(busy||!stage()||!undoStack.length)return;applyValues(undoStack.pop(),false);}
-const recordLink=button(shortcuts,words.record,event=>{const target=recordTarget();if(!target)return;more.open=false;target.element.scrollIntoView?.({block:'nearest'});target.edit(event);});
+const recordLink=button(shortcuts,words.record,event=>{if(layoutActive())return;const target=recordTarget();if(!target)return;more.open=false;target.element.scrollIntoView?.({block:'nearest'});target.edit(event);});
 button(shortcuts,words.visitor,()=>void setEditing(false));
 const save=button(actions,words.save,async()=>{
  if(busy||!stage()||!pending.size)return;
@@ -272,6 +274,7 @@ const save=button(actions,words.save,async()=>{
 });save.dataset.save='';
 const cancel=button(actions,words.cancel,()=>{stop();const values=[...pending.keys()].map(id=>({id,text:original.get(id)}));undoStack.length=0;applyValues(values,false);for(const [id]of bound)all(id,original.get(id));});
 function setExpanded(on){
+ layoutActive.setVisible?.(on);
  tools.hidden=!on;
  if(!on){
   // Keep the staged values in this document while restoring visitor text and link behavior.
@@ -306,8 +309,10 @@ editActions.set(span,edit);span.addEventListener('click',edit);span.addEventList
 span.addEventListener('input',update);
 span.addEventListener('paste',event=>{if(active?.span!==span)return;event.preventDefault();const value=event.clipboardData.getData('text/plain');document.execCommand('insertText',false,value);});
 }}}
+${FRONTEND_LAYOUT_EDITOR}
+const layoutActive=installLayoutEditor({dock:controls,container:tools});
 // Stop navigation and configured click workflows before their document/element handlers.
-window.addEventListener('click',event=>{if(!expanded)return;const span=event.target.closest?.('[data-fb-copy]');if(span&&(editActions.has(span)||recordActions.has(span))){if(busy){event.preventDefault();event.stopImmediatePropagation();return;}if(recordActions.has(span))recordActions.get(span).edit(event);else editActions.get(span)(event);}},{capture:true});
+window.addEventListener('click',event=>{if(!expanded||layoutActive())return;const span=event.target.closest?.('[data-fb-copy]');if(span&&(editActions.has(span)||recordActions.has(span))){if(busy){event.preventDefault();event.stopImmediatePropagation();return;}if(recordActions.has(span))recordActions.get(span).edit(event);else editActions.get(span)(event);}},{capture:true});
 const observer=new MutationObserver(records=>{
  if(!expanded||typeof document==='undefined'||!document?.body||records.every(record=>controls.contains(record.target)||context.contains(record.target)))return;
  bind();update();void refreshRecords();
