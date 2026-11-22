@@ -53,12 +53,13 @@ const SEO_ALLOWED_GROUPS = ['visitor', 'system', 'user', 'record'];
 
 interface PageSettingsDrawerProps {
     open: boolean;
+    tools?: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
 export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
     open,
-    onOpenChange,
+    onOpenChange, tools=false,
 }) => {
     const { currentPageId, pages, updatePage, savePageToDatabase } = useBuilderStore(useShallow(s => ({
         currentPageId: s.currentPageId,
@@ -153,12 +154,12 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
     const handleSave = async () => {
         const reference = currentPage.layoutData?.root.siteConfiguration;
         if (reference !== undefined && !sitePageReferenceSchema.safeParse(reference).success) {
-            toast.error('Fix the shared settings reference before saving'); setActiveTab('directory'); return;
+            toast.error('Fix the shared settings reference before saving');  return;
         }
         const config = currentPage.layoutData?.root.directoryConfiguration;
         if (config !== undefined && directoryConfigurationIssues(config).length) {
             toast.error('Fix the invalid directory settings before saving');
-            setActiveTab('directory');
+
             return;
         }
         console.log('💾 [PageSettings] Save button clicked!');
@@ -194,12 +195,21 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
                     <SheetHeader className="mb-6">
                         <SheetTitle className="flex items-center gap-2">
                             <Settings className="h-5 w-5" />
-                            Page Settings
+                            {tools?'Layout tools':'Page Settings'}
                         </SheetTitle>
                     </SheetHeader>
 
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid w-full grid-cols-4 mb-6">
+                    {tools?<div className="space-y-6"><SharedPageConfigurationPanel key={currentPage.id} page={currentPage} onEditorialOpenChange={setEditorialOpen} onChange={layoutData => handleUpdatePage({ layoutData })} />
+                            {currentPage.layoutData?.root.siteConfiguration === undefined && <DirectoryConfigurationPanel
+                                value={currentPage.layoutData?.root.directoryConfiguration as DirectoryConfiguration | undefined}
+                                onChange={directoryConfiguration => handleUpdatePage({ layoutData: { content: currentPage.layoutData?.content || [], root: { ...currentPage.layoutData?.root, directoryConfiguration } } })}
+                                onApplyLayout={() => {
+                                    const config = currentPage.layoutData?.root.directoryConfiguration;
+                                    if (config && directoryConfigurationIssues(config).length === 0) handleUpdatePage({ layoutData: applyDirectoryConfiguration(currentPage, config) });
+                                }}
+                            />}
+                        </div>:<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList className="grid w-full grid-cols-3 mb-6">
                             <TabsTrigger value="basic" disabled={editorialOpen} className="gap-2">
                                 <Package className="h-4 w-4" />
                                 Basic
@@ -212,20 +222,9 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
                                 <Zap className="h-4 w-4" />
                                 Advanced
                             </TabsTrigger>
-                            <TabsTrigger value="directory">Directory</TabsTrigger>
+
                         </TabsList>
 
-                        <TabsContent value="directory" className="space-y-6">
-                            <SharedPageConfigurationPanel key={currentPage.id} page={currentPage} onEditorialOpenChange={setEditorialOpen} onChange={layoutData => handleUpdatePage({ layoutData })} />
-                            {currentPage.layoutData?.root.siteConfiguration === undefined && <DirectoryConfigurationPanel
-                                value={currentPage.layoutData?.root.directoryConfiguration as DirectoryConfiguration | undefined}
-                                onChange={directoryConfiguration => handleUpdatePage({ layoutData: { content: currentPage.layoutData?.content || [], root: { ...currentPage.layoutData?.root, directoryConfiguration } } })}
-                                onApplyLayout={() => {
-                                    const config = currentPage.layoutData?.root.directoryConfiguration;
-                                    if (config && directoryConfigurationIssues(config).length === 0) handleUpdatePage({ layoutData: applyDirectoryConfiguration(currentPage, config) });
-                                }}
-                            />}
-                        </TabsContent>
                         {/* BASIC TAB */}
                         <TabsContent value="basic" className="space-y-6">
                             {/* Page Name - Always visible */}
@@ -448,7 +447,7 @@ export const PageSettingsDrawer: React.FC<PageSettingsDrawerProps> = ({
                                 </p>
                             </div>
                         </TabsContent>
-                    </Tabs>
+                    </Tabs>}
 
                     {/* Sticky Save/Close Buttons */}
                     <div className="sticky bottom-0 left-0 right-0 mt-6 pt-4 pb-4 px-6 bg-background border-t border-border flex gap-2">

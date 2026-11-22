@@ -13,6 +13,7 @@ export function DirectoryBindingProperties({ node, update, layout }: { node: Com
         };
         collect(layout?.content ?? []);
         return <section className="space-y-2 rounded border p-3" aria-label="Directory result visibility">
+            {node.type==='Text' && <label><input type="checkbox" checked={node.props.directoryResultCount===true} onChange={e=>update('directoryResultCount',e.target.checked)}/> Display total matching records</label>}
             <label className="block text-sm">Show when this element has results
                 <select className="mt-1 w-full rounded border bg-background p-2" value={node.props.directoryResultsFor}
                     onChange={event => update('directoryResultsFor', event.target.value)}>
@@ -71,6 +72,8 @@ export function DirectoryBindingProperties({ node, update, layout }: { node: Com
         </section>;
     }
     if (record.success && node.props.recordBindings !== undefined) return <section className="space-y-2 rounded border p-3" aria-label="Directory record binding">
+        {node.type==='Embed' && <label><input type="checkbox" checked={!!record.data.mapCoordinates} onChange={e=>update('recordBindings',{...record.data,mapCoordinates:e.target.checked||undefined})}/> Map from institution latitude and longitude</label>}
+        {node.type==='Container' && !record.data.sectionText && <label><input type="checkbox" checked={!!record.data.socialProfiles} onChange={e=>update('recordBindings',{...record.data,socialProfiles:e.target.checked||undefined})}/> Show mapped social profiles</label>}
         <p className="text-sm font-medium">Field from the current directory record</p>
         {record.data.text && <label className="block text-sm">Text field<select aria-label="Directory text field" className="mt-1 w-full rounded border bg-background p-2" value={record.data.text}
             onChange={e => { const { format, fallbackText, ...rest } = record.data; update('recordBindings', { ...rest, text: e.target.value, ...(format === 'date' && dateDetailFields.some(field => field === e.target.value) || format === 'number' && numericDetailFields.some(field => field === e.target.value) ? { format } : {}), ...(e.target.value === 'body' && fallbackText ? { fallbackText } : {}) }); }}><option value="title">Title</option><option value="summary">Summary</option><option value="body">Full description</option><option value="byline">Byline</option><option value="publishedAt">Original publication date</option>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useBuilderStore, type Page } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
 import { CanvasGrid } from './CanvasGrid';
@@ -66,16 +66,31 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ page }) => {
   const [rects, setRects] = useState<ComponentRect[]>([]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  const { width: viewportWidth } = VIEWPORT_DIMENSIONS[currentViewport];
+  const canvas = useRef<HTMLDivElement>(null);
+  const [availableHeight, setAvailableHeight] = useState(0);
+  useLayoutEffect(() => {
+    const element = canvas.current;
+    if (!element) return;
+    const measure = () => {
+      const style = getComputedStyle(element);
+      setAvailableHeight(element.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom));
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    measure();
+    return () => observer.disconnect();
+  }, []);
+  const { width: viewportWidth, height: viewportHeight } = VIEWPORT_DIMENSIONS[currentViewport];
   const scaleFactor = zoomLevel / 100;
+  const frameHeight = Math.max(1, Math.floor(Math.min(viewportHeight, availableHeight / scaleFactor)));
 
   return (
     <div
+      ref={canvas}
       className={cn(
-        "h-full p-8 bg-muted/30 transition-colors relative overflow-auto",
+        "h-full min-h-0 p-8 bg-muted/30 transition-colors relative overflow-x-auto overflow-y-hidden",
         scrollTargetSelectionMode && "ring-2 ring-primary ring-inset"
       )}
-      style={{ minHeight: '100%' }}
       onClick={(e) => {
         // Cancel selection mode if clicking outside the device frame.
         if (scrollTargetSelectionMode && e.target === e.currentTarget) {
@@ -113,11 +128,12 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ page }) => {
           The iframe and overlay share the same origin and zoom. */}
       <div
         className={cn(
-          "mx-auto transition-all duration-300 relative",
-          showDeviceFrame && "shadow-2xl rounded-lg overflow-hidden bg-background"
+          "mx-auto relative overflow-hidden",
+          showDeviceFrame && "shadow-2xl rounded-lg bg-background"
         )}
         style={{
           width: `${viewportWidth}px`,
+          height: frameHeight,
           zoom: scaleFactor
         }}
       >
@@ -126,6 +142,7 @@ export const BuilderCanvas: React.FC<BuilderCanvasProps> = ({ page }) => {
 
         {/* The eSSR presentation surface (srcdoc = reRender output). */}
         <IframeCanvas
+          key={page.id}
           page={page}
           systemEdgeUrl={systemEdgeUrl}
           onRects={setRects}

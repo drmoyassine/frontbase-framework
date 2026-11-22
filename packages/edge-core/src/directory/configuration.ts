@@ -5,7 +5,7 @@ import { detailTextFields, type DetailTextField } from './detail-fields.js';
 export { dateDetailFields, detailTextFields, detailFieldLabels, institutionDetailFields, numericDetailFields, programDetailFields } from './detail-fields.js';
 export {liveViewBindingSchema,liveViewBindings} from './live-list.js';
 export { projectRelativeSiteLinks } from './navigation.js';
-export { templateSettingsSchema, landingRootSchema, defaultTemplateSettings, readLandingSettings, projectTemplatePresentation, landingQueryParams, templateContrastIssues, type TemplateSettings } from './template-settings.js';
+export { templateSettingsSchema, landingRootSchema, defaultTemplateSettings, readLandingSettings, projectTemplatePresentation, landingQueryParams, templateContrastIssues, templatePalette, templateColorHsl, bookingPaletteSchema, type BookingPalette, type TemplateSettings } from './template-settings.js';
 export { createEducationLanding } from './landing.js';
 import { siteBindingsSchema, validateSiteBinding } from './bindings.js';
 export { siteBindingsSchema } from './bindings.js';

@@ -18,6 +18,7 @@ import { Users } from 'lucide-react';
 import { LanguagesSettings } from './settings/shared/LanguagesSettings';
 import { PrivacySettingsForm } from './settings/shared/PrivacySettingsForm';
 import { SiteSettingsForm } from './settings/shared/SiteSettingsForm';
+import { BookingSiteAppearance } from './settings/shared/BookingSiteAppearance';
 import { AdminInviteForm } from './settings/shared/AdminInviteForm';
 import { EdgeAPIKeysForm } from './settings/shared/EdgeAPIKeysForm';
 import { EdgeProvidersSection } from './settings/shared/EdgeProvidersSection';
@@ -69,6 +70,7 @@ export const SettingsPanel: React.FC = () => {
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6 mt-6">
           <SiteSettingsForm />
+          <BookingSiteAppearance />
           <LanguagesSettings />
         </TabsContent>
 

@@ -117,6 +117,7 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
                 return rows.slice(0, mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1).map(row => Object.fromEntries(selected.map(([key]) => {
                     let v = row[key];
                     if (key === 'updatedAt' && v instanceof Date) v = Number.isFinite(v.getTime()) ? v.toISOString() : null;
+                    if (key === 'socialProfiles' && v && typeof v === 'object') v = JSON.stringify(v);
                     if (key === 'intakes' && Array.isArray(v)) v = v.slice(0, 100).filter(value => typeof value === 'string').join(',');
                     if(logos&&typeof v==='string'&&(key==='logo'||key==='cover')){
                         v=v.trim()||null;

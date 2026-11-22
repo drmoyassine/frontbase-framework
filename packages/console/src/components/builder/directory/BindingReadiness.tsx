@@ -26,8 +26,8 @@ export function BindingReadiness({configuration,area,localData=false,identityRol
                 <a href={href} className="underline" onClick={focusLocalField ? event => {
                     if (focusBindingSetting(fragment)) event.preventDefault();
                 } : undefined}>{issue.message}</a>
-                {issue.area === 'routes' && <span> In Builder, open Page settings → Directory → Shared routes.</span>}
-                {issue.area === 'data' && !identity && !localData && <span> In Builder, open Page settings → Directory → Directory source fields.</span>}
+                {issue.area === 'routes' && <span> In Pages, open Shared routes.</span>}
+                {issue.area === 'data' && !identity && !localData && <span> In Pages, open Source field mappings.</span>}
             </li>;
         })}</ul>
         <p className="mt-3 text-xs text-muted-foreground">Existing publication filters and relationships remain enforced.</p>

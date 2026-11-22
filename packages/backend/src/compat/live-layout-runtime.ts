@@ -65,6 +65,8 @@ export async function resolveLiveLayoutPage(
     const layout = publication.siteBindingsCompiled ? authored : projectSharedDirectoryPreview(authored, c);
     const plan = directoryPlan(layout,artifact?.directoryPlan);
     const records=new Map<string,Record<string,unknown>[]>(),inactive=new Set<string>();
+    const authoredCount=(nodes:typeof layout.content,id:string):boolean=>nodes.some(node=>node.props?.directoryResultCount===true&&node.props.directoryResultsFor===id||!!node.children&&authoredCount(node.children,id));
+    const totals=new Map<string,number>();
     const needsDirectoryCount = listing && (!layout.root?.standardListComponents || plan.queries.some(query => query.binding.queryId.endsWith('.list')));
     const count = needsDirectoryCount ? read('directory.' + (listing === 'article-index' ? 'article' : type) + '.count', { q: search, match, sort, limit }) : undefined;
     const [countRows] = await Promise.all([count, ...plan.queries.map(async query=>{
@@ -81,9 +83,13 @@ export async function resolveLiveLayoutPage(
             const parent=await read('directory.institution.detail',{id:row!.institutionId});
             records.set(query.id,parent);return;
         }
+        if(relatedPrograms && authoredCount(layout.content,query.id)){
+            const [rows,count]=await Promise.all([read(query.binding.queryId,params),read('directory.program.count',params)]);
+            totals.set(query.id,Number(count[0]?.total));records.set(query.id,rows.slice(0,relatedLimit));return;
+        }
         records.set(query.id,(await read(query.binding.queryId,params)).slice(0,mode==='detail'?1:Number(params.limit)));
     })]);
-    let projected = plan.project(records, { locale, inactive, liveDetailRecords: true });
+    let projected = plan.project(records, { totals, locale, inactive, liveDetailRecords: true });
     const sourceQuery:PublishedLiveQuery=async(scopedOwner,binding,query)=>{
         if(scopedOwner!==owner)throw Error('live_source_refused');
         const collection=binding.dataSourceId==='frontbase:publication'

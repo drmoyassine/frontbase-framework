@@ -27,7 +27,7 @@ function bookingDetail(role: DetailRole, sourcePath = previewPath, prior?: PageC
     }, { ...stack, gap: '4px', width: 'auto', minWidth: '0' }, [
         node('label-' + field, 'Text', { text: detailFieldLabels[field] }, { fontSize: '0.875rem', color: '#475569' }),
         node('value-' + field, 'Container', {}, { display: 'flex', flexWrap: 'wrap', gap: '6px', fontWeight: '600' },
-            [boundText(field, field, {}, field === 'tuition' ? { format: 'number' } : {}), ...(unit ? [boundText(unit, unit)] : [])]),
+            [boundText(field, field, {}, field === 'tuition' || field === 'students' ? { format: 'number' } : {}), ...(unit ? [boundText(unit, unit)] : [])]),
     ]);
     const section = (field: DetailTextField) => node('section-' + field, 'Container', {
         _layerName: detailFieldLabels[field], recordBindings: { sectionText: field },
@@ -61,7 +61,10 @@ function bookingDetail(role: DetailRole, sourcePath = previewPath, prior?: PageC
                 recordBindings: { src: 'logo', hideWhenEmpty: true }, _layerName: 'Record logo' },
             { width: '64px', height: '64px', flexShrink: '0', padding: '4px', borderRadius: '12px' }),
             node('title-group', 'Container', {}, { flex: '1 1 220px', minWidth: '0' }, [
-                title, ...(isInstitution ? [boundText('subtitle', 'tagline', { color: '#475569' })] : [
+                title, ...(isInstitution ? [boundText('subtitle', 'tagline', { color: '#475569' }, { hideWhenEmpty:true }),
+                    node('city-country','Container',{}, {display:'flex',flexWrap:'wrap',gap:'6px'},[
+                        boundText('city','location',{}, {hideWhenEmpty:true}), boundText('country','country',{}, {hideWhenEmpty:true}),
+                    ])] : [
                     node('institution-link', 'Link', { text: 'Institution', href: '', target: '_blank', _layerName: 'Institution link',
                         recordBindings: { text: 'title', href: 'originalPath', relatedQuery } },
                     { display: 'inline-block', fontSize: '1.125rem', fontWeight: '600', overflowWrap: 'anywhere' }),
@@ -78,7 +81,7 @@ function bookingDetail(role: DetailRole, sourcePath = previewPath, prior?: PageC
         identity,
         node('header-facts', 'Container', { _layerName: 'Key facts and action' },
             { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'clamp(12px, 2vw, 22px)', minWidth: '0', width: 'auto', flex: '0 1 auto' },
-            isInstitution ? [fact('location'), fact('institutionType'), browse, action] : [
+            isInstitution ? [fact('students'), fact('institutionType'), browse, action] : [
                 fact('degree'), fact('duration', 'durationUnit'),
                 node('priced-tuition', 'Container', { _layerName: 'Tuition with currency', recordBindings: { sectionText: 'currency' } }, { width: 'auto' }, [fact('tuition', 'currency')]),
                 action,
@@ -106,6 +109,8 @@ function bookingDetail(role: DetailRole, sourcePath = previewPath, prior?: PageC
                 { display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 'clamp(16px, 3vw, 28px)', minWidth: '0' }, [overview, secondary]),
             ...(isInstitution ? [
                 section('highlights'), fact('founded'),
+                node('map','Embed',{title:'Campus location',height:'300px',loading:'lazy',recordBindings:{mapCoordinates:true}}),
+                node('social-profiles','Container',{_layerName:'Social profiles',recordBindings:{socialProfiles:true}},{display:'flex',flexWrap:'wrap',gap:'12px'}),
                 node('website', 'Link', { text: 'Visit the institution website', href: '', recordBindings: { href: 'website', hideWhenEmpty: true } },
                     { fontWeight: '600', overflowWrap: 'anywhere' }),
             ] : [section('requirements'), section('curriculum'), section('careers'), section('funding'), updated]),
@@ -129,7 +134,7 @@ function bookingDetail(role: DetailRole, sourcePath = previewPath, prior?: PageC
     return [node('page', 'Container', { _layerName: isInstitution ? 'Institution detail' : 'Program detail' },
         { ...stack, width: '100%', maxWidth: '1160px', boxSizing: 'border-box', minWidth: '0', margin: '0 auto', padding: 'clamp(16px, 4vw, 44px)', gap: 'clamp(16px, 3vw, 28px)', textAlign: 'start' }, [
             detail, ...(isInstitution ? [node('programs-heading', 'Heading', { text: 'Programs at this institution', level: '2',
-                directoryResultsFor: related.id }, labelStyle)] : []), related,
+                directoryResultsFor: related.id }, labelStyle),node('program-total','Text',{_layerName:'Matching programs', directoryResultsFor:related.id,directoryResultCount:true})] : []), related,
         ])];
 }
 
@@ -186,6 +191,34 @@ export function upgradeBookingDetail(layout: PageLayoutData): PageLayoutData | u
     if (marker?.version !== 1 || (role !== 'institution' && role !== 'program')) return;
     const prefix = 'bfx-' + role + '-';
     const priorPage = layout.content.find(node => node.id === prefix + 'page');
+    if (role === 'institution' && priorPage) {
+        const starter = bookingDetail(role)[0]!;
+        const nodes = (root: PageComponent) => {
+            const byId = new Map<string, PageComponent>();
+            const visit = (node: PageComponent) => { byId.set(node.id,node); node.children?.forEach(visit); };
+            visit(root); return byId;
+        };
+        const live = nodes(priorPage), next = nodes(starter);
+        const additions = [
+            ['title-group','city-country'], ['header-facts','fact-students'], ['2','map'],
+            ['2','social-profiles'], ['page','program-total'],
+        ];
+        if (additions.every(([,id]) => live.has(prefix+id)) ||
+            additions.some(([parent]) => !live.has(prefix+parent))) return;
+        const upgrade = (node: PageComponent): PageComponent => {
+            const children = node.children?.filter(child => !(node.id===prefix+'header-facts' && child.id===prefix+'fact-location'
+                && child.props?.recordBindings && !child.versions?.length)).map(upgrade);
+            for (const [parent,id] of additions) if (children && node.id===prefix+parent && !live.has(prefix+id)) {
+                const addition=next.get(prefix+id)!;
+                if(id==='program-total')children.splice(Math.max(0,children.findIndex(child=>child.id===prefix+'related')),0,addition);
+                else children.push(addition);
+            }
+            const props=node.id===prefix+'subtitle' && (node.props?.recordBindings as {text?:string})?.text==='tagline'
+                ? {...node.props,recordBindings:{text:'tagline',hideWhenEmpty:true}} : node.props;
+            return {...node,props,...(children?{children}:{})};
+        };
+        return {...layout,content:layout.content.map(node=>node===priorPage?upgrade(node):node)};
+    }
     if (role === 'program' && priorPage) return refineProgramDetail(layout, priorPage);
     const old = layout.content.find(node => node.id === prefix + '1');
     if (!old || old.type !== 'Container' || old.binding || old.versions?.length || old.visibilityCondition ||

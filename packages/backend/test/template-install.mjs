@@ -43,11 +43,25 @@ for(const versionId of ['default','programs']){
 assert.ok(Object.hasOwn(repeater.versions[0].overrides.props,'binding'),'Programs owns an independent binding');
 const issues=await publicationBindingDiagnostics([{pageId:'explore',layout:explore}],async()=>{throw Error('unbound drafts need no datasource requests');});
 assert.deepEqual(issues.map(issue=>[issue.elementId,issue.versionId,issue.code]),[[repeater.id,'default','binding_invalid'],[repeater.id,'programs','binding_invalid']]);
+const paletteEndpoint='/api/project/booking-palette/';
+const palette={preset:'navy',colors:{primary:'#254136',text:'#18202a',surface:'#eef4fa'}};
+const savePalette=value=>app.request(paletteEndpoint,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({palette:value})});
+assert.equal((await (await app.request(paletteEndpoint)).json()).palette,null);
+assert.equal((await savePalette({preset:'navy',colors:{primary:'#ffffff'}})).status,400);
+role='viewer';assert.equal((await savePalette(palette)).status,403);role='owner';
+assert.equal((await savePalette(palette)).status,200);
+tenant='beta';assert.equal((await (await app.request(paletteEndpoint)).json()).palette,null);tenant='alpha';
 for(const locale of ['en','ar'])for(const page of pages){const authored=JSON.parse(page.layout_data),config=emptyDirectoryConfiguration();config.site={name:locale==='ar'?'دليل الدراسة':'Study directory',origin:'https://fixture.test',locale};
+ authored.content[0].styles={...authored.content[0].styles,color:'#235578'};
  const rows=new Map(directoryLayoutQueries(authored).map(q=>[q.id,[{id:'record-one',title:locale==='ar'?'برنامج دراسي':'Sample program',summary:'Editable record summary',body:[{kind:'paragraph',runs:[{text:'Editable article body العربية'}]}],byline:'Author',publishedAt:'2026-11-01',originalPath:'/sample-program/',cover:null,coverAlt:''}]]));
  const bound=projectTemplatePresentation(projectDirectoryRecords(projectSharedDirectoryPreview(authored,config),rows,{locale}),config),withMenus=await resolveAppMenuLayout(db,'alpha',bound,'/',null,config.site.name,page.id);
+ assert.equal(withMenus.root.containerStyles.values['--fb-template-primary'],palette.colors.primary);
+ assert.equal(withMenus.content.find(node=>node.type==='Navbar').styles.values.backgroundColor,palette.colors.primary);
+ assert.equal(withMenus.content.find(node=>node.type==='Footer').styles.values.backgroundColor,palette.colors.surface);
+ assert.equal(withMenus.content.find(node=>node.id===authored.content[0].id)?.styles.color,'#235578');
  const html=await renderPage(withMenus,{user:{},page:{title:page.name},app:{name:config.site.name},visitor:{},url:{},system:{},cookies:{},local:{},session:{}});assert(html.includes('Explore')||html.includes('Institutions'));assert(html.includes(config.site.name));assert(!html.includes('PRIVATE_'));assert(!html.includes('/privacy-policy/'));
 }
+assert.equal((await savePalette(null)).status,200);
 console.log('PASS six saved templates: existing shared menus, editable bindings and English/Arabic record projection through the real renderer');
 for (const role of ['institution','program']) {
  const prefix='bfx-'+role+'-';

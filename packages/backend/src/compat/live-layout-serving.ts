@@ -20,11 +20,14 @@ import {reportReadFailure} from './read-failure.js';
 import {liveLayoutSitemap} from './live-layout-sitemap.js';
 import {livePageSettings} from './live-page-settings.js';
 import {readProjectSettings} from './assets.js';
+import {BOOKING_PALETTE_KEY} from './booking-site-palette.js';
+import type {BookingPalette} from '@frontbase/edge-core/directory/configuration';
 
 export interface LiveLayoutServingOptions{
     host:LiveLayoutHost;liveQuery:PublishedLiveQuery;swBundle?:string;frontendEditing?:boolean;
     /** Supplied only by the authenticated private preview route, never visitor input. */
     prepared?:{pointer:LiveLayoutPointer;layout:LiveLayoutIndex;loadLayout?:LoadLiveLayout};
+    previewPalette?:BookingPalette;
     resolveAudience?(owner:string,request:Request):Promise<VerifiedMenuAudience>;
 }
 export interface LiveLayoutSurface{layout:PageLayoutData;pageId:string;locale:string;sourceLocale:string;version:string}
@@ -77,8 +80,9 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const displayPlan = resolved.displayPlan ?? liveDisplayPlan(publication as Parameters<typeof liveDisplayPlan>[0], resolved.sourcePageId);
         const menuHash=(resolved.page.layout.root?.appMenus as {hash?:unknown}|undefined)?.hash;
         const settings=await livePageSettings(db,owner,['project','frontend_copy:active:v1',...(locale!==sourceLocale?['translation_storage:v1']:[]),
+            ...(resolved.page.layout.root?.bookingForX? [BOOKING_PALETTE_KEY] : []),
             ...(typeof menuHash==='string'&&/^[a-f0-9]{64}$/.test(menuHash)?['app_menus:publication:v1:'+menuHash]:[])]);
-        let layout=await resolveAppMenuLayout(settings,owner,resolved.page.layout,sourceUrl.pathname,audience,publication.configuration.site.name,resolved.sourcePageId);
+        let layout=await resolveAppMenuLayout(settings,owner,resolved.page.layout,sourceUrl.pathname,audience,publication.configuration.site.name,resolved.sourcePageId,options.previewPalette);
         layout=(await projectFrontendCopy(settings,owner,resolved.sourcePageId,layout,locale,false)).layout;
         let localizedFields:LiveDisplayField[]|undefined;
         if(locale!==sourceLocale){

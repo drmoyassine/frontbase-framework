@@ -28,6 +28,8 @@ export const directoryRecordBindingSchema = z.object({
     text: z.enum(['title', 'summary', 'body', 'byline', 'publishedAt', ...detailTextFields]).optional(), href: z.enum(['originalPath','website']).optional(),
     fallbackText: z.literal('summary').optional(),
     sectionText: z.enum(['body', 'summary', ...detailTextFields]).optional(),
+    mapCoordinates: z.literal(true).optional(),
+    socialProfiles: z.literal(true).optional(),
     blocks: z.literal('body').optional(),
     ariaLabel: z.literal('title').optional(),
     src: z.enum(['cover', 'logo']).optional(), alt: z.enum(['title','coverAlt']).optional(),
@@ -108,6 +110,7 @@ function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: Publ
                 if (record.text && !['Text', 'Heading', 'Paragraph', 'Link', 'Badge'].includes(node.type)
                     || record.fallbackText && (record.text ?? record.sectionText) !== 'body'
                     || record.sectionText && (node.type !== 'Container' || Object.keys(record).length !== (record.fallbackText ? 2 : 1))
+                    || record.mapCoordinates && node.type !== 'Embed' || record.socialProfiles && node.type !== 'Container'
                     || record.format === 'date' && !dateFields.has(record.text ?? '')
                     || record.format === 'number' && !numericFields.has(record.text ?? '')
                     || record.relatedQuery && !record.text && !record.href
@@ -200,7 +203,7 @@ function directoryProjection<T extends PageLayoutData>(
 ) {
     const queries = Object.freeze(requests.map(query =>
         Object.freeze({ ...query, binding: Object.freeze({ ...query.binding, params: Object.freeze({ ...query.binding.params }) }) })));
-    const project = (records: Map<string, Record<string, unknown>[]>, options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean } = {}) =>
+    const project = (records: Map<string, Record<string, unknown>[]>, options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean; totals?: ReadonlyMap<string, number> } = {}) =>
         projectCompiledDirectory(layout, instructions, records, options);
     return Object.freeze({ queries, project, projectPresentation });
 }
@@ -315,7 +318,7 @@ function projectCompiledDirectory<T extends PageLayoutData>(
     layout: T,
     instructions: DirectoryInstructions,
     records: Map<string, Record<string, unknown>[]>,
-    options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean },
+    options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean; totals?: ReadonlyMap<string, number> },
 ): T {
     const queries = new Map(instructions.queries.map(query => [query.id, query.binding]));
     const inactive = options.inactive;
@@ -328,6 +331,11 @@ function projectCompiledDirectory<T extends PageLayoutData>(
         const resultSource = props.directoryResultsFor;
         if (typeof resultSource === 'string' && resultSource) {
             delete props.directoryResultsFor;
+            if (props.directoryResultCount === true) {
+                const total = options.totals?.get(resultSource);
+                return total && total > 0 ? { ...node, props: { ...props, text: String(total), translationLiteral: 'count' } }
+                    : { id: node.id, type: 'Container', styles: { display: 'none' }, children: [] };
+            }
             if (!records.get(resultSource)?.length) return { id: node.id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
         }
         if(controlsOwned && props.directoryBrowsing!==undefined)return {...node,props:{},styles:{display:'none'},children:[]};
@@ -370,6 +378,24 @@ function projectCompiledDirectory<T extends PageLayoutData>(
                 collection = options.liveDetailRecords ? 'institutions' : undefined;
             }
             const record = row;
+            if (b.mapCoordinates) {
+                const coordinate = (v: unknown) => typeof v === 'number' || typeof v === 'string' && v.trim() ? Number(v) : NaN;
+                const lat = coordinate(row.latitude), lon = coordinate(row.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180 || !lat && !lon) return hidden();
+                const bounds = [Math.max(-180,lon-.025), Math.max(-90,lat-.015), Math.min(180,lon+.025), Math.min(90,lat+.015)];
+                return { ...node, id, props: { ...rest, embedType:'iframe', src:'https://www.openstreetmap.org/export/embed.html?bbox='+bounds.join(',')+'&layer=mapnik&marker='+lat+','+lon } };
+            }
+            if (b.socialProfiles) {
+                let profiles = row.socialProfiles;
+                if (typeof profiles === 'string') { try { profiles = JSON.parse(profiles); } catch { return hidden(); } }
+                if (!profiles || typeof profiles !== 'object' || Array.isArray(profiles)) return hidden();
+                const children:PageComponent[] = [];
+                for (const [name,value] of Object.entries(profiles).slice(0,32)) {
+                    const href = httpsUrl(value);
+                    if (href && /^[a-z0-9 ._-]{1,40}$/i.test(name)) children.push({id:id+'-profile-'+children.length,type:'Link',props:{text:name,href,target:'_blank'}});
+                }
+                return children.length ? {...node,id,props:rest,children} : hidden();
+            }
             if (b.blocks) { const children = projectEditorialBody(row.body, id); projected += children.reduce((n,c) => n + 1 + (c.children?.length ?? 0), 0); if (projected > 4000) throw new Error('directory_projection_size'); return { ...node, id, props: rest, children }; }
             const hasText = (field: string) => numericFields.has(field)
                 ? (typeof record[field] === 'number' || typeof record[field] === 'string') && Number.isFinite(Number(record[field])) && Number(record[field]) > 0

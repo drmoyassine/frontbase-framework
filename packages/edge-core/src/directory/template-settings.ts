@@ -4,10 +4,11 @@ import type { PageLayoutData, PageComponent } from '../ssr/types.js';
 import { isFrozenPlainData } from '../ssr/styleHelpers.js';
 
 const color = z.string().regex(/^#[a-fA-F0-9]{6}$/);
+export const bookingPaletteColorsSchema = z.object({ background: color.optional(), surface: color.optional(), text: color.optional(), muted: color.optional(), primary: color.optional(), border: color.optional() }).strict();
 const copy = (n: number) => z.string().max(n).refine(v => !/[\x00-\x08]/.test(v));
 export const templateSettingsSchema = z.object({
     version: z.literal(1), preset: z.enum(['navy', 'charcoal']),
-    colors: z.object({ background: color.optional(), surface: color.optional(), text: color.optional(), muted: color.optional(), primary: color.optional(), border: color.optional() }).strict(),
+    colors: bookingPaletteColorsSchema,
     font: z.enum(['system', 'serif']), width: z.number().int().min(900).max(1440), spacing: z.number().int().min(24).max(88), radius: z.number().int().min(0).max(24),
     hero: z.object({ mode: z.enum(['none','image','slider']), heading: copy(240), introduction: copy(1000), height: z.number().int().min(240).max(560), mobileHeight: z.number().int().min(200).max(460),
         slides: z.array(z.object({ src: editorialCoverUrlSchema, alt: copy(500), focalX: z.number().min(0).max(100), focalY: z.number().min(0).max(100) }).strict()).max(8),
@@ -39,6 +40,12 @@ export function templateContrastIssues(input:TemplateSettings):string[]{
     const ratio=(a:string,b:string)=>{const x=lum(a),y=lum(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
     return [...(ratio(p.text,p.background)<4.5?['Text/background contrast is too low']:[]),...(ratio('#ffffff',p.primary)<4.5?['Primary color needs enough contrast with white button/header text']:[])];
 }
+export const bookingPaletteSchema = templateSettingsSchema.pick({ preset: true, colors: true }).superRefine((palette, context) => {
+    for (const message of templateContrastIssues({ ...defaultTemplateSettings(), ...palette })) {
+        context.addIssue({ code: 'custom', message });
+    }
+});
+export type BookingPalette = z.infer<typeof bookingPaletteSchema>;
 export function readLandingSettings(layout: PageLayoutData): TemplateSettings | undefined {
     return layout.root?.directoryLanding === undefined ? undefined : landingRootSchema.parse(layout.root.directoryLanding).settings;
 }
@@ -92,7 +99,7 @@ export function landingQueryParams(layout:PageLayoutData,id:string,params:Record
     return limit === undefined ? params : {...params, limit};
 }
 const literal=(s:string)=>s.replace(/\{(?=[{%])/g,'{\u200b');
-const hsl=(hex:string)=>{const [r,g,b]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255) as [number,number,number];const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min,l=(max+min)/2;let h=0,s=0;if(d){s=d/(1-Math.abs(2*l-1));h=max===r?((g-b)/d)%6:max===g?(b-r)/d+2:(r-g)/d+4;h=(h*60+360)%360;}return `${h.toFixed(2)} ${(s*100).toFixed(2)}% ${(l*100).toFixed(2)}%`;};
+export const templateColorHsl=(hex:string)=>{const [r,g,b]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255) as [number,number,number];const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min,l=(max+min)/2;let h=0,s=0;if(d){s=d/(1-Math.abs(2*l-1));h=max===r?((g-b)/d)%6:max===g?(b-r)/d+2:(r-g)/d+4;h=(h*60+360)%360;}return `${h.toFixed(2)} ${(s*100).toFixed(2)}% ${(l*100).toFixed(2)}%`;};
 function compileLandingPresentation(s: TemplateSettings) {
     const p=paletteForValidatedSettings(s);
     const slots:Record<string,Record<string,unknown>>={
@@ -103,7 +110,7 @@ function compileLandingPresentation(s: TemplateSettings) {
         muted:{color:'hsl(var(--muted-foreground))'},
     };
     const values={programHeading:s.programHeading,articleHeading:s.articleHeading,counselorHeading:s.counselorHeading,counselorCopy:s.counselorCopy};
-    const rootStyles={'--fb-template-primary':p.primary,'--fb-template-width':`${s.width}px`,'--primary':hsl(p.primary),'--primary-foreground':'0 0% 100%','--background':hsl(p.background),'--foreground':hsl(p.text),'--muted':hsl(p.surface),'--border':hsl(p.border),'--muted-foreground':hsl(p.muted)};
+    const rootStyles={'--fb-template-primary':p.primary,'--fb-template-width':`${s.width}px`,'--primary':templateColorHsl(p.primary),'--primary-foreground':'0 0% 100%','--background':templateColorHsl(p.background),'--foreground':templateColorHsl(p.text),'--muted':templateColorHsl(p.surface),'--border':templateColorHsl(p.border),'--muted-foreground':templateColorHsl(p.muted)};
     const mergedSlots = new Map<string, WeakMap<object, Record<string, unknown>>>();
     const emptyStyles = Object.freeze({});
     for (const slot of Object.values(slots)) Object.freeze(slot);

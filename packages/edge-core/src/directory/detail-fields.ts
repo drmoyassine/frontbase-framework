@@ -1,8 +1,8 @@
-export const institutionDetailFields = ['tagline', 'location', 'country', 'institutionType', 'founded', 'address', 'highlights'] as const;
+export const institutionDetailFields = ['tagline', 'location', 'country', 'institutionType', 'founded', 'address', 'highlights', 'students', 'latitude', 'longitude', 'socialProfiles'] as const;
 export const programDetailFields = ['institutionName', 'degree', 'duration', 'durationUnit', 'tuition', 'currency', 'intakes', 'requirements', 'curriculum', 'careers', 'funding', 'updatedAt'] as const;
 export const detailTextFields = [...institutionDetailFields, ...programDetailFields] as const;
 export type DetailTextField = typeof detailTextFields[number];
-export const numericDetailFields = ['duration', 'tuition', 'founded'] as const;
+export const numericDetailFields = ['duration', 'tuition', 'founded', 'students'] as const;
 export const dateDetailFields = ['publishedAt', 'updatedAt'] as const;
 const sourceValueFields = new Set<string>([...numericDetailFields, ...dateDetailFields]);
 export function isSourceDetailField(field: string): boolean {
@@ -10,6 +10,7 @@ export function isSourceDetailField(field: string): boolean {
 }
 
 export const detailFieldLabels: Record<DetailTextField, string> = {
+    students: 'Students', latitude: 'Latitude', longitude: 'Longitude', socialProfiles: 'Social profiles',
     tagline: 'Tagline',
     location: 'Location',
     country: 'Country',

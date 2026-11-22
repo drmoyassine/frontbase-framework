@@ -5,9 +5,7 @@
  *  - debounce ~120ms (coalesce rapid mutations: inline-edit typing, Phase C
  *    style-slider drags) so the worker isn't stampeded;
  *  - abort any in-flight request (the layout already superseded it);
- *  - render the page and store the returned HTML;
- *  - bump `renderNonce` so consumers can re-run post-load work (stamping,
- *    rect measurement, selection listener attach, selection restore).
+ *  - render the page and store the returned HTML for the iframe's load event.
  *
  * PHASE E RENDER PATH (SW-first, network fallback):
  *  1. PRIMARY — POST the reserved same-origin path /__fb_builder_render__ with
@@ -51,7 +49,6 @@ export interface UseIframeCanvasResult {
     status: IframeStatus;
     error: string | null;
     /** Monotonically bumped after each successful render commit. */
-    renderNonce: number;
 }
 
 const DEBOUNCE_MS = 120;
@@ -65,7 +62,6 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly 
     const [html, setHtml] = useState('');
     const [status, setStatus] = useState<IframeStatus>('idle');
     const [error, setError] = useState<string | null>(null);
-    const [renderNonce, setRenderNonce] = useState(0);
     const [focusRevision, setFocusRevision] = useState(0);
     useEffect(() => { const refresh = () => setFocusRevision(n => n + 1); window.addEventListener('focus', refresh); return () => window.removeEventListener('focus', refresh); }, []);
 
@@ -113,7 +109,6 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly 
                 if (cancelled) return;
                 setHtml(html);
                 setStatus('ready');
-                setRenderNonce((n) => n + 1);
             };
 
             // Only attempt the SW primary path when a Service Worker is actually
@@ -190,5 +185,5 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly 
         systemEdgeUrl,
     ]);
 
-    return { html, status, error, renderNonce };
+    return { html, status, error };
 }

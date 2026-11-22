@@ -41,6 +41,17 @@ try{
  assert.equal(unbound.status,422);
  assert.equal((await unbound.json()).elementIssues[0].code,'binding_invalid');
  const liveStore=new LiveLayoutPublicationStore(db,owner);await liveStore.publish(prepared.hash,null,now);
+ // Home now has an invalid unpublished binding. A single-layout release must carry
+ // forward its published artifact without reading that unrelated draft.
+ const other=await pages.create({name:'About',slug:'about',layout_data:{root:{},content:[]}},crypto.randomUUID(),now);
+ await pages.publish(other.id,'local',now);
+ const single={...input,pageIds:[other.id],baseHash:prepared.hash};
+ const reviewed=await post('prepare',single);
+ assert.equal(reviewed.status,200,await reviewed.clone().text());
+ const result=await liveStore.get((await reviewed.json()).hash);
+ assert.deepEqual(result.staticPages.find(p=>p.pageId===page.id),(await liveStore.get(prepared.hash)).staticPages[0]);
+ assert.ok(result.staticPages.some(p=>p.pageId===other.id));
+ assert.equal((await post('prepare',{...single,baseHash:'0'.repeat(64)})).status,409);
  for(const path of ['site-configuration/publication/prepare/','site-configuration/publication/activate/','translation-batches/homepage/prepare/','translation-batches/homepage/publish/']){
   const retired=await app.request('/api/project/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
   assert.equal(retired.status,410);assert.equal((await retired.json()).code,'snapshot_publication_retired');

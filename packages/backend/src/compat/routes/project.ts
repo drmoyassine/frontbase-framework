@@ -9,7 +9,8 @@ import type { Hono } from 'hono';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { KeyValueStore } from '../store.js';
 import { saveProjectAsset } from '../assets.js';
-import { directoryConfigurationSchema } from '@frontbase/edge-core/directory/configuration';
+import { bookingPaletteSchema, directoryConfigurationSchema } from '@frontbase/edge-core/directory/configuration';
+import { BOOKING_PALETTE_KEY } from '../booking-site-palette.js';
 
 type App = Hono<{ Variables: ConsoleAuthVars }>;
 
@@ -47,6 +48,22 @@ const DEFAULT_PROJECT = {
 };
 
 export function registerProjectRoutes(app: App, kvFor: (t: string) => KeyValueStore, now: () => string): void {
+    app.get('/api/project/booking-palette/', async c => {
+        c.header('Cache-Control', 'no-store');
+        return c.json({ palette: await kvFor(c.get('tenant')).getJson(BOOKING_PALETTE_KEY, null) });
+    });
+    app.put('/api/project/booking-palette/', async c => {
+        const role = c.get('principal')?.user?.role;
+        if (!role || !['owner', 'admin', 'tenant_admin', 'master_admin', 'master_admin_root'].includes(role)) {
+            return c.json({ detail: 'Only site administrators can change the site palette.' }, 403);
+        }
+        const body = await c.req.json().catch(() => undefined);
+        const palette = bookingPaletteSchema.nullable().safeParse(body?.palette);
+        if (!palette.success) return c.json({ detail: palette.error.issues[0]?.message ?? 'Check the site palette.' }, 400);
+        await kvFor(c.get('tenant')).setJson(BOOKING_PALETTE_KEY, palette.data, now());
+        c.header('Cache-Control', 'no-store');
+        return c.json({ palette: palette.data });
+    });
     // GET /api/project/
     app.get('/api/project/', async (c) => {
         const ts = now();

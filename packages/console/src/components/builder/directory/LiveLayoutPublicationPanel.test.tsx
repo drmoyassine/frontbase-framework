@@ -26,3 +26,19 @@ it('changing language invalidates the reviewed candidate',async()=>{
     fireEvent.click(screen.getByText('Review saved layouts'));await screen.findByText('Publish reviewed layouts');
     fireEvent.click(screen.getByLabelText('ar'));await waitFor(()=>expect(screen.queryByText('Publish reviewed layouts')).toBeNull());
 });
+
+it('reviews one saved layout against the displayed live version and carries its languages forward',async()=>{
+    let input:Record<string,unknown>|undefined;
+    vi.stubGlobal('fetch',vi.fn(async(url:string,init?:RequestInit)=>{
+        if(url==='/api/pages/')return json({data:[{id,name:'Program',isPublic:true,layoutData:{root:{siteConfiguration:{role:'program'}}}}]});
+        if(url.includes('/records/'))return json({records:[{path:'/example-program/'}]});
+        if(url.endsWith('/prepare/')){input=JSON.parse(init!.body as string);return json({hash});}
+        return json({pointer:{hash,generation:5},pageIds:[id,'another-live-page'],locales:['en','ar'],availableLocales:['en','ar']});
+    }));
+    render(<LiveLayoutPublicationPanel draft={draft} single currentPageId={id}/>);
+    fireEvent.click(screen.getByText('Load saved layout'));
+    fireEvent.click(await screen.findByText('Review saved layouts'));
+    await screen.findByText('Publish reviewed layouts');
+    expect(input).toEqual({pageIds:[id],locales:['en','ar'],expectedConfigurationRevision:1,baseHash:hash});
+    expect(screen.getByRole('link',{name:'Preview reviewed page'}).getAttribute('href')).toContain('path=%2Fexample-program%2F');
+});

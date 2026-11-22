@@ -56,8 +56,8 @@
 .builder-canvas {
   flex: 1;
   min-width: 0;
-  /* Prevent flex overflow */
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
   background: hsl(var(--muted) / 0.3);
   order: 2;
 }

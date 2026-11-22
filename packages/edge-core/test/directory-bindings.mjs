@@ -225,3 +225,11 @@ const styledBrowsingHtml=await renderPage(projectDirectoryBrowsing(styledBrowsin
 assert.ok(styledBrowsingHtml.includes('fb-layout fb-container'));assert.ok(styledBrowsingHtml.includes('padding:24px'));
 assert.ok(styledBrowsingHtml.includes('padding:8px'));assert.ok(styledBrowsingHtml.includes('[id="browse"]{display:none!important}'));
 console.log('directory browsing retains the existing Container responsive styles and viewport visibility');
+const institutionLayout = {content:createBookingDetail('institution')};
+const renderInstitution = async (fields, total) => renderPage(projectDirectoryRecords(institutionLayout,new Map([
+    ['bfx-institution-1',[{id:2,title:'Campus',...fields}]],['bfx-institution-related',[{id:5,title:'Program',originalPath:'/program/'}]]
+]),{locale:'en',totals:new Map([['bfx-institution-related',total]])}),{user:null,page:{},app:{},visitor:{},url:{},system:{},cookies:{},local:{},session:{}});
+const richInstitution = await renderInstitution({students:18500,latitude:'42',longitude:'-71',socialProfiles:{LinkedIn:'https://example.com/campus'},founded:1900,tagline:'Learn together',institutionType:'Public university',location:'Boston',country:'USA'},108);
+for (const value of ['18,500','openstreetmap.org/export/embed.html','https://example.com/campus','>108<','1900','Learn together','Public university','Boston','USA']) assert.ok(richInstitution.includes(value),value);
+const sparseInstitution = await renderInstitution({latitude:'',longitude:42,socialProfiles:{invalid:'not a URL'}},0);
+assert.doesNotMatch(sparseInstitution,/openstreetmap.org|Iframe URL not set|>Students<|>Founded<|>Tagline</);
