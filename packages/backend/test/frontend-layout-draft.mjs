@@ -109,7 +109,7 @@ try {
         window.fetch = (url, init = {}) => app.request(new URL(url, window.location.href).href, { ...init, headers: { ...init.headers, Origin: 'http://localhost' } });
         const document = window.document;
         assert.equal(document.documentElement.dir, locale === 'ar' ? 'rtl' : 'ltr');
-        const button = label => [...document.querySelectorAll('[data-frontbase-editor] button')].find(node => node.textContent === label);
+        const button = label => [...document.querySelectorAll('[data-frontbase-editor] button')].find(node => node.getAttribute('aria-label') === label);
         const click = label => { assert.ok(button(label), label); button(label).click(); };
         await window.eval(FRONTEND_EDITOR_SCRIPT);
         const pencil = document.querySelector('[data-pencil]');

@@ -61,8 +61,7 @@ export function createRichEditor(element: HTMLElement, options: Options) {
         extensions: [Document, Paragraph, Text, Bold, Italic, limits],
         content: initialDocument(options),
         editorProps: {
-            attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label,
-                style: 'min-height:3.5rem;max-height:11rem;overflow:auto;white-space:pre-wrap;padding:6px;border:1px solid #94a3b8;border-radius:6px' },
+            attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label },
             handleKeyDown(_view, event) {
                 if (event.key !== '@' || event.isComposing) return false;
                 options.onMention();

@@ -6,10 +6,10 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  const labels=arabic?{layout:'التخطيط',block:'العنصر',earlier:'نقل للأعلى',later:'نقل للأسفل',drag:'اسحب لنقل العنصر',less:'تضييق',more:'توسيع',save:'حفظ مسودة التخطيط',close:'إغلاق التخطيط',discard:'تجاهل التعديلات',pending:'تعديلات غير محفوظة',saved:'تم حفظ المسودة',conflict:'تغيّرت المسودة. أعد التحميل قبل الحفظ.',failed:'تعذر فتح المسودة أو حفظها.',scope:'مسودة التخطيط المشتركة',desktop:'سطح المكتب',tablet:'جهاز لوحي',mobile:'هاتف'}:{layout:'Layout',block:'Tile',earlier:'Move earlier',later:'Move later',drag:'Drag to move tile',less:'Narrower',more:'Wider',save:'Save layout draft',close:'Close layout',discard:'Discard layout changes',pending:'unsaved layout changes',saved:'Layout draft saved',conflict:'The layout draft changed. Reload before saving.',failed:'The layout draft could not be opened or saved.',scope:'Shared layout draft',desktop:'Desktop',tablet:'Tablet',mobile:'Mobile'};
  const formatLabels=arabic?{box:'محاذاة الصندوق',text:'محاذاة النص',left:'يسار',center:'وسط',right:'يمين',bold:'عريض',italic:'مائل',selection:'حدّد كلمات لتنسيقها',phrase:'النص المحدد',ambiguous:'حدّد عبارة فريدة أقصر.'}:{box:'Box alignment',text:'Text alignment',left:'Left',center:'Center',right:'Right',bold:'Bold',italic:'Italic',selection:'Select words to format',phrase:'Selected text',ambiguous:'Select a shorter, unique phrase.'};
  let draft, tiles=[], originalOrder=[], changes=[], selected, waiting=false, gesture, activeLayout=false, visible=true;
- let richEditor, richTile, richModule, editorRequest=0, registryRequest;
+ let restoreText, richEditor, richTile, richModule, editorRequest=0, registryRequest;
  const path=location.pathname+location.search;
  const panel=document.createElement('div');
- panel.hidden=true;panel.style.flexBasis='100%';
+ panel.className='fb-layout-panel';panel.hidden=true;panel.style.flexBasis='100%';
  const scope=document.createElement('strong');scope.textContent=labels.scope;
  const chooser=document.createElement('select');chooser.setAttribute('aria-label',labels.block);
  const feedback=document.createElement('div');feedback.setAttribute('role','status');
@@ -39,8 +39,8 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  const alignmentLabel=document.createElement('label');alignmentLabel.append(alignment);
  alignment.append(new Option('—',''),...['left','center','right'].map(value=>new Option(formatLabels[value],value)));
  alignment.onchange=()=>{if(alignment.value)setStyle(getSelected().text?'textAlign':'horizontalAlign',alignment.value);};
- const wordsInput=document.createElement('div');
- const preview=document.createElement('span');preview.setAttribute('aria-label',formatLabels.phrase);
+
+
  const bindings=document.createElement('button');bindings.type='button';bindings.textContent=arabic?'@ إدراج متغير':'@ Insert variable';
  const variableMenu=document.createElement('div');variableMenu.hidden=true;
  const search=document.createElement('input');search.type='search';search.setAttribute('aria-label',arabic?'بحث المتغيرات':'Search variables');
@@ -55,10 +55,15 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  const marks=['bold','italic'].map(mark=>{
   const control=document.createElement('button');control.type='button';control.textContent=formatLabels[mark];control.onclick=()=>toggleMark(mark);return control;
  });
- format.append(alignmentLabel,wordsInput,...marks,preview,bindings,variableMenu);
- panel.append(scope,chooser,viewportLabel,toolbar,format,feedback);
+ format.className='fb-tool-group';format.append(alignmentLabel,...marks,bindings,variableMenu);
+ const draftActions=document.createElement('div');draftActions.className='fb-tool-group';
+ draftActions.append(saveDraft,discard,restoreDraft,exit);
+ panel.append(scope,chooser,viewportLabel,toolbar,format,draftActions,feedback);
  const open=document.createElement('button');open.type='button';open.textContent=labels.layout;open.onclick=load;container.append(open,panel);
- const nodes=new Map(), originalSizes=new Map();
+ for(const [control,glyph] of [[earlier,'up'],[later,'down'],[drag,'drag'],[less,'narrow'],[more,'wide'],[saveDraft,'save'],[discard,'undo'],[exit,'close'],[restoreDraft,'history'],[matchBox,'match'],[bindings,'at'],[insertVariable,'add'],[clearVariable,'minimize'],[marks[0],'bold'],[marks[1],'italic'],[open,'layout']])tool(control,control.textContent,glyph);
+ marks.forEach(control=>control.onmousedown=event=>event.preventDefault());
+ toolbar.className='fb-tool-group';
+ const nodes=new Map(), originalSizes=new Map(), textPreviews=new Map();
  const viewport=()=>matchMedia('(max-width:640px)').matches?'mobile':matchMedia('(max-width:1024px)').matches?'tablet':'desktop';
  const getSelected=()=>tiles.find(tile=>tile.id===selected);
  const width=(tile,mode)=>mode==='desktop'?tile.widths.desktop:mode==='tablet'?tile.widths.tablet??tile.widths.desktop:tile.widths.mobile??tile.widths.tablet??tile.widths.desktop;
@@ -138,15 +143,22 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
    reference.replaceChildren(new Option('—',''),...tiles.filter(item=>!item.text&&item.id!==selected&&nodes.has(item.id)).map(item=>new Option(item.label,item.id)));
    reference.value=[...reference.options].some(option=>option.value===oldReference)?oldReference:'';
   }
-  preview.hidden=wordsInput.hidden=bindings.hidden=!tile?.text;
+  less.hidden=more.hidden=range.hidden=!tile||tile.text;bindings.hidden=!tile?.text;
   marks.forEach(control=>{control.hidden=!tile?.text;});
-  if(richTile!==selected)void openText(tile);
+  if(visible&&richTile!==selected)void openText(tile);
   if(!variableMenu.hidden)showVariable();
   showMarks();
   positionHandle();
  }
+ function closeText(){
+  editorRequest++;restoreText?.();restoreText=null;richEditor?.destroy();richEditor=null;richTile=null;
+ }
+ function clearPreview(id){
+  const preview=textPreviews.get(id);
+  if(preview){preview.element.replaceWith(...preview.original);textPreviews.delete(id);}
+ }
  async function openText(tile){
-  richEditor?.destroy();richEditor=null;richTile=selected;
+  closeText();richTile=selected;
   const token=++editorRequest;
   if(!tile?.text)return;
   try{
@@ -154,8 +166,22 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
    const {createRichEditor}=await richModule;
    if(token!==editorRequest)return;
    const node=nodes.get(tile.id),editable=!!draft.source&&tile.editableText!==undefined;
-   richEditor=createRichEditor(wordsInput,{label:formatLabels.selection,editable,
-    text:editable?tile.editableText:(node.querySelector(':scope > [data-fb-inline-copy]')??node).textContent??'',
+   clearPreview(tile.id);
+   const content=node.querySelector(':scope > [data-fb-inline-copy]')??node;
+   const originalNodes=[...content.childNodes],text=editable?tile.editableText:content.textContent??'';
+   const host=document.createElement('span');host.dataset.fbInlineEditor='';
+   content.replaceChildren(host);
+   restoreText=()=>{
+    const rendered=host.querySelector('.ProseMirror');
+    if(!visible||!rendered){host.replaceWith(...originalNodes);return;}
+    const element=document.createElement('span');
+    for(const [index,line] of [...rendered.children].entries()){
+     if(index)element.append(document.createElement('br'));
+     for(const child of line.childNodes)if(child.nodeName!=='BR')element.append(child.cloneNode(true));
+    }
+    host.replaceWith(element);textPreviews.set(tile.id,{element,original:originalNodes});
+   };
+   richEditor=createRichEditor(host,{label:formatLabels.selection,editable,text,
     onMention:()=>void openVariables(),onSelection:showMarks,onMark:toggleMark,emphasis:tile.emphasis,
     onText:value=>{
      if(!editable||waiting)return;
@@ -165,7 +191,7 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
      tile.editableText=value;stage({kind:'text',id:tile.id,value});
     }});
    showMarks();
-  }catch{if(token===editorRequest)feedback.textContent=labels.failed;}
+  }catch{if(token===editorRequest){closeText();feedback.textContent=labels.failed;}}
  }
  async function openVariables(){
   const tile=getSelected();
@@ -231,7 +257,7 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
   const bold=quote.phrase?hasMark(tile,quote,'bold'):tile&&style(tile,'fontWeight')==='700';
   const italic=quote.phrase?hasMark(tile,quote,'italic'):tile&&style(tile,'fontStyle')==='italic';
   marks.forEach((control,index)=>{control.disabled=waiting||!tile?.text;control.setAttribute('aria-pressed',String(!!(index?italic:bold)));});
-  preview.textContent=quote.phrase;preview.style.fontWeight=bold?'700':'400';preview.style.fontStyle=italic?'italic':'normal';
+
  }
  function setStyle(property,value){
   const tile=getSelected(),mode=viewport();
@@ -336,7 +362,7 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
    const result=await fetch('/api/frontend-edit/layout-draft/',{method:'PUT',headers:{'Content-Type':'application/json','X-Frontbase-Editor':'1'},body:JSON.stringify({path,pageId:draft.pageId,revision:draft.revision,...patch})});
    if(!result.ok){feedback.textContent=result.status===409?labels.conflict:labels.failed;return;}
    draft=await result.json();tiles=draft.tiles;changes=[];
-   if(patch.restoreVersionId)richTile=null;
+   if(patch.restoreVersionId){closeText();for(const id of textPreviews.keys())clearPreview(id);}
    project();feedback.textContent=patch.restoreVersionId?(arabic?'تمت استعادة المسودة':'Original draft restored'):labels.saved;
   }catch{feedback.textContent=labels.failed;}finally{waiting=false;show(true);}
  }
@@ -452,13 +478,14 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  const targetTile=event=>[...tiles].reverse().find(tile=>nodes.get(tile.id)?.contains(event.target));
  window.addEventListener('click',event=>{
   if(!activeLayout||!visible||dock.contains(event.target)||event.target===canvasHandle)return;
+  if(event.target.closest?.('[data-fb-inline-editor]'))return;
   event.preventDefault();event.stopImmediatePropagation();
   const tile=targetTile(event);if(tile&&!waiting)select(tile.id);
  },true);
  window.addEventListener('resize',()=>{if(activeLayout){project();show();}});
  window.addEventListener('beforeunload',event=>{if(changes.length){event.preventDefault();event.returnValue='';}});
  const isActive=()=>activeLayout&&visible;
- isActive.setVisible=value=>{visible=value;if(!value)finishDrag(false);if(activeLayout)project();positionHandle();};
+ isActive.setVisible=value=>{visible=value;if(!value){finishDrag(false);closeText();for(const id of textPreviews.keys())clearPreview(id);}if(activeLayout){project();if(value)show();}positionHandle();};
  return isActive;
 }
 `;

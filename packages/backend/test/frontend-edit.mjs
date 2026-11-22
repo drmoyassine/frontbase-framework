@@ -27,7 +27,7 @@ await test('actual browser controller stages/re-edits/reverts/cancels before one
  Object.defineProperty(w.crypto,'randomUUID',{value:()=>crypto.randomUUID()});
  w.fetch=async(path,init={})=>{const isWrite=init.method==='POST';if(isWrite)writes++;const response=await f.app.request(new URL(path,w.location.href).href,{...init,headers:{...init.headers,...(isWrite?{Origin:w.location.origin}:{})}});if(isWrite)finished=true;return response;};
  w.localStorage.setItem('frontbase:frontend-edit-dock','open');
- await w.eval(FRONTEND_EDITOR_SCRIPT);const d=w.document,click=label=>{const b=[...d.querySelectorAll('[data-frontbase-editor] button')].find(b=>b.textContent===label);assert.ok(b,label);b.click();};
+ await w.eval(FRONTEND_EDITOR_SCRIPT);const d=w.document,click=label=>{const b=[...d.querySelectorAll('[data-frontbase-editor] button')].find(b=>b.getAttribute('aria-label')===label);assert.ok(b,label);b.click();};
  const first=d.querySelector('#hero [data-fb-copy]'),second=d.querySelector('#intro [data-fb-copy]');assert.ok(first);assert.ok(second);
  let pageClickActions=0;d.addEventListener('click',()=>pageClickActions++,true);
  first.click();assert.equal(pageClickActions,0,'editor intercepts configured document click actions');first.textContent='First edit';click('Done');assert.equal(writes,0);assert.ok(first.hasAttribute('data-dirty'));
@@ -44,7 +44,7 @@ await test('responsive menu copies share one staged field while independent equa
  const dom=new JSDOM('<html lang="en"><body><header id="managed-menu-header"><a href="/programs">Programs</a><a href="/programs">Programs</a></header><div id="managed-menu-ambiguous"><a href="/a">Same</a><a href="/b">Same</a></div></body></html>',{url:'https://site.example/',runScripts:'outside-only'});
  dom.window.localStorage.setItem('frontbase:frontend-edit-dock','open');
  dom.window.fetch=async path=>Response.json(String(path).includes('capability')?{enabled:true}:{fields,token:'x'});await dom.window.eval(FRONTEND_EDITOR_SCRIPT);
- const spans=dom.window.document.querySelectorAll('[data-fb-copy="a"]');assert.equal(spans.length,2);assert.equal(dom.window.document.querySelectorAll('#managed-menu-ambiguous [data-fb-copy]').length,0);spans[0].click();spans[0].textContent='Courses';[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='Done').click();assert.equal(spans[1].textContent,'Courses');assert.match(dom.window.document.querySelector('[data-edit-status]').textContent,/1 unsaved/);dom.window.close();
+ const spans=dom.window.document.querySelectorAll('[data-fb-copy="a"]');assert.equal(spans.length,2);assert.equal(dom.window.document.querySelectorAll('#managed-menu-ambiguous [data-fb-copy]').length,0);spans[0].click();spans[0].textContent='Courses';[...dom.window.document.querySelectorAll('button')].find(button=>button.getAttribute('aria-label')==='Done').click();assert.equal(spans[1].textContent,'Courses');assert.match(dom.window.document.querySelector('[data-edit-status]').textContent,/1 unsaved/);dom.window.close();
 });
 
 await test('the pencil gates editing, preserves pending edits and restores ordinary interaction when minimized',async()=>{
@@ -85,7 +85,7 @@ await test('the pencil gates editing, preserves pending edits and restores ordin
  assert.equal(toggle.getAttribute('aria-expanded'),'true');
  assert.equal(d.querySelector('[data-fb-copy]').textContent,'تعديل');
  assert.equal(first.requests.length,2,'reopening without navigation uses the same inventory');
- [...d.querySelectorAll('[data-frontbase-editor] button')].find(button=>button.textContent==='عرض كزائر').click();
+ [...d.querySelectorAll('[data-frontbase-editor] button')].find(button=>button.getAttribute('aria-label')==='عرض كزائر').click();
  const second=page('/another/',w.localStorage.getItem('frontbase:frontend-edit-dock'));w.close();
  await second.w.eval(FRONTEND_EDITOR_SCRIPT);assert.equal(second.requests.length,1);
  const nextToggle=second.w.document.querySelector('[data-pencil]');assert.equal(nextToggle.getAttribute('aria-expanded'),'false');
@@ -105,7 +105,7 @@ await test('Edit record targets the detail heading and follows an explicitly sel
   {id:'institution',blockId:'institution',text:'Washington State University',recordScope:'institutions'}
  ].map(field=>({...field,path:['text'],recordKey:'same-id',label:'Title',destination:'record'}))});
  await w.eval(FRONTEND_EDITOR_SCRIPT);
- const shortcut=[...d.querySelectorAll('button')].find(button=>button.textContent==='Edit record');
+ const shortcut=[...d.querySelectorAll('button')].find(button=>button.getAttribute('aria-label')==='Edit record');
  assert.equal(shortcut.hidden,false);
  shortcut.click();const program=d.querySelector('#program [contenteditable]');assert.ok(program);
  program.getClientRects=()=>[{top:180,left:24,right:174,bottom:204}];
