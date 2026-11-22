@@ -3,7 +3,7 @@ import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 import { projectEditorialBody } from './editorial.js';
 import { validateDirectoryBrowsing, directoryBrowsingSchema } from './browsing.js';
 import { landingQueryLimit, landingRootSchema, projectTemplatePresentation, publishedLandingPresentation, templateSettingsSchema } from './template-settings.js';
-import { dateDetailFields, detailTextFields, isSourceDetailField, numericDetailFields } from './detail-fields.js';
+import { dateDetailFields, detailTextFields, directoryLiquidField, isSourceDetailField, numericDetailFields } from './detail-fields.js';
 const numericFields = new Set<string>(numericDetailFields);
 const dateFields = new Set<string>(dateDetailFields);
 let groupedNumber: Intl.NumberFormat | undefined;
@@ -448,6 +448,14 @@ function projectCompiledDirectory<T extends PageLayoutData>(
                 rest.translationRecord = { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id as string | number }],
                     ...(textField && numericFields.has(textField) ? {sourceValue:String(row[textField]), ...(b.format==='number'?{sourceFormat:'number'}:{})} : {}) };
                 rest.translationSources = recordColumns;
+            }
+        }
+        if (rest.inlineBefore !== undefined || rest.inlineAfter !== undefined) {
+            for (const slot of ['inlineBefore','inlineAfter'] as const) {
+                const field = directoryLiquidField(rest[slot]);
+                if (!field) continue;
+                const value = row?.[field];
+                rest[slot] = typeof value === 'number' && Number.isFinite(value) ? String(value) : literal(value);
             }
         }
         return { ...node, id, props: rest, ...(node.children ? { children: visible(node.children).map(child => walk(child, row, index, collection)) } : {}) };

@@ -307,10 +307,10 @@ const first=!recordAttributes.has(element);if(first)recordAttributes.set(element
 }}
 function bind(){bindRecords();for(const field of inventory.fields){if(field.blockId.startsWith('$')||['alt','ariaLabel','placeholder'].includes(field.path.at(-1)))continue;const root=document.getElementById(field.blockId);if(!root)continue;
 if(field.versionId){const parent=root.closest('[data-block-versions]');if(parent&&parent.dataset.blockActive!==field.versionId)continue;}
-const emphasis=root.querySelector(':scope > [data-fb-inline-emphasis]');
+const emphasis=root.querySelector(':scope > [data-fb-inline-emphasis], :scope > [data-fb-inline-copy] > [data-fb-inline-emphasis]');
 const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;const matches=[];
 if(emphasis&&emphasis.textContent.trim()===field.text.trim()&&!emphasis.closest('[data-fb-copy]'))matches.push(emphasis);
-else while(node=walker.nextNode()){if(node.parentElement.closest('script,style,template,[data-fb-copy],[data-frontbase-editor],[data-fb-inline-emphasis],[contenteditable],textarea,select'))continue;if(node.textContent.trim()===field.text.trim())matches.push(node);}
+else while(node=walker.nextNode()){if(node.parentElement.closest('script,style,template,[data-fb-copy],[data-frontbase-editor],[data-fb-inline-emphasis],[data-fb-inline-variable],[contenteditable],textarea,select'))continue;if(node.textContent.trim()===field.text.trim())matches.push(node);}
 // Responsive menu copies may share one field, but independent equal labels stay ambiguous.
 if(matches.length!==1){const identities=new Set(inventory.fields.filter(other=>other.blockId===field.blockId&&other.text.trim()===field.text.trim()).map(other=>other.id));const hrefs=matches.map(node=>node.parentElement.closest('a')?.getAttribute('href'));if(!field.blockId.startsWith('managed-menu-')||!matches.length||identities.size!==1||hrefs.some(href=>!href||href!==hrefs[0]))continue;}
 for(const match of matches){const span=document.createElement('span');bindableSpan(span,field.id,true);if(field.sourceValue!==undefined)displayed.set(span,match.textContent);match.replaceWith(span);

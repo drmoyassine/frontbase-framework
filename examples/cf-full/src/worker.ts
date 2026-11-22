@@ -744,6 +744,12 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         }
         return c.text('not_found', 404);
     });
+    app.get('/static/react/frontend-rich-text.js', async c => {
+        const url = new URL(c.req.url);
+        url.pathname = '/react/frontend-rich-text.js';
+        const asset = await assetResponse(new Request(url, c.req.raw), 'no-cache, must-revalidate');
+        return asset ?? c.text('not_found', 404);
+    });
     app.get('/static/react/:cssFile{entry-.+\\.css}', async (c) => {
         const cssFile = c.req.param('cssFile');
         const url = new URL(c.req.url);

@@ -22,6 +22,7 @@ import {commitFrontendRecordEdits,prepareFrontendRecordEdit} from '../frontend-r
 import {applyBlockVersion} from '@frontbase/edge-core/block-versions';
 import {resolveLiveLayoutSurface,renderLiveLayoutPublication} from '../live-layout-serving.js';
 import {writeLiveRecordTranslations} from '../live-translation.js';
+import {isFrontendLiquidVariable} from './variables.js';
 
 const pathSchema=z.string().min(1).max(2048).refine(value=>value.startsWith('/')&&!value.startsWith('//')&&!/[\\#\u0000-\u0020]/.test(value));
 const selectionSchema=z.array(z.object({componentId:z.string().min(1).max(200),versionId:z.string().min(1).max(128),ids:z.array(z.string().min(1).max(160)).min(1).max(100)}).strict()).max(8);
@@ -29,18 +30,22 @@ const saveSchema=z.object({path:pathSchema,token:z.string().regex(/^[a-f0-9]{64}
 const tileId=z.string().min(1).max(200);
 const viewport=z.enum(['desktop','tablet','mobile']);
 const styleOperation={kind:z.literal('style'),id:tileId,viewport};
-const draftInput=z.object({
-    path:pathSchema,pageId:tileId,revision:z.string().regex(/^[a-f0-9]{64}$/),
+const draftIdentity={path:pathSchema,pageId:tileId,revision:z.string().regex(/^[a-f0-9]{64}$/)};
+const draftInput=z.union([z.object({
+    ...draftIdentity,checkpoint:z.boolean().optional(),
     operations:z.array(z.union([
         z.object({kind:z.literal('move'),id:tileId,siblingId:tileId,placement:z.enum(['before','after'])}).strict(),
-        z.object({kind:z.literal('resize'),id:tileId,viewport,width:z.number().int().min(25).max(100)}).strict(),
+        z.object({kind:z.literal('resize'),id:tileId,viewport,width:z.number().min(1).max(100)}).strict(),
+        z.object({kind:z.literal('match'),id:tileId,viewport,width:z.number().min(1).max(100),offset:z.number().min(0).max(99)}).strict(),
+        z.object({kind:z.literal('text'),id:tileId,value:z.string().max(12000)}).strict(),
+        z.object({kind:z.literal('variable'),id:tileId,position:z.enum(['before','after']),path:z.string().max(110).nullable()}).strict(),
         z.object({...styleOperation,property:z.enum(['horizontalAlign','textAlign']),value:z.enum(['left','center','right'])}).strict(),
         z.object({...styleOperation,property:z.literal('fontWeight'),value:z.enum(['400','700'])}).strict(),
         z.object({...styleOperation,property:z.literal('fontStyle'),value:z.enum(['normal','italic'])}).strict(),
         z.object({kind:z.literal('emphasis'),id:tileId,phrase:z.string().min(1).max(240),mark:z.enum(['bold','italic']),enabled:z.boolean(),
             prefix:z.string().min(1).max(40).optional(),suffix:z.string().min(1).max(40).optional()}).strict(),
     ])).min(1).max(50),
-}).strict();
+}).strict(),z.object({...draftIdentity,restoreVersionId:z.string().uuid()}).strict()]);
 export function sameEditorOrigin(request:Request):boolean{
     try{const raw=request.headers.get('origin');if(!raw)return false;const origin=new URL(raw),target=new URL(request.url);
         // TLS-terminating self-host proxies retain Host but deliver HTTP internally. Permit only
@@ -109,30 +114,42 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
         const page=await pages.get(surface.pageId);
         if(!page||page.deleted_at||page.is_published)return null;
         const layout=JSON.parse(page.layout_data) as PageLayoutData;
-        return {pages,page,layout,revision:await publicationHash(page.layout_data)};
+        return {pages,page,layout,revision:await publicationHash(page.layout_data),source:surface.locale===surface.sourceLocale};
     }
     app.get('/api/frontend-edit/layout-draft/',async c=>{
         const path=pathSchema.safeParse(c.req.query('path'));
         if(!path.success)return c.json({detail:'Invalid page path'},400);
         const result=await draft(c.get('tenant'),c.req.raw,path.data);
         if(!result)return c.json({detail:'No separate layout draft is available for this page'},409);
-        return c.json({pageId:result.page.id,revision:result.revision,tiles:layoutDraftTiles(result.layout)});
+        return c.json({pageId:result.page.id,revision:result.revision,source:result.source,tiles:layoutDraftTiles(result.layout)});
     });
     app.put('/api/frontend-edit/layout-draft/',bodyLimit({maxSize:24000}),async c=>{
         const input=draftInput.safeParse(await c.req.json().catch(()=>null));
         if(!input.success)return c.json({detail:'Invalid layout changes'},400);
-        const {path,pageId,revision,operations}=input.data;
+        const {path,pageId,revision}=input.data;
         const result=await draft(c.get('tenant'),c.req.raw,path);
         if(!result||result.page.id!==pageId||result.revision!==revision)return c.json({detail:'The layout draft changed. Reload before saving.'},409);
-        let layout=result.layout;
-        for(const operation of operations){
-            const changed=applyLayoutDraftOperation(layout,operation);
-            if(!changed)return c.json({detail:'This tile cannot be moved or resized here'},422);
-            layout=changed;
+        let layout=result.layout, restoreVersionId:string|undefined;
+        let exactLayout:string|undefined;
+        if('restoreVersionId' in input.data){
+            const previous=await result.pages.getVersion(input.data.restoreVersionId);
+            if(!previous||previous.page_id!==pageId||previous.label!=='Before frontend layout edit')return c.json({detail:'Draft checkpoint not found'},404);
+            exactLayout=previous.layout_data;
+            layout=JSON.parse(exactLayout) as PageLayoutData;
+        }else{
+            for(const operation of input.data.operations){
+                if(operation.kind==='text'&&!result.source||operation.kind==='variable'&&operation.path!==null&&
+                    !operation.path.startsWith('record.')&&!isFrontendLiquidVariable(operation.path))
+                    return c.json({detail:'The text or variable is unavailable in this layout'},422);
+                const changed=applyLayoutDraftOperation(layout,operation);
+                if(!changed)return c.json({detail:'This change is unavailable for the selected element'},422);
+                layout=changed;
+            }
+            if(input.data.checkpoint)restoreVersionId=(await result.pages.snapshot(pageId,result.page.layout_data,result.page.content_hash,'Before frontend layout edit',now())).id;
         }
-        const saved=await result.pages.setLayout(pageId,layout,now(),result.page.layout_data);
+        const saved=await result.pages.setLayout(pageId,exactLayout??layout,now(),result.page.layout_data);
         if(!saved)return c.json({detail:'The layout draft changed. Reload before saving.'},409);
-        return c.json({pageId,revision:await publicationHash(saved.layout_data),tiles:layoutDraftTiles(layout)});
+        return c.json({pageId,revision:await publicationHash(saved.layout_data),source:result.source,tiles:layoutDraftTiles(layout),restoreVersionId});
     });
     app.get('/api/frontend-edit/inventory/',async c=>{
         try{const path=pathSchema.parse(c.req.query('path')),raw=c.req.query('selection');if(raw&&raw.length>16000)throw Error();const selection=raw?selectionSchema.parse(JSON.parse(raw)):undefined,s=await frontendCopySurface(app,db,c.get('tenant'),c.req.raw,path,selection,translationHost);

@@ -1775,6 +1775,10 @@ Delivered in `f79fd5b1`. Layout writes responsive box and text alignment and who
 
 Node 22 workspace build and check, four picker tests, the frontend editing suite, compatibility conformance (334 operations, zero violations or unreachable operations), and the rebuilt Chromium shared-draft test passed. Chromium verified responsive alignment, selected-word markup in Builder, live Arabic interpolation and escaping, and unchanged binding and publication state. Study-in-USA Worker `59684972-ca81-4eae-aa3f-1a7e729ce118` reached 100% with all 17 bindings. Health, six public English/Arabic routes, the deployed console asset and the signed-out draft refusal passed. The live Advertising editor offered both alignment controls, previewed bold and italic on selected words, and linked the text element to Builder. The live test discarded the staged edits. Rollback is `946a39a5-9b76-4d86-b803-e44d705c7616`.
 
+## Tiptap frontend editing and box matching
+
+Claimed on the Study-in-USA release checkout. Use Tiptap and the existing variable registry in the frontend editor, add measured box width and alignment matching, and verify draft round trips and fenced restoration without publishing.
+
 ## Booking for X program detail refinement
 
 The editable program detail starter places the institution link and location under the program title, uses intake badges and comma-grouped tuition, and includes optional requirements and a small record timestamp. The cover uses the program image first and the related institution cover when needed. The authoring controls select the relation, cover behavior, link target, field mappings and formatting. Program detail keeps its existing count of two directory queries. The draft upgrade retains the institution link identity and other authored sections and recognizes older Image covers.

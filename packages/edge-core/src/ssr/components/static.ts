@@ -143,8 +143,17 @@ function renderEmphasis(text: string, value: unknown): string {
     return `<span data-fb-inline-emphasis>${html}</span>`;
 }
 
+function textWithVariables(text: string, props: Record<string, unknown>): string {
+    const content = renderEmphasis(text, props.inlineEmphasis);
+    const before = typeof props.inlineBefore === 'string' && props.inlineBefore && !props.inlineBefore.includes('{{') ? props.inlineBefore : '';
+    const after = typeof props.inlineAfter === 'string' && props.inlineAfter && !props.inlineAfter.includes('{{') ? props.inlineAfter : '';
+    if (!before && !after) return content;
+    return (before ? `<span data-fb-inline-variable>${escapeHtml(before)} </span>` : '') +
+        `<span data-fb-inline-copy>${content}</span>` + (after ? `<span data-fb-inline-variable> ${escapeHtml(after)}</span>` : '');
+}
+
 function renderText(id: string, props: Record<string, unknown>): string {
-    const content = renderEmphasis(String(props.content || props.text || props.value || ''), props.inlineEmphasis);
+    const content = textWithVariables(String(props.content || props.text || props.value || ''), props);
     const requestedSize = String(props.size || 'base').trim();
     const literalSize = /^(?:0|(?:\d*\.)?\d+(?:px|rem|em|%|vw|vh|vmin|vmax|ch|ex))$/.test(requestedSize);
     const size = literalSize ? 'custom' : /^[a-z0-9-]+$/i.test(requestedSize) ? requestedSize : 'base';
@@ -160,7 +169,7 @@ function renderText(id: string, props: Record<string, unknown>): string {
 }
 
 function renderHeading(id: string, props: Record<string, unknown>): string {
-    const content = renderEmphasis(String(props.content || props.text || ''), props.inlineEmphasis);
+    const content = textWithVariables(String(props.content || props.text || ''), props);
     // Handle both 'h4' string format and numeric 4 format
     const levelProp = String(props.level || '2').replace(/^h/i, '');
     const level = Math.min(Math.max(Number(levelProp) || 2, 1), 6);
@@ -175,7 +184,7 @@ function renderHeading(id: string, props: Record<string, unknown>): string {
 }
 
 function renderParagraph(id: string, props: Record<string, unknown>): string {
-    const content = renderEmphasis(String(props.content || props.text || ''), props.inlineEmphasis);
+    const content = textWithVariables(String(props.content || props.text || ''), props);
     const align = props.align as string || 'inherit';  // Inherit from parent
     const color = props.color as string || 'inherit';
 

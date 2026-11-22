@@ -6,6 +6,7 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  const labels=arabic?{layout:'التخطيط',block:'العنصر',earlier:'نقل للأعلى',later:'نقل للأسفل',drag:'اسحب لنقل العنصر',less:'تضييق',more:'توسيع',save:'حفظ مسودة التخطيط',close:'إغلاق التخطيط',discard:'تجاهل التعديلات',pending:'تعديلات غير محفوظة',saved:'تم حفظ المسودة',conflict:'تغيّرت المسودة. أعد التحميل قبل الحفظ.',failed:'تعذر فتح المسودة أو حفظها.',scope:'مسودة التخطيط المشتركة',desktop:'سطح المكتب',tablet:'جهاز لوحي',mobile:'هاتف'}:{layout:'Layout',block:'Tile',earlier:'Move earlier',later:'Move later',drag:'Drag to move tile',less:'Narrower',more:'Wider',save:'Save layout draft',close:'Close layout',discard:'Discard layout changes',pending:'unsaved layout changes',saved:'Layout draft saved',conflict:'The layout draft changed. Reload before saving.',failed:'The layout draft could not be opened or saved.',scope:'Shared layout draft',desktop:'Desktop',tablet:'Tablet',mobile:'Mobile'};
  const formatLabels=arabic?{box:'محاذاة الصندوق',text:'محاذاة النص',left:'يسار',center:'وسط',right:'يمين',bold:'عريض',italic:'مائل',selection:'حدّد كلمات لتنسيقها',phrase:'النص المحدد',ambiguous:'حدّد عبارة فريدة أقصر.'}:{box:'Box alignment',text:'Text alignment',left:'Left',center:'Center',right:'Right',bold:'Bold',italic:'Italic',selection:'Select words to format',phrase:'Selected text',ambiguous:'Select a shorter, unique phrase.'};
  let draft, tiles=[], originalOrder=[], changes=[], selected, waiting=false, dragId=null, activeLayout=false, visible=true;
+ let richEditor, richTile, richModule, editorRequest=0, registryRequest;
  const path=location.pathname+location.search;
  const panel=document.createElement('div');
  panel.hidden=true;panel.style.flexBasis='100%';
@@ -19,23 +20,35 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  drag.draggable=true;
  const less=add(labels.less,()=>size(-10)),more=add(labels.more,()=>size(10));
  const range=document.createElement('input');
- range.type='range';range.min='25';range.max='100';range.style.width='96px';
+ range.type='number';range.min='1';range.max='100';range.step='0.1';range.style.width='76px';
  range.onchange=()=>setWidth(Number(range.value));
  toolbar.insertBefore(range,more);
  const saveDraft=add(labels.save,save),discard=add(labels.discard,()=>{changes=[];location.reload();}),exit=add(labels.close,()=>location.reload());
+ const restoreDraft=add(arabic?'استعادة المسودة السابقة':'Restore previous draft',()=>writeDraft({restoreVersionId:draft.restoreVersionId}));
+ const reference=document.createElement('select');reference.setAttribute('aria-label',arabic?'الصندوق المرجعي':'Reference box');
+ const matchBox=add(arabic?'مطابقة الصندوق':'Match width and alignment',matchReference);
+ toolbar.insertBefore(reference,matchBox);
  const format=document.createElement('div');
  const alignment=document.createElement('select');
  const alignmentLabel=document.createElement('label');alignmentLabel.append(alignment);
  alignment.append(new Option('—',''),...['left','center','right'].map(value=>new Option(formatLabels[value],value)));
  alignment.onchange=()=>{if(alignment.value)setStyle(getSelected().text?'textAlign':'horizontalAlign',alignment.value);};
- const wordsInput=document.createElement('textarea');wordsInput.readOnly=true;wordsInput.rows=3;wordsInput.setAttribute('aria-label',formatLabels.selection);
+ const wordsInput=document.createElement('div');
  const preview=document.createElement('span');preview.setAttribute('aria-label',formatLabels.phrase);
- const bindings=document.createElement('a');bindings.textContent=arabic?'@ ربط البيانات في المنشئ':'@ Bind in Builder';
+ const bindings=document.createElement('button');bindings.type='button';bindings.textContent=arabic?'@ إدراج متغير':'@ Insert variable';bindings.onclick=()=>void openVariables();
+ const variableMenu=document.createElement('div');variableMenu.hidden=true;
+ const search=document.createElement('input');search.type='search';search.setAttribute('aria-label',arabic?'بحث المتغيرات':'Search variables');
+ const choices=document.createElement('select');choices.setAttribute('aria-label',arabic?'متغير Liquid':'Liquid variable');
+ const placement=document.createElement('select');placement.setAttribute('aria-label',arabic?'موضع المتغير':'Variable placement');
+ placement.append(new Option(arabic?'بعد النص':'After text','after'),new Option(arabic?'قبل النص':'Before text','before'));
+ const variableSummary=document.createElement('span');
+ const insertVariable=document.createElement('button');insertVariable.type='button';insertVariable.textContent=arabic?'إدراج':'Insert';
+ const clearVariable=document.createElement('button');clearVariable.type='button';clearVariable.textContent=arabic?'إزالة المتغير':'Remove variable';
+ variableMenu.append(search,choices,placement,insertVariable,clearVariable,variableSummary);
  const marks=['bold','italic'].map(mark=>{
   const control=document.createElement('button');control.type='button';control.textContent=formatLabels[mark];control.onclick=()=>toggleMark(mark);return control;
  });
- wordsInput.onselect=showMarks;
- format.append(alignmentLabel,wordsInput,...marks,preview,bindings);
+ format.append(alignmentLabel,wordsInput,...marks,preview,bindings,variableMenu);
  panel.append(scope,chooser,viewportLabel,toolbar,format,feedback);
  const open=document.createElement('button');open.type='button';open.textContent=labels.layout;open.onclick=load;container.append(open,panel);
  const nodes=new Map(), originalSizes=new Map();
@@ -43,7 +56,7 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  const getSelected=()=>tiles.find(tile=>tile.id===selected);
  const width=(tile,mode)=>mode==='desktop'?tile.widths.desktop:mode==='tablet'?tile.widths.tablet??tile.widths.desktop:tile.widths.mobile??tile.widths.tablet??tile.widths.desktop;
  const style=(tile,key)=>tile.formatting[viewport()]?.[key]??(viewport()==='mobile'?tile.formatting.tablet?.[key]:undefined)??tile.formatting.desktop?.[key];
- const formatProperties=['margin-left','margin-right','text-align','font-weight','font-style','display'];
+ const formatProperties=['margin-left','margin-right','text-align','font-weight','font-style','display','box-sizing'];
  const restore=(node,prop,previous)=>previous[prop][0]?node.style.setProperty(prop,...previous[prop]):node.style.removeProperty(prop);
  function project(){
   const groups=new Map();
@@ -60,6 +73,8 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
    if(visible){
     const align=style(tile,'horizontalAlign'), textAlign=style(tile,'textAlign');
     if(align){node.style.setProperty('margin-left',align==='left'?'0':'auto','important');node.style.setProperty('margin-right',align==='right'?'0':'auto','important');}
+    if(align&&style(tile,'marginLeft')!==undefined)node.style.setProperty('margin-left',style(tile,'marginLeft'),'important');
+    if(style(tile,'boxSizing'))node.style.setProperty('box-sizing',style(tile,'boxSizing'),'important');
     if(textAlign){node.style.setProperty('text-align',textAlign,'important');if(getComputedStyle(node).display==='inline')node.style.setProperty('display','block','important');}
     for(const [key,property] of [['fontWeight','font-weight'],['fontStyle','font-style']])if(style(tile,key))node.style.setProperty(property,style(tile,key),'important');
    }
@@ -96,6 +111,7 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
   range.disabled=waiting||!tile||tile.text;range.value=String(tile?width(tile,viewport())??100:100);
   range.setAttribute('aria-label',labels[viewport()]+' · '+(tile?.label??labels.block));
   saveDraft.disabled=waiting||!changes.length;
+  restoreDraft.hidden=!draft?.restoreVersionId;restoreDraft.disabled=waiting||!!changes.length;
   discard.disabled=waiting||!changes.length;exit.disabled=waiting||!!changes.length;
   chooser.disabled=waiting||index<0;
   format.hidden=!tile;
@@ -105,16 +121,73 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
    alignmentLabel.replaceChildren(label+' ',alignment);
    alignment.value=style(tile,tile.text?'textAlign':'horizontalAlign')??'';
   }
-  wordsInput.hidden=preview.hidden=bindings.hidden=!tile?.text;
-  if(tile?.text)bindings.href='/frontbase-admin/builder/'+encodeURIComponent(draft.pageId)+'?element='+encodeURIComponent(tile.id);
+  const oldReference=reference.value;
+  reference.hidden=matchBox.hidden=!tile||tile.text;
+  if(tile&&!tile.text){
+   reference.replaceChildren(new Option('—',''),...tiles.filter(item=>!item.text&&item.id!==selected&&nodes.has(item.id)).map(item=>new Option(item.label,item.id)));
+   reference.value=[...reference.options].some(option=>option.value===oldReference)?oldReference:'';
+  }
+  preview.hidden=wordsInput.hidden=bindings.hidden=!tile?.text;
   marks.forEach(control=>{control.hidden=!tile?.text;});
-  if(wordsInput.dataset.element!==selected){wordsInput.dataset.element=selected??'';wordsInput.value=tile?.text?nodes.get(selected).textContent:'';wordsInput.setSelectionRange(0,0);}
+  if(richTile!==selected)void openText(tile);
+  if(!variableMenu.hidden)showVariable();
   showMarks();
  }
+ async function openText(tile){
+  richEditor?.destroy();richEditor=null;richTile=selected;variableMenu.hidden=true;
+  const token=++editorRequest;
+  if(!tile?.text)return;
+  try{
+   richModule??=import('/static/react/frontend-rich-text.js').catch(error=>{richModule=null;throw error;});
+   const {createRichEditor}=await richModule;
+   if(token!==editorRequest)return;
+   const node=nodes.get(tile.id),editable=!!draft.source&&tile.editableText!==undefined;
+   richEditor=createRichEditor(wordsInput,{label:formatLabels.selection,editable,
+    text:editable?tile.editableText:(node.querySelector(':scope > [data-fb-inline-copy]')??node).textContent??'',
+    onMention:()=>void openVariables(),onSelection:showMarks,onMark:toggleMark,emphasis:tile.emphasis,
+    onText:value=>{
+     if(!editable||waiting)return;
+     const previous=changes.findIndex(change=>change.kind==='text'&&change.id===tile.id);
+     if(previous>=0)changes.splice(previous,1);
+     if(changes.length>=50)return;
+     tile.editableText=value;stage({kind:'text',id:tile.id,value});
+    }});
+   showMarks();
+  }catch{feedback.textContent=labels.failed;richTile=null;}
+ }
+ async function openVariables(){
+  if(!getSelected()?.text||waiting)return;
+  variableMenu.hidden=false;search.focus();showVariable();
+  registryRequest??=fetch('/api/variables/registry/?page_id='+encodeURIComponent(draft.pageId),{cache:'no-store'})
+   .then(result=>{if(!result.ok)throw Error();return result.json();})
+   .catch(error=>{registryRequest=null;throw error;});
+  try{
+   const {variables}=await registryRequest;
+   const filter=()=>{
+    const query=search.value.toLowerCase();
+    const contextual=(getSelected()?.recordFields??[]).map(field=>({path:'record.'+field,description:field}));
+    choices.replaceChildren(...[...variables.filter(item=>/^(page|system)\.[a-zA-Z_][\w.]{0,100}$/.test(item.path)),...contextual].filter(item=>
+     (item.path+' '+(item.description??'')).toLowerCase().includes(query)).map(item=>new Option(item.path,item.path)));
+    insertVariable.disabled=!choices.value;
+   };
+   search.oninput=filter;filter();
+  }catch{feedback.textContent=labels.failed;}
+ }
+ function showVariable(){variableSummary.textContent=getSelected()?.variables?.[placement.value]??'';clearVariable.disabled=!variableSummary.textContent;}
+ function setVariable(path){
+  const tile=getSelected(),position=placement.value;
+  if(!tile?.text||waiting||changes.length>=50)return;
+  tile.variables[position]=path?'{{ '+path+' }}':'';
+  stage({kind:'variable',id:tile.id,position,path});
+ }
+ placement.onchange=showVariable;
+ insertVariable.onclick=()=>{if(choices.value)setVariable(choices.value);};
+ clearVariable.onclick=()=>setVariable(null);
+ search.onkeydown=event=>{if(event.key==='Enter'&&choices.value){event.preventDefault();setVariable(choices.value);}else if(event.key==='Escape'){event.stopPropagation();variableMenu.hidden=true;bindings.focus();}};
  function selectedQuote(){
-  const text=wordsInput.value,raw=text.slice(wordsInput.selectionStart,wordsInput.selectionEnd),phrase=raw.trim();
+  const selection=richEditor?.selection(),text=selection?.text??'',raw=selection?.raw??'',phrase=raw.trim();
   if(!phrase||text.indexOf(phrase)===text.lastIndexOf(phrase))return {phrase};
-  const start=wordsInput.selectionStart+raw.indexOf(phrase),end=start+phrase.length;
+  const start=selection.from+raw.indexOf(phrase),end=start+phrase.length;
   const prefix=text.slice(Math.max(0,start-40),start),suffix=text.slice(end,end+40);
   return {phrase,...(prefix?{prefix}:{}),...(suffix?{suffix}:{})};
  }
@@ -130,7 +203,9 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  function setStyle(property,value){
   const tile=getSelected(),mode=viewport();
   if(!tile||waiting||changes.length>=50)return;
-  tile.formatting[mode][property]=value;stage({kind:'style',id:tile.id,viewport:mode,property,value});
+  tile.formatting[mode][property]=value;
+  if(property==='horizontalAlign')delete tile.formatting[mode].marginLeft;
+  stage({kind:'style',id:tile.id,viewport:mode,property,value});
  }
  function toggleMark(mark){
   const tile=getSelected(),quote=selectedQuote();
@@ -141,10 +216,12 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
    return;
   }
   const context=(quote.prefix??'')+quote.phrase+(quote.suffix??'');
-  if(quote.phrase.length>240||wordsInput.value.indexOf(context)!==wordsInput.value.lastIndexOf(context)){feedback.textContent=formatLabels.ambiguous;return;}
+  const text=richEditor.selection().text;
+  if(quote.phrase.length>240||text.indexOf(context)!==text.lastIndexOf(context)){feedback.textContent=formatLabels.ambiguous;return;}
   const enabled=!hasMark(tile,quote,mark);
   tile.emphasis=tile.emphasis.filter(item=>!sameMark(item,quote,mark));
   if(enabled)tile.emphasis=[...tile.emphasis,{...quote,mark}].slice(-16);
+  richEditor.mark(mark,enabled);
   stage({kind:'emphasis',id:tile.id,...quote,mark,enabled});
  }
  function stage(operation){
@@ -170,8 +247,21 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  }
  function setWidth(value){
   const tile=getSelected(),mode=viewport();
-  if(!tile||waiting||changes.length>=50)return;
+  if(!tile||waiting||changes.length>=50||!Number.isFinite(value)||value<1||value>100)return;
   tile.widths[mode]=value;stage({kind:'resize',id:tile.id,viewport:mode,width:value});
+ }
+ function matchReference(){
+  const tile=getSelected(),node=nodes.get(selected),parent=node?.parentElement,ref=nodes.get(reference.value);
+  if(!tile||tile.text||!parent||!ref||node.contains(ref)||ref.contains(node)||waiting||changes.length>=50)return;
+  const bounds=parent.getBoundingClientRect(),css=getComputedStyle(parent),target=ref.getBoundingClientRect();
+  const left=parseFloat(css.paddingLeft)||0,right=parseFloat(css.paddingRight)||0;
+  const origin=bounds.left+(parseFloat(css.borderLeftWidth)||0)+left,available=parent.clientWidth-left-right;
+  const round=value=>Math.round(value*1000)/1000;
+  const width=round(target.width/available*100),offset=round(Math.max(0,target.left-origin)/available*100);
+  if(!available||width<1||target.left<origin-1||width+offset>100.001){feedback.textContent=arabic?'الصندوق المرجعي لا يلائم الحاوية.':'The reference box does not fit inside this parent.';return;}
+  const mode=viewport();tile.widths[mode]=width;
+  Object.assign(tile.formatting[mode],{horizontalAlign:'left',marginLeft:offset+'%',boxSizing:'border-box'});
+  stage({kind:'match',id:tile.id,viewport:mode,width,offset});
  }
  async function load(){
   if(activeLayout||active||pending.size||busy)return;
@@ -194,11 +284,17 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  }
  async function save(){
   if(waiting||!changes.length)return;
+  await writeDraft({operations:changes,checkpoint:true});
+ }
+ async function writeDraft(patch){
+  if(waiting)return;
   waiting=true;show();
   try{
-   const result=await fetch('/api/frontend-edit/layout-draft/',{method:'PUT',headers:{'Content-Type':'application/json','X-Frontbase-Editor':'1'},body:JSON.stringify({path,pageId:draft.pageId,revision:draft.revision,operations:changes})});
+   const result=await fetch('/api/frontend-edit/layout-draft/',{method:'PUT',headers:{'Content-Type':'application/json','X-Frontbase-Editor':'1'},body:JSON.stringify({path,pageId:draft.pageId,revision:draft.revision,...patch})});
    if(!result.ok){feedback.textContent=result.status===409?labels.conflict:labels.failed;return;}
-   draft=await result.json();tiles=draft.tiles;changes=[];project();feedback.textContent=labels.saved;
+   draft=await result.json();tiles=draft.tiles;changes=[];
+   if(patch.restoreVersionId)richTile=null;
+   project();feedback.textContent=patch.restoreVersionId?(arabic?'تمت استعادة المسودة':'Original draft restored'):labels.saved;
   }catch{feedback.textContent=labels.failed;}finally{waiting=false;show(true);}
  }
  chooser.onchange=()=>{selected=chooser.value;project();show();};

@@ -107,13 +107,19 @@ try {
     await front.getByRole('combobox', { name: 'Tile' }).selectOption('about-text');
     await front.getByRole('combobox', { name: 'Text alignment' }).selectOption('center');
     const words=front.getByRole('textbox', { name: 'Select words to format' });
-    await words.evaluate(input=>input.setSelectionRange(0,5));
+    await words.press('Control+Home');
+    await words.press('Control+Shift+ArrowRight');
     await front.getByRole('button', { name: 'Bold', exact: true }).click();
     await front.getByRole('button', { name: 'Italic', exact: true }).click();
     await expect(front.getByLabel('Selected text')).toHaveCSS('font-style','italic');
     await expect(front.getByLabel('Selected text')).toHaveCSS('font-weight','700');
-    const bindingPath=await front.getByRole('link',{name:'@ Bind in Builder'}).getAttribute('href');
-    assert.equal(bindingPath,'/frontbase-admin/builder/'+page.id+'?element=about-text');
+    await words.press('@');
+    const search=front.getByRole('searchbox',{name:'Search variables'});
+    await expect(search).toBeVisible();
+    await search.fill('page.title');
+    await front.getByRole('combobox',{name:'Liquid variable'}).selectOption('page.title');
+    await front.getByRole('button',{name:'Insert',exact:true}).click();
+    await expect(front.getByText('{{ page.title }}',{exact:true})).toBeVisible();
     if (await pencil.count()) {
         await pencil.click();
         await expect(front.locator('#tiles > div').first()).toHaveAttribute('id', 'about');
@@ -125,7 +131,7 @@ try {
     await front.getByRole('button', { name: 'Save layout draft' }).click();
     await expect(front.getByText('Layout draft saved')).toBeVisible();
 
-    await builder.goto(origin + bindingPath);
+    await builder.goto(origin + '/frontbase-admin/builder/'+page.id+'?element=about-text');
     const canvas = builder.frameLocator('iframe[title="Frontbase Builder Canvas"]');
     await expect(canvas.locator('#tiles > div').first()).toHaveAttribute('id', 'address');
     await expect(canvas.locator('#address')).toHaveCSS('max-width', '90%');
@@ -162,6 +168,7 @@ try {
     assert.equal(final.content[0].children.find(node => node.id === 'details').children[0].props.text, binding);
     assert.deepEqual(final.content[0].children.find(node=>node.id==='about').children[0].props.inlineEmphasis,
         [{phrase:'About',mark:'bold'},{phrase:'About',mark:'italic'}]);
+    assert.equal(final.content[0].children.find(node=>node.id==='about').children[0].props.inlineAfter,'{{ page.title }}');
     const liveLayout={root:{},content:[{id:'live-copy',type:'Text',props:{text:binding,
         inlineEmphasis:[{phrase:'البرنامج',mark:'italic',prefix:'عن '}]}}]};
     const renderRecord=description=>renderPage(liveLayout,{record:{description},app:{},page:{},user:{},visitor:{},url:{},system:{},cookies:{},local:{},session:{}});
@@ -169,6 +176,31 @@ try {
     assert.ok(original.includes('البرنامج الأول عن <em>البرنامج</em> &lt;script&gt;'));
     assert.ok((await renderRecord('عنوان جديد')).includes('عنوان جديد'));
     assert.ok(!(await renderRecord('عنوان جديد')).includes('<em>'));
+
+    const beforeMatch=(await new PagesStore(runner,owner).get(page.id)).layout_data;
+    await openFrontend('en', 1366);
+    await front.getByRole('combobox',{name:'Tile'}).selectOption('details');
+    await front.getByRole('combobox',{name:'Reference box'}).selectOption('address');
+    await front.getByRole('button',{name:'Match width and alignment'}).click();
+    const referenceGeometry=await front.locator('#address').boundingBox();
+    const matchedGeometry=await front.locator('#details').boundingBox();
+    assert.ok(Math.abs(referenceGeometry.width-matchedGeometry.width)<2);
+    assert.ok(Math.abs(referenceGeometry.x-matchedGeometry.x)<2);
+    await front.getByRole('button',{name:'Save layout draft'}).click();
+    await expect(front.getByText('Layout draft saved')).toBeVisible();
+    await front.getByRole('button',{name:'Restore previous draft'}).click();
+    await expect(front.getByText('Original draft restored')).toBeVisible();
+    assert.equal((await new PagesStore(runner,owner).get(page.id)).layout_data,beforeMatch);
+    await front.getByRole('combobox',{name:'Tile'}).selectOption('about-text');
+    await words.press('Control+End');
+    await words.press('!');
+    await front.getByRole('button',{name:'Save layout draft'}).click();
+    await expect(front.getByText('Layout draft saved')).toBeVisible();
+    const edited=JSON.parse((await new PagesStore(runner,owner).get(page.id)).layout_data);
+    assert.equal(edited.content[0].children.find(node=>node.id==='about').children[0].props.text,'About the university!');
+    await front.getByRole('button',{name:'Restore previous draft'}).click();
+    await expect(front.getByText('Original draft restored')).toBeVisible();
+    assert.equal((await new PagesStore(runner,owner).get(page.id)).layout_data,beforeMatch);
     assert.equal((await publication.active()).pointer.hash, hash);
     console.log('Chromium: frontend and Builder round trips in English and Arabic, desktop and mobile widths, preserved bindings and unchanged publication PASS');
 } finally {

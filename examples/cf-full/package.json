@@ -40,7 +40,14 @@
         "hono": "^4.12.28"
     },
     "devDependencies": {
-        "@playwright/test": "^1.62.0"
+        "@playwright/test": "^1.62.0",
+        "@tiptap/core": "3.31.3",
+        "@tiptap/extension-bold": "3.31.3",
+        "@tiptap/extension-document": "3.31.3",
+        "@tiptap/extension-italic": "3.31.3",
+        "@tiptap/extension-paragraph": "3.31.3",
+        "@tiptap/extension-text": "3.31.3",
+        "@tiptap/pm": "3.31.3"
     },
     "engines": {
         "node": "22.x"

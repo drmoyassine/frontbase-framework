@@ -21,6 +21,10 @@ const REGISTRY={...BASE_REGISTRY,variables:[...BASE_REGISTRY.variables,...[
  ['user.id','string','Verified app-user ID'],['user.contact_type','string','Verified Contact Type'],['user.permission_level','string','Verified Permission Level'],['user.authenticated','boolean','Verified app-user session'],['app.*','any','App variable'],['record.*','any','Current record field']
 ].filter(([path])=>!BASE_REGISTRY.variables.some(v=>v.path===path)).map(([path,type,description])=>({path,type,description,source:path!.split('.')[0]}))]};
 
+export function isFrontendLiquidVariable(path:string):boolean {
+    return /^(page|system)\.[a-zA-Z_][\w.]{0,100}$/.test(path) && REGISTRY.variables.some(variable=>variable.path===path);
+}
+
 // Web Crypto global (Node 19+ and Cloudflare Workers) — not node:crypto, which
 // is unavailable in the Workers runtime.
 const newId = (): string => crypto.randomUUID();
