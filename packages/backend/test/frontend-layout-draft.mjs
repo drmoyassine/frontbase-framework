@@ -91,6 +91,7 @@ try {
     tenant = owner;
     const move = (id, siblingId) => ({ kind: 'move', id, siblingId, placement: 'before' });
     assert.equal((await write(draftUrl, { path: path('en'), pageId: page.id, revision: first.revision, operations: [move('about', 'tiles')] })).status, 422);
+    assert.equal((await write(draftUrl, { path: path('en'), pageId: page.id, revision: first.revision, operations: [move('about-text', 'address-text')] })).status, 422);
     assert.equal((await write(draftUrl, { path: path('en'), pageId: page.id, revision: first.revision, operations: [move('address', 'about')] }, { Origin: 'https://elsewhere.invalid' })).status, 403);
 
     async function openEditor(locale, device) {

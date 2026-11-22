@@ -91,7 +91,6 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
     for(const [key,property] of [['fontWeight','font-weight'],['fontStyle','font-style']])if(style(tile,key))node.style.setProperty(property,style(tile,key),'important');
    }
    node.style.outline=visible&&tile.id===selected?'2px solid #3b82f6':styles.outline;
-   if(tile.text)continue;
    if(!groups.has(node.parentElement))groups.set(node.parentElement,new Map());
    const peers=groups.get(node.parentElement);
    if(!peers.has(tile.parentId))peers.set(tile.parentId,[]);
@@ -267,14 +266,14 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  }
  function move(other,placement){
   const tile=getSelected(),node=nodes.get(selected);
-  if(waiting||!tile||tile.text||!other||other.text||other.id===selected||tile.parentId!==other.parentId||node?.parentElement!==nodes.get(other.id)?.parentElement||changes.length>=50)return;
+  if(waiting||!tile||!other||other.id===selected||tile.parentId!==other.parentId||node?.parentElement!==nodes.get(other.id)?.parentElement||changes.length>=50)return;
   tiles.splice(tiles.indexOf(tile),1);
   tiles.splice(tiles.indexOf(other)+(placement==='after'?1:0),0,tile);
   stage({kind:'move',id:tile.id,siblingId:other.id,placement});
  }
  function siblingsOf(tile){
   const parent=tile&&nodes.get(tile.id)?.parentElement;
-  return parent&&!tile.text?tiles.filter(peer=>!peer.text&&peer.parentId===tile.parentId&&nodes.get(peer.id)?.parentElement===parent&&nodes.get(peer.id).getClientRects().length):[];
+  return parent?tiles.filter(peer=>peer.parentId===tile.parentId&&nodes.get(peer.id)?.parentElement===parent&&nodes.get(peer.id).getClientRects().length):[];
  }
  function step(direction){
   const tile=getSelected();
@@ -348,31 +347,51 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  function positionHandle(){
   if(gesture)return;
   const rect=nodes.get(selected)?.getBoundingClientRect();
-  canvasHandle.hidden=!activeLayout||!visible||drag.disabled||!rect||rect.bottom<48||rect.top>innerHeight-48;
+  canvasHandle.hidden=!activeLayout||!visible||drag.disabled||!rect||rect.bottom<=0||rect.top>=innerHeight;
   if(canvasHandle.hidden)return;
-  canvasHandle.style.top=Math.max(4,rect.top+4)+'px';
+  canvasHandle.style.top=Math.max(4,Math.min(innerHeight-48,rect.top+(getSelected()?.text?-36:4)))+'px';
   canvasHandle.style.left=Math.max(4,Math.min(innerWidth-48,arabic?rect.right-48:rect.left+4))+'px';
  }
  function drawDropZones(){
-  const {x,y,zones,horizontal,reversed}=gesture;
+  const {x,y,zones,horizontal,reversed,preview,previewWidth,previewHeight}=gesture;
   gesture.target=null;
+  let distance=Infinity;
   for(const {tile,markers} of zones){
    const {left,top,right,bottom,width,height}=nodes.get(tile.id).getBoundingClientRect();
    const offscreen=bottom<0||top>innerHeight||right<0||left>innerWidth;
-   const hit=x>=left&&x<=right&&y>=top&&y<=bottom;
+   const dx=Math.max(left-x,0,x-right),dy=Math.max(top-y,0,y-bottom);
+   const gap=Math.hypot(dx,dy);
    const leading=horizontal?x<left+width/2:y<top+height/2;
    for(const marker of markers){
     marker.hidden=offscreen;
     if(offscreen)continue;
     const before=marker.dataset.fbLayoutDropZone==='before';
     const atStart=before!==reversed;
-    const hovered=hit&&leading===atStart;
-    marker.toggleAttribute('data-active',hovered);
+    marker.removeAttribute('data-active');
     marker.style.cssText=horizontal?'left:'+(atStart?left:right-5)+'px;top:'+top+'px;width:5px;height:'+height+'px':
       'left:'+left+'px;top:'+(atStart?top:bottom-5)+'px;width:'+width+'px;height:5px';
-    if(hovered)gesture.target={tile,placement:before?'before':'after'};
+    if(gap<=8&&gap<distance&&leading===atStart){distance=gap;gesture.target={tile,placement:before?'before':'after',marker};}
    }
   }
+  gesture.target?.marker.setAttribute('data-active','');
+  const left=Math.max(0,x+12+previewWidth<=innerWidth?x+12:x-12-previewWidth);
+  const top=Math.max(0,y+12+previewHeight<=innerHeight?y+12:y-12-previewHeight);
+  preview.style.transform='translate3d('+left+'px,'+top+'px,0)';
+  preview.toggleAttribute('data-valid-drop',!!gesture.target);
+ }
+ function createDragPreview(tile,node){
+  const preview=document.createElement('div');
+  preview.dataset.fbLayoutDragPreview='';
+  preview.dir=getComputedStyle(node).direction;
+  const label=document.createElement('strong');label.textContent=tile.label;
+  preview.append(label);
+  const excerpt=node.textContent?.trim().replace(/\s+/g,' ').slice(0,160);
+  if(excerpt&&excerpt!==tile.label){
+   const copy=document.createElement('span');copy.textContent=excerpt;
+   if(tile.text){const style=getComputedStyle(node);copy.style.fontFamily=style.fontFamily;copy.style.fontWeight=style.fontWeight;copy.style.fontStyle=style.fontStyle;}
+   preview.append(copy);
+  }
+  return preview;
  }
  function updateGesture(){
   if(!gesture)return;
@@ -384,11 +403,12 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  }
  function startDrag(event){
   if(!event.isPrimary||event.button!==0||drag.disabled||gesture||!activeLayout||!visible||changes.length>=50)return;
-  const peers=siblingsOf(getSelected()).filter(tile=>tile.id!==selected);
+  const tile=getSelected(),source=nodes.get(selected);
+  const peers=siblingsOf(tile).filter(peer=>peer.id!==selected);
   if(!peers.length)return;
   event.preventDefault();
   const handle=event.currentTarget;
-  const style=getComputedStyle(nodes.get(selected).parentElement);
+  const style=getComputedStyle(source.parentElement);
   const horizontal=style.display.includes('flex')&&style.flexDirection.startsWith('row');
   const reversed=horizontal?(style.direction==='rtl')!==style.flexDirection.endsWith('reverse'):style.flexDirection==='column-reverse'&&style.display.includes('flex');
   const zones=peers.map(tile=>({tile,markers:['before','after'].map(placement=>{
@@ -396,17 +416,22 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
    marker.dataset.label=placement==='before'?(arabic?'إفلات قبل':'Drop before'):(arabic?'إفلات بعد':'Drop after');
    dropLayer.append(marker);return marker;
   })}));
-  gesture={id:event.pointerId,x:event.clientX,y:event.clientY,handle,zones,horizontal,reversed,frame:0,target:null,dirty:true};
+  const preview=createDragPreview(tile,source);
+  dropLayer.append(preview);
+  gesture={id:event.pointerId,x:event.clientX,y:event.clientY,handle,zones,horizontal,reversed,preview,
+   previewWidth:preview.offsetWidth,previewHeight:preview.offsetHeight,source,frame:0,target:null,dirty:true};
   handle.setPointerCapture(event.pointerId);
+  source.toggleAttribute('data-fb-layout-drag-source',true);
   dock.toggleAttribute('data-fb-layout-dragging',true);
   updateGesture();
  }
  function finishDrag(commit){
   if(!gesture)return;
-  const {target,id,handle,frame}=gesture;
+  const {target,id,handle,frame,source}=gesture;
   gesture=null;
   cancelAnimationFrame(frame);
   if(handle.hasPointerCapture(id))handle.releasePointerCapture(id);
+  source.removeAttribute('data-fb-layout-drag-source');
   dock.removeAttribute('data-fb-layout-dragging');dropLayer.replaceChildren();
   if(commit&&target)move(target.tile,target.placement);
   show(true);
@@ -421,7 +446,7 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
   gesture.x=event.clientX;gesture.y=event.clientY;drawDropZones();finishDrag(true);
  },true);
  window.addEventListener('pointercancel',event=>{if(gesture?.id===event.pointerId)finishDrag(false);},true);
- window.addEventListener('keydown',event=>{if(gesture&&event.key==='Escape'){event.preventDefault();finishDrag(false);}},true);
+ window.addEventListener('keydown',event=>{if(gesture&&event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();finishDrag(false);}},true);
  window.addEventListener('scroll',()=>{if(gesture)gesture.dirty=true;else positionHandle();},{passive:true,capture:true});
  chooser.onchange=()=>select(chooser.value);
  const targetTile=event=>[...tiles].reverse().find(tile=>nodes.get(tile.id)?.contains(event.target));

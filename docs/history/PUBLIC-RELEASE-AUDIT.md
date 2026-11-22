@@ -1814,3 +1814,11 @@ On Worker `164f2bc1-c88d-4fe5-9692-994b3c9ba1d2`, live desktop dragging reordere
 A follow-up Chromium mobile test found a touch release on the variable button without a compatibility click. The picker now handles the touch release directly and deduplicates the subsequent click. Chromium repeated English and Arabic touch dragging, picker opening and token insertion with the final asset. Workspace check and build and the focused draft test passed on the follow-up.
 
 The final Worker `01af77aa-9d0d-4518-aee9-303cf3b276b3` is active at 100% with all 17 bindings, 967.3 KB gzip and rollback `164f2bc1-c88d-4fe5-9692-994b3c9ba1d2`. The deployed editor script contains the touch picker and drop zones. Health, the console asset and the six English and Arabic public page checks passed after deployment.
+
+## Text reordering and drag preview
+
+Claimed in the Study-in-USA worktree. Extend same-parent draft reordering to text and add a pointer-following preview without altering live bindings or publication.
+
+Text, headings and paragraphs can now reorder with their visible siblings through the same frontend and Builder draft operation. The overlay displays a compact copy of the selected element's label and text, follows the pointer from the start of a drag, and highlights the insertion position. Releasing outside a target or pressing Escape cancels the move.
+
+Node 22 workspace check and build passed, with a focused rebuild for handle positioning and cancellation. Chromium verified preview movement and cleanup, text reordering saved to Builder, exact draft restoration, and the existing English/Arabic mobile touch flows. The draft suite verified cross-parent text moves are refused. Worker size was 967.8 KB gzip.

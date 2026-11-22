@@ -83,7 +83,7 @@ export function applyLayoutDraftOperation<T extends PageLayoutData>(layout: T, o
     if (!tile) return null;
     if (operation.kind === 'move') {
         const sibling = tiles.find(candidate => candidate.id === operation.siblingId);
-        if (!sibling || tile.text || sibling.text || sibling.parentId !== tile.parentId || sibling.id === tile.id) return null;
+        if (!sibling || sibling.parentId !== tile.parentId || sibling.id === tile.id) return null;
     } else if (operation.kind === 'resize') {
         if (tile.text || !Number.isFinite(operation.width) || operation.width < 1 || operation.width > 100) return null;
     } else if (operation.kind === 'match') {

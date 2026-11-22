@@ -51,6 +51,7 @@ try {
         tile('about', 'About', 'About the university'), tile('address', 'Address', 'Campus address'),
         tile('details', 'Details', binding),
     ] }] };
+    layout.content[0].children[0].children.push({ id: 'about-heading', type: 'Heading', props: { text: 'Campus overview' } });
     const page = await new PagesStore(runner, owner).create({ name: 'Fixture layout', slug: 'shared-layout', layout_data: layout }, crypto.randomUUID(), now());
     const configuration = emptyDirectoryConfiguration();
     configuration.site = { name: 'Test', origin: 'https://example.test', locale: 'en' };
@@ -105,10 +106,15 @@ try {
     await front.mouse.move(handle.x + 16, handle.y + 16);
     await front.mouse.down();
     await expect(front.locator('[data-fb-layout-drop-zone]').first()).toBeVisible();
+    const ghost=front.locator('[data-fb-layout-drag-preview]');
+    await expect(ghost).toContainText('Campus address');
+    const initialGhost=await ghost.boundingBox();
     await front.mouse.move(about.x + 20, about.y + 10, { steps: 6 });
     await expect(front.locator('[data-fb-layout-drop-zone="before"][data-active]')).toBeVisible();
+    assert.notDeepEqual(await ghost.boundingBox(),initialGhost,'drag preview follows the pointer');
     await front.mouse.up();
     await expect(front.locator('[data-fb-layout-drop-zone]')).toHaveCount(0);
+    await expect(ghost).toHaveCount(0);
     await expect(front.locator('#tiles > div').first()).toHaveAttribute('id', 'address');
     await front.getByRole('button', { name: 'Narrower' }).click();
     await front.getByRole('combobox', { name: 'Box alignment' }).selectOption('right');
@@ -155,8 +161,8 @@ try {
     await expect(canvas.locator('#address')).toHaveCSS('margin-right', '0px');
     await expect(canvas.locator('#about-text')).toHaveCSS('text-align', 'center');
     await expect(canvas.locator('#about-text strong em')).toHaveText('About');
+    await builder.goto(origin + '/frontbase-admin/builder/'+page.id+'?element=about');
     await builder.getByRole('button', { name: 'Mobile viewport' }).click();
-    await canvas.locator('#about').click({ position: { x: 12, y: 57 } });
     await builder.getByRole('button', { name: 'Move tile earlier' }).click();
     await builder.getByRole('button', { name: 'Narrow tile' }).click();
     await expect(canvas.locator('#tiles > div').first()).toHaveAttribute('id', 'about');
@@ -232,6 +238,30 @@ try {
     await expect(front.getByText('Original draft restored')).toBeVisible();
     assert.equal((await new PagesStore(runner,owner).get(page.id)).layout_data,beforeMatch);
     assert.equal((await publication.active()).pointer.hash, hash);
+    await front.getByRole('combobox', { name: 'Tile' }).selectOption('about-text');
+    await front.locator('#about-heading').scrollIntoViewIfNeeded();
+    await expect(front.locator('[data-fb-layout-handle]')).toBeVisible();
+    const textGrip = await front.locator('[data-fb-layout-handle]').boundingBox();
+    const heading = await front.locator('#about-heading').boundingBox();
+    await front.mouse.move(textGrip.x+16,textGrip.y+16);
+    await front.mouse.down();
+    await expect(ghost).toContainText('About the university');
+    await front.keyboard.press('Escape');
+    await expect(ghost).toHaveCount(0);
+    await front.mouse.up();
+    await expect(front.getByRole('button',{name:'Save layout draft'})).toBeDisabled();
+    await front.mouse.down();
+    await front.mouse.move(heading.x+20,heading.y+heading.height-2,{steps:6});
+    await expect(front.locator('[data-fb-layout-drop-zone="after"][data-active]')).toBeVisible();
+    await front.mouse.up();
+    await expect(front.locator('#about > #about-heading + #about-text')).toBeVisible();
+    await front.getByRole('button',{name:'Save layout draft'}).click();
+    await expect(front.getByText('Layout draft saved')).toBeVisible();
+    await builder.reload();
+    await expect(canvas.locator('#about > #about-heading + #about-text')).toBeVisible();
+    await front.getByRole('button',{name:'Restore previous draft'}).click();
+    await expect(front.getByText('Original draft restored')).toBeVisible();
+    assert.equal((await new PagesStore(runner,owner).get(page.id)).layout_data,beforeMatch);
     const touchContext = await browser.newContext({ viewport: { width: 390, height: 860 }, isMobile: true, hasTouch: true,
         storageState: await context.storageState() });
     for (const locale of ['en', 'ar']) {
@@ -248,6 +278,7 @@ try {
         const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
         await touch('touchStart', grab.x + 20, grab.y + 20);
         await expect(phone.locator('[data-fb-layout-drop-zone]').first()).toBeVisible();
+        await expect(phone.locator('[data-fb-layout-drag-preview]')).toBeVisible();
         await touch('touchMove', before.x + before.width / 2, before.y + 10);
         await expect(phone.locator('[data-fb-layout-drop-zone="before"][data-active]')).toBeVisible();
         await touch('touchEnd');
