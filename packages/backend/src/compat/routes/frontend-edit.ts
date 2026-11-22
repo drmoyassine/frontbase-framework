@@ -1,8 +1,10 @@
 import {z} from 'zod';
 import type {Hono} from 'hono';
+import {bodyLimit} from 'hono/body-limit';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {ConsoleAuthVars} from '../../mw/auth.js';
 import type {PageLayoutData} from '@frontbase/edge-core';
+import {applyLayoutDraftOperation,layoutDraftTiles} from '@frontbase/edge-core';
 import {PagesStore} from '../pages-store.js';
 import {resolveReviewedSitePublication} from '../site-publication-serving.js';
 import {resolveHomepageLanguageRequest,localizedListRequest} from '../translation-homepage-serving.js';
@@ -24,6 +26,14 @@ import {writeLiveRecordTranslations} from '../live-translation.js';
 const pathSchema=z.string().min(1).max(2048).refine(value=>value.startsWith('/')&&!value.startsWith('//')&&!/[\\#\u0000-\u0020]/.test(value));
 const selectionSchema=z.array(z.object({componentId:z.string().min(1).max(200),versionId:z.string().min(1).max(128),ids:z.array(z.string().min(1).max(160)).min(1).max(100)}).strict()).max(8);
 const saveSchema=z.object({path:pathSchema,token:z.string().regex(/^[a-f0-9]{64}$/),operationId:z.string().uuid(),selection:selectionSchema.optional(),entries:z.array(z.object({id:z.string().regex(/^[a-f0-9]{64}$/),text:z.string().min(1).max(12000)}).strict()).min(1).max(100)}).strict();
+const tileId=z.string().min(1).max(200);
+const draftInput=z.object({
+    path:pathSchema,pageId:tileId,revision:z.string().regex(/^[a-f0-9]{64}$/),
+    operations:z.array(z.discriminatedUnion('kind',[
+        z.object({kind:z.literal('move'),id:tileId,siblingId:tileId,placement:z.enum(['before','after'])}).strict(),
+        z.object({kind:z.literal('resize'),id:tileId,viewport:z.enum(['desktop','tablet','mobile']),width:z.number().int().min(25).max(100)}).strict(),
+    ])).min(1).max(50),
+}).strict();
 export function sameEditorOrigin(request:Request):boolean{
     try{const raw=request.headers.get('origin');if(!raw)return false;const origin=new URL(raw),target=new URL(request.url);
         // TLS-terminating self-host proxies retain Host but deliver HTTP internally. Permit only
@@ -82,9 +92,44 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
         if(c.req.method!=='GET'&&(!sameEditorOrigin(c.req.raw)||c.req.header('x-frontbase-editor')!=='1'||c.req.header('sec-fetch-site')==='cross-site'))return c.json({detail:'Same-origin editor request required'},403);
         return next();
     });
+    async function draft(owner:string,request:Request,path:string) {
+        const url=new URL(path,request.url);
+        const surface=await resolveLiveLayoutSurface(db,owner,new Request(url,{headers:request.headers}),{host:translationHost,liveQuery:publishedLiveQuery(input=>app.fetch(input))}).catch(()=>null);
+        // Compatibility pages can serve their mutable row directly. Layout
+        // editing requires the independent live publication and draft stores.
+        if(!surface)return null;
+        const pages=new PagesStore(db,owner);
+        const page=await pages.get(surface.pageId);
+        if(!page||page.deleted_at||page.is_published)return null;
+        const layout=JSON.parse(page.layout_data) as PageLayoutData;
+        return {pages,page,layout,revision:await publicationHash(page.layout_data)};
+    }
+    app.get('/api/frontend-edit/layout-draft/',async c=>{
+        const path=pathSchema.safeParse(c.req.query('path'));
+        if(!path.success)return c.json({detail:'Invalid page path'},400);
+        const result=await draft(c.get('tenant'),c.req.raw,path.data);
+        if(!result)return c.json({detail:'No separate layout draft is available for this page'},409);
+        return c.json({pageId:result.page.id,revision:result.revision,tiles:layoutDraftTiles(result.layout)});
+    });
+    app.put('/api/frontend-edit/layout-draft/',bodyLimit({maxSize:24000}),async c=>{
+        const input=draftInput.safeParse(await c.req.json().catch(()=>null));
+        if(!input.success)return c.json({detail:'Invalid layout changes'},400);
+        const {path,pageId,revision,operations}=input.data;
+        const result=await draft(c.get('tenant'),c.req.raw,path);
+        if(!result||result.page.id!==pageId||result.revision!==revision)return c.json({detail:'The layout draft changed. Reload before saving.'},409);
+        let layout=result.layout;
+        for(const operation of operations){
+            const changed=applyLayoutDraftOperation(layout,operation);
+            if(!changed)return c.json({detail:'This tile cannot be moved or resized here'},422);
+            layout=changed;
+        }
+        const saved=await result.pages.setLayout(pageId,layout,now(),result.page.layout_data);
+        if(!saved)return c.json({detail:'The layout draft changed. Reload before saving.'},409);
+        return c.json({pageId,revision:await publicationHash(saved.layout_data),tiles:layoutDraftTiles(layout)});
+    });
     app.get('/api/frontend-edit/inventory/',async c=>{
         try{const path=pathSchema.parse(c.req.query('path')),raw=c.req.query('selection');if(raw&&raw.length>16000)throw Error();const selection=raw?selectionSchema.parse(JSON.parse(raw)):undefined,s=await frontendCopySurface(app,db,c.get('tenant'),c.req.raw,path,selection,translationHost);
-            return c.json({token:s.token,locale:s.locale,revision:s.current.hash,fields:s.fields.map(field=>({id:field.id,blockId:field.blockId,versionId:field.versionId,path:field.path,text:field.current,label:field.label,...(field.record?{recordScope:JSON.stringify([field.record.connectionId,field.record.collection]),recordKey:String(field.record.key[0]?.value),fieldKey:field.fieldKey??field.path.at(-1),destination:s.locale===s.sourceLocale?'record':'record-translation'}:{destination:'ui-copy'})}))});
+            return c.json({token:s.token,locale:s.locale,revision:s.current.hash,layoutDraft:s.liveData,fields:s.fields.map(field=>({id:field.id,blockId:field.blockId,versionId:field.versionId,path:field.path,text:field.current,label:field.label,...(field.record?{recordScope:JSON.stringify([field.record.connectionId,field.record.collection]),recordKey:String(field.record.key[0]?.value),fieldKey:field.fieldKey??field.path.at(-1),destination:s.locale===s.sourceLocale?'record':'record-translation'}:{destination:'ui-copy'})}))});
         }catch{return c.json({detail:'This page is unavailable for text editing'},409);}
     });
     app.post('/api/frontend-edit/save/',async c=>{

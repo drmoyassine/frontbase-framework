@@ -1,3 +1,5 @@
+import {FRONTEND_LAYOUT_EDITOR} from './frontend-layout-editor.js';
+
 /** Public bootstrap contains no credentials, field inventory, owner or private source paths.
  * It remains inert until the host's ordinary session resolver confirms editing privilege. */
 export const FRONTEND_EDITOR_SCRIPT=String.raw`(async()=>{
@@ -59,7 +61,9 @@ editActions.set(span,edit);span.addEventListener('click',edit);span.addEventList
 span.addEventListener('paste',event=>{if(active?.span!==span)return;event.preventDefault();const value=event.clipboardData.getData('text/plain');document.execCommand('insertText',false,value);});
 }}}
 // Stop navigation and configured click workflows before their document/element handlers.
-window.addEventListener('click',event=>{const span=event.target.closest?.('[data-fb-copy]');if(span&&(editActions.has(span)||recordActions.has(span))){if(busy){event.preventDefault();event.stopImmediatePropagation();return;}if(recordActions.has(span))recordActions.get(span).edit(event);else editActions.get(span)(event);}},true);
+${FRONTEND_LAYOUT_EDITOR}
+const layoutActive=installLayoutEditor();
+window.addEventListener('click',event=>{if(layoutActive())return;const span=event.target.closest?.('[data-fb-copy]');if(span&&(editActions.has(span)||recordActions.has(span))){if(busy){event.preventDefault();event.stopImmediatePropagation();return;}if(recordActions.has(span))recordActions.get(span).edit(event);else editActions.get(span)(event);}},true);
 const observer=new MutationObserver(()=>{if(typeof document!=='undefined'&&document?.body){bind();update();void refreshRecords();}});observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['data-fb-record-fields']});bind();update();void refreshRecords();window.addEventListener('beforeunload',event=>{if(pending.size||active){event.preventDefault();event.returnValue='';}});
 })().catch(()=>{});`;
 

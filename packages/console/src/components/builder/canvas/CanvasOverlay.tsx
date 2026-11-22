@@ -28,6 +28,7 @@ import type { Page } from '@/types/builder';
 import { cn } from '@/lib/utils';
 import { findNodeLocation } from '@/lib/builder/iframeBridge';
 import { CONTAINER_TYPES, type ComponentRect } from '@/lib/builder/iframeTypes';
+import { applyLayoutDraftOperation, layoutDraftTiles, type LayoutDraftOperation } from '@frontbase/edge-core';
 
 // Geometry constants for the overlay affordances. Centralized so the corner
 // dots, drop strips, and move handle stay consistent + tweakable in one place.
@@ -115,11 +116,64 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({ page, rects, hover
                     <CornerDot left={selectedRect.left - CORNER_DOT_SIZE / 2} top={selectedRect.top + selectedRect.height - CORNER_DOT_SIZE / 2} />
                     <CornerDot left={selectedRect.left + selectedRect.width - CORNER_DOT_SIZE / 2} top={selectedRect.top + selectedRect.height - CORNER_DOT_SIZE / 2} />
                     <MoveHandle rect={selectedRect} page={page} />
+                    {selectedRects.length === 1 && <TileLayoutControls rect={selectedRect} page={page} />}
                 </React.Fragment>
             ))}
         </div>
     );
 };
+
+function TileLayoutControls({ rect, page }: { rect: ComponentRect; page: Page }) {
+    const viewport = useBuilderStore(s => s.currentViewport);
+    const editingVersions = useBuilderStore(s => s.editingVersions);
+    const [dragWidth, setDragWidth] = React.useState<number>();
+    const dragging = React.useRef(false);
+    const layout = page.layoutData;
+    if (!layout || Object.values(editingVersions).some(version => version !== 'default')) return null;
+    const tiles = layoutDraftTiles(layout);
+    const tile = tiles.find(candidate => candidate.id === rect.id);
+    if (!tile) return null;
+    const siblings = tiles.filter(candidate => candidate.parentId === tile.parentId);
+    const index = siblings.indexOf(tile);
+    const width = (viewport === 'mobile' ? tile.widths.mobile : undefined)
+        ?? (viewport !== 'desktop' ? tile.widths.tablet : undefined)
+        ?? tile.widths.desktop ?? 100;
+    const apply = (operation: LayoutDraftOperation) => {
+        const state = useBuilderStore.getState();
+        const current = state.pages.find(candidate => candidate.id === page.id)?.layoutData;
+        if (!current) return;
+        const updated = applyLayoutDraftOperation(current, operation);
+        if (updated) state.updatePage(page.id, { layoutData: updated });
+    };
+    const move = (direction: -1 | 1) => {
+        const sibling = siblings[index + direction];
+        if (sibling) apply({ kind: 'move', id: tile.id, siblingId: sibling.id, placement: direction < 0 ? 'before' : 'after' });
+    };
+    const resize = (value: number) => apply({ kind: 'resize', id: tile.id, viewport, width: Math.max(25, Math.min(100, value)) });
+    return (
+        <div role="group" aria-label="Tile layout" className="absolute z-30 flex flex-wrap items-center gap-1 rounded border bg-background p-1 text-xs text-foreground shadow"
+            style={{ pointerEvents: 'auto', insetInlineStart: 4, top: Math.max(14, rect.top + rect.height + 5), maxWidth: 'calc(100% - 8px)' }}>
+            <button type="button" className="px-1 disabled:opacity-40" aria-label="Move tile earlier" disabled={index === 0} onClick={() => move(-1)}>↑</button>
+            <button type="button" className="px-1 disabled:opacity-40" aria-label="Move tile later" disabled={index >= siblings.length - 1} onClick={() => move(1)}>↓</button>
+            <button type="button" className="px-1 disabled:opacity-40" aria-label="Narrow tile" disabled={width <= 25} onClick={() => resize(width - 10)}>−</button>
+            <input className="w-16" type="range" min={25} max={100} value={dragWidth ?? width} aria-label="Resize tile"
+                onPointerDown={(event) => { dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); }}
+                onChange={(event) => {
+                    const next = Number(event.currentTarget.value);
+                    if (dragging.current) setDragWidth(next);
+                    else resize(next);
+                }}
+                onPointerUp={(event) => {
+                    dragging.current = false;
+                    resize(Number(event.currentTarget.value));
+                    setDragWidth(undefined);
+                }}
+                onPointerCancel={() => { dragging.current = false; setDragWidth(undefined); }} />
+            <output aria-label={viewport + ' tile width'}>{dragWidth ?? width}%</output>
+            <button type="button" className="px-1 disabled:opacity-40" aria-label="Widen tile" disabled={width >= 100} onClick={() => resize(width + 10)}>+</button>
+        </div>
+    );
+}
 
 const CornerDot: React.FC<{ left: number; top: number }> = ({ left, top }) => (
     <div

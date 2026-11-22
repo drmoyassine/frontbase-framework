@@ -1711,3 +1711,13 @@ The owner deprecated all content-snapshot serving. The snapshot export/publicati
 ## Atomic frontend editor saves
 
 Production database transaction proofs and authenticated Study-in-USA browser checks passed for English source and Arabic translation batches. Stale saves preserved both committed fields. All four live values matched their originals after restoration. [Delivery and verification](../plans/booking-for-x-detail-redesign-20261118.md#atomic-frontend-editor-saves).
+
+## Shared layout draft editing
+
+Claimed on codex/shared-layout-draft. Verify same-container reorder and responsive resizing against the existing Builder draft, preserve component bindings, and keep publication separate.
+
+Implemented on `codex/shared-layout-draft`. The frontend Layout panel and Builder canvas share same-container move and responsive width operations on the existing page draft. Frontend layout editing requires an active live-layout publication with a separate mutable draft. The first slice covers eligible ordinary tiles and excludes repeat instances and versioned subtrees. Layout saves retain IDs and bindings, reject stale drafts, and leave the active publication pointer alone.
+
+Node 22 workspace build and check passed. Frontend editing and compatibility conformance passed. The isolated integration exercised the real frontend editor script against rendered English and Arabic routes, in desktop and mobile modes, with round trips through the Builder page API and one winner for competing layout saves. Four Builder overlay tests covered the desktop/mobile and English/Arabic matrix. Three targeted mutations proved the role, same-origin, and draft revision checks. Study-in-USA was not deployed or changed for this work. Hosted acceptance remains open.
+
+Node 22 `pnpm --filter @frontbase/example-cf-full test:shared-layout-browser` passed against the rebuilt CMS artifact and staged console. Signed-in Chromium verified English desktop drag and resize in the frontend editor, Builder mobile reorder and resize with the same draft, and an Arabic mobile save reflected in Builder. Both frontend languages displayed the expected widths at 1366px and 390px. The stored binding and active publication hash matched the fixture originals. The Cloudflare artifact passed its gzip size gate at 851.1 KB, with no CPU claim from the browser test. Hosted acceptance requires integrating the patch with Study-in-USA’s deployed feature set before testing on a private deployment.
