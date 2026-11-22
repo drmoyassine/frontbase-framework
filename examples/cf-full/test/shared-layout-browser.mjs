@@ -253,6 +253,16 @@ try {
         await touch('touchEnd');
         await expect(phone.locator('#tiles > div').first()).toHaveAttribute('id', 'address');
         await expect(phone.locator('[data-fb-layout-drop-zone]')).toHaveCount(0);
+        await phone.getByRole('combobox', { name: locale === 'ar' ? 'العنصر' : 'Tile', exact: true }).selectOption('about-text');
+        await phone.getByRole('button', { name: locale === 'ar' ? '@ إدراج متغير' : '@ Insert variable', exact: true }).tap();
+        const phoneSearch = phone.getByRole('searchbox', { name: locale === 'ar' ? 'بحث المتغيرات' : 'Search variables' });
+        await phoneSearch.fill('page.title');
+        await phone.getByRole('combobox', { name: locale === 'ar' ? 'متغير Liquid' : 'Liquid variable' }).selectOption('page.title');
+        await phone.getByRole('combobox', { name: locale === 'ar' ? 'موضع المتغير' : 'Variable placement' }).selectOption('before');
+        await expect(phone.getByText('{{ page.title }}', { exact: true })).toHaveCount(0);
+        await phone.getByRole('button', { name: locale === 'ar' ? 'إدراج' : 'Insert', exact: true }).tap();
+        await expect(phone.getByText('{{ page.title }}', { exact: true })).toBeVisible();
+        await phone.getByRole('button', { name: locale === 'ar' ? 'تجاهل التعديلات' : 'Discard layout changes', exact: true }).click();
         await phone.close();
     }
     await touchContext.close();

@@ -41,7 +41,7 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  alignment.onchange=()=>{if(alignment.value)setStyle(getSelected().text?'textAlign':'horizontalAlign',alignment.value);};
  const wordsInput=document.createElement('div');
  const preview=document.createElement('span');preview.setAttribute('aria-label',formatLabels.phrase);
- const bindings=document.createElement('button');bindings.type='button';bindings.textContent=arabic?'@ إدراج متغير':'@ Insert variable';bindings.onclick=()=>void openVariables();
+ const bindings=document.createElement('button');bindings.type='button';bindings.textContent=arabic?'@ إدراج متغير':'@ Insert variable';
  const variableMenu=document.createElement('div');variableMenu.hidden=true;
  const search=document.createElement('input');search.type='search';search.setAttribute('aria-label',arabic?'بحث المتغيرات':'Search variables');
  const choices=document.createElement('select');choices.setAttribute('aria-label',arabic?'متغير Liquid':'Liquid variable');
@@ -192,12 +192,31 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  function setVariable(path){
   const tile=getSelected(),position=placement.value;
   if(!tile?.text||waiting||changes.length>=50)return;
-  tile.variables[position]=path?'{{ '+path+' }}':'';
+  const template=path?'{{ '+path+' }}':'';
+  if(tile.variables[position]===template)return;
+  tile.variables[position]=template;
   stage({kind:'variable',id:tile.id,position,path});
  }
+ // A mobile browser can suppress the compatibility click if the dock reflows
+ // between touchdown and release while the rich editor is mounting.
+ function onPickerPress(control,action){
+  let press;
+  control.style.touchAction='manipulation';
+  control.onpointerdown=event=>{press=event.pointerType==='touch'?{id:event.pointerId,x:event.clientX,y:event.clientY,handled:false}:null;};
+  control.onpointercancel=()=>{press=null;};
+  control.onpointerup=event=>{
+   if(press?.id!==event.pointerId||Math.hypot(event.clientX-press.x,event.clientY-press.y)>10)return;
+   press.handled=true;action();
+  };
+  control.onclick=event=>{
+   if(press?.handled&&(event.pointerType==='touch'||event.sourceCapabilities?.firesTouchEvents)){press=null;return;}
+   action();
+  };
+ }
  placement.onchange=showVariable;
- insertVariable.onclick=()=>{if(choices.value)setVariable(choices.value);};
- clearVariable.onclick=()=>setVariable(null);
+ onPickerPress(bindings,()=>void openVariables());
+ onPickerPress(insertVariable,()=>{if(choices.value)setVariable(choices.value);});
+ onPickerPress(clearVariable,()=>setVariable(null));
  search.onkeydown=event=>{if(event.key==='Enter'&&choices.value){event.preventDefault();setVariable(choices.value);}else if(event.key==='Escape'){event.stopPropagation();variableMenu.hidden=true;bindings.focus();}};
  function selectedQuote(){
   const selection=richEditor?.selection(),text=selection?.text??'',raw=selection?.raw??'',phrase=raw.trim();
