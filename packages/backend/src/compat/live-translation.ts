@@ -21,7 +21,7 @@ export async function localizeLiveLayout(input:PageLayoutData,options:{
     const layout=homepageDisplayLayout(input);
     if(options.locale===options.sourceLocale)return layout;
     const menuFields=options.menuFields??[];
-    let fields:LiveDisplayField[]=homepageDisplayFields(layout,options.plan);
+    let fields:LiveDisplayField[]=homepageDisplayFields(layout,options.plan,{includeInlineRecordTitles:true});
     if(menuFields.length){
         const claimed=new Set(menuFields.map(field=>JSON.stringify([field.blockId,field.path])));
         fields=fields.filter(field=>!claimed.has(JSON.stringify([field.blockId,field.path]))).concat(menuFields);

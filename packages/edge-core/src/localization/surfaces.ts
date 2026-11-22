@@ -56,7 +56,8 @@ function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:M
         // Composed link labels stamp the composite column `ariaLabel:<textCol>`; it is a record unit
         // keyed to the composed string, admitted only over a real stampable text column.
         if(key==='ariaLabel'&&name.startsWith('ariaLabel:')&&stampableColumns.has(name.slice('ariaLabel:'.length)))columns.set(key,name);
-        else if(stampableColumns.has(name)&&stampableKeys.has(key) || key==='text'&&p.translationLiteral===name&&isSourceDetailField(name))columns.set(key,name);}
+        else if(stampableColumns.has(name)&&stampableKeys.has(key) || key==='text'&&p.translationLiteral===name&&isSourceDetailField(name)
+            || name==='title'&&(key==='inlineBefore'||key==='inlineAfter'))columns.set(key,name);}
     if(!columns.size)return undefined;
     return {record:{connectionId,collection,key:[{column:'id',value}]},columns,
         ...(typeof record.sourceValue==='string'&&record.sourceValue.length<=128?{sourceValue:record.sourceValue}:{}),
@@ -221,7 +222,7 @@ function displayProgram(plan:DisplaySurfacePlan,node:PageComponent,version?:stri
     if(!generated){generated=compileDisplayNode({id:'generated',type:node.type,props:{}});generatedPrograms.set(node.type,generated);}
     return generated;
 }
-export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfacePlan=compileDisplaySurfacePlan(layout),options:{includeSourceRecordScalars?:boolean}={}):DisplayField[]{
+export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfacePlan=compileDisplaySurfacePlan(layout),options:{includeSourceRecordScalars?:boolean;includeInlineRecordTitles?:boolean}={}):DisplayField[]{
     const result:DisplayField[]=[];
     const base=['props'];
     // Per-node display surfaces, shared by the Default tree and every alternative's effective shape.
@@ -243,6 +244,9 @@ export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfaceP
             collected.push(field);};
         const nested=(value:any,path:string[],keys:Set<string>)=>{if(Array.isArray(value)){value.forEach((v,i)=>nested(v,[...path,String(i)],keys));return;}if(value&&typeof value==='object'){for(const [k,v]of Object.entries(value)){if(keys.has(k))emit([...path,k],v,k);else if(v&&typeof v==='object')nested(v,[...path,k],keys);}}};
         if(program.text){
+            if(options.includeInlineRecordTitles&&stamped)for(const slot of ['inlineBefore','inlineAfter']){
+                if(stamped.columns.get(slot)==='title')emit([...base,slot],p[slot],'Record title',stamped.record,'title');
+            }
             const key=['content','text','value','label'].find(k=>typeof p[k]==='string'&&!!p[k]);
             if(key){
                 const column=stamped?.columns.get(key);

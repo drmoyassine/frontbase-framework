@@ -186,9 +186,10 @@ for(const [path,locale] of [['/program/','en'],['/ar/program/','ar']]){
  const response=await preview(path);
  assert.equal(response.status,200,await response.clone().text());
  assert.equal(response.headers.get('Cache-Control'),'no-store');
- const rendered=await response.json();
+    const rendered=await response.json();
  assert.equal(rendered.locale,locale);
  assert.equal(rendered.layout.content[0].children.find(node=>node.id==='draft-copy').props.inlineAfter,'Program one');
+    assert.equal(homepageDisplayFields(rendered.layout).some(field=>field.path.includes('inlineAfter')),false,'inline title remains display-only');
  assert.doesNotMatch(await (await renderLiveLayoutPublication(db,'one',new Request('https://live.example'+path),versionedOptions)).text(),/Draft label/);
 }
 assert.equal((await preview('/first/')).status,422,'a record from the wrong template cannot be used');

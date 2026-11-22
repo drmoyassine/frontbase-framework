@@ -102,6 +102,7 @@ try {
         assert.equal(rendered?.status, 200);
         const dom = new JSDOM(await rendered.text(), { url, runScripts: 'outside-only' });
         const {window} = dom;
+        window.HTMLElement.prototype.getClientRects = () => [{}];
         window.CSS ??= {escape: value => value};
         window.matchMedia = () => ({ matches: device === 'mobile' });
         window.fetch = (url, init = {}) => app.request(new URL(url, window.location.href).href, { ...init, headers: { ...init.headers, Origin: 'http://localhost' } });
@@ -125,10 +126,7 @@ try {
     }
     const en = await openEditor('en', 'desktop');
     en.select('address');
-    const drag = new en.dom.window.Event('dragstart', { bubbles: true });
-    Object.defineProperty(drag, 'dataTransfer', { value: { setData() {} } });
-    [...en.document.querySelectorAll('button')].find(button => button.textContent === 'Drag to move tile').dispatchEvent(drag);
-    en.document.getElementById('about').dispatchEvent(new en.dom.window.MouseEvent('drop', { bubbles: true, clientY: -1 }));
+    en.click('Move earlier');
     en.click('Narrower');
     en.click('Save layout draft');
     await waitFor(() => en.document.body.textContent.includes('Layout draft saved'));

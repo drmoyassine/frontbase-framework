@@ -41,6 +41,25 @@ assert.doesNotMatch(JSON.stringify(identityPlan),/Study here|Source only/,'ident
 const recordField={...field,record:{connectionId:'source',collection:'programs',key:[{column:'id',value:19}]}};
 const recordId=await translationUnitId(scope,displayTranslationUnit(recordField,scope,pageId,'en').resource);
 assert.ok(!identityPlan.entries.some(([,id])=>id===recordId),'compiled layout IDs do not replace record IDs');
+const record={connectionId:'frontbase:publication',collection:'programs',key:[{column:'id',value:19}]};
+const titleLayout={content:[
+ {id:'title',type:'Heading',props:{text:'Advertising',translationRecord:record,translationSources:{text:'title'}}},
+ {id:'inline',type:'Text',props:{text:'Requirements',inlineBefore:'Advertising',inlineAfter:'Advertising',translationRecord:record,translationSources:{inlineBefore:'title',inlineAfter:'title'}}},
+]};
+const titleField=homepageDisplayFields(titleLayout).find(field=>field.blockId==='title');
+const currentTitle=await engine.syncSource(scope,displayTranslationUnit(titleField,scope,pageId,'en'),null,{version:1,role:'Heading'});
+assert.equal((await engine.writeManual(scope,{version:1,unitId:currentTitle.unitId,locale:'ar',sourceVersion:currentTitle.sourceVersion,
+ sourceFingerprint:currentTitle.sourceFingerprint,contextFingerprint:currentTitle.contextFingerprint,revisionId:'record-title',text:'الإعلان',expectedHead:null})).status,'committed');
+let titleReads=0;
+const titleReader={readMany:async(scope,ids,locale)=>{assert.equal(ids.filter(id=>id===currentTitle.unitId).length,1);titleReads++;return reader.readMany(scope,ids,locale);}};
+const localizedTitle=await localizeLiveLayout(titleLayout,{...options,reader:titleReader});
+assert.equal(titleReads,1);
+assert.equal(localizedTitle.content[0].props.text,'الإعلان');
+assert.equal(localizedTitle.content[1].props.inlineBefore,'الإعلان');
+assert.equal(localizedTitle.content[1].props.inlineAfter,'الإعلان');
+assert.equal((await localizeLiveLayout(titleLayout,{...options,locale:'en'})).content[1].props.inlineAfter,'Advertising');
+const editedTitle=structuredClone(titleLayout);editedTitle.content[1].props.inlineAfter='New title';
+assert.equal((await localizeLiveLayout(editedTitle,options)).content[1].props.inlineAfter,'New title');
 const head=currentTranslationValueSchema.parse(await reader.read(scope,source.unitId,'ar'));
 let reads=0,lastIds,resolved;
 const sparse={readMany:async()=>{throw Error('unexpected dense read');},readCurrentMany:async()=>{throw Error('unexpected current dense read');},

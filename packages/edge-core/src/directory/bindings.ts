@@ -456,6 +456,10 @@ function projectCompiledDirectory<T extends PageLayoutData>(
                 if (!field) continue;
                 const value = row?.[field];
                 rest[slot] = typeof value === 'number' && Number.isFinite(value) ? String(value) : literal(value);
+                if (field === 'title' && collection && (typeof row?.id === 'string' || typeof row?.id === 'number')) {
+                    rest.translationRecord ??= { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id }] };
+                    rest.translationSources = { ...rest.translationSources as Record<string, string> | undefined, [slot]: 'title' };
+                }
             }
         }
         return { ...node, id, props: rest, ...(node.children ? { children: visible(node.children).map(child => walk(child, row, index, collection)) } : {}) };

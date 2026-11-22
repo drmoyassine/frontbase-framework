@@ -100,11 +100,29 @@ try {
     }
     await openFrontend('en', 1366);
     await front.getByRole('combobox', { name: 'Tile' }).selectOption('address');
-    await front.getByRole('button', { name: 'Drag to move tile' }).dragTo(front.locator('#about'), { targetPosition: { x: 10, y: 10 } });
+    const handle = await front.getByRole('button', { name: 'Drag selected tile on page' }).boundingBox();
+    const about = await front.locator('#about').boundingBox();
+    await front.mouse.move(handle.x + 16, handle.y + 16);
+    await front.mouse.down();
+    await expect(front.locator('[data-fb-layout-drop-zone]').first()).toBeVisible();
+    await front.mouse.move(about.x + 20, about.y + 10, { steps: 6 });
+    await expect(front.locator('[data-fb-layout-drop-zone="before"][data-active]')).toBeVisible();
+    await front.mouse.up();
+    await expect(front.locator('[data-fb-layout-drop-zone]')).toHaveCount(0);
     await expect(front.locator('#tiles > div').first()).toHaveAttribute('id', 'address');
     await front.getByRole('button', { name: 'Narrower' }).click();
     await front.getByRole('combobox', { name: 'Box alignment' }).selectOption('right');
+    let releaseEditor;
+    const delayedEditor = new Promise(resolve => { releaseEditor = resolve; });
+    await front.route('**/frontend-rich-text.js', async route => { await delayedEditor; await route.continue(); });
     await front.getByRole('combobox', { name: 'Tile' }).selectOption('about-text');
+    const search=front.getByRole('searchbox',{name:'Search variables'});
+    try {
+        await front.getByRole('button',{name:'@ Insert variable',exact:true}).click();
+        await expect(search).toBeFocused();
+    } finally { releaseEditor(); }
+    await expect(front.getByRole('textbox', { name: 'Select words to format' })).toBeVisible();
+    await expect(search).toBeFocused();
     await front.getByRole('combobox', { name: 'Text alignment' }).selectOption('center');
     const words=front.getByRole('textbox', { name: 'Select words to format' });
     await words.press('Control+Home');
@@ -114,7 +132,6 @@ try {
     await expect(front.getByLabel('Selected text')).toHaveCSS('font-style','italic');
     await expect(front.getByLabel('Selected text')).toHaveCSS('font-weight','700');
     await words.press('@');
-    const search=front.getByRole('searchbox',{name:'Search variables'});
     await expect(search).toBeVisible();
     await search.fill('page.title');
     await front.getByRole('combobox',{name:'Liquid variable'}).selectOption('page.title');
@@ -215,6 +232,31 @@ try {
     await expect(front.getByText('Original draft restored')).toBeVisible();
     assert.equal((await new PagesStore(runner,owner).get(page.id)).layout_data,beforeMatch);
     assert.equal((await publication.active()).pointer.hash, hash);
+    const touchContext = await browser.newContext({ viewport: { width: 390, height: 860 }, isMobile: true, hasTouch: true,
+        storageState: await context.storageState() });
+    for (const locale of ['en', 'ar']) {
+        const phone = await touchContext.newPage();
+        await phone.goto(origin + path(locale));
+        const phonePencil = phone.locator('[data-pencil]');
+        await expect(phonePencil).toBeEnabled();
+        if (await phonePencil.getAttribute('aria-expanded') !== 'true') await phonePencil.tap();
+        await phone.getByRole('button', { name: locale === 'ar' ? 'التخطيط' : 'Layout', exact: true }).tap();
+        await phone.getByRole('combobox', { name: locale === 'ar' ? 'العنصر' : 'Tile', exact: true }).selectOption('address');
+        const grab = await phone.locator('[data-fb-layout-handle]').boundingBox();
+        const before = await phone.locator('#about').boundingBox();
+        const cdp = await touchContext.newCDPSession(phone);
+        const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+        await touch('touchStart', grab.x + 20, grab.y + 20);
+        await expect(phone.locator('[data-fb-layout-drop-zone]').first()).toBeVisible();
+        await touch('touchMove', before.x + before.width / 2, before.y + 10);
+        await expect(phone.locator('[data-fb-layout-drop-zone="before"][data-active]')).toBeVisible();
+        await touch('touchEnd');
+        await expect(phone.locator('#tiles > div').first()).toHaveAttribute('id', 'address');
+        await expect(phone.locator('[data-fb-layout-drop-zone]')).toHaveCount(0);
+        await phone.close();
+    }
+    await touchContext.close();
+    assert.equal((await new PagesStore(runner,owner).get(page.id)).layout_data,beforeMatch);
     console.log('Chromium: frontend and Builder round trips in English and Arabic, desktop and mobile widths, preserved bindings and unchanged publication PASS');
 } finally {
     await browser?.close();
