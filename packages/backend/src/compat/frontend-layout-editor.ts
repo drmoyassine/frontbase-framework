@@ -1,7 +1,7 @@
 /** Loaded with the authenticated frontend editor. The published document is a
  * local preview while the layout panel is open. Writes target the page draft. */
 export const FRONTEND_LAYOUT_EDITOR = String.raw`
-function installLayoutEditor({dock=bar,closeControl=null}={}) {
+function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  if(!inventory.layoutDraft)return ()=>false;
  const labels=arabic?{layout:'التخطيط',block:'العنصر',earlier:'نقل للأعلى',later:'نقل للأسفل',drag:'اسحب لنقل العنصر',less:'تضييق',more:'توسيع',save:'حفظ مسودة التخطيط',close:'إغلاق التخطيط',discard:'تجاهل التعديلات',pending:'تعديلات غير محفوظة',saved:'تم حفظ المسودة',conflict:'تغيّرت المسودة. أعد التحميل قبل الحفظ.',failed:'تعذر فتح المسودة أو حفظها.',scope:'مسودة التخطيط المشتركة',desktop:'سطح المكتب',tablet:'جهاز لوحي',mobile:'هاتف'}:{layout:'Layout',block:'Tile',earlier:'Move earlier',later:'Move later',drag:'Drag to move tile',less:'Narrower',more:'Wider',save:'Save layout draft',close:'Close layout',discard:'Discard layout changes',pending:'unsaved layout changes',saved:'Layout draft saved',conflict:'The layout draft changed. Reload before saving.',failed:'The layout draft could not be opened or saved.',scope:'Shared layout draft',desktop:'Desktop',tablet:'Tablet',mobile:'Mobile'};
  let draft, tiles=[], originalOrder=[], changes=[], selected, waiting=false, dragId=null, activeLayout=false, visible=true;
@@ -23,8 +23,7 @@ function installLayoutEditor({dock=bar,closeControl=null}={}) {
  toolbar.insertBefore(range,more);
  const saveDraft=add(labels.save,save),discard=add(labels.discard,()=>{changes=[];location.reload();}),exit=add(labels.close,()=>location.reload());
  panel.append(scope,chooser,viewportLabel,toolbar,feedback);
- const open=document.createElement('button');open.type='button';open.textContent=labels.layout;open.onclick=load;bar.append(open);
- bar.append(panel);
+ const open=document.createElement('button');open.type='button';open.textContent=labels.layout;open.onclick=load;container.append(open,panel);
  const nodes=new Map(), originalSizes=new Map();
  const viewport=()=>matchMedia('(max-width:640px)').matches?'mobile':matchMedia('(max-width:1024px)').matches?'tablet':'desktop';
  const getSelected=()=>tiles.find(tile=>tile.id===selected);
