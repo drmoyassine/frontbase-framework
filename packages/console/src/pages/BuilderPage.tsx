@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useSearchParams } from 'react-router-dom';
 import { FrontbaseBuilder } from '@/components/builder/FrontbaseBuilder';
 import { useBuilderStore } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
 import { toast } from '@/hooks/use-toast';
 import { registerBuilderSw } from '@/sw/registerBuilderSw';
+import { findComponent } from '@/lib/tree-utils';
 
 // Phase E: the builder-scoped SW registration is idempotent and shared across
 // every BuilderPage mount, so module scope (run once per page load) is the
@@ -14,6 +15,8 @@ let builderSwRegistered = false;
 
 const BuilderPage: React.FC = () => {
   const { pageId } = useParams<{ pageId: string }>();
+  const [params] = useSearchParams();
+  const element = params.get('element');
   const {
     pages,
     setCurrentPageId,
@@ -80,6 +83,13 @@ const BuilderPage: React.FC = () => {
       }
     }
   }, [pageId, setCurrentPageId, currentPageId, pages]);
+
+  useEffect(() => {
+    if (!element || currentPageId !== pageId) return;
+    const state = useBuilderStore.getState();
+    const page = state.pages.find(candidate => candidate.id === pageId);
+    if (findComponent(page?.layoutData?.content ?? [], element)) state.setSelectedComponentId(element);
+  }, [currentPageId, element, isInitialized, isPagesLoading, pageId]);
 
   if (isPagesLoading || !isInitialized) {
     return (

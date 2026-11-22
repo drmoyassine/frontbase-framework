@@ -70,6 +70,9 @@ export function VariableInput({
     }, [onChange]);
 
     const handleKeyUp = useCallback((e: React.KeyboardEvent) => {
+        // The picker owns these keys on keydown. Reopening on keyup would
+        // undo a dismissal or reset a group transition.
+        if (e.nativeEvent.isComposing || ['Escape', 'ArrowUp', 'ArrowDown', 'Enter', 'Tab'].includes(e.key)) return;
         const target = e.target as HTMLInputElement | HTMLTextAreaElement;
         const pos = target.selectionStart || 0;
         setCursorPosition(pos);
@@ -82,7 +85,7 @@ export function VariableInput({
         const lastNewline = textBeforeCursor.lastIndexOf('\n');
         const lastBoundary = Math.max(lastSpace, lastNewline);
 
-        if (atIndex !== -1 && atIndex > lastBoundary) {
+        if (atIndex !== -1 && atIndex > lastBoundary && !/[\p{L}\p{N}._+-]/u.test(textBeforeCursor[atIndex - 1] ?? '')) {
             setSearchTerm(textBeforeCursor.slice(atIndex + 1));
             setTriggerChar('@');
             setShowPicker(true);
@@ -94,7 +97,7 @@ export function VariableInput({
         // the syntax context allows filters (never in an 'expression' field).
         if (showFiltersOnPipe && filtersAllowedForContext(syntaxContext)) {
             const pipeIndex = textBeforeCursor.lastIndexOf('|');
-            if (pipeIndex !== -1 && pipeIndex > lastBoundary && textBeforeCursor[pipeIndex-1]!=='|') {
+            if (pipeIndex !== -1 && textBeforeCursor[pipeIndex-1]!=='|' && /^\s*[\w-]*\s*$/.test(textBeforeCursor.slice(pipeIndex + 1))) {
                 // Check if we're inside {{ }} - filters only make sense there
                 const openBracket = textBeforeCursor.lastIndexOf('{{');
                 const closeBracket = textBeforeCursor.lastIndexOf('}}');
@@ -184,10 +187,10 @@ export function VariableInput({
             insertStart = textBeforeCursor.lastIndexOf('@');
             newValue = textBeforeCursor.slice(0, insertStart) + insertValue + textAfterCursor;
         } else {
-            // For pipe, just append the filter
+            // The picker supplies the separator with the selected filter.
             const triggerIndex = textBeforeCursor.lastIndexOf('|');
-            const beforePipe = textBeforeCursor.slice(0, triggerIndex + 1);
-            insertStart = triggerIndex + 1;
+            const beforePipe = textBeforeCursor.slice(0, triggerIndex).trimEnd();
+            insertStart = beforePipe.length;
             newValue = beforePipe + insertValue + textAfterCursor;
         }
 

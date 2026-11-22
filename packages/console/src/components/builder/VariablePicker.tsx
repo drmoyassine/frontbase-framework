@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { LOGIC_SNIPPETS, LogicSnippet } from '@/lib/liquid/logicSnippets';
+import { useBuilderStore } from '@/stores/builder';
 import { LogicSnippetWizard } from './LogicSnippetWizard';
 
 interface VariablePickerProps {
@@ -81,7 +82,8 @@ export function VariablePicker({
     allowedGroups,
     recordColumns,
 }: VariablePickerProps) {
-    const { variables, filters, isLoading } = useVariables();
+    const pageId = useBuilderStore(state => state.currentPageId) ?? undefined;
+    const { variables, filters, isLoading } = useVariables(pageId);
     // Filters are offered only when triggered AND the syntax context allows them
     // (never in an 'expression' field like visibility/RLS).
     const allowFilters = showFilters && filtersAllowedForContext(syntaxContext);
@@ -155,14 +157,15 @@ export function VariablePicker({
             const config = GROUP_CONFIG[g];
             if (config?.label.toLowerCase().includes(searchTerm.toLowerCase())) return true;
             const groupVars = g === 'record' ? recordVariables : groupedVariables[g];
-            return groupVars?.some(v => v.path.toLowerCase().includes(searchTerm.toLowerCase()));
+            return groupVars?.some(v => v.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                v.description?.toLowerCase().includes(searchTerm.toLowerCase()));
         });
     }, [availableGroups, groupedVariables, searchTerm, recordVariables]);
 
     const filteredVariables = useMemo(() => {
         if (!activeGroup || activeGroup === '__logic' || activeGroup.startsWith('__filter:')) return [];
         const vars = activeGroup === 'record' ? recordVariables : (groupedVariables[activeGroup] || []);
-        if (!searchTerm) return vars;
+        if (!searchTerm || GROUP_CONFIG[activeGroup]?.label.toLowerCase().includes(searchTerm.toLowerCase())) return vars;
         return vars.filter(v =>
             v.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
             v.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -273,10 +276,11 @@ export function VariablePicker({
     // Keyboard navigation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.isComposing || wizardSnippet || e.ctrlKey || e.metaKey || e.altKey) return;
             switch (e.key) {
                 case 'ArrowDown':
                     e.preventDefault();
-                    setSelectedIndex(i => Math.min(i + 1, totalItems - 1));
+                    setSelectedIndex(i => Math.min(i + 1, Math.max(0, totalItems - 1)));
                     break;
                 case 'ArrowUp':
                     e.preventDefault();
@@ -307,7 +311,7 @@ export function VariablePicker({
         };
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [selectedIndex, totalItems, activeGroup, searchTerm, handleSelect]);
+    }, [selectedIndex, totalItems, activeGroup, searchTerm, handleSelect, onClose, wizardSnippet]);
 
     // Close on click outside — but not while the snippet wizard dialog is open
     // (the dialog renders in its own portal, which counts as "outside").

@@ -4,6 +4,7 @@ import { extname } from 'node:path';
 import { serve } from '@hono/node-server';
 import { chromium, expect } from '@playwright/test';
 import { LiveLayoutPublicationStore, PagesStore, SyncStore, createSecretCipher } from '@frontbase/backend';
+import { renderPage } from '@frontbase/edge-core';
 import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { sqliteRunner } from '@frontbase/edge-infra';
 import { createCmsEngine } from '../dist/worker.mjs';
@@ -102,6 +103,17 @@ try {
     await front.getByRole('button', { name: 'Drag to move tile' }).dragTo(front.locator('#about'), { targetPosition: { x: 10, y: 10 } });
     await expect(front.locator('#tiles > div').first()).toHaveAttribute('id', 'address');
     await front.getByRole('button', { name: 'Narrower' }).click();
+    await front.getByRole('combobox', { name: 'Box alignment' }).selectOption('right');
+    await front.getByRole('combobox', { name: 'Tile' }).selectOption('about-text');
+    await front.getByRole('combobox', { name: 'Text alignment' }).selectOption('center');
+    const words=front.getByRole('textbox', { name: 'Select words to format' });
+    await words.evaluate(input=>input.setSelectionRange(0,5));
+    await front.getByRole('button', { name: 'Bold', exact: true }).click();
+    await front.getByRole('button', { name: 'Italic', exact: true }).click();
+    await expect(front.getByLabel('Selected text')).toHaveCSS('font-style','italic');
+    await expect(front.getByLabel('Selected text')).toHaveCSS('font-weight','700');
+    const bindingPath=await front.getByRole('link',{name:'@ Bind in Builder'}).getAttribute('href');
+    assert.equal(bindingPath,'/frontbase-admin/builder/'+page.id+'?element=about-text');
     if (await pencil.count()) {
         await pencil.click();
         await expect(front.locator('#tiles > div').first()).toHaveAttribute('id', 'about');
@@ -113,10 +125,13 @@ try {
     await front.getByRole('button', { name: 'Save layout draft' }).click();
     await expect(front.getByText('Layout draft saved')).toBeVisible();
 
-    await builder.goto(origin + '/frontbase-admin/builder/' + page.id);
+    await builder.goto(origin + bindingPath);
     const canvas = builder.frameLocator('iframe[title="Frontbase Builder Canvas"]');
     await expect(canvas.locator('#tiles > div').first()).toHaveAttribute('id', 'address');
     await expect(canvas.locator('#address')).toHaveCSS('max-width', '90%');
+    await expect(canvas.locator('#address')).toHaveCSS('margin-right', '0px');
+    await expect(canvas.locator('#about-text')).toHaveCSS('text-align', 'center');
+    await expect(canvas.locator('#about-text strong em')).toHaveText('About');
     await builder.getByRole('button', { name: 'Mobile viewport' }).click();
     await canvas.locator('#about').click({ position: { x: 12, y: 57 } });
     await builder.getByRole('button', { name: 'Move tile earlier' }).click();
@@ -145,6 +160,15 @@ try {
 
     const final = JSON.parse((await new PagesStore(runner, owner).get(page.id)).layout_data);
     assert.equal(final.content[0].children.find(node => node.id === 'details').children[0].props.text, binding);
+    assert.deepEqual(final.content[0].children.find(node=>node.id==='about').children[0].props.inlineEmphasis,
+        [{phrase:'About',mark:'bold'},{phrase:'About',mark:'italic'}]);
+    const liveLayout={root:{},content:[{id:'live-copy',type:'Text',props:{text:binding,
+        inlineEmphasis:[{phrase:'البرنامج',mark:'italic',prefix:'عن '}]}}]};
+    const renderRecord=description=>renderPage(liveLayout,{record:{description},app:{},page:{},user:{},visitor:{},url:{},system:{},cookies:{},local:{},session:{}});
+    const original=await renderRecord('البرنامج الأول عن البرنامج <script>');
+    assert.ok(original.includes('البرنامج الأول عن <em>البرنامج</em> &lt;script&gt;'));
+    assert.ok((await renderRecord('عنوان جديد')).includes('عنوان جديد'));
+    assert.ok(!(await renderRecord('عنوان جديد')).includes('<em>'));
     assert.equal((await publication.active()).pointer.hash, hash);
     console.log('Chromium: frontend and Builder round trips in English and Arabic, desktop and mobile widths, preserved bindings and unchanged publication PASS');
 } finally {

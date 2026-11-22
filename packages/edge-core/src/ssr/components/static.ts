@@ -10,6 +10,7 @@ import {renderGallery} from './gallery.js';
 import { LUCIDE_ICONS } from '../iconMap.js';
 import { escapeHtml } from './lib/utils.js';
 import { resolvePropsStyles } from './lib/attrs.js';
+import { inlineEmphasis } from '../../layout-draft.js';
 
 /**
  * Resolve a lucide-react icon name (PascalCase, e.g. "Zap", "CheckCircle2") to a
@@ -121,8 +122,29 @@ export function renderStaticComponent(
 // Individual Component Renderers
 // =============================================================================
 
+function renderEmphasis(text: string, value: unknown): string {
+    if (!Array.isArray(value) || !value.length) return escapeHtml(text);
+    const marks = inlineEmphasis(value).flatMap(({ phrase, mark, prefix = '', suffix = '' }) => {
+        const context = prefix + phrase + suffix;
+        const position = text.indexOf(context);
+        const start = position + prefix.length;
+        // Leave ambiguous or changed live text untouched.
+        return position < 0 || text.indexOf(context, position + 1) >= 0 ? [] : [{ start, end: start + phrase.length, mark }];
+    });
+    if (!marks.length) return escapeHtml(text);
+    const points = [...new Set([0, text.length, ...marks.flatMap(mark => [mark.start, mark.end])])].sort((a, b) => a - b);
+    const html = points.slice(0, -1).map((start, index) => {
+        const end = points[index + 1]!;
+        let html = escapeHtml(text.slice(start, end));
+        if (marks.some(mark => mark.mark === 'italic' && mark.start <= start && mark.end >= end)) html = `<em>${html}</em>`;
+        if (marks.some(mark => mark.mark === 'bold' && mark.start <= start && mark.end >= end)) html = `<strong>${html}</strong>`;
+        return html;
+    }).join('');
+    return `<span data-fb-inline-emphasis>${html}</span>`;
+}
+
 function renderText(id: string, props: Record<string, unknown>): string {
-    const content = escapeHtml(String(props.content || props.text || props.value || ''));
+    const content = renderEmphasis(String(props.content || props.text || props.value || ''), props.inlineEmphasis);
     const requestedSize = String(props.size || 'base').trim();
     const literalSize = /^(?:0|(?:\d*\.)?\d+(?:px|rem|em|%|vw|vh|vmin|vmax|ch|ex))$/.test(requestedSize);
     const size = literalSize ? 'custom' : /^[a-z0-9-]+$/i.test(requestedSize) ? requestedSize : 'base';
@@ -138,7 +160,7 @@ function renderText(id: string, props: Record<string, unknown>): string {
 }
 
 function renderHeading(id: string, props: Record<string, unknown>): string {
-    const content = escapeHtml(String(props.content || props.text || ''));
+    const content = renderEmphasis(String(props.content || props.text || ''), props.inlineEmphasis);
     // Handle both 'h4' string format and numeric 4 format
     const levelProp = String(props.level || '2').replace(/^h/i, '');
     const level = Math.min(Math.max(Number(levelProp) || 2, 1), 6);
@@ -153,7 +175,7 @@ function renderHeading(id: string, props: Record<string, unknown>): string {
 }
 
 function renderParagraph(id: string, props: Record<string, unknown>): string {
-    const content = escapeHtml(String(props.content || props.text || ''));
+    const content = renderEmphasis(String(props.content || props.text || ''), props.inlineEmphasis);
     const align = props.align as string || 'inherit';  // Inherit from parent
     const color = props.color as string || 'inherit';
 

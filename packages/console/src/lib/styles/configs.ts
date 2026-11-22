@@ -304,6 +304,12 @@ export const CSS_PROPERTY_CONFIGS: Record<string, CSSPropertyConfig> = {
         description: 'Thickness of text. 400 is normal, 700 is bold.'
     },
 
+    fontStyle: {
+        id: 'fontStyle', name: 'Font Style', category: 'Typography', controlType: 'select',
+        defaultValue: 'normal', options: ['normal', 'italic'], toCSSValue: value => value,
+        fromCSSValue: css => css.trim(), description: 'Italicize the whole text element.'
+    },
+
     lineHeight: {
         id: 'lineHeight',
         name: 'Line Height',
@@ -491,7 +497,7 @@ export const CSS_CATEGORIES = {
     'Layout': ['display', 'position', 'flexDirection', 'justifyContent', 'alignItems', 'flexWrap', 'horizontalAlign'],
     'Spacing': ['padding', 'margin', 'gap'],
     'Sizing': ['size', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight'],
-    'Typography': ['fontSize', 'fontWeight', 'lineHeight', 'textAlign', 'color'],
+    'Typography': ['fontSize', 'fontWeight', 'fontStyle', 'lineHeight', 'textAlign', 'color'],
     'Backgrounds': ['backgroundColor', 'backgroundImage', 'backgroundSize', 'backgroundPosition'],
     'Effects': ['opacity', 'borderRadius', 'borderColor', 'boxShadow', 'borderWidth', 'borderStyle']
 };

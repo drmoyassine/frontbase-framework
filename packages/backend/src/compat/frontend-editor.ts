@@ -151,7 +151,14 @@ async function refreshRecords(){
  }
 }
 function previewRecords(show=expanded){const records=new Map();for(const field of inventory.fields)if(field.recordKey){const key=JSON.stringify([field.recordScope,field.recordKey]);if(!records.has(key))records.set(key,{recordScope:field.recordScope,recordKey:field.recordKey,values:{}});if(show&&pending.has(field.id))records.get(key).values[field.fieldKey]=pending.get(field.id);}for(const detail of records.values())window.dispatchEvent(new CustomEvent('frontbase:record-draft',{detail}));}
-function all(id,text){for(const span of bound.get(id)||[])span.textContent=text===original.get(id)?(displayed.get(span)??text):text;}
+const emphasizedCopy=new WeakMap();
+function all(id,text){for(const span of bound.get(id)||[]){
+ const value=text===original.get(id)?(displayed.get(span)??text):text;
+ const emphasized=emphasizedCopy.get(span);
+ if(emphasized&&value===emphasized.textContent){
+  if(!span.firstElementChild?.hasAttribute('data-fb-inline-emphasis'))span.replaceChildren(emphasized.cloneNode(true));
+ }else if(span.textContent!==value||span.firstElementChild)span.textContent=value;
+}}
 function scope(field){
  if(field.destination==='record-translation')return words.recordTranslation;
  if(field.recordKey)return words.recordScope;
@@ -300,10 +307,15 @@ const first=!recordAttributes.has(element);if(first)recordAttributes.set(element
 }}
 function bind(){bindRecords();for(const field of inventory.fields){if(field.blockId.startsWith('$')||['alt','ariaLabel','placeholder'].includes(field.path.at(-1)))continue;const root=document.getElementById(field.blockId);if(!root)continue;
 if(field.versionId){const parent=root.closest('[data-block-versions]');if(parent&&parent.dataset.blockActive!==field.versionId)continue;}
-const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;const matches=[];while(node=walker.nextNode()){if(node.parentElement.closest('script,style,template,[data-fb-copy],[data-frontbase-editor],[contenteditable],textarea,select'))continue;if(node.textContent.trim()===field.text.trim())matches.push(node);}
+const emphasis=root.querySelector(':scope > [data-fb-inline-emphasis]');
+const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;const matches=[];
+if(emphasis&&emphasis.textContent.trim()===field.text.trim()&&!emphasis.closest('[data-fb-copy]'))matches.push(emphasis);
+else while(node=walker.nextNode()){if(node.parentElement.closest('script,style,template,[data-fb-copy],[data-frontbase-editor],[data-fb-inline-emphasis],[contenteditable],textarea,select'))continue;if(node.textContent.trim()===field.text.trim())matches.push(node);}
 // Responsive menu copies may share one field, but independent equal labels stay ambiguous.
 if(matches.length!==1){const identities=new Set(inventory.fields.filter(other=>other.blockId===field.blockId&&other.text.trim()===field.text.trim()).map(other=>other.id));const hrefs=matches.map(node=>node.parentElement.closest('a')?.getAttribute('href'));if(!field.blockId.startsWith('managed-menu-')||!matches.length||identities.size!==1||hrefs.some(href=>!href||href!==hrefs[0]))continue;}
-for(const match of matches){const span=document.createElement('span');bindableSpan(span,field.id,true);span.textContent=match.textContent;if(field.sourceValue!==undefined)displayed.set(span,match.textContent);match.replaceWith(span);const spans=bound.get(field.id)||[];spans.push(span);bound.set(field.id,spans);
+for(const match of matches){const span=document.createElement('span');bindableSpan(span,field.id,true);if(field.sourceValue!==undefined)displayed.set(span,match.textContent);match.replaceWith(span);
+if(match.nodeType===Node.ELEMENT_NODE){span.append(match);emphasizedCopy.set(span,match.cloneNode(true));}else span.textContent=match.textContent;
+const spans=bound.get(field.id)||[];spans.push(span);bound.set(field.id,spans);
 const edit=event=>{if(!expanded||busy)return;event.preventDefault();event.stopImmediatePropagation();if(active?.span===span){span.focus();return;}if(!stage())return;selectedField=field;selectedRecord=null;active={id:field.id,span,element:span};if(field.sourceValue!==undefined)span.textContent=pending.get(field.id)??field.sourceValue;span.setAttribute('aria-describedby',context.id);span.setAttribute('contenteditable','plaintext-only');span.setAttribute('role','textbox');span.focus();update();};
 editActions.set(span,edit);span.addEventListener('click',edit);span.addEventListener('keydown',event=>{if(active?.span===span){if(event.key==='Escape'){event.preventDefault();event.stopPropagation();cancelCurrent();}else if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();stage();}}else if(event.key==='Enter'||event.key===' '){edit(event);}});
 span.addEventListener('input',update);

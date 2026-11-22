@@ -1767,6 +1767,10 @@ Language and scope now appear above the active field in the live page, with RTL 
 
 Authenticated Chrome verified desktop dock spacing below the language switcher, English and Arabic phone-width spacing above the badge, and Edit record opening the Advertising title despite the related institution. The exact Builder history URL opened the Version History dialog, which reported no versions for that layout. Fresh English and Arabic Advertising loads in Chrome Network showed no `ui-events` request. The English desktop and Arabic mobile checks showed the label above the Overview field. No content changes were saved. Study-in-USA Worker `a9088369-f80a-45d9-88d7-60ca2147c08a` is active at 100% with all 17 bindings preserved. Health, both homepages, and both search routes passed.
 
+## Frontend layout typography and Liquid picker
+
+Claimed in the Study-in-USA release worktree. Extend the shared draft with box and text alignment and bounded inline emphasis, and verify Builder's existing Liquid variable picker. Preserve existing record bindings, publication and deployment settings.
+
 ## Booking for X program detail refinement
 
 The editable program detail starter places the institution link and location under the program title, uses intake badges and comma-grouped tuition, and includes optional requirements and a small record timestamp. The cover uses the program image first and the related institution cover when needed. The authoring controls select the relation, cover behavior, link target, field mappings and formatting. Program detail keeps its existing count of two directory queries. The draft upgrade retains the institution link identity and other authored sections and recognizes older Image covers.
