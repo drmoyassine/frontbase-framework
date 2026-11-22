@@ -536,6 +536,7 @@ export function createBuilderEngine(opts: BuilderEngineOptions): Hono {
             const html = renderDocument(pageEntry, bodyHtml, {
                 environment: 'builder',
                 registerServiceWorker: false,
+                ...(typeof pageData?.locale === 'string' && pageData.locale ? { language: pageData.locale, direction: pageData.direction === 'rtl' ? 'rtl' : 'ltr' } : {}),
             });
 
             return c.json({ html });

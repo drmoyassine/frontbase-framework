@@ -20,6 +20,7 @@ import {publishFrontendTranslationEdits,readHomepagePointer} from '../translatio
 import type {TranslationBatchHost} from '../translation-batches.js';
 import {commitFrontendRecordEdits,prepareFrontendRecordEdit} from '../frontend-records.js';
 import {applyBlockVersion} from '@frontbase/edge-core/block-versions';
+import {publicationPathSchema,publicationTemplateSchema} from '@frontbase/edge-core/directory/publication';
 import {resolveLiveLayoutSurface,renderLiveLayoutPublication} from '../live-layout-serving.js';
 import {writeLiveRecordTranslations} from '../live-translation.js';
 import {isFrontendLiquidVariable} from './variables.js';
@@ -28,6 +29,7 @@ const pathSchema=z.string().min(1).max(2048).refine(value=>value.startsWith('/')
 const selectionSchema=z.array(z.object({componentId:z.string().min(1).max(200),versionId:z.string().min(1).max(128),ids:z.array(z.string().min(1).max(160)).min(1).max(100)}).strict()).max(8);
 const saveSchema=z.object({path:pathSchema,token:z.string().regex(/^[a-f0-9]{64}$/),operationId:z.string().uuid(),selection:selectionSchema.optional(),entries:z.array(z.object({id:z.string().regex(/^[a-f0-9]{64}$/),text:z.string().min(1).max(12000)}).strict()).min(1).max(100)}).strict();
 const tileId=z.string().min(1).max(200);
+const canvasInput=z.object({path:publicationPathSchema,pageId:z.string().uuid(),layout:publicationTemplateSchema.shape.layout}).strict();
 const viewport=z.enum(['desktop','tablet','mobile']);
 const styleOperation={kind:z.literal('style'),id:tileId,viewport};
 const draftIdentity={path:pathSchema,pageId:tileId,revision:z.string().regex(/^[a-f0-9]{64}$/)};
@@ -116,6 +118,18 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
         const layout=JSON.parse(page.layout_data) as PageLayoutData;
         return {pages,page,layout,revision:await publicationHash(page.layout_data),source:surface.locale===surface.sourceLocale};
     }
+    app.post('/api/frontend-edit/canvas-preview/',bodyLimit({maxSize:512*1024}),async c=>{
+        const input=canvasInput.safeParse(await c.req.json().catch(()=>null));
+        if(!input.success)return c.json({detail:'Invalid record preview'},422);
+        const {path,pageId,layout}=input.data;
+        const url=new URL(path,c.req.url);
+        if(url.origin!==new URL(c.req.url).origin || url.search)return c.json({detail:'Invalid record preview URL'},422);
+        const surface=await resolveLiveLayoutSurface(db,c.get('tenant'),new Request(url),{
+            host:translationHost,liveQuery:publishedLiveQuery(value=>app.fetch(value)),previewDraft:{pageId,layout:layout as unknown as PageLayoutData},
+        }).catch(()=>null);
+        if(!surface)return c.json({detail:'This live record could not be loaded for the current layout.'},422);
+        return c.json({layout:surface.layout,locale:surface.locale});
+    });
     app.get('/api/frontend-edit/layout-draft/',async c=>{
         const path=pathSchema.safeParse(c.req.query('path'));
         if(!path.success)return c.json({detail:'Invalid page path'},400);

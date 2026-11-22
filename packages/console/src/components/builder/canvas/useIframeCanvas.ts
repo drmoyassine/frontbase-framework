@@ -32,6 +32,7 @@ import type { Page } from '@/types/builder';
 import { buildReRenderRequest } from '@/lib/builder/iframeBridge';
 import { sitePageReferenceSchema, siteConfigurationDraftSchema, projectSharedDirectoryPreview } from '@frontbase/edge-core/directory/configuration';
 import { useBuilderStore } from '@/stores/builder';
+import { localeDirection } from '@frontbase/edge-core/localization';
 import { loadDirectoryCanvas, selectedDirectoryCollection } from '../directory/loadDirectoryCanvas';
 import {loadMenuCanvas} from './loadMenuCanvas';
 import {resolveBlockTree} from '@frontbase/edge-core/block-versions';
@@ -54,7 +55,7 @@ export interface UseIframeCanvasResult {
 const DEBOUNCE_MS = 120;
 
 export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly = false,
-    force?: Readonly<Record<string, string>>): UseIframeCanvasResult {
+    force?: Readonly<Record<string, string>>, previewPath?: string | null): UseIframeCanvasResult {
     const selectedId=useBuilderStore(state=>state.selectedComponentId);
     const editingVersions=useBuilderStore(state=>state.editingVersions);
     const previewConditions=useBuilderStore(state=>state.previewVersionConditions);
@@ -79,7 +80,27 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly 
 
             const body = buildReRenderRequest(page);
             if (defaultOnly || !previewConditions) body.layout = { ...body.layout, content: resolveBlockTree(body.layout.content, () => undefined, defaultOnly ? (force ?? {}) : editingVersions) as typeof body.layout.content };
-            if (page.layoutData?.root.siteConfiguration !== undefined || page.layoutData?.root.directoryLanding!==undefined) {
+            const role = sitePageReferenceSchema.safeParse(page.layoutData?.root.siteConfiguration).data?.role;
+            const liveRecord = previewPath && (role === 'program' || role === 'institution' || role === 'article' || role === 'editorial');
+            if (liveRecord) {
+                try {
+                    const response = await fetch('/api/frontend-edit/canvas-preview/', {
+                        method: 'POST', credentials: 'same-origin', signal: controller.signal,
+                        headers: { 'Content-Type': 'application/json', 'X-Frontbase-Editor': '1' },
+                        body: JSON.stringify({ pageId: page.id, path: previewPath, layout: body.layout }),
+                    });
+                    if (!response.ok) throw new Error('Record preview unavailable');
+                    const result = await response.json();
+                    body.layout = result.layout;
+                    body.pageData.locale = result.locale;
+                    body.pageData.direction = localeDirection(result.locale);
+                } catch {
+                    if (!cancelled && !controller.signal.aborted) {
+                        setHtml(''); setStatus('error'); setError('This live record could not be loaded. Reopen Builder from its public page to try again.');
+                    }
+                    return;
+                }
+            } else if (page.layoutData?.root.siteConfiguration !== undefined || page.layoutData?.root.directoryLanding!==undefined) {
                 try {
                     if(page.layoutData.root.siteConfiguration!==undefined)sitePageReferenceSchema.parse(page.layoutData.root.siteConfiguration);
                     const response = await fetch('/api/project/site-configuration/', { credentials: 'include', signal: controller.signal });
@@ -93,7 +114,7 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly 
                 }
                 if (cancelled) return;
             }
-            try{body.layout=await loadMenuCanvas(body.layout,page.id,page.isHomepage?'/':`/${page.slug.replace(/^\/+|\/+$/g,'')}/`,controller.signal);}catch{if(!cancelled&&!controller.signal.aborted){setHtml('');setStatus('error');setError('Shared menu references are unavailable. Reload their saved version in Page Settings.');}return;}
+            if(!liveRecord)try{body.layout=await loadMenuCanvas(body.layout,page.id,page.isHomepage?'/':`/${page.slug.replace(/^\/+|\/+$/g,'')}/`,controller.signal);}catch{if(!cancelled&&!controller.signal.aborted){setHtml('');setStatus('error');setError('Shared menu references are unavailable. Reload their saved version in Page Settings.');}return;}
             const baseOpts: BuilderApiOptions = {
                 systemEdgeUrl,
                 signal: controller.signal,
@@ -176,6 +197,7 @@ export function useIframeCanvas(page: Page, systemEdgeUrl?: string, defaultOnly 
         page.isHomepage,
         focusRevision,
         previewCollection,
+        previewPath,
         editingVersions,
         previewConditions,
         page.title,

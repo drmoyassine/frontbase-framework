@@ -4,7 +4,7 @@ import { extname } from 'node:path';
 import { serve } from '@hono/node-server';
 import { chromium, expect } from '@playwright/test';
 import { LiveLayoutPublicationStore, PagesStore, SyncStore, createSecretCipher } from '@frontbase/backend';
-import { renderPage } from '@frontbase/edge-core';
+import { applyLayoutDraftOperation, renderPage } from '@frontbase/edge-core';
 import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { sqliteRunner } from '@frontbase/edge-infra';
 import { createCmsEngine } from '../dist/worker.mjs';
@@ -191,6 +191,19 @@ try {
     await front.getByRole('button',{name:'Restore previous draft'}).click();
     await expect(front.getByText('Original draft restored')).toBeVisible();
     assert.equal((await new PagesStore(runner,owner).get(page.id)).layout_data,beforeMatch);
+    const referenceLayout = { content: [tile('reference', 'Reference', 'Reference'), tile('matched', 'Matched', 'Matched')], root: {} };
+    Object.assign(referenceLayout.content[0].styles, { width: '65%', boxSizing: 'border-box', marginInlineStart: '12.5%', marginInlineEnd: 'auto' });
+    const matchedLayout = applyLayoutDraftOperation(referenceLayout, { kind: 'match', id: 'matched', viewport: 'desktop', width: 65, offset: 12.5 });
+    const matchHtml = await renderPage(matchedLayout, { app: {}, page: {}, user: {}, system: {}, url: {}, visitor: {} });
+    const directionTest = await context.newPage();
+    for (const direction of ['ltr', 'rtl']) {
+        await directionTest.setContent(`<html dir="${direction}"><body>${matchHtml}</body></html>`);
+        const reference = await directionTest.locator('#reference').boundingBox();
+        const matched = await directionTest.locator('#matched').boundingBox();
+        assert.ok(Math.abs(reference.width - matched.width) < 1, direction + ' matched width');
+        assert.ok(Math.abs(reference.x - matched.x) < 1, direction + ' matched horizontal position');
+    }
+    await directionTest.close();
     await front.getByRole('combobox',{name:'Tile'}).selectOption('about-text');
     await words.press('Control+End');
     await words.press('!');

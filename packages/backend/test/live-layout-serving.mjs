@@ -174,8 +174,30 @@ await new FrontendCopyStore(db,'one').save(null,[{
  id:scalarCopyId,source:await publicationHash('25702'),locale:'en',text:'STALE_FEE_OVERRIDE',
 }],crypto.randomUUID(),'test','2026-11-20T09:00:00Z');
 const editor=new Hono();
-editor.use('*',async(c,next)=>{c.set('tenant','one');c.set('principal',{user:{id:'fixture-owner',role:'owner'}});await next();});
+let editorRole='owner';
+editor.use('*',async(c,next)=>{c.set('tenant','one');c.set('principal',{user:{id:'fixture-owner',role:editorRole}});await next();});
 registerFrontendEditRoutes(editor,db,()=>new Date().toISOString(),versionedHost);
+const previewDraft=structuredClone(templates[2].layout);
+previewDraft.content[0].children.push({id:'draft-copy',type:'Text',props:{text:'Draft label',inlineAfter:'{{ record.title }}'}});
+const preview=(path,pageId=templates[2].pageId,origin='http://localhost')=>editor.request('/api/frontend-edit/canvas-preview/',{
+ method:'POST',headers:{origin,'X-Frontbase-Editor':'1','content-type':'application/json'},body:JSON.stringify({path,pageId,layout:previewDraft}),
+});
+for(const [path,locale] of [['/program/','en'],['/ar/program/','ar']]){
+ const response=await preview(path);
+ assert.equal(response.status,200,await response.clone().text());
+ assert.equal(response.headers.get('Cache-Control'),'no-store');
+ const rendered=await response.json();
+ assert.equal(rendered.locale,locale);
+ assert.equal(rendered.layout.content[0].children.find(node=>node.id==='draft-copy').props.inlineAfter,'Program one');
+ assert.doesNotMatch(await (await renderLiveLayoutPublication(db,'one',new Request('https://live.example'+path),versionedOptions)).text(),/Draft label/);
+}
+assert.equal((await preview('/first/')).status,422,'a record from the wrong template cannot be used');
+await db.exec('INSERT INTO programs(id,title,path,institution_id,country) VALUES(10,?,?,1,99)',['Outside scope','/outside-scope/']);
+assert.equal((await preview('/outside-scope/')).status,422,'a record outside the live scope cannot be used');
+assert.equal((await preview('/program/',undefined,'https://untrusted.example')).status,403);
+editorRole='member';
+assert.equal((await preview('/program/')).status,403);
+editorRole='owner';
 for(const [amount,date] of [[25702,'2026-11-20'],[26000,'2026-11-21']]){
  if(amount===26000){
     const inventory=async path=>{

@@ -1,4 +1,4 @@
-import {displayPlanInterpolations} from '@frontbase/edge-core/localization';
+import {compileDisplaySurfacePlan,displayPlanInterpolations} from '@frontbase/edge-core/localization';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {renderResolvedPageDocument,audienceConditionUser,type PageLayoutData} from '@frontbase/edge-core';
 import type {VerifiedMenuAudience} from '@frontbase/edge-core/menus';
@@ -28,6 +28,8 @@ export interface LiveLayoutServingOptions{
     /** Supplied only by the authenticated private preview route, never visitor input. */
     prepared?:{pointer:LiveLayoutPointer;layout:LiveLayoutIndex;loadLayout?:LoadLiveLayout};
     previewPalette?:BookingPalette;
+    /** Private Builder projection. The live route must belong to this page. */
+    previewDraft?:{pageId:string;layout:PageLayoutData};
     resolveAudience?(owner:string,request:Request):Promise<VerifiedMenuAudience>;
 }
 export interface LiveLayoutSurface{layout:PageLayoutData;pageId:string;locale:string;sourceLocale:string;version:string}
@@ -74,10 +76,11 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
             headers.set('Location',(locale===sourceLocale?'':'/'+locale)+redirect.to+url.search);
             return new Response(null,{status:301,headers});
         }
-        const resolved=await resolveLiveLayoutPage(publication,active.pointer.hash,owner,db,sourceRequest,reader,locale,audienceConditionUser(audience),list,active.loadLayout);
+        const resolved=await resolveLiveLayoutPage(publication,active.pointer.hash,owner,db,sourceRequest,reader,locale,audienceConditionUser(audience),list,active.loadLayout,options.previewDraft);
         if(!resolved)return new Response(request.method==='HEAD'?null:'Not found',{status:404,headers});
         const template = { layout: resolved.authored };
-        const displayPlan = resolved.displayPlan ?? liveDisplayPlan(publication as Parameters<typeof liveDisplayPlan>[0], resolved.sourcePageId);
+        const displayPlan = options.previewDraft ? compileDisplaySurfacePlan(resolved.authored)
+            : resolved.displayPlan ?? liveDisplayPlan(publication as Parameters<typeof liveDisplayPlan>[0], resolved.sourcePageId);
         const menuHash=(resolved.page.layout.root?.appMenus as {hash?:unknown}|undefined)?.hash;
         const settings=await livePageSettings(db,owner,['project','frontend_copy:active:v1',...(locale!==sourceLocale?['translation_storage:v1']:[]),
             ...(resolved.page.layout.root?.bookingForX? [BOOKING_PALETTE_KEY] : []),

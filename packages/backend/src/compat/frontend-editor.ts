@@ -113,7 +113,8 @@ function shortcut(label,path){
 }
 if(typeof inventory.pageId==='string'&&inventory.pageId){
  const builder='/frontbase-admin/builder/'+encodeURIComponent(inventory.pageId);
- shortcut(words.builder,builder);shortcut(words.history,builder+'?panel=version-history');
+ const builderRecord=inventory.layoutDraft?builder+'?'+new URLSearchParams({previewPath:location.pathname}):builder;
+ shortcut(words.builder,builderRecord);shortcut(words.history,builder+'?panel=version-history');
 }
 const status=document.createElement('span');status.dataset.editStatus='';status.setAttribute('role','status');bar.append(status);
 const pending=new Map(),bound=new Map(),editActions=new WeakMap(),recordActions=new WeakMap(),recordAttributes=new WeakMap(),recordNodes=new Set();

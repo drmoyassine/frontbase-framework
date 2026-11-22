@@ -59,6 +59,8 @@ export interface ReRenderRequest {
         title?: string;
         slug?: string;
         description?: string;
+        locale?: string;
+        direction?: 'rtl' | 'ltr';
     };
 }
 

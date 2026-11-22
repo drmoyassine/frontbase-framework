@@ -112,9 +112,10 @@ it.each(['institution','program'] as const)('previews only related records on th
     const snapshot=JSON.stringify(layout);
     await loadDirectoryCanvas(layout,{...saved,configuration},new AbortController().signal);
     const calls=fetcher.mock.calls.map(([,request])=>JSON.parse(request.body));
-    expect(calls).toHaveLength(2);
-    expect(calls[0]).toMatchObject({source:'connected',role,mode:'detail'});
-    expect(calls[1]).toMatchObject(role==='institution'
+    expect(calls).toHaveLength(3);
+    expect(calls[0]).toMatchObject({source:'connected',role,mode:'list',params:{limit:1}});
+    expect(calls[1]).toMatchObject({source:'connected',role,mode:'detail',params:{id:role==='program'?8:7}});
+    expect(calls[2]).toMatchObject(role==='institution'
         ? {source:'connected',role:'program',mode:'list',params:{institutionId:7}}
         : {source:'connected',role:'institution',mode:'detail',params:{id:7}});
     expect(JSON.stringify(layout)).toBe(snapshot);

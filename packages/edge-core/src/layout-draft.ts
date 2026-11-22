@@ -51,7 +51,7 @@ export function layoutDraftTiles(layout: PageLayoutData) {
                 const overrides = node.stylesData?.viewportOverrides ?? node.styles?.viewportOverrides;
                 const heading = node.children?.find(child => child.type === 'Heading')?.props;
                 const formatting = (styles?: Record<string, unknown>) => Object.fromEntries(
-                    ['horizontalAlign', 'textAlign', 'fontWeight', 'fontStyle', 'marginLeft', 'boxSizing'].filter(key => styles?.[key] !== undefined)
+                    ['horizontalAlign', 'textAlign', 'fontWeight', 'fontStyle', 'marginLeft', 'marginInlineStart', 'boxSizing'].filter(key => styles?.[key] !== undefined)
                         .map(key => [key, styles![key]]));
                 tiles.push({
                     id: node.id, elementId: String(node.props?.anchor || node.id), parentId, text,
@@ -128,20 +128,24 @@ export function applyLayoutDraftOperation<T extends PageLayoutData>(layout: T, o
             const stylesData: StylesData = { stylingMode: 'visual', activeProperties: [], values: {}, ...node.stylesData };
             const size = operation.kind === 'resize' || operation.kind === 'match'
                 ? { width: operation.width + '%', maxWidth: operation.width + '%', ...(operation.kind === 'match'
-                    ? { boxSizing: 'border-box', horizontalAlign: 'left', marginLeft: operation.offset + '%', marginRight: 'auto' } : {}) }
+                    ? { boxSizing: 'border-box', horizontalAlign: 'start', marginInlineStart: operation.offset + '%', marginInlineEnd: 'auto' } : {}) }
                 : { [operation.property]: operation.value, ...(operation.property === 'textAlign' && node.type === 'Text' &&
                     !node.stylesData?.values?.display && !node.styles?.display ? { display: 'block' } : {}) };
+            const alignManually = operation.kind === 'style' && operation.property === 'horizontalAlign';
+            const withStyle = (previous?: Record<string, unknown>) => {
+                const values = { ...previous };
+                if (alignManually || operation.kind === 'match') {
+                    delete values.marginLeft; delete values.marginRight;
+                    delete values.marginInlineStart; delete values.marginInlineEnd;
+                }
+                return { ...values, ...size };
+            };
             if (operation.viewport === 'desktop') {
-                stylesData.values = { ...stylesData.values, ...size };
-                if (operation.kind === 'style' && operation.property === 'horizontalAlign') { delete stylesData.values.marginLeft; delete stylesData.values.marginRight; }
+                stylesData.values = withStyle(stylesData.values);
                 stylesData.activeProperties = [...new Set([...(stylesData.activeProperties ?? []), ...Object.keys(size)])];
             } else {
                 const overrides = stylesData.viewportOverrides ?? node.styles?.viewportOverrides ?? {};
-                const values = { ...overrides[operation.viewport], ...size };
-                if (operation.kind === 'style' && operation.property === 'horizontalAlign') {
-                    delete values.marginLeft; delete values.marginRight;
-                }
-                stylesData.viewportOverrides = { ...overrides, [operation.viewport]: values };
+                stylesData.viewportOverrides = { ...overrides, [operation.viewport]: withStyle(overrides[operation.viewport]) };
             }
             // Creating stylesData must not shadow legacy breakpoint overrides.
             stylesData.viewportOverrides ??= node.styles?.viewportOverrides;

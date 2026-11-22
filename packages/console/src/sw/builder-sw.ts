@@ -129,6 +129,8 @@ interface PageDataLike {
     title?: string;
     slug?: string;
     description?: string;
+    locale?: string;
+    direction?: 'rtl' | 'ltr';
 }
 
 interface RenderBody {
@@ -216,6 +218,7 @@ async function handleRender(request: Request): Promise<Response> {
     const html = renderDocument(pageEntry, bodyHtml, {
         environment: 'builder',
         registerServiceWorker: false,
+        ...(body.pageData?.locale ? { language: body.pageData.locale, direction: body.pageData.direction === 'rtl' ? 'rtl' : 'ltr' } : {}),
     });
 
     return new Response(JSON.stringify({ html }), {

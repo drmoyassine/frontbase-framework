@@ -375,7 +375,10 @@ const clientResult = await esbuild.build({
 const CLIENT_SOURCE = clientResult.outputFiles[0].text;
 
 // Load the rich-text authoring module only when an editor opens a text tile.
+const tiptapLicense = readFileSync(join(here, 'node_modules/@tiptap/core/LICENSE.md'), 'utf8').trim();
+const tiptapThirdPartyNotices = readFileSync(join(here, 'node_modules/@tiptap/pm/THIRD_PARTY_LICENSES.md'), 'utf8').trim();
 await esbuild.build({ ...shared, platform: 'browser', format: 'esm', minify: true,
+    banner: { js: `/*! Tiptap\n${tiptapLicense}\n\n${tiptapThirdPartyNotices}\n*/` },
     entryPoints: [join(here, 'src', 'frontend-rich-text.ts')],
     outfile: join(here, 'console-dist', 'react', 'frontend-rich-text.js'),
 });

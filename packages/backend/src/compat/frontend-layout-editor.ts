@@ -56,7 +56,7 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
  const getSelected=()=>tiles.find(tile=>tile.id===selected);
  const width=(tile,mode)=>mode==='desktop'?tile.widths.desktop:mode==='tablet'?tile.widths.tablet??tile.widths.desktop:tile.widths.mobile??tile.widths.tablet??tile.widths.desktop;
  const style=(tile,key)=>tile.formatting[viewport()]?.[key]??(viewport()==='mobile'?tile.formatting.tablet?.[key]:undefined)??tile.formatting.desktop?.[key];
- const formatProperties=['margin-left','margin-right','text-align','font-weight','font-style','display','box-sizing'];
+ const formatProperties=['margin-left','margin-right','margin-inline-start','margin-inline-end','text-align','font-weight','font-style','display','box-sizing'];
  const restore=(node,prop,previous)=>previous[prop][0]?node.style.setProperty(prop,...previous[prop]):node.style.removeProperty(prop);
  function project(){
   const groups=new Map();
@@ -72,8 +72,13 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
    for(const property of formatProperties)restore(node,property,styles);
    if(visible){
     const align=style(tile,'horizontalAlign'), textAlign=style(tile,'textAlign');
-    if(align){node.style.setProperty('margin-left',align==='left'?'0':'auto','important');node.style.setProperty('margin-right',align==='right'?'0':'auto','important');}
-    if(align&&style(tile,'marginLeft')!==undefined)node.style.setProperty('margin-left',style(tile,'marginLeft'),'important');
+    if(align==='start'){
+     node.style.setProperty('margin-inline-start',style(tile,'marginInlineStart')??'0','important');
+     node.style.setProperty('margin-inline-end','auto','important');
+    }else if(align){
+     node.style.setProperty('margin-left',align==='left'?(style(tile,'marginLeft')??'0'):'auto','important');
+     node.style.setProperty('margin-right',align==='right'?'0':'auto','important');
+    }
     if(style(tile,'boxSizing'))node.style.setProperty('box-sizing',style(tile,'boxSizing'),'important');
     if(textAlign){node.style.setProperty('text-align',textAlign,'important');if(getComputedStyle(node).display==='inline')node.style.setProperty('display','block','important');}
     for(const [key,property] of [['fontWeight','font-weight'],['fontStyle','font-style']])if(style(tile,key))node.style.setProperty(property,style(tile,key),'important');
@@ -204,7 +209,10 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
   const tile=getSelected(),mode=viewport();
   if(!tile||waiting||changes.length>=50)return;
   tile.formatting[mode][property]=value;
-  if(property==='horizontalAlign')delete tile.formatting[mode].marginLeft;
+  if(property==='horizontalAlign'){
+   delete tile.formatting[mode].marginLeft;
+   delete tile.formatting[mode].marginInlineStart;
+  }
   stage({kind:'style',id:tile.id,viewport:mode,property,value});
  }
  function toggleMark(mark){
@@ -255,12 +263,15 @@ function installLayoutEditor({dock=bar,container=bar,closeControl=null}={}) {
   if(!tile||tile.text||!parent||!ref||node.contains(ref)||ref.contains(node)||waiting||changes.length>=50)return;
   const bounds=parent.getBoundingClientRect(),css=getComputedStyle(parent),target=ref.getBoundingClientRect();
   const left=parseFloat(css.paddingLeft)||0,right=parseFloat(css.paddingRight)||0;
-  const origin=bounds.left+(parseFloat(css.borderLeftWidth)||0)+left,available=parent.clientWidth-left-right;
+  const available=parent.clientWidth-left-right;
+  const startInset=css.direction==='rtl'
+   ?bounds.right-(parseFloat(css.borderRightWidth)||0)-right-target.right
+   :target.left-bounds.left-(parseFloat(css.borderLeftWidth)||0)-left;
   const round=value=>Math.round(value*1000)/1000;
-  const width=round(target.width/available*100),offset=round(Math.max(0,target.left-origin)/available*100);
-  if(!available||width<1||target.left<origin-1||width+offset>100.001){feedback.textContent=arabic?'الصندوق المرجعي لا يلائم الحاوية.':'The reference box does not fit inside this parent.';return;}
+  const width=round(target.width/available*100),offset=round(Math.max(0,startInset)/available*100);
+  if(!available||width<1||startInset<-1||width+offset>100.001){feedback.textContent=arabic?'الصندوق المرجعي لا يلائم الحاوية.':'The reference box does not fit inside this parent.';return;}
   const mode=viewport();tile.widths[mode]=width;
-  Object.assign(tile.formatting[mode],{horizontalAlign:'left',marginLeft:offset+'%',boxSizing:'border-box'});
+  Object.assign(tile.formatting[mode],{horizontalAlign:'start',marginInlineStart:offset+'%',boxSizing:'border-box'});
   stage({kind:'match',id:tile.id,viewport:mode,width,offset});
  }
  async function load(){

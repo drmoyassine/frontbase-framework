@@ -165,6 +165,12 @@ try {
     assert.equal(final.content[0].children[0].stylesData.viewportOverrides.mobile.width, '60%');
     const rendered = await renderPage(final, { user: {}, page: {}, app: {}, visitor: {}, url: {}, system: {}, cookies: {}, local: {}, session: {} });
     assert.ok(String(rendered).includes('60%'));
+    const matched = applyLayoutDraftOperation(final, { kind: 'match', id: 'about', viewport: 'desktop', width: 65, offset: 12.5 });
+    const matchedTile = matched.content[0].children[0];
+    assert.equal(matchedTile.stylesData.values.marginInlineStart, '12.5%');
+    assert.equal(matchedTile.stylesData.values.marginInlineEnd, 'auto');
+    const matchedHtml = await renderPage(matched, { user: {}, page: {}, app: {}, visitor: {}, url: {}, system: {}, cookies: {}, local: {}, session: {} });
+    assert.match(String(matchedHtml), /margin-inline-start:12\.5%;margin-inline-end:auto/);
     const latest = await read(draftUrl + '?path=/layout/');
     const concurrent = await Promise.all([80, 75].map(width => write(draftUrl, {
         path: path('en'), pageId: page.id, revision: latest.revision,

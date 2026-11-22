@@ -17,6 +17,7 @@
  */
 
 import React, { useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { ComponentData, Page } from '@/types/builder';
 import {markSharedMenuPreview} from '@/lib/builder/sharedMenuPreview';
 import { queryComponentRects, stampComponentIds } from '@/lib/builder/iframeBridge';
@@ -45,7 +46,8 @@ export const IframeCanvas: React.FC<IframeCanvasProps> = ({
     onHoveredId,
 }) => {
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
-    const { html, status, error } = useIframeCanvas(page, systemEdgeUrl);
+    const [search] = useSearchParams();
+    const { html, status, error } = useIframeCanvas(page, systemEdgeUrl, false, undefined, search.get('previewPath'));
     // Preview mode is reactive here so toggling it re-runs the affordance stamp
     // pass on the CURRENT iframe doc (see effect below) — without a srcdoc
     // refetch, since the rendered HTML is identical in both modes.

@@ -33,6 +33,7 @@ export interface LivePageReader{
 export async function resolveLiveLayoutPage(
     publication:LiveLayoutIndex,version:string,owner:string,db:DbRunner,request:Request,
     reader:LivePageReader,locale=publication.configuration.site.locale,user:Record<string,unknown>|null=null,list?:LiveListRequest, loadLayout?:LoadLiveLayout,
+    previewDraft?:{pageId:string;layout:PageLayoutData},
 ):Promise<{sourcePageId:string;authored:PageLayoutData;displayPlan?:Awaited<ReturnType<LoadLiveLayout>>['displayPlan'];translationIds?:Awaited<ReturnType<LoadLiveLayout>>['translationIds'];page:PageEntry;document:NonNullable<EngineOptions['document']>;record:Record<string,unknown>;context:Record<string,unknown>}|null>{
     if(!owner||!publication.locales.includes(locale))throw Error('live_page_context_required');
     const url=new URL(request.url),path=url.pathname,c=publication.configuration;
@@ -44,6 +45,7 @@ export async function resolveLiveLayoutPage(
     if(!role)return null;
     const template=staticPage??publication.templates.find(page=>page.role===role);
     if(!template)return null;
+    if(previewDraft && (previewDraft.pageId!==template.pageId || !route))return null;
     const allowed=listing==='directory'?['type','q','page','sort','match']:listing?['q','page','sort','match']:[];
     for(const key of url.searchParams.keys())if(!allowed.includes(key)||url.searchParams.getAll(key).length!==1)throw new LivePageRequestError('invalid_page_query');
     const type=url.searchParams.get('type')??c.browsing.defaultCollection;
@@ -59,10 +61,10 @@ export async function resolveLiveLayoutPage(
         const query=reader.queries[id];if(!query)throw Error('live_query_unavailable');
         return query.execute(params,{tenant:owner,request,user});
     };
-    const artifact = loadLayout ? await loadLayout(template) : undefined;
-    const authored = artifact?.layout ?? ('layout' in template ? template.layout as unknown as PageLayoutData : undefined);
+    const artifact = !previewDraft && loadLayout ? await loadLayout(template) : undefined;
+    const authored = previewDraft?.layout ?? artifact?.layout ?? ('layout' in template ? template.layout as unknown as PageLayoutData : undefined);
     if (!authored) throw Error('published_layout_artifact_unavailable');
-    const layout = publication.siteBindingsCompiled ? authored : projectSharedDirectoryPreview(authored, c);
+    const layout = publication.siteBindingsCompiled && !previewDraft ? authored : projectSharedDirectoryPreview(authored, c);
     const plan = directoryPlan(layout,artifact?.directoryPlan);
     const records=new Map<string,Record<string,unknown>[]>(),inactive=new Set<string>();
     const authoredCount=(nodes:typeof layout.content,id:string):boolean=>nodes.some(node=>node.props?.directoryResultCount===true&&node.props.directoryResultsFor===id||!!node.children&&authoredCount(node.children,id));

@@ -35,6 +35,19 @@ describe('shared canvas preview', () => {
         const {result}=renderHook(()=>useIframeCanvas(bound));await waitFor(()=>expect(result.current.status).toBe('ready'));
         expect(vi.mocked(fetchReRender).mock.calls.at(-1)?.[0].layout.content[1].children?.[0].props?.text).toBe('Connected College');expect(JSON.stringify(bound)).toBe(before);
     });
+    it('projects the current draft using the selected record URL and language', async () => {
+        const layout = structuredClone(page.layoutData);
+        const localized = { ...layout, content: [{ ...layout.content[0], props: { text: 'إعلان' } }] };
+        const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ layout: localized, locale: 'ar' }) });
+        vi.stubGlobal('fetch', fetcher);
+        const { result } = renderHook(() => useIframeCanvas(page, undefined, false, undefined, '/ar/college/program/'));
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(fetcher).toHaveBeenCalledTimes(1);
+        expect(fetcher.mock.calls[0][0]).toBe('/api/frontend-edit/canvas-preview/');
+        expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({ pageId: page.id, path: '/ar/college/program/', layout });
+        expect(vi.mocked(fetchReRender).mock.calls[0][0]).toMatchObject({ layout: localized, pageData: { locale: 'ar', direction: 'rtl' } });
+        expect(page.layoutData).toEqual(layout);
+    });
     it('clears a previously rendered canvas when the query becomes unavailable',async()=>{
         const bound:any=structuredClone(page);bound.layoutData.content.push({id:'cards',type:'Repeater',props:{directoryQuery:{version:1,queryId:'directory.institution.list',params:{}}},children:[]});let unavailable=false;
         vi.stubGlobal('fetch',vi.fn().mockImplementation(async(url)=>url.endsWith('/preview/')?{ok:!unavailable,json:async()=>({revision:2,queryId:'directory.institution.list',rows:[]})}:{ok:true,json:async()=>({draft:{schemaVersion:1,revision:2,configuration:config}})}));
