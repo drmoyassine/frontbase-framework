@@ -195,7 +195,7 @@ export const createPageSlice: StateCreator<BuilderState, [], [], PageSlice> = (s
                 delete sanitizedPage.containerStyles;
             }
 
-            const updatedPage = await updatePageApi(pageId, sanitizedPage);
+            const updatedPage = await updatePageApi(pageId, sanitizedPage, page.contentHash);
 
             // Merge the backend's updated contentHash + deployments into Zustand.
             // Also refresh hasUnpublishedChanges so the builder status badge stays

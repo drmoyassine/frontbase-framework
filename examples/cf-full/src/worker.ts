@@ -32,7 +32,7 @@ import {audienceConditionUser} from '@frontbase/edge-core';
 import { Hono } from 'hono';
 import { createEngine, directProvider, configureEngine } from '@frontbase/edge-core';
 import type { PageEntry } from '@frontbase/edge-core';
-import { createConsole, createCompatApp, createSupabaseCloudAuth, assertStripeKeyMode, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createResendPasswordResetDelivery, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
+import { createConsole, createCompatApp, createSupabaseCloudAuth, assertStripeKeyMode, migrateUp, seedOwner, UserStore, PagesStore, Phase2Store, SyncStore, enrichLayoutBindings, stripLayoutEnrichment, createSecretCipher, inspectTable, datasourceRunner, dialectOf, resolveDatasourceConfig, mergeAccountConfig, KeyValueStore, readProjectAsset, readProjectSettings, parseEnvServices, createSystemServiceResolver, envServiceDescriptor, ENV_CARD_LABELS, resolvePublishedPageForTenant, tenantHostState, scopePrincipalToHost, seedPlanCatalog, PLAN_CATALOG_TENANT, createTransactionalMail, createAdminMfa, isLocalAdmin, type TransactionalEmailEnv, type CloudIdentityProvider, type EnrichableDatasource, type SchemaColumnSnapshot, type StoredProjectAsset, type EnvServices } from '@frontbase/backend';
 import { createBuilderEngine } from '@frontbase/builder';
 import { registerComponents } from '@frontbase/builder/registry';
 import { s3StorageProvider, kvCache, createNativeR2Storage, NATIVE_R2_ACCESS_PATH, type R2BucketBinding, type KVNamespaceBinding, type CacheProvider, type DbRunner, type StorageProvider, type StorageProviderFactory } from '@frontbase/edge-infra';
@@ -64,7 +64,7 @@ function liveServingOptions(runner:DbRunner,cipher:SecretCipher,externalFetch:ty
 // Host config: there is no process.env on Workers — supply edition/env explicitly.
 configureEngine({ edition: 'community', nodeEnv: 'production' });
 
-export interface CmsEnv {
+export interface CmsEnv extends TransactionalEmailEnv {
     DB: D1Database;
     FRONTBASE_KV?: KVNamespaceBinding;
     FRONTBASE_R2?: R2BucketBinding;
@@ -120,8 +120,6 @@ export interface CmsEnv {
     STRIPE_BASIC_PRICE_ID?: string;
     STRIPE_PRO_PRICE_ID?: string;
     /** Optional: enables email delivery of password-reset links (Resend). */
-    RESEND_API_KEY?: string;
-    RESEND_FROM?: string;
     FRONTBASE_PUBLIC_ORIGIN?: string;
 }
 
@@ -182,6 +180,7 @@ export interface CmsEngineOptions {
     billing?: { secretKey: string; webhookSecret: string; baseDomain: string; priceIds?: { basic?: string; pro?: string } };
     /** Resend credentials for password-reset email. Absent ⇒ reset delivery
      *  stays host-injected-capable but silent (non-enumerating response). */
+    mailEnv?: TransactionalEmailEnv;
     resend?: { apiKey: string; from?: string };
     /** Explicit self-host origin for reset links; never inferred from an inbound header. */
     publicOrigin?: string;
@@ -414,14 +413,46 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
     // CLOUD: every consumer wraps it with scopePrincipalToHost (correction 2)
     // — a session belonging to another tenant's member is anonymous here.
     // Self-host: the raw resolver, byte-identical.
-    const rawResolvePrincipal = (await import('@frontbase/edge-infra')).createResolvePrincipal({
-        jwtSecret: sessionSecret,
-        jwtCookie: 'frontbase_session',
+    const baseUrl = cloud ? 'https://app.' + cloud.baseDomain : opts.publicOrigin;
+    const accountMail = baseUrl ? createTransactionalMail(opts.mailEnv ?? {
+        RESEND_API_KEY: opts.resend?.apiKey,
+        RESEND_FROM: opts.resend?.from,
+    }, {
+        baseUrl,
+        adminPath: cloud ? '/admin/reset-password' : '/frontbase-admin/reset-password',
+    },opts.externalFetch) : {};
+    const mfa = !cloud && opts.publicOrigin ? createAdminMfa(opts.runner,enrichCipher,now) : undefined;
+    const requireMfa = !!mfa && (await opts.runner.query(
+        "SELECT value FROM settings WHERE tenant_slug='_root' AND key='administrator_mfa_new_install'"
+    ))[0]?.value === 'true';
+    if (requireMfa && !mfa?.available) throw Error('administrator_mfa_requires_atomic_state');
+    const resolveSession = (await import('@frontbase/edge-infra')).createResolvePrincipal({
+        jwtSecret:sessionSecret,
+        jwtCookie:'frontbase_session',
     });
+    const recoveryPaths = new Set(['/api/auth/me','/api/auth/me/','/api/account/authenticator/']);
+    const enrollPaths = new Set(['/api/account/authenticator/options/','/api/account/authenticator/confirm/',
+        '/api/account/authenticator/mail/','/api/account/authenticator/mail/confirm/']);
+    const rawResolvePrincipal: typeof resolveSession = async req => {
+        const principal = await resolveSession(req);
+        const identity = principal.user as {id?:string;sub?:string;role?:string;session_version?:number}|null;
+        const id = identity?.id ?? identity?.sub;
+        if (!id || !principal.tenant) return principal;
+        if (await new UserStore(opts.runner,principal.tenant).getSessionVersion(id) !== Number(identity?.session_version ?? 0)) return {user:null,tenant:undefined};
+        if (!requireMfa || !identity?.role || !isLocalAdmin(identity.role)) return principal;
+        const path = new URL(req.url).pathname;
+        if (!((req.method === 'GET' && recoveryPaths.has(path)) || (req.method === 'POST' && enrollPaths.has(path)))
+            && !await mfa!.setupComplete(principal.tenant,id,Boolean(accountMail.accountMail?.verifyRecoveryAddress))) return {user:null,tenant:undefined};
+        return principal;
+    };
     const scopedResolvePrincipal = cloud
-        ? async (req: Request) => scopePrincipalToHost(await rawResolvePrincipal(req), hostTenantFor(req))
+        ? async (req: Request) => scopePrincipalToHost(await rawResolvePrincipal(req),hostTenantFor(req))
         : rawResolvePrincipal;
     const compatApp = await createCompatApp({
+        adminPasskeyOrigin: opts.publicOrigin,
+        adminMfa:mfa,
+        requireAdminMfa:requireMfa,
+        resolvePrincipalChecksSessionVersion:true,
         ...(opts.publicOrigin?{providerOAuth:{origin:opts.publicOrigin,clients:providerOAuthClients(opts.providerOAuthEnv??{},opts.publicOrigin),relay:providerOAuthRelay(opts.providerOAuthEnv??{},opts.publicOrigin)}}:{}),
         makeRunner: () => opts.runner,
         translationExecutionEnabled: opts.translationExecutionEnabled===true,
@@ -475,17 +506,7 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
         ...(cloud ? { cloudMode: true } : {}),
         ...(cloud && opts.cloudAuth ? { cloudAuth: opts.cloudAuth } : {}),
         ...(cloud && opts.billing ? { billing: opts.billing } : {}),
-        ...(opts.resend && (cloud || opts.publicOrigin)
-            ? {
-                passwordResetDelivery: createResendPasswordResetDelivery({
-                    apiKey: opts.resend.apiKey,
-                    from: opts.resend.from,
-                    baseUrl: cloud ? `https://app.${cloud.baseDomain}` : opts.publicOrigin!,
-                    adminPath: cloud ? '/admin/reset-password' : '/frontbase-admin/reset-password',
-                    fetchImpl: opts.externalFetch,
-                }),
-            }
-            : {}),
+        ...accountMail,
     });
 
     // Phase 1: Wire the framework eSSR BuilderEngine as the real builder canvas.
@@ -722,6 +743,12 @@ export async function createCmsEngine(opts: CmsEngineOptions): Promise<Hono> {
             return new Response(asset.body, { status: asset.status, statusText: asset.statusText, headers });
         }
         return c.text('not_found', 404);
+    });
+    app.get('/static/react/frontend-rich-text.js', async c => {
+        const url = new URL(c.req.url);
+        url.pathname = '/react/frontend-rich-text.js';
+        const asset = await assetResponse(new Request(url, c.req.raw), 'no-cache, must-revalidate');
+        return asset ?? c.text('not_found', 404);
     });
     app.get('/static/react/:cssFile{entry-.+\\.css}', async (c) => {
         const cssFile = c.req.param('cssFile');
@@ -1046,7 +1073,7 @@ const worker = {
                             baseDomain: env.FRONTBASE_BASE_DOMAIN as string,
                         },
                     } : {}),
-                    ...(env.RESEND_API_KEY ? { resend: { apiKey: env.RESEND_API_KEY,from:env.RESEND_FROM } } : {}),
+                    mailEnv: env,
                     publicOrigin:env.FRONTBASE_PUBLIC_ORIGIN,
                     providerOAuthEnv:env as unknown as Record<string,unknown>,
                     // Host-side env parse (Workers have no process.env). Memoized

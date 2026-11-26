@@ -1,7 +1,4 @@
-import {SiteConfigurationForm} from '@/components/dashboard/settings/shared/SiteConfigurationForm';
-import {ElementSettingsMigration} from '@/components/dashboard/settings/shared/ElementSettingsMigration';
 import {recordLinksToActions,useSingleRecordCards,upgradeDetailPresentation} from '@/lib/builder/recordDetailTemplates';
-import type {RecordIdentityRole} from './RecordIdentityFields';
 import {DetailTemplateStarter} from './DetailTemplateStarter';
 import React, { useCallback, useEffect, useState } from 'react';
 import { directoryCopiesMatch, siteConfigurationDraftSchema, sitePageRoles, sitePageReferenceSchema, readLandingSettings, type SiteConfigurationDraft, type SitePageReference } from '@frontbase/edge-core/directory/configuration';
@@ -10,16 +7,11 @@ import { linkSharedConfiguration } from './linkSharedConfiguration';
 import { Button } from '@/components/ui/button';
 import { DirectoryQueryPreview } from './DirectoryQueryPreview';
 import { addDirectoryTemplate } from './addDirectoryTemplate';
-import { LiveLayoutPublicationPanel as SitePreparationPanel } from './LiveLayoutPublicationPanel';
 import { addDirectoryBrowsing, hasDirectoryBrowsing } from './addDirectoryBrowsing';
 import { TemplateSettingsEditor } from './TemplateSettingsEditor';
-import { upgradeBookingDetail } from '@frontbase/edge-core/directory/starter';
+import { upgradeBookingCourseCards, upgradeBookingDetail } from '@frontbase/edge-core/directory/starter';
 
 export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenChange }: { page: Page; onChange: (layout: NonNullable<Page['layoutData']>) => void; onEditorialOpenChange?: (open:boolean)=>void }) {
-    const [sharedOpen,setSharedOpen]=useState(false);
-    const [mappingsOpen,setMappingsOpen]=useState(false);
-    const [identityOpen,setIdentityOpen]=useState(false);
-    const [maintenanceOpen,setMaintenanceOpen]=useState(false);
     const [editorialOpen,setEditorialOpen]=useState(false);
     const handleEditorialOpen=useCallback((open:boolean)=>{setEditorialOpen(open);onEditorialOpenChange?.(open);},[onEditorialOpenChange]);
     const [draft, setDraft] = useState<SiteConfigurationDraft>();
@@ -42,39 +34,29 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
     const landing=page.layoutData?readLandingSettings(page.layoutData):undefined;
     const redesignedDetail = React.useMemo(() => page.layoutData
         ? upgradeBookingDetail(page.layoutData) as Page['layoutData'] : undefined, [page.layoutData]);
-    const sharedControls=<div className="space-y-3">
-        <Button variant="outline" disabled={editorialOpen} aria-expanded={mappingsOpen} onClick={()=>setMappingsOpen(value=>!value)}>Directory source fields</Button>
-        {mappingsOpen&&<SiteConfigurationForm section="data" onSaved={()=>setReload(value=>value+1)}/>}
-        <Button variant="outline" disabled={editorialOpen} aria-expanded={sharedOpen} onClick={()=>setSharedOpen(value=>!value)}>Shared routes</Button>
-        {sharedOpen&&<SiteConfigurationForm section="site" onSaved={()=>setReload(value=>value+1)}/>}
-        <Button variant="outline" disabled={editorialOpen} aria-expanded={maintenanceOpen} onClick={()=>setMaintenanceOpen(value=>!value)}>Legacy layout maintenance</Button>
-        {maintenanceOpen&&<ElementSettingsMigration/>}
-    </div>;
-    if(landing)return <div className="space-y-4">{sharedControls}<p>Save the page draft, then review and publish its layout. Connected records remain live.</p><TemplateSettingsEditor scope={page.layoutData?.root.elementSettingsVersion===1?'appearance':'all'} value={landing} onChange={settings=>{if(page.layoutData)onChange({...page.layoutData,root:{...page.layoutData.root,directoryLanding:{version:1,settings}}});}}/>{draft&&<SitePreparationPanel draft={draft}/>}</div>;
+    const refreshedCards = React.useMemo(() => page.layoutData
+        ? upgradeBookingCourseCards(page.layoutData) as Page['layoutData'] : undefined, [page.layoutData]);
+    const courseUpgrade = refreshedCards && <Button variant="outline" disabled={editorialOpen} onClick={() => onChange(refreshedCards)}>Use updated course cards</Button>;
+    if(landing)return <div className="space-y-4">{courseUpgrade}<p>Save the page draft, then review and publish its layout. Connected records remain live.</p><TemplateSettingsEditor showPalette={!page.layoutData?.root.bookingForX} scope={page.layoutData?.root.elementSettingsVersion===1?'appearance':'all'} value={landing} onChange={settings=>{if(page.layoutData)onChange({...page.layoutData,root:{...page.layoutData.root,directoryLanding:{version:1,settings}}});}}/></div>;
     return <div className="space-y-3">
-        {sharedControls}
+        {courseUpgrade}
+
         {redesignedDetail && <div className="space-y-2">
             <Button variant="outline" disabled={editorialOpen} onClick={() => onChange(redesignedDetail)}>Use updated Booking for X detail layout</Button>
             <p className="text-sm text-muted-foreground">Updates the installed starter in this draft. Review it on desktop and mobile before publishing.</p>
         </div>}
-        {current.success&&['institution','program','article'].includes(current.data.role)&&<>
-            <Button variant="outline" disabled={editorialOpen} aria-expanded={identityOpen} onClick={()=>setIdentityOpen(value=>!value)}>Detail source and URLs</Button>
-            {identityOpen&&<SiteConfigurationForm identityRole={current.data.role as RecordIdentityRole} onSaved={()=>setReload(value=>value+1)}/>}
-        </>}
-        <p>Link this page to project-wide settings. Your layout stays intact. Live publication is pending.</p>
+        {(!current.success||conflict)&&<>
         <label className="block">Page role<select aria-label="Shared page role" value={role} disabled={editorialOpen} onChange={e => setRole(e.target.value as SitePageReference['role'])}>{sitePageRoles.map(value => <option key={value}>{value}</option>)}</select></label>
-        {draft && <p>Shared settings revision: {draft.revision}</p>}
+
         {conflict && <p role="alert">This page's settings differ from shared settings. Reconcile them manually before linking; no copy will be chosen automatically.</p>}
         {message && <p role="status">{message}</p>}
         <Button disabled={!draft || conflict || editorialOpen} onClick={() => { if (draft) onChange(linkSharedConfiguration(page, draft.configuration, { version: 1, role })); }}>Use shared settings for this page</Button>
-        <Button variant="outline" disabled={editorialOpen} onClick={() => setReload(n => n + 1)}>Reload shared settings</Button>
+        <Button variant="outline" disabled={editorialOpen} onClick={() => setReload(n => n + 1)}>Reload shared settings</Button></>}
         {current.success && ['directory', 'article-index'].includes(current.data.role) && <Button variant="outline" disabled={editorialOpen || hasDirectoryBrowsing(page.layoutData?.content || [])} onClick={() => onChange(addDirectoryBrowsing(page))}>Add visitor browsing controls</Button>}
-        {current.success && <Button variant="outline" disabled={editorialOpen} onClick={()=>{if(page.layoutData)onChange({...page.layoutData,content:recordLinksToActions(page.layoutData.content)});}}>Use Actions for record click-throughs</Button>}
-        {current.success && ['institution','program'].includes(current.data.role) && <Button variant="outline" disabled={editorialOpen} onClick={()=>{if(page.layoutData)onChange({...page.layoutData,content:useSingleRecordCards(page.layoutData.content)});}}>Use single-record Cards for detail content</Button>}
-        {current.success && ['institution','program'].includes(current.data.role) && <Button variant="outline" disabled={editorialOpen} onClick={()=>{if(page.layoutData)onChange({...page.layoutData,content:upgradeDetailPresentation(page.layoutData.content,current.data.role as 'institution'|'program')});}}>Upgrade detail gallery, header and navigation</Button>}
-        <p className="text-sm">Save Changes persists the link. Shared values refresh in canvas preview after an edit or when you return to the builder. Existing custom text is preserved; only explicit shared bindings change.</p>
+        {current.success && JSON.stringify(recordLinksToActions(page.layoutData?.content??[]))!==JSON.stringify(page.layoutData?.content) && <Button variant="outline" disabled={editorialOpen} onClick={()=>{if(page.layoutData)onChange({...page.layoutData,content:recordLinksToActions(page.layoutData.content)});}}>Use Actions for record click-throughs</Button>}
+        {current.success && ['institution','program'].includes(current.data.role) && JSON.stringify(useSingleRecordCards(page.layoutData?.content??[]))!==JSON.stringify(page.layoutData?.content) && <Button variant="outline" disabled={editorialOpen} onClick={()=>{if(page.layoutData)onChange({...page.layoutData,content:useSingleRecordCards(page.layoutData.content)});}}>Use single-record Cards for detail content</Button>}
+        {current.success && ['institution','program'].includes(current.data.role) && JSON.stringify(upgradeDetailPresentation(page.layoutData?.content??[],current.data.role as 'institution'|'program'))!==JSON.stringify(page.layoutData?.content) && <Button variant="outline" disabled={editorialOpen} onClick={()=>{if(page.layoutData)onChange({...page.layoutData,content:upgradeDetailPresentation(page.layoutData.content,current.data.role as 'institution'|'program')});}}>Upgrade detail gallery, header and navigation</Button>}
         {current.success && draft && !editorialOpen && <DetailTemplateStarter page={page} onChange={onChange} contactUrl="" />}
         {current.success && draft && <DirectoryQueryPreview draft={draft} onEditorialOpenChange={handleEditorialOpen} onAddTemplate={binding => onChange(addDirectoryTemplate(page, binding))} />}
-        {current.success && draft && <SitePreparationPanel draft={draft} currentPageId={page.id} disabled={editorialOpen} />}
     </div>;
 }

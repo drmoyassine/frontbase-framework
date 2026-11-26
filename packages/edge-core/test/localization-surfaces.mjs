@@ -115,6 +115,32 @@ assert.deepEqual(byline.record, { connectionId: 'frontbase:publication', collect
 assert.equal(articleFields.find(f => f.blockId === 'ad'), undefined, 'formatted dates are locale output, never translation surfaces');
 assert.ok(articleFields.some(f => f.blockId === 'at' && f.text === 'Travel guide'), 'record text beside a date literal still surfaces');
 
+const facts = {content: [{id:'program',type:'Container',props:{directoryQuery:{version:1,queryId:'directory.program.detail',params:{path:'/program/'}}},children:[
+    {id:'fee',type:'Text',props:{recordBindings:{text:'tuition'}}},
+    {id:'amount',type:'Text',props:{recordBindings:{text:'tuition',format:'number'}}},
+    {id:'date',type:'Text',props:{recordBindings:{text:'updatedAt'}}},
+    {id:'caption',type:'Text',props:{text:'Tuition'}},
+]}]};
+for(const tuition of [25702,26000]){
+    const projected = projectDirectoryRecords(facts,new Map([['program',[{id:1,tuition,updatedAt:'2026-11-21'}]]]),{liveDetailRecords:true});
+    const units = homepageDisplayFields(projected);
+    assert.deepEqual(units.map(unit=>unit.text),['Tuition'],'raw and formatted facts stay out of translation');
+    const localized = applyHomepageDisplayFields(projected,valuesFor(units));
+    assert.deepEqual(localized.content[0].children.map(child=>child.props.text),
+        [String(tuition),tuition.toLocaleString('en-US'),'2026-11-21','عربي Tuition']);
+    const inventory = homepageDisplayFields(projected,undefined,{includeSourceRecordScalars:true});
+    assert.deepEqual(inventory.filter(unit=>unit.sourceOnly).map(unit=>[unit.fieldKey, unit.record.key[0].value, unit.text, unit.sourceValue]),
+        [['tuition',1,String(tuition),String(tuition)],['tuition',1,tuition.toLocaleString('en-US'),String(tuition)]]);
+    assert.deepEqual(inventory.filter(unit=>unit.sourceFormat).map(unit=>[unit.blockId,unit.sourceFormat]),[['amount','number']]);
+    assert.deepEqual(applyHomepageDisplayFields(projected,valuesFor(inventory),{fields:inventory}),localized,'stale overrides cannot reapply editor-only values');
+}
+const scalarList = repeater([{id:'p1',tuition:'26000',updatedAt:'2026-11-21',seats:4,title:'1984'}]);
+scalarList.children = ['tuition','updatedAt','seats','title'].map(key=>({id:key,type:'Text',props:{text:'{{ record.'+key+' }}'}}));
+assert.deepEqual(homepageDisplayFields({content:[scalarList]}).map(unit=>unit.text),['1984'],'preserve genuine text titles');
+assert.deepEqual(homepageDisplayFields({content:[scalarList]},undefined,{includeSourceRecordScalars:true}).filter(unit=>unit.sourceOnly).map(unit=>unit.path.at(-1)),['tuition','updatedAt','seats']);
+delete scalarList.props.initialRows[0].id;
+assert.deepEqual(homepageDisplayFields({content:[scalarList]}).map(unit=>unit.text),['1984'],'missing a record identity cannot turn a fee into positional copy');
+
 console.log('localization display surfaces PASS: record identity extraction, reorder stability, shared-identity positions, positional fallback, coverage-refusing projection and Block Version inheritance identity');
 
 // Translation projection copies only edited paths; the input may be a frozen authored layout.

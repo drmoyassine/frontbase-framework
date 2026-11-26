@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { edgeInfrastructureApi, useEdgeProviders } from '@/hooks/useEdgeInfrastructure';
+import { edgeInfrastructureApi, useEdgeProviders, type EdgeProviderAccount } from '@/hooks/useEdgeInfrastructure';
 import { API_BASE, PROVIDER_CONFIGS } from '../edgeConstants';
 
 // ============================================================================
@@ -51,6 +51,7 @@ export interface ConnectProviderState {
     // Connection test
     isTesting: boolean;
     testResult: TestResult | null;
+    setTestResult: React.Dispatch<React.SetStateAction<TestResult | null>>;
     handleTestConnection: () => Promise<TestResult | null>;
 
     // Save
@@ -71,7 +72,7 @@ export interface ConnectProviderState {
 export function useConnectProvider(
     lockedProvider?: string,
     open?: boolean,
-    editProvider?: { id: string; name: string; provider: string } | null,
+    editProvider?: Pick<EdgeProviderAccount, 'id' | 'name' | 'provider' | 'provider_metadata'> | null,
 ) {
     const { data: providers = [], refetch } = useEdgeProviders();
 
@@ -106,6 +107,9 @@ export function useConnectProvider(
                 // Edit mode: pre-fill with existing provider data
                 setName(editProvider.name);
                 setProviderType(editProvider.provider);
+                if (editProvider.provider === 's3') {
+                    setCredFields({ bucket_selection: editProvider.provider_metadata?.s3_buckets?.join(', ') ?? '' });
+                }
             } else {
                 const cfg = PROVIDER_CONFIGS[lockedProvider || providerType];
                 if (cfg) setName(cfg.defaultName);
@@ -174,7 +178,7 @@ export function useConnectProvider(
             const updateData: Record<string, any> = { name };
             // Only include credentials if user actually entered new ones
             const hasNewCreds = Object.values(finalCreds).some(v => v && v.trim() !== '');
-            if (hasNewCreds) {
+            if (hasNewCreds || (effectiveProvider === 's3' && finalCreds.bucket_selection !== undefined)) {
                 updateData.provider_credentials = finalCreds;
             }
             await edgeInfrastructureApi.updateProvider({
@@ -275,7 +279,7 @@ export function useConnectProvider(
         name, setName,
         credFields, setCredFields,
         requiredFieldsFilled,
-        isTesting, testResult,
+        isTesting, testResult, setTestResult,
         handleTestConnection,
         isConnecting, setIsConnecting,
         error, setError,

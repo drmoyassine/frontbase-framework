@@ -3,7 +3,7 @@ import { templateSettingsSchema, templateContrastIssues, type TemplateSettings }
 import { FilePickerDialog } from '@/components/dashboard/FileBrowser/FilePickerDialog';
 import { Button } from '@/components/ui/button';
 
-export function TemplateSettingsEditor({value,onChange,scope='all'}:{value:TemplateSettings;onChange:(next:TemplateSettings)=>void;scope?:'all'|'appearance'|'hero'}) {
+export function TemplateSettingsEditor({value,onChange,scope='all',showPalette=true}:{value:TemplateSettings;onChange:(next:TemplateSettings)=>void;scope?:'all'|'appearance'|'hero';showPalette?:boolean}) {
     const [picker,setPicker]=useState<number|null>(null);
     const input='block w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-foreground';
     const set=<K extends keyof TemplateSettings>(key:K,next:TemplateSettings[K])=>onChange({...value,[key]:next});
@@ -12,11 +12,12 @@ export function TemplateSettingsEditor({value,onChange,scope='all'}:{value:Templ
     const text=(label:string,current:string,change:(s:string)=>void)=><label className="block text-sm">{label}<input className={input} aria-label={label} value={current} maxLength={1000} onChange={e=>change(e.target.value)}/></label>;
     return <div className="space-y-5">
         {scope!=='hero'&&<fieldset className="space-y-3"><legend className="font-medium">Appearance</legend>
-            <label className="block text-sm">Preset<select className={input} aria-label="Template preset" value={value.preset} onChange={e=>set('preset',e.target.value as TemplateSettings['preset'])}><option value="navy">Neutral Navy</option><option value="charcoal">Neutral Charcoal</option></select></label>
+            {showPalette ? <><label className="block text-sm">Preset<select className={input} aria-label="Template preset" value={value.preset} onChange={e=>set('preset',e.target.value as TemplateSettings['preset'])}><option value="navy">Neutral Navy</option><option value="charcoal">Neutral Charcoal</option></select></label>
             <p className="text-xs text-muted-foreground">Presets change public template defaults. Custom component styles take precedence; the admin theme is separate.</p>
-            <Button type="button" variant="outline" disabled={!Object.keys(value.colors).length} onClick={()=>set('colors',{})}>Reset color overrides</Button>
+            <Button type="button" variant="outline" disabled={!Object.keys(value.colors).length} onClick={()=>set('colors',{})}>Reset color overrides</Button></>
+            : <a className="underline text-sm" href="/frontbase-admin/settings?tab=general#site-appearance">Edit the site palette</a>}
             <details><summary className="cursor-pointer text-sm">Advanced appearance</summary><div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {(['background','surface','text','muted','primary','border'] as const).map(key=><label key={key} className="block text-sm">{key}<input className={input} aria-label={`Template ${key} color`} placeholder="Preset default" value={value.colors[key]??''} maxLength={7} onChange={e=>{const next={...value.colors};if(e.target.value)next[key]=e.target.value;else delete next[key];set('colors',next);}}/></label>)}
+                {showPalette && (['background','surface','text','muted','primary','border'] as const).map(key=><label key={key} className="block text-sm">{key}<input className={input} aria-label={`Template ${key} color`} placeholder="Preset default" value={value.colors[key]??''} maxLength={7} onChange={e=>{const next={...value.colors};if(e.target.value)next[key]=e.target.value;else delete next[key];set('colors',next);}}/></label>)}
                 <label className="block text-sm">Font<select className={input} aria-label="Template font" value={value.font} onChange={e=>set('font',e.target.value as TemplateSettings['font'])}><option value="system">System sans serif</option><option value="serif">Serif</option></select></label>
                 {numeric('Content width',value.width,900,1440,n=>set('width',n))}{numeric('Section spacing',value.spacing,24,88,n=>set('spacing',n))}{numeric('Card radius',value.radius,0,24,n=>set('radius',n))}
             </div></details>

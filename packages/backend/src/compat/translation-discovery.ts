@@ -135,12 +135,12 @@ export async function discoverTranslationCoverage(host: TranslationBatchHost, db
     for (const menu of menusDocument.menus) descriptors.push({ kind: 'menu', documentId: 'app-menus', description: '',
         ref: await publicationHash(['menu', menu.id]), title: menu.name.slice(0, 500), menuId: menu.id, menu });
 
-    const componentField = async (descriptor: (typeof descriptors)[number], field: { blockId: string; path: string[]; versionId?: string; text: string; label: string;
+    const componentField = async (descriptor: (typeof descriptors)[number], field: { blockId: string; path: string[]; identityPath?: string[]; versionId?: string; text: string; label: string;
         record?: { connectionId: string; collection: string; key: { column: string; value: string | number | boolean }[] } }): Promise<CoverageField> => {
         const fieldKey = field.path.at(-1) ?? '';
         const resource = field.record
             ? { kind: 'record' as const, connectionId: field.record.connectionId, collection: field.record.collection, key: field.record.key, propertyPath: [fieldKey] }
-            : { kind: 'component' as const, documentId: descriptor.documentId, blockId: field.blockId, versionId: field.versionId ?? 'default', propertyPath: field.path };
+            : { kind: 'component' as const, documentId: descriptor.documentId, blockId: field.blockId, versionId: field.versionId ?? 'default', propertyPath: field.identityPath ?? field.path };
         return { ref: field.record ? await translationUnitId(scope, resource) : await publicationHash([field.blockId, field.versionId ?? 'default', field.path]),
             fingerprint: await messageSourceFingerprint(unit(resource, field.text)), label: field.label.slice(0, 200), decision: 'translatable',
             propertyPath: field.path, ...(field.versionId ? { versionId: field.versionId } : {}), text: field.text,

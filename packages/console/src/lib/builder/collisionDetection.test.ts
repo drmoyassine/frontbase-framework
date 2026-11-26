@@ -6,5 +6,6 @@ it('drops into a repeated Card under the pointer instead of the nearer root stri
  const args:any={active:{id:'palette'},pointerCoordinates:{x:650,y:560},collisionRect:rect(600,510,100,100),droppableRects:boxes,droppableContainers:[...boxes.keys()].map(id=>({id,data:{current:{}},node:{current:null}}))};
  expect(builderCollisionDetection(args)[0].id).toBe('card');
  args.pointerCoordinates={x:650,y:602};expect(builderCollisionDetection(args)[0].id).toBe('after');
+ args.pointerCoordinates={x:900,y:602};expect(builderCollisionDetection(args)).toEqual([]);
  args.pointerCoordinates=null;expect(builderCollisionDetection(args).length).toBeGreaterThan(0);
 });

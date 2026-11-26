@@ -1,3 +1,4 @@
+import {PublicationDialog} from './directory/PublicationDialog';
 import React, { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { showApiErrorToast } from '@/components/dashboard/settings/shared/edgeTestToast';
@@ -114,8 +115,10 @@ export const BuilderHeader: React.FC<{
 
     const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
     const {search}=useLocation();
+    const [layoutPublish,setLayoutPublish]=useState(false);
+    const [toolsOpen,setToolsOpen]=useState(false);
     const [showPageSettings, setShowPageSettings] = useState(()=>new URLSearchParams(search).get('panel')==='page-settings');
-    const [showVersionHistory, setShowVersionHistory] = useState(false);
+    const [showVersionHistory, setShowVersionHistory] = useState(()=>new URLSearchParams(search).get('panel')==='version-history');
     const [publishOpen, setPublishOpen] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     const [loadingTargets, setLoadingTargets] = useState(false);
@@ -207,6 +210,10 @@ export const BuilderHeader: React.FC<{
     const handlePublishClick = async () => {
       if (!currentPageId || !currentPage) return;
 
+      if(currentPage.layoutData?.root.siteConfiguration||currentPage.layoutData?.root.directoryLanding||currentPage.layoutData?.root.bookingForX){
+        if(hasUnsavedChanges){toast.info('Save this layout before reviewing publication.');return;}
+        setLayoutPublish(true);return;
+      }
       setLoadingTargets(true);
       try {
         const response = await fetch('/api/edge-engines/active/by-scope/full');
@@ -422,6 +429,7 @@ export const BuilderHeader: React.FC<{
             </span>
           </Button>
 
+          <Button variant="ghost" size="sm" onClick={()=>setToolsOpen(true)}>Layout tools</Button>
           {/* Page Settings */}
           <Button
             variant="outline"
@@ -440,6 +448,8 @@ export const BuilderHeader: React.FC<{
           onDiscardAndContinue={handleDiscardAndNavigate}
         />
 
+        {layoutPublish&&<PublicationDialog pageId={currentPageId??undefined} close={()=>setLayoutPublish(false)}/>}
+        {toolsOpen&&<PageSettingsDrawer open tools onOpenChange={setToolsOpen}/>}
         <PageSettingsDrawer
           open={showPageSettings}
           onOpenChange={setShowPageSettings}

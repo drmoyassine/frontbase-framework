@@ -57,6 +57,7 @@ export const useDataPreview = ({
     const [savedPreview,setSavedPreview]=useState(savedView);
     const [description,setDescription]=useState(savedView?.description??'');
     const [defaultSort,setDefaultSort]=useState(sameSavedSource?savedView?.default_sort:undefined);
+    const [bindingColumns,setBindingColumns]=useState<string[]|null>(sameSavedSource?savedView?.binding_columns??null:null);
     const [activeTab, setActiveTab] = useState<'table' | 'record' | 'linked' | 'api' | 'webhooks' | 'relationships'>('table');
     const [isRenamingView, setIsRenamingView] = useState(false);
     const [showDataSearchResults, setShowDataSearchResults] = useState(false);
@@ -309,23 +310,26 @@ export const useDataPreview = ({
 
 
     // Copy/Paste Logic for View Saving/Restoring (Simplified for brevity but preserving functionality)
-    const handleSaveView = async () => {
+    const handleSaveView = async (suggestedBindingColumns?: string[]) => {
         if (isSaving || !viewName.trim() || !selectedTable) return;
         setIsSaving(true);
         setSaveError('');
         try {
+            const selectedBindingColumns = bindingColumns ?? suggestedBindingColumns;
             const payload = {
                 source_schema: sourceSchema, name: viewName, target_table: selectedTable, filters: savedView?savedViewFilters(savedSelection):filterState.filters, field_mappings: fieldMappings,
                 linked_views: linkedViews, visible_columns: visibleColumns, pinned_columns: pinnedColumns,
                 column_order: columnOrder, webhooks: webhooks,
-                ...(savedView?{description,default_sort:defaultSort??null,expected_updated_at:revision}:{})
+                ...(savedView?{description,default_sort:defaultSort??null,expected_updated_at:revision}:{}),
+                ...(savedView?.detail_binding&&selectedBindingColumns!==undefined?{binding_columns:selectedBindingColumns}:{}),
             };
             const response = currentViewId ? await viewsApi.update(currentViewId, payload) : await viewsApi.create(datasourceId, payload);
             setShowSaveForm(false); setIsRenamingView(false); setCurrentStep('records');
             filterState.setAppliedFilters([...filterState.filters]);
             if (response.data.id) setCurrentViewId(response.data.id);
-            if(savedView){setRevision(response.data.updated_at);setSavedPreview({...savedView,...response.data});await queryClient.invalidateQueries({queryKey:['tableData',datasourceId]});}
-            await Promise.all(['saved-view-assets','datasources','saved-view-detail','schema-known-views'].map(key=>queryClient.invalidateQueries({queryKey:[key]})));
+            if(savedView){setRevision(response.data.updated_at);setSavedPreview({...savedView,...response.data});setBindingColumns(response.data.binding_columns??null);await queryClient.invalidateQueries({queryKey:['tableData',datasourceId]});}
+            await Promise.all(['saved-view-assets','datasources','saved-view-detail','schema-known-views',
+                ...(selectedBindingColumns!==undefined?['variables']:[])].map(key=>queryClient.invalidateQueries({queryKey:[key]})));
             setSaveSuccess(true); onViewSaved?.(response.data); setTimeout(() => setSaveSuccess(false), 5000);
             if (selectedTable&&!savedView) await datasourcesApi.clearSession(datasourceId, selectedTable, sourceSchema);
         } catch (err:any) { setSaveError(err.response?.data?.detail||'Could not save the view. Your edits are preserved.'); } finally { setIsSaving(false); }
@@ -441,17 +445,17 @@ export const useDataPreview = ({
     };
 
     const hasViewEdits=!!savedPreview&&JSON.stringify([
-        viewName,selectedTable,sourceSchema??null,savedSelection,description,defaultSort??null,
+        viewName,selectedTable,sourceSchema??null,savedSelection,description,defaultSort??null,bindingColumns,
         visibleColumns,columnOrder,pinnedColumns,fieldMappings,linkedViews,webhooks
     ])!==JSON.stringify([
         savedPreview.name,savedPreview.target_table,savedPreview.source_schema??null,savedViewFilters(savedPreview.filters),
-        savedPreview.description??'',savedPreview.default_sort??null,savedPreview.visible_columns??[],savedPreview.column_order??[],
+        savedPreview.description??'',savedPreview.default_sort??null,savedPreview.binding_columns??null,savedPreview.visible_columns??[],savedPreview.column_order??[],
         savedPreview.pinned_columns??[],savedPreview.field_mappings??{},savedPreview.linked_views??{},savedPreview.webhooks??[]
     ]);
 
     return {
         state: {
-            savedSelection,description,defaultSort,saveError,hasViewEdits,
+            savedSelection,description,defaultSort,bindingColumns,saveError,hasViewEdits,
             filters: filterState.filters, appliedFilters: filterState.appliedFilters, viewName, currentViewId, isSaving,
             isColumnsDropdownOpen, columnSearch, showSaveForm, showSyncConfirm, saveSuccess, activeTab,
             globalSearch: filterState.globalSearch, dataSearchQuery: filterState.dataSearchQuery, showDataSearchResults,
@@ -466,7 +470,7 @@ export const useDataPreview = ({
             hasNextPage, isFetchingNextPage, refreshSchemaMutation
         },
         actions: {
-            setSavedSelection,setDescription,setDefaultSort,
+            setSavedSelection,setDescription,setDefaultSort,setBindingColumns,
             setFilters: filterState.setFilters, setAppliedFilters: filterState.setAppliedFilters, setViewName, setCurrentViewId,
             setIsSaving, setIsColumnsDropdownOpen, setColumnSearch, setShowSaveForm, setShowSyncConfirm, setSaveSuccess,
             setActiveTab, setGlobalSearch: filterState.setGlobalSearch, setDataSearchQuery: filterState.setDataSearchQuery,
@@ -474,7 +478,7 @@ export const useDataPreview = ({
             setGlobalResults: filterState.setGlobalResults, setIsSessionLoading, setCopySuccess,
             setSelectedTable:(next:string)=>{
                 if(savedView&&next!==selectedTable){
-                    setSavedSelection([]);setDefaultSort(undefined);setFieldMappings({});setLinkedViews({});
+                    setSavedSelection([]);setDefaultSort(undefined);setBindingColumns(null);setFieldMappings({});setLinkedViews({});
                     initializeLayout({visibleColumns:[],columnOrder:[],pinnedColumns:[]});
                 }
                 setSelectedTable(next);

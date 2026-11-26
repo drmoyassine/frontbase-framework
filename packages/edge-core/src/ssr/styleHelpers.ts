@@ -148,7 +148,10 @@ export function processStyleEntry(
 
     // Handle horizontalAlign: converts to margin-left/right auto
     if (key === 'horizontalAlign' && typeof value === 'string') {
-        if (value === 'center') {
+        if (value === 'start') {
+            // Matched widths carry their offset separately so RTL mirrors the same draft.
+            return;
+        } else if (value === 'center') {
             emit('margin-left', formatValue('margin-left', 'auto'));
             emit('margin-right', formatValue('margin-right', 'auto'));
         } else if (value === 'right') {

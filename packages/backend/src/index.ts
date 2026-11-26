@@ -318,9 +318,12 @@ export {
     teamCapExceeded, privatePagesBlocked, apiAccessBlocked, startOfMonth, deploysThisMonth,
 } from './compat/plans/gates.js';
 export type { PlanLimits } from './compat/plans/gates.js';
-// A-25 Phase 4 cloud: password-reset email delivery (Resend).
+export { createTransactionalMail } from './compat/email/transactional.js';
+export type { TransactionalEmailEnv } from './compat/email/transactional.js';
+
+// Resend delivery and legacy host constructors.
 export {
-    RESEND_ENDPOINT, passwordResetLink, resetEmailHtml, createResendPasswordResetDelivery,
+    RESEND_ENDPOINT, passwordResetLink, resetEmailHtml, createResendPasswordResetDelivery, createResendAccountMail,
 } from './compat/email/resend.js';
 export type { ResendDeliveryOptions } from './compat/email/resend.js';
 // A-25 Phase 4 cloud: platform-admin tenant management (master_admin surface).
@@ -353,3 +356,5 @@ export { createPrivateLocalePublicationOverlay } from './compat/translation-home
 export {LiveLayoutPublicationStore,liveLayoutPublicationSchema} from './compat/live-layout-publication.js';
 export {renderLiveLayoutPublication} from './compat/live-layout-serving.js';
 export {datasourceAccountConfigFor} from './compat/providers/merge-account.js';
+
+export {createAdminMfa,isLocalAdmin} from './compat/routes/admin-mfa.js';

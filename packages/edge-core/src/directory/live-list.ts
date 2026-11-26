@@ -33,9 +33,14 @@ export function liveViewBindings(layout:PageLayoutData){
 
 /** Record references are derived from authored elements, not a fixed Card schema. Nested
  * data-bound components own their own record scope and do not broaden their parent. */
-export function templateRecordFields(children:PageLayoutData['content']):string[]{
+export function templateRecordFields(children:PageLayoutData['content'], optionalFallbackField?:string):string[]{
     const fields=new Set<string>();
     const value=(input:unknown):void=>{if(typeof input==='string'){
+        const fallback = optionalFallbackField && /^\s*\{\{\s*record\.([\w]+)\s*\|\s*default:\s*record\.([\w]+)\s*\}\}\s*$/.exec(input);
+        if (fallback && fallback[1] === optionalFallbackField && fallback[2] !== optionalFallbackField) {
+            fields.add(fallback[2]!);
+            return;
+        }
         for(const match of input.matchAll(/\brecord\.([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)/g))fields.add(match[1]!);
         for(const match of input.matchAll(/\brecord\[("(?:[^"\\]|\\.)*")\]/g))try{fields.add(JSON.parse(match[1]!));}catch{/* Invalid Liquid is reported by the renderer. */}
     }else if(Array.isArray(input))input.forEach(value);else if(input&&typeof input==='object')Object.values(input).forEach(value);};

@@ -63,6 +63,7 @@ export class FrameworkAuthClient implements AuthClient {
           password: credentials.password,
           website: credentials.website,
           turnstile_token: credentials.turnstileToken,
+          authenticator_code: credentials.authenticatorCode,
         }),
       });
 
@@ -70,6 +71,7 @@ export class FrameworkAuthClient implements AuthClient {
       if (!response.ok) {
         return {
           success: false,
+          requiresAuthenticator: data.error === 'authenticator_required',
           error: response.status === 401
             ? 'Invalid email or password.'
             : (data.detail as string || data.error as string || 'Login failed'),

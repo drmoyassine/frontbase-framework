@@ -3,8 +3,11 @@ import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 import { projectEditorialBody } from './editorial.js';
 import { validateDirectoryBrowsing, directoryBrowsingSchema } from './browsing.js';
 import { landingQueryLimit, landingRootSchema, projectTemplatePresentation, publishedLandingPresentation, templateSettingsSchema } from './template-settings.js';
-import { detailTextFields, numericDetailFields } from './detail-fields.js';
+import { dateDetailFields, detailTextFields, directoryLiquidField, isSourceDetailField, numericDetailFields } from './detail-fields.js';
+import { inlineQueryId, inlineTemplateSchema, inlineTemplateScopes, listCountAlias, listCounts, detailBindingColumn, readInlineTemplate, type InlineTemplate } from '../inline-template.js';
 const numericFields = new Set<string>(numericDetailFields);
+const dateFields = new Set<string>(dateDetailFields);
+let groupedNumber: Intl.NumberFormat | undefined;
 
 const path = z.string().max(400).refine(v => {
     try { const decoded = decodeURIComponent(v); return v.startsWith('/') && !decoded.startsWith('//') && !/[\\?#{}\s\x00-\x20]/.test(decoded) && !decoded.split('/').some(p => p === '.' || p === '..'); }
@@ -26,13 +29,17 @@ export const directoryRecordBindingSchema = z.object({
     text: z.enum(['title', 'summary', 'body', 'byline', 'publishedAt', ...detailTextFields]).optional(), href: z.enum(['originalPath','website']).optional(),
     fallbackText: z.literal('summary').optional(),
     sectionText: z.enum(['body', 'summary', ...detailTextFields]).optional(),
+    mapCoordinates: z.literal(true).optional(),
+    socialProfiles: z.literal(true).optional(),
     blocks: z.literal('body').optional(),
     ariaLabel: z.literal('title').optional(),
     src: z.enum(['cover', 'logo']).optional(), alt: z.enum(['title','coverAlt']).optional(),
+    relatedQuery: z.string().min(1).max(160).optional(),
+    fallbackSrcQuery: z.string().min(1).max(160).optional(),
     media: z.literal('gallery').optional(),
     altFallback: z.literal('title').optional(),
     hideWhenEmpty: z.boolean().optional(),
-    format: z.literal('date').optional(),
+    format: z.enum(['date', 'number']).optional(),
 }).strict();
 /** Manifest collection each legacy list query renders — the shared record-unit identity namespace
  *  that translation discovery and page capture must agree on. */
@@ -42,7 +49,7 @@ export const directoryListCollections: Record<string, 'institutions' | 'programs
 const liveDetailRecordCollections: Readonly<Record<string,string>> = Object.freeze({
     'directory.institution.detail':'institutions', 'directory.program.detail':'programs', 'directory.article.detail':'articles',
 });
-const stampableRecordColumns = new Set(['title', 'summary', 'coverAlt', 'byline', ...detailTextFields.filter(field => !numericFields.has(field))]);
+const stampableRecordColumns = new Set(['title', 'summary', 'coverAlt', 'byline', ...detailTextFields.filter(field => !isSourceDetailField(field))]);
 
 export const siteBindingsSchema = z.object({
     text: z.enum(['site.name', 'site.destination']).optional(),
@@ -69,6 +76,7 @@ function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: Publ
     const requests: DirectoryQuery[] = [];
     const records: DirectoryInstructions['records'] = new Map();
     const controls: DirectoryInstructions['controls'] = new Map();
+    let inlineScopes: ReturnType<typeof inlineTemplateScopes> | undefined;
     let visited = 0, browsing = 0;
     const walk = (nodes: PageComponent[], inQuery = false, depth = 0, articleQuery = false, parent?: readonly number[]) => {
         if (depth > 20) throw new Error('directory_template_depth');
@@ -76,6 +84,16 @@ function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: Publ
             const node = nodes[index]!;
             if (++visited > 2000) throw new Error('directory_template_size');
             const props = node.props || {}; let isArticle = false;
+            if (props.inlineValues !== undefined || props.inlineScalars !== undefined) throw new Error('transient_template_state');
+            if (props.inlineTemplate !== undefined) {
+                const parts = inlineTemplateSchema.parse(props.inlineTemplate);
+                const scopes = inlineScopes ??= inlineTemplateScopes(layout.content);
+                const scope = scopes.get(node.id);
+                if (!scope || parts.some(part => 'variable' in part && (part.variable.startsWith('record.') && !scope.fields.includes(part.variable.slice(7))
+                    && !(scope.detailRole && detailBindingColumn(part.variable))
+                    || part.variable.startsWith('query.') && !scope.queries.some(query => query.id === inlineQueryId(part.variable))
+                    || part.variable.startsWith('lists.') && !scope.queries.some(query => query.alias === listCountAlias(part.variable))))) throw new Error('invalid_inline_template_scope');
+            }
             if(props.templateHeroState!==undefined || props.templateSearchState!==undefined || props.templateMenuLabels!==undefined)throw new Error('transient_template_state');
             for(const marker of ['templateHero','templateSearch'])if(props[marker]!==undefined){
                 (marker==='templateHero'?z.object({version:z.literal(1),settings:templateSettingsSchema.shape.hero.optional()}):z.object({version:z.literal(1),defaultCollection:z.enum(['institution','program']).optional()})).strict().parse(props[marker]);
@@ -101,16 +119,20 @@ function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: Publ
                 if (!inQuery) throw new Error('record_binding_without_query');
                 const record = directoryRecordBindingSchema.parse(props.recordBindings);
                 records.set(node, record);
-                if (record.text && !['Text', 'Heading', 'Paragraph', 'Link'].includes(node.type)
+                if (record.text && !['Text', 'Heading', 'Paragraph', 'Link', 'Badge'].includes(node.type)
                     || record.fallbackText && (record.text ?? record.sectionText) !== 'body'
                     || record.sectionText && (node.type !== 'Container' || Object.keys(record).length !== (record.fallbackText ? 2 : 1))
-                    || record.format && record.text !== 'publishedAt'
+                    || record.mapCoordinates && node.type !== 'Embed' || record.socialProfiles && node.type !== 'Container'
+                    || record.format === 'date' && !dateFields.has(record.text ?? '')
+                    || record.format === 'number' && !numericFields.has(record.text ?? '')
+                    || record.relatedQuery && !record.text && !record.href
+                    || record.fallbackSrcQuery && !record.src
                     || record.altFallback && (!['Image', 'Gallery'].includes(node.type) || record.alt !== 'coverAlt')
                     || record.ariaLabel && (node.type !== 'Link' || !record.href)
                     || record.href && node.type !== 'Link' || (record.src || record.alt) && !['Image', 'Gallery'].includes(node.type)
                     || record.media && node.type !== 'Gallery'
                     || record.blocks && (node.type !== 'Container' || !articleQuery || Object.keys(record).length !== 1 || (node.children?.length ?? 0) > 0)
-                    || record.hideWhenEmpty !== undefined && !(node.type === 'Image' && record.src || node.type === 'Link' && record.href === 'website')
+                    || record.hideWhenEmpty !== undefined && !(node.type === 'Image' && record.src || record.text || node.type === 'Link' && record.href === 'website')
                     || props.siteBindings !== undefined) throw new Error('invalid_record_binding_component');
             }
             const path = publishNode ? Object.freeze([...(parent ?? []), index]) : undefined;
@@ -119,6 +141,11 @@ function compileDirectoryInstructions(layout: PageLayoutData, publishNode?: Publ
         }
     };
     walk(layout?.content || []);
+    const institutionQueries = new Set(requests.filter(query => query.binding.queryId === 'directory.institution.detail').map(query => query.id));
+    for (const record of records.values()) {
+        if (record.relatedQuery && !institutionQueries.has(record.relatedQuery)
+            || record.fallbackSrcQuery && !institutionQueries.has(record.fallbackSrcQuery)) throw Error('invalid_related_record_query');
+    }
     return { queries: requests, records, controls, landing };
 }
 export function directoryLayoutQueries(layout: PageLayoutData): DirectoryQuery[] {
@@ -134,18 +161,20 @@ const httpsUrl = (value: unknown) => {
 // Locale configuration only; dates and formatted record values are never retained.
 const editorialDateFormatters=new Map<string,Intl.DateTimeFormat>();
 /** ISO-only input; never infer timezone or allow Date.parse calendar rollover. */
-function formatEditorialDate(value: unknown, locale?: string): string {
+function formatEditorialDate(value: unknown, locale?: string, allowLocalTimestamp = false): string {
     if (typeof value !== 'string') return '';
-    const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|[+-]\d{2}:\d{2}))?$/.exec(value);
+    const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})?)?$/.exec(value);
     if (!match) return '';
     const [, y, m, d, h, minute, second, , zone] = match;
+    if (h !== undefined && !zone && !allowLocalTimestamp) return '';
     const year = Number(y), month = Number(m), day = Number(d);
     const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
     const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     if (year < 1 || month < 1 || month > 12 || day < 1 || day > days[month - 1]!
         || h !== undefined && (Number(h) > 23 || Number(minute) > 59 || Number(second) > 59)
         || zone && zone !== 'Z' && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4)) > 59)) return '';
-    const date = new Date(h === undefined ? `${value}T00:00:00Z` : value);
+    // A zone-less Postgres timestamp supplies a calendar date without a timezone.
+    const date = new Date(zone ? value : `${y}-${m}-${d}T00:00:00Z`);
     if (!Number.isFinite(date.getTime())) return '';
     const requested=locale&&locale.length<=35&&/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)?locale:'en';
     let formatter=editorialDateFormatters.get(requested);
@@ -186,7 +215,7 @@ function directoryProjection<T extends PageLayoutData>(
 ) {
     const queries = Object.freeze(requests.map(query =>
         Object.freeze({ ...query, binding: Object.freeze({ ...query.binding, params: Object.freeze({ ...query.binding.params }) }) })));
-    const project = (records: Map<string, Record<string, unknown>[]>, options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean } = {}) =>
+    const project = (records: Map<string, Record<string, unknown>[]>, options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean; totals?: ReadonlyMap<string, number> } = {}) =>
         projectCompiledDirectory(layout, instructions, records, options);
     return Object.freeze({ queries, project, projectPresentation });
 }
@@ -301,19 +330,25 @@ function projectCompiledDirectory<T extends PageLayoutData>(
     layout: T,
     instructions: DirectoryInstructions,
     records: Map<string, Record<string, unknown>[]>,
-    options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean },
+    options: { locale?: string; inactive?: ReadonlySet<string>; liveDetailRecords?: boolean; totals?: ReadonlyMap<string, number> },
 ): T {
     const queries = new Map(instructions.queries.map(query => [query.id, query.binding]));
+    let aliases: Map<string, string> | undefined;
     const inactive = options.inactive;
     const controlsOwned = [...instructions.controls.keys()].some(node => !inactive?.has(node.id));
     const visible = (nodes: PageComponent[]) => inactive?.size ? nodes.filter(node => !inactive.has(node.id)) : nodes;
     let projected = 0;
-    const walk = (node: PageComponent, row?: Record<string, unknown>, index = 0, collection?: string): PageComponent => {
+    const walk = (node: PageComponent, row?: Record<string, unknown>, index = 0, collection?: string, programList = false): PageComponent => {
         if (++projected > 4000) throw new Error('directory_projection_size');
         const props = { ...node.props }; const query = props.directoryQuery;
         const resultSource = props.directoryResultsFor;
         if (typeof resultSource === 'string' && resultSource) {
             delete props.directoryResultsFor;
+            if (props.directoryResultCount === true) {
+                const total = options.totals?.get(resultSource);
+                return total && total > 0 ? { ...node, props: { ...props, text: String(total), translationLiteral: 'count' } }
+                    : { id: node.id, type: 'Container', styles: { display: 'none' }, children: [] };
+            }
             if (!records.get(resultSource)?.length) return { id: node.id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
         }
         if(controlsOwned && props.directoryBrowsing!==undefined)return {...node,props:{},styles:{display:'none'},children:[]};
@@ -333,7 +368,8 @@ function projectCompiledDirectory<T extends PageLayoutData>(
             // patterns, page language); only a control-less list keeps a projected fallback text.
             const projected: PageComponent = { ...node, type: 'Container', props: rest,
                 ...(list ? { styles: { gap: '24px', ...node.styles } } : {}),
-                children: rows.length ? rows.flatMap((record, i) => visible(node.children || []).map(child => walk(child, record, i, rowCollection)))
+                children: rows.length ? rows.flatMap((record, i) => visible(node.children || []).map(child =>
+                    walk(child, record, i, rowCollection, parsed.queryId === 'directory.program.list')))
                     : controls === undefined && !props.hideWhenNoRecords ? [{ id: `${node.id}-empty`, type: 'Text', props: { text: 'No records matched this preview.' } }] : [] };
             if (!rows.length && props.hideWhenNoRecords) return { ...projected, styles: { ...projected.styles, display: 'none' } };
             if(list && controls !== undefined){
@@ -346,23 +382,57 @@ function projectCompiledDirectory<T extends PageLayoutData>(
         }
         const id = index ? `${node.id}-preview-${index}` : node.id;
         const { recordBindings: _bindings, ...rest } = props;
+        let template = rest.inlineTemplate as InlineTemplate | undefined;
+        if (!template && row && [rest.text, rest.label, rest.value, rest.content].some(value => typeof value === 'string' && value.includes('record.columns.'))) {
+            template = readInlineTemplate(node);
+            if (template) rest.inlineTemplate = template;
+        }
         if (props.recordBindings !== undefined) {
-            const b = instructions.records.get(node)!;
+            const binding = instructions.records.get(node)!;
+            const b = template ? { ...binding, text: undefined, fallbackText: undefined, format: undefined,
+                hideWhenEmpty: binding.href || binding.src ? binding.hideWhenEmpty : undefined } : binding;
             if (!row) throw new Error('record_context_unavailable');
+            const hidden = (): PageComponent => ({ id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] });
+            if (b.relatedQuery) {
+                row = records.get(b.relatedQuery)?.[0];
+                if (!row) return hidden();
+                collection = options.liveDetailRecords ? 'institutions' : undefined;
+            }
+            const record = row;
+            if (b.mapCoordinates) {
+                const coordinate = (v: unknown) => typeof v === 'number' || typeof v === 'string' && v.trim() ? Number(v) : NaN;
+                const lat = coordinate(row.latitude), lon = coordinate(row.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180 || !lat && !lon) return hidden();
+                const bounds = [Math.max(-180,lon-.025), Math.max(-90,lat-.015), Math.min(180,lon+.025), Math.min(90,lat+.015)];
+                return { ...node, id, props: { ...rest, embedType:'iframe', src:'https://www.openstreetmap.org/export/embed.html?bbox='+bounds.join(',')+'&layer=mapnik&marker='+lat+','+lon } };
+            }
+            if (b.socialProfiles) {
+                let profiles = row.socialProfiles;
+                if (typeof profiles === 'string') { try { profiles = JSON.parse(profiles); } catch { return hidden(); } }
+                if (!profiles || typeof profiles !== 'object' || Array.isArray(profiles)) return hidden();
+                const children:PageComponent[] = [];
+                for (const [name,value] of Object.entries(profiles).slice(0,32)) {
+                    const href = httpsUrl(value);
+                    if (href && /^[a-z0-9 ._-]{1,40}$/i.test(name)) children.push({id:id+'-profile-'+children.length,type:'Link',props:{text:name,href,target:'_blank'}});
+                }
+                return children.length ? {...node,id,props:rest,children} : hidden();
+            }
             if (b.blocks) { const children = projectEditorialBody(row.body, id); projected += children.reduce((n,c) => n + 1 + (c.children?.length ?? 0), 0); if (projected > 4000) throw new Error('directory_projection_size'); return { ...node, id, props: rest, children }; }
             const hasText = (field: string) => numericFields.has(field)
-                ? (typeof row[field] === 'number' || typeof row[field] === 'string') && Number.isFinite(Number(row[field])) && Number(row[field]) > 0
-                : typeof row[field] === 'string' && String(row[field]).trim().length > 0;
+                ? (typeof record[field] === 'number' || typeof record[field] === 'string') && Number.isFinite(Number(record[field])) && Number(record[field]) > 0
+                : typeof record[field] === 'string' && String(record[field]).trim().length > 0;
             const sourceText = (field: string) => hasText(field) ? field : b.fallbackText && hasText(b.fallbackText) ? b.fallbackText : undefined;
-            if (b.sectionText && !sourceText(b.sectionText)) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+            const formattedUpdate = (field: string) => formatEditorialDate(record[field], options.locale, field === 'updatedAt');
+            if (b.sectionText && (!sourceText(b.sectionText) || b.sectionText === 'updatedAt' && !formattedUpdate(b.sectionText))) return hidden();
             const textField = b.text && sourceText(b.text);
             if (b.text) {
                 delete rest.content; delete rest.value;
-                rest.text = b.format === 'date' ? formatEditorialDate(row[b.text], options.locale) : literal(textField ? String(row[textField]) : '');
-                if (b.format === 'date' && !rest.text) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
-                // Date output is re-formatted from the row in the page language at serve time; the
-                // marker keeps extraction from owning it as a translatable text unit.
-                if (b.format === 'date') rest.translationLiteral = b.text;
+                rest.text = b.format === 'date' ? formattedUpdate(b.text)
+                    : b.format === 'number' && textField ? (groupedNumber ??= new Intl.NumberFormat('en-US', { maximumFractionDigits: 12 })).format(Number(row[textField]))
+                    : literal(textField ? String(row[textField]) : '');
+                if ((b.format === 'date' || b.hideWhenEmpty) && !rest.text) return hidden();
+                // Formatting is optional. The value's source field owns it in every locale.
+                if (isSourceDetailField(b.text)) rest.translationLiteral = b.text;
                 if (b.fallbackText && textField === 'body' && String(rest.text).length > 12000) rest.translationLiteral = 'body';
             }
             if (b.href) {
@@ -376,24 +446,84 @@ function projectCompiledDirectory<T extends PageLayoutData>(
             if (b.src) {
                 delete rest.url;
                 const src = httpsUrl(row[b.src]);
-                if (b.hideWhenEmpty && !src) return { id, type: 'Container', props: {}, styles: { display: 'none' }, children: [] };
+                if (b.fallbackSrcQuery) {
+                    const fallback = httpsUrl(records.get(b.fallbackSrcQuery)?.[0]?.cover);
+                    if (fallback) rest.fallbackSrc = fallback;
+                }
+                if (b.hideWhenEmpty && !src && !rest.fallbackSrc) return hidden();
                 rest[node.type === 'Gallery' ? 'coverSrc' : 'src'] = src;
             }
             if (b.alt) rest.alt = literal(row[b.alt]) || (b.altFallback === 'title' ? literal(row.title) : '');
             if (b.media && typeof row[b.media] === 'string' && String(row[b.media]).trim()) rest.media = row[b.media];
             const recordColumns: Record<string, string> = {};
-            if (textField && rest.translationLiteral === undefined && (stampableRecordColumns.has(textField) || textField === 'body' && b.fallbackText)) recordColumns.text = textField;
+            // A displayed fee can be edited against its unformatted numeric source.
+            // Calendar output and system timestamps are display-only.
+            // These list values come from the institution or city, so they cannot be edited as program fields.
+            const parentField = programList && !b.relatedQuery && ['institutionName', 'location', 'country'].includes(textField ?? '');
+            if (textField && !parentField && (numericFields.has(textField)
+                || rest.translationLiteral === undefined && (stampableRecordColumns.has(textField) || textField === 'body' && b.fallbackText))) recordColumns.text = textField;
             // A composed link label is a record unit keyed to the composite column (`ariaLabel:<textCol>`)
             // so capture, discovery and translation memory agree on one identity — never row position.
             // Date-bound or fallback text columns never compose: their output is not the stored source.
-            if (b.ariaLabel && recordColumns.text) recordColumns.ariaLabel = `ariaLabel:${textField}`;
+            if (b.ariaLabel && recordColumns.text && rest.translationLiteral === undefined) recordColumns.ariaLabel = `ariaLabel:${textField}`;
             if (b.alt) recordColumns.alt = b.alt;
             if (collection && (typeof row.id === 'string' || typeof row.id === 'number') && Object.keys(recordColumns).length) {
-                rest.translationRecord = { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id as string | number }] };
+                rest.translationRecord = { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id as string | number }],
+                    ...(textField && numericFields.has(textField) ? {sourceValue:String(row[textField]), ...(b.format==='number'?{sourceFormat:'number'}:{})} : {}) };
                 rest.translationSources = recordColumns;
             }
         }
-        return { ...node, id, props: rest, ...(node.children ? { children: visible(node.children).map(child => walk(child, row, index, collection)) } : {}) };
+        if (template) {
+            const columns: Record<string,string> = {};
+            const scalars: Record<number,{ value: string; format?: 'number' }> = {};
+            rest.inlineValues = template.map((part, index) => {
+                if ('text' in part) return part.text;
+                const alias = listCountAlias(part.variable);
+                const query = alias ? (aliases ??= new Map(listCounts(layout.content).map(list => [list.alias, list.id]))).get(alias) : inlineQueryId(part.variable);
+                if (query) {
+                    const total = options.totals?.get(query);
+                    return typeof total === 'number' && Number.isFinite(total) ? String(total) : '';
+                }
+                const column = detailBindingColumn(part.variable);
+                if (column) {
+                    const available = row?.columns as Record<string, unknown> | undefined;
+                    const value = available && Object.hasOwn(available, column) ? available[column] : undefined;
+                    return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? literal(String(value)) : '';
+                }
+                const requested = directoryLiquidField(`{{ ${part.variable} }}`);
+                if (!requested) return '';
+                const legacy = instructions.records.get(node);
+                const fallback = legacy?.text === requested ? legacy?.fallbackText : undefined;
+                const actual = row?.[requested] == null || row[requested] === '' ? fallback ?? requested : requested;
+                const value = row?.[actual];
+                if (legacy?.text === requested && legacy.format === 'date') return formatEditorialDate(value, options.locale, requested === 'updatedAt');
+                if (typeof value !== 'string' && typeof value !== 'number') return '';
+                const formatted = legacy?.text === requested && legacy.format === 'number' && Number.isFinite(Number(value));
+                if (collection && String(value).length <= 12000 && !(programList && ['institutionName', 'location', 'country'].includes(actual))) {
+                    if (!isSourceDetailField(actual) || numericFields.has(actual)) columns['inlineValues.'+index] = actual;
+                    if (numericFields.has(actual)) scalars[index] = { value: String(value), ...(formatted && {format:'number' as const}) };
+                }
+                return formatted
+                    ? (groupedNumber ??= new Intl.NumberFormat('en-US', { maximumFractionDigits: 12 })).format(Number(value)) : literal(String(value));
+            });
+            if (collection && (typeof row?.id === 'string' || typeof row?.id === 'number') && Object.keys(columns).length) {
+                rest.translationRecord ??= { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id }] };
+                rest.translationSources = { ...rest.translationSources as Record<string,string> | undefined, ...columns };
+            }
+            if (Object.keys(scalars).length) rest.inlineScalars = scalars;
+        } else if (rest.inlineBefore !== undefined || rest.inlineAfter !== undefined) {
+            for (const slot of ['inlineBefore','inlineAfter'] as const) {
+                const field = directoryLiquidField(rest[slot]);
+                if (!field) continue;
+                const value = row?.[field];
+                rest[slot] = typeof value === 'number' && Number.isFinite(value) ? String(value) : literal(value);
+                if (field === 'title' && collection && (typeof row?.id === 'string' || typeof row?.id === 'number')) {
+                    rest.translationRecord ??= { connectionId: 'frontbase:publication', collection, key: [{ column: 'id', value: row.id }] };
+                    rest.translationSources = { ...rest.translationSources as Record<string, string> | undefined, [slot]: 'title' };
+                }
+            }
+        }
+        return { ...node, id, props: rest, ...(node.children ? { children: visible(node.children).map(child => walk(child, row, index, collection, programList)) } : {}) };
     };
     return { ...layout, content: visible(layout.content).map(node => walk(node)) };
 }

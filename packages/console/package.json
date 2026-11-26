@@ -20,7 +20,9 @@
     "test:deployment-bindings": "vitest run src/components/deployment/bindings-form.test.ts src/components/dashboard/settings/shared/DeploymentBindingsDialog.test.tsx src/components/dashboard/FileBrowser/native-storage-ui.test.tsx --pool=threads --maxWorkers=1 --no-file-parallelism"
   },
   "dependencies": {
-    "@frontbase/edge-core": "workspace:*"
+    "@frontbase/edge-core": "workspace:*",
+    "@simplewebauthn/browser": "^13.3.0",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@ai-sdk/react": "3.0.161",

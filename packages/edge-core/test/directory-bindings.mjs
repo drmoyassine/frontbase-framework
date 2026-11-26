@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { directoryLayoutQueries, projectDirectoryRecords, projectRelativeSiteLinks } from '../dist/directory/configuration.js';
 import { renderPage } from '../dist/index.js';
+import { createBookingDetail, upgradeBookingDetail } from '../dist/directory/starter.js';
 const layout = { root: { siteConfiguration: { version: 1, role: 'directory' }, custom: 'retained' }, content: [
     { id: 'custom', type: 'Text', props: { text: 'Custom content' } },
     { id: 'cards', type: 'Repeater', props: { directoryQuery: { version: 1, queryId: 'directory.institution.list', params: { limit: 12 } } }, children: [
@@ -62,6 +63,61 @@ assert.ok(articleHtml.includes('&lt;script&gt;'));assert.ok(!articleHtml.include
 for (const body of [[{kind:'html',runs:[{text:'bad'}]}],[{kind:'paragraph',runs:[{text:'bad',href:'javascript:bad()'}]}],[{kind:'paragraph',runs:[{text:'bad',html:'<b>'}]}],[]]) assert.throws(()=>projectDirectoryRecords(article,new Map([['article',[{body}]]])));
 const wrongArticle=structuredClone(article);wrongArticle.content[0].props.directoryQuery.queryId='directory.program.detail';assert.throws(()=>directoryLayoutQueries(wrongArticle));
 console.log('directory-bindings: strict requests/fields, bounded safe semantic articles, immutable projection, nested/legacy refusal and engine HTML passed');
+
+const booking = { root: { bookingForX: { version: 1, role: 'program' } }, content: createBookingDetail('program') };
+const bfxNode = (nodes, id) => {
+    for (const node of nodes) {
+        if (node.id === 'bfx-program-' + id) return node;
+        const child = bfxNode(node.children ?? [], id);
+        if (child) return child;
+    }
+};
+assert.deepEqual(directoryLayoutQueries(booking).map(query=>query.binding.queryId), ['directory.program.detail', 'directory.institution.detail']);
+const program = { id: 1, title: 'Advertising', tuition: 25702.5, currency: 'USD', intakes: '["Jan","Aug"]', requirements: 'Secondary school diploma',
+    updatedAt: '2026-11-21T12:00:00.123456+00:00', cover: 'https://media.example/program.jpg', gallery: '["https://media.example/gallery.jpg"]' };
+const institution = { id: 2, title: 'Washington State University', originalPath: '/washington-state-university/', location: 'Pullman', country: 'United States', cover: 'https://media.example/campus.jpg' };
+const bookingHtml = (program, institution, locale='en') => renderPage(projectDirectoryRecords(booking, new Map([
+    ['bfx-program-1', [program]], ['bfx-program-related', institution ? [institution] : []],
+]), { locale }), { user: null, page: {}, app: {}, visitor: {}, url: {}, system: {}, cookies: {}, local: {}, session: {} });
+const programHtml = await bookingHtml(program, institution);
+assert.match(programHtml, /href="\/washington-state-university\/" target="_blank" rel="noopener noreferrer">Washington State University/);
+for(const value of ['Pullman','United States','25,702.5','Secondary school diploma','November 21, 2026']) assert.ok(programHtml.includes(value),value);
+assert.doesNotMatch(programHtml, /Offered by/);
+assert.match(programHtml, /id="bfx-program-text-intakes--value-0"[^>]*>Jan</);
+assert.match(programHtml, /id="bfx-program-text-intakes--value-1"[^>]*>Aug</);
+const localizedProgram = await bookingHtml({...program, intakes: 'يناير، أغسطس', updatedAt: '2026-11-21T12:00:00.123456'}, institution, 'ar');
+assert.match(localizedProgram, /id="bfx-program-text-intakes--value-0"[^>]*>يناير</);
+assert.match(localizedProgram, /id="bfx-program-text-intakes--value-1"[^>]*>أغسطس</);
+assert.match(localizedProgram, /id="bfx-program-last-updated-date"[^>]*>[^<]*21[^<]*2026/);
+assert.doesNotMatch(await bookingHtml({...program, updatedAt: '2026-02-30T12:00:00'}, institution), /Last updated:/);
+assert.ok(programHtml.indexOf('src="https://media.example/program.jpg"') > -1);
+assert.ok(programHtml.indexOf('src="https://media.example/program.jpg"') < programHtml.indexOf('src="https://media.example/gallery.jpg"'));
+const fallbackHtml = await bookingHtml({...program, cover: '', requirements: null, updatedAt: null}, institution, 'ar');
+assert.match(fallbackHtml, /src="https:\/\/media.example\/campus.jpg"/);
+assert.doesNotMatch(fallbackHtml, /Secondary school diploma|Last updated:|Entry requirements/);
+assert.doesNotMatch(await bookingHtml({...program, cover: 'javascript:alert(1)', gallery: ''}, null), /javascript:|media\.example\/campus|class="fb-gallery/);
+const badSource = structuredClone(booking);
+bfxNode(badSource.content, '3').props.recordBindings.fallbackSrcQuery = 'bfx-program-1';
+assert.throws(()=>directoryLayoutQueries(badSource), /invalid_related_record_query/);
+
+const legacyBooking = structuredClone(booking), oldLink = bfxNode(legacyBooking.content, 'institution-link');
+const related = bfxNode(legacyBooking.content, 'related'), titleGroup = bfxNode(legacyBooking.content, 'title-group');
+titleGroup.children.splice(1,2,{id:'bfx-program-subtitle',type:'Text',props:{recordBindings:{text:'institutionName'}}});
+oldLink.styles = {color:'#123456'};
+delete oldLink.props.recordBindings.relatedQuery;
+related.children = [{id:'bfx-program-institution-panel',type:'Container',children:[{id:'bfx-program-institution-heading',type:'Heading',props:{text:'Offered by'}},oldLink]}];
+const legacyIntakes = bfxNode(legacyBooking.content, 'text-intakes'); legacyIntakes.type = 'Text'; legacyIntakes.props = {recordBindings:{text:'intakes'}};
+const detailCard = bfxNode(legacyBooking.content,'2'); detailCard.children = detailCard.children.filter(node=>node.id !== 'bfx-program-last-updated');
+const custom = {id:'program-custom-copy',type:'Text',props:{text:'Owner content'}};detailCard.children.push(custom);
+const legacyCover = bfxNode(legacyBooking.content,'3'); legacyCover.type='Image'; legacyCover.props={src:'',recordBindings:{src:'cover',alt:'title',hideWhenEmpty:true}};
+const upgradedBooking = upgradeBookingDetail(legacyBooking);
+assert.ok(upgradedBooking); directoryLayoutQueries(upgradedBooking);
+assert.equal(upgradeBookingDetail(upgradedBooking),undefined);
+assert.ok(bfxNode(upgradedBooking.content,'2').children.some(node=>node.id===custom.id));
+assert.equal(bfxNode(upgradedBooking.content,'institution-link').styles.color,'#123456');
+assert.equal(bfxNode(upgradedBooking.content,'3').type,'Gallery');
+assert.equal(related.children.length,1);
+console.log('booking program detail: related identity, safe cover fallback, badges, fees, requirements, timestamp and preserved draft upgrade');
 
 const covered=structuredClone(article);covered.content[0].children.push({id:'cover',type:'Image',props:{recordBindings:{src:'cover',alt:'coverAlt'}}});
 const coveredProjection=projectDirectoryRecords(covered,new Map([['article',[{body:articleBody,cover:'https://media.test/campus.jpg',coverAlt:'Campus <gardens> {{ user.private }}'}]]]));
@@ -169,3 +225,11 @@ const styledBrowsingHtml=await renderPage(projectDirectoryBrowsing(styledBrowsin
 assert.ok(styledBrowsingHtml.includes('fb-layout fb-container'));assert.ok(styledBrowsingHtml.includes('padding:24px'));
 assert.ok(styledBrowsingHtml.includes('padding:8px'));assert.ok(styledBrowsingHtml.includes('[id="browse"]{display:none!important}'));
 console.log('directory browsing retains the existing Container responsive styles and viewport visibility');
+const institutionLayout = {content:createBookingDetail('institution')};
+const renderInstitution = async (fields, total) => renderPage(projectDirectoryRecords(institutionLayout,new Map([
+    ['bfx-institution-1',[{id:2,title:'Campus',...fields}]],['bfx-institution-related',[{id:5,title:'Program',originalPath:'/program/'}]]
+]),{locale:'en',totals:new Map([['bfx-institution-related',total]])}),{user:null,page:{},app:{},visitor:{},url:{},system:{},cookies:{},local:{},session:{}});
+const richInstitution = await renderInstitution({students:18500,latitude:'42',longitude:'-71',socialProfiles:{LinkedIn:'https://example.com/campus'},founded:1900,tagline:'Learn together',institutionType:'Public university',location:'Boston',country:'USA'},108);
+for (const value of ['18,500','openstreetmap.org/export/embed.html','https://example.com/campus','>108<','1900','Learn together','Public university','Boston','USA']) assert.ok(richInstitution.includes(value),value);
+const sparseInstitution = await renderInstitution({latitude:'',longitude:42,socialProfiles:{invalid:'not a URL'}},0);
+assert.doesNotMatch(sparseInstitution,/openstreetmap.org|Iframe URL not set|>Students<|>Founded<|>Tagline</);

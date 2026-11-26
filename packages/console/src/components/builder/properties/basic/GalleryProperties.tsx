@@ -13,6 +13,7 @@ export function GalleryProperties({props,updateProp}:{props:Record<string,any>;u
  return <div className="space-y-4">
   <label className="block text-sm">Media source (@ field or one URL per line)<VariableInput value={typeof props.media==='string'?props.media:JSON.stringify(props.media??[])} onChange={value=>updateProp('media',value)} multiline/></label>
   <p className="text-xs text-muted-foreground">One item becomes a cover. Multiple items become tiles. Images, MP4/WebM, YouTube and Vimeo are supported. Bind an array of URLs or objects with src, type, alt and optional poster.</p>
+  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={props.coverFirst===true} onChange={event=>updateProp('coverFirst',event.target.checked)}/>Show the cover before gallery items</label>
   {!bound&&<div className="space-y-3">{items.map((item,index)=><div className="rounded border p-2 space-y-2" key={index}>
    <label className="block text-xs">Media {index+1} URL<input aria-label={`Media ${index+1} URL`} className="w-full border rounded bg-background p-2" value={item.src} onChange={e=>save(items.map((old,i)=>i===index?{...old,src:e.target.value}:old))}/></label>
    <label className="block text-xs">Type<select aria-label={`Media ${index+1} type`} className="w-full border rounded bg-background p-2" value={item.type} onChange={e=>save(items.map((old,i)=>i===index?{...old,type:e.target.value}:old))}><option value="auto">Detect from URL</option><option value="image">Image</option><option value="video">Video file</option></select></label>

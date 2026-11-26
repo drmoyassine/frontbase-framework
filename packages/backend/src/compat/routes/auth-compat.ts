@@ -17,6 +17,9 @@
  * Routes registered with EXACT product paths (trailing slashes matter).
  */
 import type { Context, Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+import { z } from 'zod';
+import type { AdminMfa } from './admin-mfa.js';
 import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { UserStore } from '../../db/users.js';
 import type { TenantStore } from '../../db/tenants.js';
@@ -79,7 +82,7 @@ function userPayload(
     };
 }
 
-async function setSession(
+export async function setSession(
     c: Context<{ Variables: ConsoleAuthVars }>,
     user: { id: string; email: string; role: string; tenantSlug: string },
     sessionSecret: string,
@@ -96,7 +99,7 @@ async function setSession(
         sessionSecret,
         Math.floor(Date.now() / 1000),
     );
-    c.header('Set-Cookie', SESSION_COOKIE(token));
+    c.header('Set-Cookie', SESSION_COOKIE(token), { append:true });
 }
 
 /**
@@ -121,6 +124,7 @@ export function registerAuthCompatUnauthRoutes(
     pagesFor?: (tenant: string) => PagesStore,
     /** Frontbase Cloud identity/password authority. Self-host leaves this absent. */
     cloudAuth?: CloudIdentityProvider,
+    mfa?: AdminMfa,
 ): void {
     // Product contract includes explicit preflight operations for these routes.
     app.options('/api/auth/login', async (c) => {
@@ -161,11 +165,23 @@ export function registerAuthCompatUnauthRoutes(
         // RULE 4: identical response for unknown email vs wrong password.
         if (!matched) return c.json({ error: 'invalid_credentials' }, 401);
 
+        const version = await userStoreFor(matched.tenantSlug).getSessionVersion(matched.id);
+        if (mfa) {
+            const proof = await mfa.validate(matched,input?.authenticator_code,'mfa-login');
+            if (proof === 'required' || proof === 'invalid') {
+                c.header('Cache-Control','no-store');
+                return c.json({error:'authenticator_required',detail:proof === 'required'
+                    ? 'Enter the code from your authenticator app.' : 'The code is invalid, already used, or rate-limited. Try a new code.'},403);
+            }
+            if ((await userStoreFor(matched.tenantSlug).findByIdForVerify(matched.id))?.passwordHash !== matched.passwordHash) {
+                return c.json({error:'invalid_credentials'},401);
+            }
+        }
         await setSession(
             c,
             matched,
             sessionSecret,
-            await userStoreFor(matched.tenantSlug).getSessionVersion(matched.id),
+            version,
         );
         const auditStore = kvFor(matched.tenantSlug);
         const audit = await auditStore.getJson<Record<string, unknown>[]>('auth_security_audit', []);
@@ -304,6 +320,7 @@ export function registerAuthCompatUnauthRoutes(
         } else if (deliverPasswordReset) {
             const candidates = await userStoreFor('_default').findByEmailAnyTenant(parsed.data.email);
             for (const user of candidates) {
+                if (await mfa?.factor(user.tenantSlug,user.id)) continue;
                 const token = await passwordResets.create(user, now());
                 try {
                     await deliverPasswordReset(user.email, token);
@@ -332,14 +349,36 @@ export function registerAuthCompatUnauthRoutes(
                 : c.json({ detail: 'Invalid email or token.' }, 400);
         }
         const capability = await passwordResets.consume(parsed.data.email, parsed.data.token, now());
-        if (!capability) return c.json({ detail: 'Invalid email or token.' }, 400);
-        await userStoreFor(capability.tenantSlug).updatePasswordAndInvalidateSessions(
-            capability.userId,
-            await hashPassword(parsed.data.password),
-            now(),
-        );
+        if (!capability || await mfa?.factor(capability.tenantSlug,capability.userId)) return c.json({ detail: 'Invalid email or token.' }, 400);
+        const replacement = await hashPassword(parsed.data.password);
+        if (mfa?.available) {
+            if (!await mfa.emailReset(capability.userId,capability.tenantSlug,replacement)) return c.json({detail:'Invalid email or token.'},400);
+        } else {
+            await userStoreFor(capability.tenantSlug).updatePasswordAndInvalidateSessions(capability.userId,replacement,now());
+        }
         return c.json({ success: true, message: 'Password has been successfully reset. You can now log in.' });
     });
+    if (mfa?.available) app.post('/api/auth/recover-with-authenticator/',
+        bodyLimit({maxSize:4096,onError:c=>c.json({detail:'The request is too large.'},413)}), async c => {
+            c.header('Cache-Control','no-store');
+            if (c.req.header('origin') !== new URL(c.req.url).origin || c.req.header('sec-fetch-site') === 'cross-site'
+                || c.req.header('content-type')?.split(';')[0] !== 'application/json') {
+                return c.json({detail:'Open the recovery form on this site.'},403);
+            }
+            const input = z.object({email:z.string().email().max(254),code:z.string().regex(/^\d{6}$/),
+                backup:z.string().regex(/^[0-9a-f]{32}$/),password:z.string().min(12).max(256)})
+                .safeParse(await c.req.json().catch(()=>null));
+            if (!input.success) return c.json({detail:'Enter your sign-in email, authenticator code, recovery code, and new password.'},422);
+            const {email,code,backup,password} = input.data;
+            const candidates = await userStoreFor('_default').findByEmailAnyTenant(email);
+            for (const user of candidates) {
+                if (await mfa.recover(user,code,backup,password)) {
+                    c.header('Set-Cookie',CLEAR_COOKIE);
+                    return c.json({message:'Password reset. Sign in with your new password and a fresh authenticator code.'});
+                }
+            }
+            return c.json({detail:'Recovery could not be confirmed. Check your unused recovery code and try a fresh authenticator code.'},400);
+        });
     // GET /api/auth/invite/{token}
     app.get('/api/auth/invite/:token', async (c) => {
         const parsed = zAuthenticationGetInvitePath.safeParse({ token: c.req.param('token') });

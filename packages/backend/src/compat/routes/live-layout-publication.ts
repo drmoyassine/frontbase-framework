@@ -1,9 +1,11 @@
+import {stableStringify} from '@frontbase/compiler/manifest';
 import {z} from 'zod';
 import type {Hono} from 'hono';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {ConsoleAuthVars} from '../../mw/auth.js';
 import type {PageLayoutData} from '@frontbase/edge-core';
-import {sitePageReferenceSchema,liveViewBindings} from '@frontbase/edge-core/directory/configuration';
+import {validateDetailBindings} from '@frontbase/edge-core';
+import {sitePageReferenceSchema,liveViewBindings,bookingPaletteSchema} from '@frontbase/edge-core/directory/configuration';
 import {PagesStore} from '../pages-store.js';
 import {SiteConfigurationStore} from '../site-configuration-store.js';
 import {LiveLayoutPublicationStore,liveLayoutPublicationSchema} from '../live-layout-publication.js';
@@ -15,7 +17,7 @@ import {publicationBindingDiagnostics} from '../publication-binding-diagnostics.
 import {publishedLiveQuery} from '../published-live-query.js';
 
 const hash=z.string().regex(/^[a-f0-9]{64}$/);
-const prepare=z.object({pageIds:z.array(z.string().uuid()).min(1).max(1000),locales:z.array(z.string()).min(1).max(40),expectedConfigurationRevision:z.number().int().positive()}).strict();
+const prepare=z.object({baseHash:hash.optional(),pageIds:z.array(z.string().uuid()).min(1).max(1000),locales:z.array(z.string()).min(1).max(40),expectedConfigurationRevision:z.number().int().positive()}).strict();
 const publish=z.object({hash,expected:z.object({hash,generation:z.number().int().positive()}).strict().nullable()}).strict();
 
 /** Publishing stores structure only. Data and translation heads are read at request time. */
@@ -55,10 +57,13 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
     app.get('/api/project/live-layout/render/',async c=>{
         try{
             const id=hash.parse(c.req.query('hash')),path=c.req.query('path')??'/';
+            const paletteInput=c.req.query('palette');
+            if(paletteInput!==undefined&&paletteInput.length>512)return c.json({detail:'Invalid preview palette'},422);
+            const previewPalette=paletteInput===undefined?undefined:bookingPaletteSchema.parse(JSON.parse(paletteInput));
             if(path.length>2048||!path.startsWith('/')||path.startsWith('//')||/[\\\u0000-\u0020]/.test(path))return c.json({detail:'Invalid preview path'},422);
             const url=new URL(path,c.req.url);if(url.origin!==new URL(c.req.url).origin)return c.json({detail:'Invalid preview path'},422);
             const release=await new LiveLayoutPublicationStore(db,c.get('tenant')).open(id);if(!release)return c.json({detail:'Prepared layout not found'},404);
-            const response=await renderLiveLayoutPublication(db,c.get('tenant'),new Request(url,{headers:c.req.raw.headers}),{host,liveQuery:publishedLiveQuery(request=>app.fetch(request)),prepared:{pointer:{hash:id,generation:1},...release}});
+            const response=await renderLiveLayoutPublication(db,c.get('tenant'),new Request(url,{headers:c.req.raw.headers}),{host,liveQuery:publishedLiveQuery(request=>app.fetch(request)),prepared:{pointer:{hash:id,generation:1},...release},previewPalette});
             if(!response)return c.json({detail:'Prepared page unavailable'},404);
             const headers=new Headers(response.headers);headers.set('X-Robots-Tag','noindex, nofollow');
             return new Response(response.body,{status:response.status,headers});
@@ -73,7 +78,13 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
             if(action==='publish'){
                 const parsed=publish.safeParse(input);if(!parsed.success)return c.json({detail:'Invalid publication request'},422);
                 const layout=await store.get(parsed.data.hash);if(!layout)return c.json({detail:'Prepared layout not found'},404);
-                try{await resolveDirectoryViewScope(host,owner,layout.configuration);}
+                try{
+                    const viewScope=await resolveDirectoryViewScope(host,owner,layout.configuration);
+                    for(const page of [...layout.templates,...layout.staticPages]){
+                        if(JSON.stringify(page.layout).includes('record.columns.'))
+                            validateDetailBindings(page.layout as unknown as PageLayoutData,viewScope?.selectedBindingColumns);
+                    }
+                }
                 catch{return c.json({detail:'A detail layout Saved View changed. Check its source table and schema, then review again.',code:'detail_view_mismatch'},422);}
                 const sources=new Set([layout.configuration.datasourceId,...[...layout.templates,...layout.staticPages].flatMap(page=>liveViewBindings(page.layout as unknown as PageLayoutData).map(binding=>binding.dataSourceId))]);
                 for(const source of sources)if(source!=='frontbase:publication')await protectPublishedLiveSource(db,owner,source,now());
@@ -84,8 +95,17 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
             const draft=await new SiteConfigurationStore(db,owner).get();
             if(!draft||draft.revision!==parsed.data.expectedConfigurationRevision)return c.json({detail:'Configuration changed. Reload and review.'},409);
             if(new Set(parsed.data.pageIds).size!==parsed.data.pageIds.length)return c.json({detail:'Duplicate page'},422);
-            try{await resolveDirectoryViewScope(host,owner,draft.configuration);}
+            let viewScope;
+            try{viewScope=await resolveDirectoryViewScope(host,owner,draft.configuration);}
             catch{return c.json({detail:'A detail layout Saved View is unavailable or uses a different source table or schema. Update its Builder binding.',code:'detail_view_mismatch'},422);}
+            const baseHash=parsed.data.baseHash;
+            const previous=baseHash?await store.active():null;
+            if(baseHash){
+                if(previous?.pointer.hash!==baseHash)return c.json({detail:'The published layout changed. Review again.'},409);
+                if(parsed.data.pageIds.length!==1)return c.json({detail:'Select one saved page.'},422);
+                if(stableStringify(previous.layout.configuration)!==stableStringify(draft.configuration))
+                    return c.json({detail:'Shared settings have changed. Review the site publication in Pages before publishing an individual layout.'},409);
+            }
             const pages=new PagesStore(db,owner),templates:unknown[]=[],staticPages:unknown[]=[];
             const authoredPages:{pageId:string;layout:PageLayoutData}[]=[];
             for(const id of parsed.data.pageIds){
@@ -102,8 +122,27 @@ export function registerLiveLayoutPublicationRoutes(app:Hono<{Variables:ConsoleA
                 const response=await app.fetch(new Request(new URL(path,c.req.url),{headers}));if(!response.ok)throw Error('binding_resource_unavailable');return response.json();
             },draft.configuration);
             if(elementIssues.length)return c.json({detail:'Resolve the listed element bindings before publishing.',code:'publication_elements_incomplete',elementIssues},422);
-            const layout=liveLayoutPublicationSchema.parse({schemaVersion:3,runtimeVersion:'live-layout-v1',configuration:draft.configuration,templates,staticPages,locales:parsed.data.locales});
-            const id=await store.prepare(layout,now());return c.json({hash:id,mode:'live',pageCount:templates.length+staticPages.length});
+            if(previous){
+                const selected=parsed.data.pageIds[0];
+                for(const [saved,pending] of [[previous.layout.templates,templates],[previous.layout.staticPages,staticPages]] as const){
+                    const replacement=pending.pop();
+                    for(const page of saved){
+                        if(page.pageId!==selected)pending.push(page);
+                        else if(replacement)pending.push(replacement);
+                    }
+                    if(replacement&&!saved.some(page=>page.pageId===selected))pending.push(replacement);
+                }
+            }
+            const layout=liveLayoutPublicationSchema.parse({schemaVersion:3,runtimeVersion:'live-layout-v1',configuration:draft.configuration,templates,staticPages,locales:previous?.layout.locales??parsed.data.locales});
+            const institutionColumns=new Set<string>(),programColumns=new Set<string>();
+            for(const page of [...layout.templates,...layout.staticPages])if(JSON.stringify(page.layout).includes('record.columns.')){
+                const used=validateDetailBindings(page.layout as unknown as PageLayoutData,viewScope?.selectedBindingColumns);
+                for(const name of used.institution)institutionColumns.add(name);
+                for(const name of used.program)programColumns.add(name);
+            }
+            const id=await store.prepare({...layout,...(institutionColumns.size?{institutionBindingColumns:[...institutionColumns].sort()}: {}),
+                ...(programColumns.size?{programBindingColumns:[...programColumns].sort()}: {})},now());
+            return c.json({hash:id,mode:'live',pageCount:templates.length+staticPages.length});
         }catch{return c.json({detail:'Layout publication could not be completed. Check its bindings and configuration.'},422);}
     });
 }

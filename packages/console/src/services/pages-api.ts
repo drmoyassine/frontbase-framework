@@ -36,8 +36,10 @@ export const createPage = async (pageData: Omit<Page, 'id' | 'createdAt' | 'upda
   return unwrap<Page>(data, 'createPage');
 };
 
-export const updatePage = async (pageId: string, pageData: Partial<Page>): Promise<Page> => {
-  const { data } = await pagesUpdatePageEndpoint({ path: { page_id: pageId }, body: pageData as never, throwOnError: true });
+export const updatePage = async (pageId: string, pageData: Partial<Page>, expectedHash?: string): Promise<Page> => {
+  const { data, response } = await pagesUpdatePageEndpoint({ path: { page_id: pageId }, body: pageData as never, headers: expectedHash ? { 'If-Match': '"' + expectedHash + '"' } : undefined });
+  if (response.status === 409 && expectedHash) throw new Error('The layout draft changed. Reload before saving.');
+  if (!response.ok) throw new Error('Could not save the page');
   return unwrap<Page>(data, 'updatePage');
 };
 

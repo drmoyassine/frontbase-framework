@@ -6,11 +6,12 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import type { DetailBindingColumns } from '@frontbase/edge-core';
 
 export interface Variable {
     path: string;
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-    source: 'page' | 'user' | 'visitor' | 'url' | 'system' | 'record' | 'local' | 'session' | 'cookies' | 'app';
+    source: 'page' | 'user' | 'visitor' | 'url' | 'system' | 'record' | 'local' | 'session' | 'cookies' | 'app' | 'lists';
     description?: string;
 }
 
@@ -28,6 +29,7 @@ export interface Filter {
 interface VariablesResponse {
     variables: Variable[];
     filters: Filter[];
+    detailColumns?: DetailBindingColumns;
 }
 
 /**
@@ -62,6 +64,7 @@ export function useVariables(pageId?: string) {
     return {
         variables: data?.variables || [],
         filters: data?.filters || [],
+        detailColumns: data?.detailColumns,
         isLoading,
         error,
     };

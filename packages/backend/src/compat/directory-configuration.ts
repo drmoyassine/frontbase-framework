@@ -1,8 +1,24 @@
 import {readTemplatePolicy} from '@frontbase/edge-core/template-policy';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, projectSharedDirectoryPreview, directoryLayoutQueries, landingRootSchema,standardPublicationQueries } from '@frontbase/edge-core/directory/configuration';
+import { directoryConfigurationSchema, directoryConfigurationReadiness, directorySource, sitePageReferenceSchema, projectSharedDirectoryPreview, directoryLayoutQueries, landingRootSchema,standardPublicationQueries } from '@frontbase/edge-core/directory/configuration';
 import { SiteConfigurationStore } from './site-configuration-store.js';
 import { validateBlockVersions } from '@frontbase/edge-core/block-versions';
+import {detailBindingColumnsSchema,detailBindingRoles,validateDetailBindings,type DetailBindingColumns,type PageLayoutData} from '@frontbase/edge-core';
+import type {DirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
+
+/** Editor metadata is tied to the exact owned detail view and its table. The
+ * live reader additionally checks datasource schema before rendering. */
+export async function detailViewBindingColumns(db:DbRunner,owner:string,configuration:DirectoryConfiguration):Promise<DetailBindingColumns>{
+    const selected=detailBindingRoles.filter(role=>configuration.detailViews?.[role]);
+    if(!selected.length)return {};
+    const rows=await db.query('SELECT id,target_table,binding_columns FROM datasource_views WHERE tenant_slug=? AND datasource_id=? AND id IN ('+
+        selected.map(()=>'?').join(',')+')',[owner,configuration.datasourceId,...selected.map(role=>configuration.detailViews![role]!)]);
+    return Object.fromEntries(selected.map(role=>{
+        const table=directorySource(configuration,role).tableName;
+        const raw=rows.find(row=>row.id===configuration.detailViews?.[role]&&row.target_table===table)?.binding_columns;
+        return [role,raw==null?[]:detailBindingColumnsSchema.parse(JSON.parse(String(raw)))];
+    }));
+}
 
 /** Validate only the new opt-in root slot; never change unrelated legacy layout fields. */
 export async function validateDirectoryLayout(layout: unknown, tenant: string, runner?: DbRunner, publishing = false): Promise<{ status: 422 | 403 | 503; body: object } | null> {
@@ -30,7 +46,11 @@ export async function validateDirectoryLayout(layout: unknown, tenant: string, r
         if (!draft) return { status: 422, body: { detail: 'Save shared settings before linking this page' } };
         if (draft.configuration.datasourceId && !(await runner.query('SELECT id FROM datasources WHERE tenant_slug = ? AND id = ?', [tenant, draft.configuration.datasourceId])).length)
             return { status: 403, body: { detail: 'Directory datasource is unavailable' } };
-        try { projectSharedDirectoryPreview(value, draft.configuration); }
+        try {
+            projectSharedDirectoryPreview(value, draft.configuration);
+            if(JSON.stringify(value).includes('record.columns.'))validateDetailBindings(value as PageLayoutData,
+                await detailViewBindingColumns(runner,tenant,draft.configuration));
+        }
         catch { return { status: 422, body: { detail: 'Invalid shared settings binding' } }; }
         if (publishing) return { status: 422, body: { detail: 'Use Prepare a site version in Page Settings to review and publish this shared-template site', code: 'directory_runtime_pending' } };
         return null;

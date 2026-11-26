@@ -1,7 +1,7 @@
 // Run after pnpm -r build. Uses the public renderer and Chromium with disposable source data.
 import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
-import { renderResolvedPageDocument } from '@frontbase/edge-core';
+import { applyLayoutDraftOperation, renderResolvedPageDocument } from '@frontbase/edge-core';
 import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { homepageDisplayFields, applyHomepageDisplayFields } from '@frontbase/edge-core/localization';
 import { sqliteRunner } from '@frontbase/edge-infra';
@@ -15,13 +15,13 @@ const db = sqliteRunner(':memory:');
 const browser = await chromium.launch(process.env.BOOKING_TEST_BROWSER ? { channel: process.env.BOOKING_TEST_BROWSER } : {});
 try {
     await db.exec('CREATE TABLE cities (id INTEGER, title TEXT, country INTEGER)');
-    await db.exec('CREATE TABLE schools (id INTEGER, title TEXT, path TEXT, city INTEGER, country INTEGER, cover TEXT, summary TEXT, location TEXT, website TEXT)');
+    await db.exec('CREATE TABLE schools (id INTEGER, title TEXT, path TEXT, city INTEGER, country INTEGER, cover TEXT, summary TEXT, location TEXT, website TEXT, countryName TEXT)');
     await db.exec('CREATE TABLE programs (id INTEGER, title TEXT, path TEXT, school INTEGER, country INTEGER, summary TEXT, degree TEXT, duration INTEGER, durationUnit TEXT, tuition INTEGER, currency TEXT, intakes TEXT, requirements TEXT)');
     await db.exec("INSERT INTO cities VALUES (1,'Fixture city',22)");
-    await db.exec('INSERT INTO schools VALUES (?,?,?,?,?,?,?,?,?)', [1,'Coastal University','/coastal/',1,22,origin+'/cover.png','A campus near the coast.','Fixture city','https://coastal.example.test/']);
-    await db.exec('INSERT INTO schools VALUES (?,?,?,?,?,?,?,?,?)', [2,'Sparse institution','/sparse/',1,22,null,null,null,'javascript:alert(1)']);
+    await db.exec('INSERT INTO schools VALUES (?,?,?,?,?,?,?,?,?,?)', [1,'Coastal University','/coastal/',1,22,origin+'/cover.png','A campus near the coast.','Fixture city','https://coastal.example.test/','Fixture country']);
+    await db.exec('INSERT INTO schools VALUES (?,?,?,?,?,?,?,?,?,?)', [2,'Sparse institution','/sparse/',1,22,null,null,null,'javascript:alert(1)',null]);
     await db.exec('INSERT INTO programs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [
-        11,'Media and communications','/coastal/media/',1,22,'A live program description.','Bachelor of Arts',4,'years',20000,'USD','September',null,
+        11,'Media and communications','/coastal/media/',1,22,'A live program description.','Bachelor of Arts',4,'years',20000,'USD','September,January',null,
     ]);
     await db.exec('INSERT INTO programs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [
         12,'Excluded program','/excluded/',1,99,'Excluded',null,null,null,null,null,null,null,
@@ -36,7 +36,7 @@ try {
         mapping.scope = { field:'country', value:22 };
         Object.assign(mapping.fields, { id:'id', title:'title', ...(role === 'city' ? {} : { originalPath:'path', summary:'summary' }) });
     }
-    Object.assign(configuration.collections.institution.fields, { cityId:'city', cover:'cover', location:'location', website:'website' });
+    Object.assign(configuration.collections.institution.fields, { cityId:'city', cover:'cover', location:'location', website:'website', country:'countryName' });
     Object.assign(configuration.collections.program.fields, {
         institutionId:'school', degree:'degree', duration:'duration', durationUnit:'durationUnit',
         tuition:'tuition', currency:'currency', intakes:'intakes', requirements:'requirements',
@@ -82,6 +82,7 @@ try {
         const layout = applyHomepageDisplayFields(resolved.page.layout, values, {partial:true, fields});
         return renderResolvedPageDocument({ ...resolved.page, layout }, request, {
             manifest:{version:'version',pages:{},queries:{}}, environment:'edge', document:{...resolved.document,faviconUrl:'/favicon.png'},
+            lists:resolved.lists,
         });
     }
 
@@ -106,12 +107,16 @@ try {
                 assert.equal(await page.locator(href).isVisible(),true);
                 assert.equal(await page.getByRole('link',{name:locale === 'ar' ? 'موقع المؤسسة' : 'Visit the institution website'}).getAttribute('href'),'https://coastal.example.test/');
                 assert.equal(await page.getByRole('link',{name:locale === 'ar' ? 'الإعلام والاتصال' : 'Media and communications'}).isVisible(),true);
+                const card = page.locator('#bfx-institution-program-card');
+                assert.deepEqual(await card.locator('#bfx-institution-program-card-location > *').allTextContents(), ['Fixture city','Fixture country']);
+                assert.deepEqual(await card.locator('.fb-badge-values > *').allTextContents(), ['September','January']);
+                assert.match(await card.innerText(), /20,000/);
             } else if (path === '/coastal/media/') {
                 const apply = page.getByRole('link',{name:locale === 'ar' ? 'قدّم الآن' : 'Apply'});
                 assert.equal(await apply.isVisible(),true);
                 assert.equal(await apply.getAttribute('href'),'/enquire/');
                 assert.ok((await apply.boundingBox()).y < 850, 'primary action stays in the first screen');
-                assert.ok(await page.getByText('20000',{exact:true}).isVisible());
+                assert.ok(await page.getByText('20,000',{exact:true}).isVisible());
                 assert.ok(await page.getByText('USD',{exact:true}).isVisible());
                 assert.equal(await page.getByText('Entry requirements',{exact:true}).count(),0);
                 assert.equal(await page.getByText(locale === 'ar' ? 'وصف البرنامج المباشر.' : 'A live program description.',{exact:true}).isVisible(),true);
@@ -123,8 +128,49 @@ try {
         }
         await page.close();
     }
+    const institution = pages.find(page=>page.role==='institution');
+    const institutionTemplate=publication.templates.find(template=>template.role==='institution');
+    const plainLiquid = structuredClone(institution.layout);
+    const flatten=nodes=>nodes.flatMap(node=>[node,...flatten(node.children??[])]);
+    flatten(plainLiquid.content).find(node=>node.id==='bfx-institution-browse-programs').props.text='Browse {{ lists.programs.count }} programs';
+    institutionTemplate.layout=plainLiquid;
+    assert.match(await html('/coastal/','en'),/Browse 1 programs/);
+    const composition = [{text:'Browse '},{variable:'lists.programs.count'},{text:' programs'}];
+    assert.equal(applyLayoutDraftOperation(institution.layout,{kind:'compose',id:'bfx-institution-browse-programs',parts:[{variable:'lists.missing.count'}]}),null);
+    assert.ok(applyLayoutDraftOperation(institution.layout,{kind:'compose',id:'bfx-institution-browse-programs',parts:[{variable:'query.bfx-institution-related.total'}]}));
+    assert.equal(applyLayoutDraftOperation(institution.layout,{kind:'compose',id:'bfx-institution-browse-programs',parts:[{variable:'query.other.total'}]}),null);
+    assert.equal(applyLayoutDraftOperation(institution.layout,{kind:'compose',id:'bfx-institution-4',parts:[{variable:'record.privateField'}]}),null);
+    const countLayout=applyLayoutDraftOperation(institution.layout,{kind:'compose',id:'bfx-institution-browse-programs',parts:composition});
+    assert.ok(countLayout);
+    const detached=applyLayoutDraftOperation(countLayout,{kind:'compose',id:'bfx-institution-4',parts:[{text:'Campus'}]});
+    assert.ok(detached);
+    assert.equal(flatten(detached.content).find(node=>node.id==='bfx-institution-4').props.recordBindings,undefined);
+    assert.equal(flatten(countLayout.content).find(node=>node.id==='bfx-institution-4').props.recordBindings.text,'title');
+    assert.equal((await db.query('SELECT title FROM schools WHERE id=1'))[0].title,'Coastal University');
+    institution.layout=applyLayoutDraftOperation(countLayout,{kind:'compose',id:'bfx-institution-4',parts:[{variable:'record.title'}]});
+    assert.ok(institution.layout);
+    institutionTemplate.layout=institution.layout;
+    arabic.set('Browse ','تصفّح ');arabic.set(' programs',' برامج');
+    for(const locale of ['en','ar']){
+        const rendered=await html('/coastal/',locale);
+        const page=await browser.newPage({viewport:{width:390,height:850}});
+        await page.route('**/*',route=>route.abort());
+        await page.setContent(rendered,{waitUntil:'domcontentloaded'});
+        const label=page.locator('#bfx-institution-browse-programs');
+        assert.equal(await label.textContent(),locale==='ar'?'تصفّح 1 برامج':'Browse 1 programs');
+        assert.equal(await label.getAttribute('href'),'#bfx-institution-related');
+        assert.equal(await page.locator('#bfx-institution-4').textContent(),locale==='ar'?'الجامعة الساحلية':'Coastal University');
+        await page.close();
+    }
     await db.exec("UPDATE programs SET summary='Updated live source text.' WHERE id=11");
     assert.match(await html('/coastal/media/','en'), /Updated live source text\./);
+    await db.exec("UPDATE programs SET intakes='May' WHERE id=11");
+    await db.exec("UPDATE cities SET title='Updated city' WHERE id=1");
+    assert.match(await html('/coastal/','en'), /Updated city/);
+    assert.match(await html('/coastal/','ar'), />May</);
+    await db.exec("UPDATE programs SET country=22 WHERE id=12");
+    assert.match(await html('/coastal/','en'), />2<\/span>/);
+    assert.match(await html('/coastal/','ar'), />2<\/span>/);
     console.log('Booking detail browser: both layouts and sparse fallback, English/Arabic at 390/1280 px, live record edit, routes, CTA and scope PASS');
 } finally {
     await browser.close();

@@ -1,4 +1,6 @@
 import {z} from 'zod';
+import {bodyLimit} from 'hono/body-limit';
+import {applyLayoutDraftOperation,inlineTemplateSchema,layoutDraftTiles} from '@frontbase/edge-core';
 import type {Hono} from 'hono';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {ConsoleAuthVars} from '../../mw/auth.js';
@@ -18,12 +20,35 @@ import {publishFrontendTranslationEdits,readHomepagePointer} from '../translatio
 import type {TranslationBatchHost} from '../translation-batches.js';
 import {commitFrontendRecordEdits,prepareFrontendRecordEdit} from '../frontend-records.js';
 import {applyBlockVersion} from '@frontbase/edge-core/block-versions';
+import {publicationPathSchema,publicationTemplateSchema} from '@frontbase/edge-core/directory/publication';
 import {resolveLiveLayoutSurface,renderLiveLayoutPublication} from '../live-layout-serving.js';
 import {writeLiveRecordTranslations} from '../live-translation.js';
+import {isFrontendLiquidVariable} from './variables.js';
 
 const pathSchema=z.string().min(1).max(2048).refine(value=>value.startsWith('/')&&!value.startsWith('//')&&!/[\\#\u0000-\u0020]/.test(value));
 const selectionSchema=z.array(z.object({componentId:z.string().min(1).max(200),versionId:z.string().min(1).max(128),ids:z.array(z.string().min(1).max(160)).min(1).max(100)}).strict()).max(8);
 const saveSchema=z.object({path:pathSchema,token:z.string().regex(/^[a-f0-9]{64}$/),operationId:z.string().uuid(),selection:selectionSchema.optional(),entries:z.array(z.object({id:z.string().regex(/^[a-f0-9]{64}$/),text:z.string().min(1).max(12000)}).strict()).min(1).max(100)}).strict();
+const tileId=z.string().min(1).max(200);
+const canvasInput=z.object({path:publicationPathSchema,pageId:z.string().uuid(),layout:publicationTemplateSchema.shape.layout}).strict();
+const viewport=z.enum(['desktop','tablet','mobile']);
+const styleOperation={kind:z.literal('style'),id:tileId,viewport};
+const draftIdentity={path:pathSchema,pageId:tileId,revision:z.string().regex(/^[a-f0-9]{64}$/)};
+const draftInput=z.union([z.object({
+    ...draftIdentity,checkpoint:z.boolean().optional(),
+    operations:z.array(z.union([
+        z.object({kind:z.literal('move'),id:tileId,siblingId:tileId,placement:z.enum(['before','after'])}).strict(),
+        z.object({kind:z.literal('resize'),id:tileId,viewport,width:z.number().min(1).max(100)}).strict(),
+        z.object({kind:z.literal('match'),id:tileId,viewport,width:z.number().min(1).max(100),offset:z.number().min(0).max(99)}).strict(),
+        z.object({kind:z.literal('text'),id:tileId,value:z.string().max(12000)}).strict(),
+        z.object({kind:z.literal('compose'),id:tileId,parts:inlineTemplateSchema}).strict(),
+        z.object({kind:z.literal('variable'),id:tileId,position:z.enum(['before','after']),path:z.string().max(110).nullable()}).strict(),
+        z.object({...styleOperation,property:z.enum(['horizontalAlign','textAlign']),value:z.enum(['left','center','right'])}).strict(),
+        z.object({...styleOperation,property:z.literal('fontWeight'),value:z.enum(['400','700'])}).strict(),
+        z.object({...styleOperation,property:z.literal('fontStyle'),value:z.enum(['normal','italic'])}).strict(),
+        z.object({kind:z.literal('emphasis'),id:tileId,phrase:z.string().min(1).max(240),mark:z.enum(['bold','italic']),enabled:z.boolean(),
+            prefix:z.string().min(1).max(40).optional(),suffix:z.string().min(1).max(40).optional()}).strict(),
+    ])).min(1).max(50),
+}).strict(),z.object({...draftIdentity,restoreVersionId:z.string().uuid()}).strict()]);
 export function sameEditorOrigin(request:Request):boolean{
     try{const raw=request.headers.get('origin');if(!raw)return false;const origin=new URL(raw),target=new URL(request.url);
         // TLS-terminating self-host proxies retain Host but deliver HTTP internally. Permit only
@@ -70,7 +95,7 @@ export async function frontendCopySurface(app:Hono<{Variables:ConsoleAuthVars}>,
             let installed=false;const visit=(nodes:typeof layout.content)=>{for(const node of nodes){if(node.id===item.componentId){const effective=applyBlockVersion(node,item.versionId);if(!effective.props?.binding)throw Error('record_binding_required');if(item.versionId==='default')node.props={...node.props,initialRows:result.rows};else{const version=node.versions?.find(version=>version.id===item.versionId);if(!version)throw Error('record_version_unavailable');version.overrides.props={...version.overrides.props,initialRows:result.rows};}installed=true;}if(node.children)visit(node.children);for(const version of node.versions??[])if(version.overrides.children)visit(version.overrides.children as typeof nodes);}};visit(layout.content);if(!installed)throw Error('record_selection_unavailable');
         }
     }
-    const store=new FrontendCopyStore(db,owner),current=await store.read(),fields=(await copyFields(pageId,layout,locale,current.catalog)).map(field=>liveSurface&&field.record?{...field,current:field.text}:field);
+    const store=new FrontendCopyStore(db,owner),current=await store.read(),fields=(await copyFields(pageId,layout,locale,current.catalog,true,locale===sourceLocale)).map(field=>liveSurface&&field.record?{...field,current:field.text}:field);
     const translationHash=localized?.kind==='page'?localized.releaseHash:null;
     const token=await publicationHash({owner,path,locale,version,translationHash,copy:current.hash,fields:fields.map(field=>[field.id,field.source,field.current])});
     return {store,current,fields,token,pageId,locale,sourceLocale,version,translationHash,layout,liveData:!!liveSurface};
@@ -82,9 +107,82 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
         if(c.req.method!=='GET'&&(!sameEditorOrigin(c.req.raw)||c.req.header('x-frontbase-editor')!=='1'||c.req.header('sec-fetch-site')==='cross-site'))return c.json({detail:'Same-origin editor request required'},403);
         return next();
     });
+    async function draft(owner:string,request:Request,path:string) {
+        const url=new URL(path,request.url);
+        const surface=await resolveLiveLayoutSurface(db,owner,new Request(url,{headers:request.headers}),{host:translationHost,bindingEditor:true,liveQuery:publishedLiveQuery(input=>app.fetch(input))}).catch(()=>null);
+        // Compatibility pages can serve their mutable row directly. Layout
+        // editing requires the independent live publication and draft stores.
+        if(!surface)return null;
+        const pages=new PagesStore(db,owner);
+        const page=await pages.get(surface.pageId);
+        if(!page||page.deleted_at||page.is_published)return null;
+        const layout=JSON.parse(page.layout_data) as PageLayoutData;
+        const projected=new Map<string,PageLayoutData['content'][number]>();
+        const visit=(nodes:PageLayoutData['content'],fn:(node:PageLayoutData['content'][number])=>void)=>{for(const node of nodes){fn(node);if(node.children)visit(node.children,fn);}};
+        visit(surface.layout.content,node=>projected.set(node.id,node));
+        const compositionValues:Record<string,string>=Object.fromEntries(Object.entries(surface.lists??{}).map(([alias,{count}])=>['lists.'+alias+'.count',String(count)]));
+        visit(layout.content,node=>{
+            const rendered=projected.get(node.id);
+            if(node.props?.directoryResultCount===true&&typeof node.props.directoryResultsFor==='string'&&typeof rendered?.props?.text==='string'&&/^\d+$/.test(rendered.props.text))
+                compositionValues['query.'+node.props.directoryResultsFor+'.total']=rendered.props.text;
+        });
+        const detailValues=Object.fromEntries(Object.entries(surface.detailValues??{}).filter(([,value])=>value!=null)
+            .map(([column,value])=>['record.columns.'+column,String(value)]));
+        return {pages,page,layout,revision:await publicationHash(page.layout_data),source:surface.locale===surface.sourceLocale,
+            compositionValues,detailRole:surface.detailRole,detailValues,detailColumns:surface.detailColumns};
+    }
+    app.post('/api/frontend-edit/canvas-preview/',bodyLimit({maxSize:512*1024}),async c=>{
+        const input=canvasInput.safeParse(await c.req.json().catch(()=>null));
+        if(!input.success)return c.json({detail:'Invalid record preview'},422);
+        const {path,pageId,layout}=input.data;
+        const url=new URL(path,c.req.url);
+        if(url.origin!==new URL(c.req.url).origin || url.search)return c.json({detail:'Invalid record preview URL'},422);
+        const surface=await resolveLiveLayoutSurface(db,c.get('tenant'),new Request(url),{
+            host:translationHost,liveQuery:publishedLiveQuery(value=>app.fetch(value)),previewDraft:{pageId,layout:layout as unknown as PageLayoutData},
+        }).catch(()=>null);
+        if(!surface)return c.json({detail:'This live record could not be loaded for the current layout.'},422);
+        return c.json({layout:surface.layout,locale:surface.locale});
+    });
+    app.get('/api/frontend-edit/layout-draft/',async c=>{
+        const path=pathSchema.safeParse(c.req.query('path'));
+        if(!path.success)return c.json({detail:'Invalid page path'},400);
+        const result=await draft(c.get('tenant'),c.req.raw,path.data);
+        if(!result)return c.json({detail:'No separate layout draft is available for this page'},409);
+        return c.json({pageId:result.page.id,revision:result.revision,source:result.source,tiles:layoutDraftTiles(result.layout,result.detailColumns),compositionValues:result.compositionValues,detailRole:result.detailRole,detailValues:result.detailValues});
+    });
+    app.put('/api/frontend-edit/layout-draft/',bodyLimit({maxSize:24000}),async c=>{
+        const input=draftInput.safeParse(await c.req.json().catch(()=>null));
+        if(!input.success)return c.json({detail:'Invalid layout changes'},400);
+        const {path,pageId,revision}=input.data;
+        const result=await draft(c.get('tenant'),c.req.raw,path);
+        if(!result||result.page.id!==pageId||result.revision!==revision)return c.json({detail:'The layout draft changed. Reload before saving.'},409);
+        let layout=result.layout, restoreVersionId:string|undefined;
+        let exactLayout:string|undefined;
+        if('restoreVersionId' in input.data){
+            const previous=await result.pages.getVersion(input.data.restoreVersionId);
+            if(!previous||previous.page_id!==pageId||previous.label!=='Before frontend layout edit')return c.json({detail:'Draft checkpoint not found'},404);
+            exactLayout=previous.layout_data;
+            layout=JSON.parse(exactLayout) as PageLayoutData;
+        }else{
+            for(const operation of input.data.operations){
+                if(operation.kind==='text'&&!result.source||operation.kind==='variable'&&operation.path!==null&&
+                    !operation.path.startsWith('record.')&&!isFrontendLiquidVariable(operation.path)||operation.kind==='compose'&&
+                    operation.parts.some(part=>'variable' in part&&!/^(record|query|lists)\./.test(part.variable)&&!isFrontendLiquidVariable(part.variable)))
+                    return c.json({detail:'The text or variable is unavailable in this layout'},422);
+                const changed=applyLayoutDraftOperation(layout,operation,result.detailColumns);
+                if(!changed)return c.json({detail:'This change is unavailable for the selected element'},422);
+                layout=changed;
+            }
+            if(layout===result.layout)return c.json({pageId,revision,source:result.source,tiles:layoutDraftTiles(layout,result.detailColumns),compositionValues:result.compositionValues,detailRole:result.detailRole,detailValues:result.detailValues});
+            if(input.data.checkpoint)restoreVersionId=(await result.pages.snapshot(pageId,result.page.layout_data,result.page.content_hash,'Before frontend layout edit',now())).id;
+        }
+        const saved=await result.pages.setLayout(pageId,exactLayout??layout,now(),result.page.layout_data);
+        if(!saved)return c.json({detail:'The layout draft changed. Reload before saving.'},409);
+        return c.json({pageId,revision:await publicationHash(saved.layout_data),source:result.source,tiles:layoutDraftTiles(layout,result.detailColumns),compositionValues:result.compositionValues,detailRole:result.detailRole,detailValues:result.detailValues,restoreVersionId});
+    });
     app.get('/api/frontend-edit/inventory/',async c=>{
         try{const path=pathSchema.parse(c.req.query('path')),raw=c.req.query('selection');if(raw&&raw.length>16000)throw Error();const selection=raw?selectionSchema.parse(JSON.parse(raw)):undefined,s=await frontendCopySurface(app,db,c.get('tenant'),c.req.raw,path,selection,translationHost);
-            return c.json({token:s.token,locale:s.locale,revision:s.current.hash,fields:s.fields.map(field=>({id:field.id,blockId:field.blockId,versionId:field.versionId,path:field.path,text:field.current,label:field.label,...(field.record?{recordScope:JSON.stringify([field.record.connectionId,field.record.collection]),recordKey:String(field.record.key[0]?.value),fieldKey:field.fieldKey??field.path.at(-1),destination:s.locale===s.sourceLocale?'record':'record-translation'}:{destination:'ui-copy'})}))});
+            return c.json({token:s.token,pageId:s.pageId,locale:s.locale,revision:s.current.hash,layoutDraft:s.liveData,fields:s.fields.map(field=>({id:field.id,blockId:field.blockId,versionId:field.versionId,path:field.path,text:field.current,label:field.label,...(field.sourceValue!==undefined?{sourceValue:field.sourceValue}:{}),...(field.record?{recordScope:JSON.stringify([field.record.connectionId,field.record.collection]),recordKey:String(field.record.key[0]?.value),fieldKey:field.fieldKey??field.path.at(-1),destination:s.locale===s.sourceLocale?'record':'record-translation'}:{destination:'ui-copy'})}))});
         }catch{return c.json({detail:'This page is unavailable for text editing'},409);}
     });
     app.post('/api/frontend-edit/save/',async c=>{

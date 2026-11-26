@@ -5,7 +5,7 @@ import {buildPackage,repoRoot} from '../../../scripts/mutation-lib.mjs';
 const path=repoRoot+'packages/backend/src/compat/frontend-records.ts',original=readFileSync(path,'utf8');
 const faults=[
  ['source tenant',"host.syncFor(owner)","host.syncFor('alpha')"],
- ['source fingerprint','if(shown!==field.text)', 'if(false)'],
+ ['source fingerprint','if(shown!==(field.sourceValue??field.text))', 'if(false)'],
  ['record key predicate','WHERE ${quote(key.column)} = ${ph(2)} AND ${predicate}','WHERE (${ph(2)} IS NOT NULL) AND ${predicate}'],
  ['concurrent value predicate','AND ${predicate} RETURNING','AND (${ph(3)} IS NOT NULL) RETURNING'],
  ['atomic source save','await first.commit(edits.map(edit=>edit.batch!.change));','for(const edit of edits)await edit.commit();'],

@@ -6,6 +6,7 @@
  * RULE 2: Every query filters strictly by tenant_slug.
  */
 import type { DbRunner } from '@frontbase/edge-infra';
+import { detailBindingColumnsSchema } from '@frontbase/edge-core';
 import type { SecretCipher } from '../db/secret-cipher.js';
 
 export interface DatasourceRecord {
@@ -26,6 +27,7 @@ export interface DatasourceViewRecord {
     default_sort?: {column:string;direction:'asc'|'desc'} | null;
     visible_columns: string[] | null;
     column_order: string[] | null;
+    binding_columns?: string[] | null;
     pinned_columns: string[] | null;
     filters: unknown[] | null;
     field_mappings: Record<string, unknown> | null;
@@ -163,7 +165,7 @@ export class SyncStore {
 
     async listViews(datasourceId: string): Promise<DatasourceViewRecord[]> {
         const rows = await this.runner.query(
-            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, source_schema, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND datasource_id = ? ORDER BY created_at ASC',
+            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, source_schema, created_at, updated_at, binding_columns FROM datasource_views WHERE tenant_slug = ? AND datasource_id = ? ORDER BY created_at ASC',
             [this.tenant, datasourceId],
         );
         return rows.map((r) => this.mapViewRow(r));
@@ -172,17 +174,18 @@ export class SyncStore {
     async getViewScopes(ids:readonly string[]) {
         if(!ids.length||ids.length>3)throw Error('invalid_detail_views');
         const rows=await this.runner.query(
-            `SELECT id,datasource_id,target_table,source_schema,filters FROM datasource_views WHERE tenant_slug=? AND id IN (${ids.map(()=>'?').join(',')})`,
+            `SELECT id,datasource_id,target_table,source_schema,filters,binding_columns FROM datasource_views WHERE tenant_slug=? AND id IN (${ids.map(()=>'?').join(',')})`,
             [this.tenant,...ids],
         );
         return rows.map(row=>({id:String(row.id),datasource_id:String(row.datasource_id),target_table:String(row.target_table),
             source_schema:row.source_schema==null?null:String(row.source_schema),
+            binding_columns:row.binding_columns==null?null:detailBindingColumnsSchema.parse(JSON.parse(String(row.binding_columns))),
             filters:row.filters==null?[]:JSON.parse(String(row.filters)) as unknown}));
     }
 
     async getView(id: string): Promise<DatasourceViewRecord | null> {
         const rows = await this.runner.query(
-            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, source_schema, created_at, updated_at FROM datasource_views WHERE tenant_slug = ? AND id = ?',
+            'SELECT id, datasource_id, name, target_table, visible_columns, column_order, pinned_columns, filters, field_mappings, webhooks, linked_views, description, default_sort, source_schema, created_at, updated_at, binding_columns FROM datasource_views WHERE tenant_slug = ? AND id = ?',
             [this.tenant, id],
         );
         const row = rows[0];
@@ -268,6 +271,7 @@ export class SyncStore {
             source_schema: patch.source_schema !== undefined ? patch.source_schema : existing.source_schema,
             visible_columns: patch.visible_columns !== undefined ? patch.visible_columns : existing.visible_columns,
             column_order: patch.column_order !== undefined ? patch.column_order : existing.column_order,
+            binding_columns: patch.binding_columns !== undefined ? patch.binding_columns : existing.binding_columns,
             pinned_columns: patch.pinned_columns !== undefined ? patch.pinned_columns : existing.pinned_columns,
             filters: patch.filters !== undefined ? patch.filters : existing.filters,
             field_mappings: patch.field_mappings !== undefined ? patch.field_mappings : existing.field_mappings,
@@ -279,7 +283,7 @@ export class SyncStore {
             updated_at: revision,
         };
 
-        const sql=`UPDATE datasource_views SET name = ?, target_table = ?, visible_columns = ?, column_order = ?, pinned_columns = ?, filters = ?, field_mappings = ?, webhooks = ?, linked_views = ?, description = ?, default_sort = ?, source_schema = ?, updated_at = ? WHERE tenant_slug = ? AND id = ?`;
+        const sql=`UPDATE datasource_views SET name = ?, target_table = ?, visible_columns = ?, column_order = ?, pinned_columns = ?, filters = ?, field_mappings = ?, webhooks = ?, linked_views = ?, description = ?, default_sort = ?, source_schema = ?, binding_columns = ?, updated_at = ? WHERE tenant_slug = ? AND id = ?`;
         const params=[
                 merged.name,
                 merged.target_table,
@@ -293,6 +297,7 @@ export class SyncStore {
                 merged.description ?? null,
                 merged.default_sort ? JSON.stringify(merged.default_sort) : null,
                 merged.source_schema ?? null,
+                merged.binding_columns != null ? JSON.stringify(detailBindingColumnsSchema.parse(merged.binding_columns)) : null,
                 revision,
                 this.tenant,
                 id,
@@ -335,6 +340,7 @@ export class SyncStore {
             source_schema: row.source_schema == null ? null : String(row.source_schema),
             visible_columns: this.safeParseJson<string[]>(row.visible_columns),
             column_order: this.safeParseJson<string[]>(row.column_order),
+            binding_columns: row.binding_columns==null?null:detailBindingColumnsSchema.parse(JSON.parse(String(row.binding_columns))),
             pinned_columns: this.safeParseJson<string[]>(row.pinned_columns),
             filters: this.safeParseJson<unknown[]>(row.filters),
             field_mappings: this.safeParseJson<Record<string, unknown>>(row.field_mappings),

@@ -1,3 +1,6 @@
+import {PublicationDialog} from '@/components/builder/directory/PublicationDialog';
+import {SiteConfigurationForm} from '../settings/shared/SiteConfigurationForm';
+import {ElementSettingsMigration} from '../settings/shared/ElementSettingsMigration';
 import {TemplateUrls} from './TemplateUrls';
 import {PublishedPageView,publicPath} from './PublishedPageView';
 import React, {useEffect, useRef, useState} from 'react';
@@ -21,6 +24,8 @@ interface Props {
 }
 interface Inventory {schemaVersion: 1; entries: WorkspaceEntry[]}
 export function PagesWorkspace({scope, pages, search, filterStatus, edit, actions, onSearchChange, onCreatePage, onInstallTemplate, onShowTrash}: Props) {
+  const [publication,setPublication]=useState<string|null>(null);
+  const [siteTools,setSiteTools]=useState<'site'|'data'|'maintenance'|null>(null);
   const location=useLocation();
   const sourceRequest=useRef<string>();
   const dragged=useRef(false);
@@ -147,6 +152,7 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
       {entry.pageId&&(entry.kind==='layout'
         ? <DropdownMenuItem onSelect={()=>setRoutes(entry)}>Template settings</DropdownMenuItem>
         : <DropdownMenuItem asChild><Link to={editPath(entry.pageId)+'?panel=page-settings'}>Page settings</Link></DropdownMenuItem>)}
+      {entry.pageId&&entry.role&&<DropdownMenuItem onSelect={()=>setPublication(entry.pageId!)}>Publish layout</DropdownMenuItem>}
       {entry.recordViews?.map(view=><DropdownMenuItem key={view.id} asChild><Link to={'/data-studio/saved-views?view='+encodeURIComponent(view.id)}>Browse records · {view.name}</Link></DropdownMenuItem>)}
       {entry.liveRecords&&entry.contentAction?.contentRole&&<DropdownMenuItem onSelect={()=>setRecordEditor(entry)}>Edit records</DropdownMenuItem>}
       {!entry.recordViews?.length&&entry.contentAction&&<DropdownMenuItem onSelect={()=>void openContent(entry)}>{entry.contentAction.recordId?'Edit content':'Browse records'}</DropdownMenuItem>}
@@ -189,6 +195,10 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
       <Button variant="outline" size="sm" className="shrink-0" disabled={!ready||saving} onClick={()=>openDialog({kind:'new'})}><FolderPlus className="mr-1 h-4 w-4"/>New folder</Button>
       {onCreatePage&&<Button variant="outline" size="sm" className="shrink-0" onClick={onCreatePage}><Plus className="mr-1 h-4 w-4"/>New page</Button>}
       <PageRouteAudit key={scope} trigger={check=><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="shrink-0" aria-label="Page tools"><MoreHorizontal className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={()=>setPublication('')}>Publish site layouts</DropdownMenuItem>
+        <DropdownMenuItem onSelect={()=>setSiteTools('site')}>Shared routes</DropdownMenuItem>
+        <DropdownMenuItem onSelect={()=>setSiteTools('data')}>Source field mappings</DropdownMenuItem>
+        <DropdownMenuItem onSelect={()=>setSiteTools('maintenance')}>Template maintenance</DropdownMenuItem>
         {onInstallTemplate&&<DropdownMenuItem onSelect={onInstallTemplate}>Install template</DropdownMenuItem>}
         <DropdownMenuItem onSelect={check}>Check page URLs</DropdownMenuItem>
         <DropdownMenuItem disabled={loading||!matches.length&&!visibleFolders.length} onSelect={toggleAll}>{allSelected?'Deselect all':'Select all'}</DropdownMenuItem>
@@ -223,6 +233,8 @@ export function PagesWorkspace({scope, pages, search, filterStatus, edit, action
       {dialog&&['new','move-entries','move-folder','move-folders'].includes(dialog.kind)&&<label className="space-y-2 text-sm">Destination folder<select className="block w-full rounded-md border bg-background p-2" value={destination} onChange={e=>setDestination(e.target.value)}><option value="">Top level</option>{organization.folders.filter(f=>(dialog.kind!=='move-folder'||!folderDescendants(organization,dialog.id!).has(f.id))&&(dialog.kind!=='move-folders'||!folderSelection.some(id=>folderDescendants(organization,id).has(f.id)))).map(f=><option value={f.id} key={f.id}>{folderTrail(organization,f.id)}</option>)}</select></label>}
       <DialogFooter><Button variant="outline" disabled={saving} onClick={()=>setDialog(null)}>Cancel</Button><Button disabled={!ready||saving||((dialog?.kind==='new'||dialog?.kind==='rename')&&!name.trim())} onClick={()=>void confirmDialog()}>{saving?'Saving…':dialog?.kind==='remove'?'Delete folder':dialog?.kind==='remove-folders'?'Delete folders':'Save'}</Button></DialogFooter>
     </DialogContent></Dialog>
+    {publication!==null&&<PublicationDialog pageId={publication||undefined} close={()=>{setPublication(null);void load();}}/>}
+    {siteTools&&<Dialog open onOpenChange={open=>{if(!open)setSiteTools(null);}}><DialogContent className="max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{siteTools==='site'?'Shared routes':siteTools==='data'?'Source field mappings':'Template maintenance'}</DialogTitle></DialogHeader>{siteTools==='maintenance'?<ElementSettingsMigration/>:<SiteConfigurationForm section={siteTools} onSaved={()=>void load()}/>}</DialogContent></Dialog>}
     {routes?.kind==='layout'&&routes.pageId?<TemplateUrls initialSection={new URLSearchParams(location.search).get('recordSource')===routes.role?'source':'urls'} key={routes.pageId} pageId={routes.pageId} name={routes.name} onClose={()=>setRoutes(null)} onSaved={()=>void load()} onContent={routes.contentAction?record=>{const entry={...routes,name:record.title,contentAction:{...routes.contentAction!,...(routes.contentAction!.contentRole?{recordId:String(record.id)}:{recordKey:{column:routes.contentAction!.keyColumn??'id',value:String(record.id)}})}};setRoutes(null);void openContent(entry);}:undefined} design={()=>{const id=routes.pageId!;setRoutes(null);edit(id);}}/>:null}
     {viewing&&<PublishedPageView key={viewing.id} entry={viewing} close={()=>setViewing(null)}/>}
     {recordEditor?.contentAction&&<PublishedPageView key={recordEditor.id} entry={recordEditor} close={()=>setRecordEditor(null)} editRecord={(id,path)=>{

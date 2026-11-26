@@ -1,5 +1,5 @@
 import {builderCollisionDetection} from '@/lib/builder/collisionDetection';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -120,7 +120,9 @@ export const CustomBuilder: React.FC<{ onTranslate?(): void }> = ({ onTranslate 
   );
 
   // Handle drag start - store the active item for overlay
+  const dragScope = useRef<ReturnType<typeof useBuilderStore.getState>['editingVersions'] | undefined>(undefined);
   const handleDragStart = (event: DragStartEvent) => {
+    dragScope.current = useBuilderStore.getState().editingVersions;
     setActiveItem(event.active.data.current);
   };
 
@@ -134,6 +136,9 @@ export const CustomBuilder: React.FC<{ onTranslate?(): void }> = ({ onTranslate 
 
     const overData = over.data.current;
     const activeData = active.data.current;
+    if (dragScope.current !== useBuilderStore.getState().editingVersions ||
+        (overData?.pageId && overData.pageId !== currentPageId) ||
+        (activeData?.pageId && activeData.pageId !== currentPageId)) return;
 
     // Determine if this is an existing component being moved or new component from palette
     const isExistingComponent = activeData?.type === 'existing-component';
@@ -379,6 +384,7 @@ export const CustomBuilder: React.FC<{ onTranslate?(): void }> = ({ onTranslate 
       collisionDetection={builderCollisionDetection}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveItem(null)}
     >
       <div className="builder-shell h-screen flex flex-col bg-background">
         {onTranslate && <button type="button" className="self-end border rounded px-3 py-1 text-sm" onClick={onTranslate}>Translate saved page</button>}
@@ -566,7 +572,7 @@ export const CustomBuilder: React.FC<{ onTranslate?(): void }> = ({ onTranslate 
                     {activeItem.type?.charAt(0) || 'C'}
                   </span>
                 </div>
-                <span className="font-bold text-sm">{activeItem.type || 'Component'}</span>
+                <span className="font-bold text-sm">{activeItem.component?.props?._layerName || activeItem.component?.type || activeItem.type || 'Component'}</span>
               </div>
             </div>
           )

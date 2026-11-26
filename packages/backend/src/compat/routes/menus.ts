@@ -17,6 +17,7 @@ import {MenusSnapshotStore} from '../menus-snapshot.js';
 import {resolveAppMenuLayout,readPublicSiteName} from '../menus-runtime.js';
 import {projectSourceFrontendCopy} from './frontend-edit.js';
 import {previewSavedMenus,publishPreviewedMenus,discardMenuDraft} from '../menus-workflow.js';
+import { applyBookingSitePalette, BOOKING_PALETTE_KEY } from '../booking-site-palette.js';
 const input=z.object({expectedRevision:z.number().int().min(0).max(2147483646),menus:menuDocumentSchema.innerType().shape.menus}).strict();
 const admin=(c:any)=>['owner','admin','tenant_admin','master_admin','master_admin_root'].includes(c.get('principal')?.user?.role);
 function options(project:Record<string,unknown>){
@@ -79,7 +80,10 @@ export function registerMenusRoutes(app:Hono<{Variables:ConsoleAuthVars}>,db:DbR
             const context=await buildTemplateContext(c.req.raw,{id:value.menu.id,title:'Menu design preview',slug:'menu-preview',published:false,createdAt:now(),updatedAt:now()},undefined,undefined,c.get('tenant'));
             const visible=menuAudienceMatches(value.menu.audience,value.audience);
             const siteName=(await new SiteConfigurationStore(db,c.get('tenant')).get())?.configuration.site.name??'';
-            const html=visible?await renderPage({root:{},content:[menuComponent(value.menu,value.audience,siteName)]},context):'<p style="padding:24px">This menu is hidden for the selected audience.</p>';
+            const bookingMenu=['bfx-header','bfx-footer'].includes(value.menu.id);
+            const layout={root:bookingMenu?{bookingForX:{version:1,role:'home'}}:{},content:[menuComponent(value.menu,value.audience,siteName)]};
+            const palette=bookingMenu?await kvFor(c.get('tenant')).getJson(BOOKING_PALETTE_KEY,null):null;
+            const html=visible?await renderPage(await applyBookingSitePalette(layout,palette),context):'<p style="padding:24px">This menu is hidden for the selected audience.</p>';
             const nonce=crypto.randomUUID().replaceAll('-','');
             return c.html(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src https: http:; base-uri 'none'; form-action 'none'"><style>${FALLBACK_CSS}</style><script nonce="${nonce}">${publicThemeScript()}</script></head><body>${html}</body></html>`);
         }catch{return c.json({detail:'Menu preview unavailable or invalid'},422);}

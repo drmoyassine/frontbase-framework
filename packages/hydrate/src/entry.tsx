@@ -319,13 +319,11 @@ if (typeof window !== 'undefined') {
         // Delegate button clicks and success handlers
         initActionDelegation(store);
 
-        // Sprint 4 (Model C): wire global ui_event_trigger listeners.
-        // Deferred to a macrotask: initUIEventTriggers does a localStorage read
-        // plus an /api/public/ui-events fetch; running it synchronously inside
-        // boot could observe a half-mounted document and double-fire before the
-        // delegated handlers exist. (Was a byte-level patch on the vendored
-        // bundle pre-consolidation; source-level since A-23.)
-        setTimeout(() => initUIEventTriggers(store));
+        // Only hosts serving the discovery endpoint opt published pages in.
+        // Defer wiring until the delegated handlers above are ready.
+        if (!isBuilderCanvas() && document.querySelector('script[type="module"][data-fb-ui-events]')) {
+            setTimeout(() => initUIEventTriggers(store));
+        }
     };
 
     if (document.readyState === 'loading') {

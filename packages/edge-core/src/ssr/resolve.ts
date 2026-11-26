@@ -7,7 +7,8 @@ import {evaluateCondition,conditionUsesClient,contextReader,resolveValue,valueUs
  */
 
 import { liquid } from './lib/liquid.js';
-import {renderCompiledInterpolation,type CompiledInterpolation,isSimpleInterpolation,renderSync,bindingAlternatives,resolveBinding,bindingContext} from '../liquid-core/sync.js';
+import {renderCompiledInterpolation,type CompiledInterpolation,isSimpleInterpolation,renderSync,bindingAlternatives,resolveBinding,bindingContext,resolvePath} from '../liquid-core/sync.js';
+import type { InlineTemplate } from '../inline-template.js';
 import type { TemplateContext } from './lib/context.js';
 
 /**
@@ -80,6 +81,15 @@ export function resolvePropsValue(
             } catch (error) { resolved[key] = failed(error); }
         } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) assign(key, resolvePropsValue(value as Record<string, unknown>, context, programs, recordScopes, navigate));
         else resolved[key] = value;
+    }
+    if (Array.isArray(props.inlineTemplate)) {
+        const values = Array.isArray(props.inlineValues) ? props.inlineValues : [];
+        resolved.inlineValues = (props.inlineTemplate as InlineTemplate).map((part, index) => {
+            if (!part || typeof part !== 'object') return '';
+            if ('text' in part) return part.text;
+            const value = /^(page|system)\./.test(part.variable) ? resolvePath(context, part.variable) : values[index];
+            return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : '';
+        });
     }
     return pending ? Promise.all(pending).then(() => resolveNavigation(resolved, navigate)) : resolveNavigation(resolved, navigate);
 }

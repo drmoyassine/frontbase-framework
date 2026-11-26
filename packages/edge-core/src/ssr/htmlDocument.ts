@@ -18,7 +18,7 @@ export { escapeHtml };
 // Cache-busting version - update this when hydration scripts change.
 // Exported so shell.ts (the canvas/published-page shell) references the SAME
 // version instead of a drifting copy.
-export const HYDRATE_VERSION = '20261015-block-versions';
+export const HYDRATE_VERSION = '20261121-ui-event-opt-in';
 
 // Default favicon path constant
 const DEFAULT_FAVICON = '/static/icon.png';

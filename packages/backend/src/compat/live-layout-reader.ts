@@ -1,4 +1,5 @@
 import {savedViewFilters,type SavedFilter} from '@frontbase/edge-core/saved-view-filters';
+import {detailBindingColumnsSchema,detailBindingRoles,validateDetailBindings,type DetailBindingColumns,type PageLayoutData} from '@frontbase/edge-core';
 import {savedWhere} from './saved-view-query.js';
 import {datasourceSchema} from './datasource-schema.js';
 import {directorySources,isValidatedEditorialBody} from '@frontbase/edge-core/directory/configuration';
@@ -40,14 +41,21 @@ export function requestLiveLayoutHost(host:LiveLayoutHost):LiveLayoutHost{
 
 /** Called with an owned published layout, never a browser-provided table/configuration.
  * Resolves the same current encrypted account and guarded datasource adapter as the builder. */
-export async function liveLayoutReader(host:LiveLayoutHost,owner:string,layout:LiveLayoutIndex,liveQuery:PublishedLiveQuery):Promise<LivePageReader>{
+export async function liveLayoutReader(host:LiveLayoutHost,owner:string,layout:LiveLayoutIndex,liveQuery:PublishedLiveQuery,previewDraft?:PageLayoutData):Promise<LivePageReader>{
     if(!owner)throw Error('layout_owner_required');
     const source=await host.syncFor(owner).getDatasource(layout.configuration.datasourceId);
     if(!source)throw Error('live_datasource_unavailable');
     const config=await mergeAccountConfig(host.accountConfigFor,host.externalFetch,owner,source.kind,source.config);
     const viewScope=await resolveDirectoryViewScope(host,owner,layout.configuration,source);
+    const detailColumns=viewScope?.selectedBindingColumns;
+    const requested=previewDraft&&JSON.stringify(previewDraft).includes('record.columns.')?validateDetailBindings(previewDraft,detailColumns):undefined;
+    const projections:DetailBindingColumns=requested?{institution:[...requested.institution],program:[...requested.program]}:{
+        institution:layout.institutionBindingColumns?.filter(column=>detailColumns?.institution?.includes(column)),
+        program:layout.programBindingColumns?.filter(column=>detailColumns?.program?.includes(column)),
+    };
     const runner=datasourceRunner(source.kind,config,host.externalFetch);
-    const queries=createLiveDirectoryQueries(layout.configuration,owner,dialectOf(source.kind),liveQueryBatch(runner),viewScope);
+    const queries=createLiveDirectoryQueries(layout.configuration,owner,dialectOf(source.kind),liveQueryBatch(runner),
+        viewScope&&Object.assign(viewScope,{detailColumns:projections}));
     // A request-local memo avoids resolving the same current record twice. It is never
     // retained across requests, tenants, credential rotations or source writes.
     const pending=new Map<string,Promise<Record<string,unknown>[]>>();
@@ -66,7 +74,7 @@ export async function liveLayoutReader(host:LiveLayoutHost,owner:string,layout:L
             }));
         };
     }
-    return {queries,liveQuery,close:()=>runner.close?.(),resolveRoute:async path=>{
+    return {queries,liveQuery,detailColumns,close:()=>runner.close?.(),resolveRoute:async path=>{
         const roles=layout.templates.map(page=>page.role).filter((role):role is LiveRoute['role']=>['institution','program','article','editorial'].includes(role));
         const matches=await Promise.all(roles.map(async role=>{
             const query=queries['directory.'+(role==='editorial'?'page':role)+'.detail'];
@@ -99,6 +107,7 @@ export async function resolveDirectoryViewScope(host:LiveLayoutHost, owner:strin
         const view=store.getViewScopes?views.find(view=>view?.id===ids[index]):views[index];
         if(!view||view.datasource_id!==ds.id||view.target_table!==mappings[role].tableName
             ||datasourceSchema(ds.kind,ds.config,view.source_schema)!==datasourceSchema(ds.kind,ds.config,undefined))throw Error('detail_view_mismatch');
+        const bindingColumns=role==='article'?undefined:detailBindingColumnsSchema.parse(view.binding_columns??[]);
         const rules=savedViewFilters(view.filters);
         const fields=new Set<string>();
         const collect=(rule:SavedFilter):void=>{
@@ -112,11 +121,16 @@ export async function resolveDirectoryViewScope(host:LiveLayoutHost, owner:strin
             const {sql,params}=savedWhere(dialect,columns,rules,undefined,alias);
             return {sql:sql.slice(7),params};
         };
-        return [role,{d:compile('d'),di:compile('di')}] as const;
+        return [role,{d:compile('d'),di:compile('di'),bindingColumns}] as const;
     });
     const byRole=new Map(plans);
-    return (role:typeof roles[number],alias:string)=>{
+    const resolve=(role:typeof roles[number],alias:string)=>{
         if(alias!=='d'&&alias!=='di')throw Error('detail_view_alias_invalid');
         return byRole.get(role)?.[alias];
     };
+    const selectedBindingColumns:DetailBindingColumns=Object.fromEntries(detailBindingRoles.flatMap(role=>{
+        const columns=byRole.get(role)?.bindingColumns;
+        return columns?[ [role,columns] ]:[];
+    }));
+    return Object.assign(resolve,{selectedBindingColumns});
 }

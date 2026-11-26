@@ -1,3 +1,5 @@
+import { startAuthentication } from '@simplewebauthn/browser';
+import { useAuthStore } from '@/stores/auth';
 import {safeAdminReturn} from '@/lib/sessionRecovery';
 /**
  * LoginPage - Admin Authentication
@@ -20,7 +22,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [authenticatorCode,setAuthenticatorCode] = useState('');
+    const [requiresAuthenticator,setRequiresAuthenticator] = useState(false);
     const [website, setWebsite] = useState('');
+    const [passkeyAvailable,setPasskeyAvailable] = useState(false);
+    const [passkeyBusy,setPasskeyBusy] = useState(false);
+    const [passkeyError,setPasskeyError] = useState('');
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
     const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
     const navigate = useNavigate();
@@ -32,6 +39,35 @@ export default function LoginPage() {
     const previous=(location.state as {from?:{pathname?:string;search?:string;hash?:string}})?.from;
     const from=safeAdminReturn(new URLSearchParams(location.search).get('returnTo')||(previous?.pathname?previous.pathname+(previous.search??'')+(previous.hash??''):'/dashboard'));
     const reauth=new URLSearchParams(location.search).get('reauth')==='1';
+
+    useEffect(() => {
+        if (!window.PublicKeyCredential) return;
+        const controller = new AbortController();
+        void fetch('/api/passkeys/availability/', {cache:'no-store',signal:controller.signal})
+            .then(response=>response.ok ? response.json() : null)
+            .then(value=>{if(value?.enabled)setPasskeyAvailable(true);}).catch(()=>{});
+        return ()=>controller.abort();
+    }, []);
+
+    async function signInWithPasskey() {
+        setPasskeyBusy(true);
+        setPasskeyError('');
+        const call = (path: string, body: unknown) => fetch('/api/passkeys/'+path+'/', {
+            method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),
+        });
+        try {
+            const options = await call('options',{});
+            if (!options.ok) throw Error();
+
+            const assertion = await startAuthentication({optionsJSON:await options.json()});
+            if (!(await call('verify',assertion)).ok) throw Error();
+            await useAuthStore.getState().checkAuth();
+            if(!useAuthStore.getState().isAuthenticated)throw Error();
+            navigate(from,{replace:true});
+        } catch {
+            setPasskeyError('Passkey sign-in could not be completed. Try again or sign in with your password.');
+        } finally { setPasskeyBusy(false); }
+    }
 
     // Auto-redirect if already authenticated
     useEffect(() => {
@@ -87,8 +123,10 @@ export default function LoginPage() {
             email,
             password,
             website,
+            authenticatorCode: requiresAuthenticator ? authenticatorCode.trim() : undefined,
             turnstileToken: turnstileToken || undefined,
         });
+        if (result.requiresAuthenticator) setRequiresAuthenticator(true);
         if (result.success) {
             navigate(from, { replace: true });
         }
@@ -105,6 +143,13 @@ export default function LoginPage() {
                 </CardHeader>
                 <CardContent>
                     {reauth&&<p role="status" className="mb-4">Your session has ended. Sign in again, then return to your original tab to continue your unsaved work.</p>}
+                    {typeof location.state?.accountMessage === 'string' && <p role="status" className="mb-4">{location.state.accountMessage}</p>}
+                    {passkeyAvailable && <div className="mb-4 space-y-2">
+                        <Button type="button" variant="outline" className="w-full" disabled={isLoading||passkeyBusy} onClick={()=>void signInWithPasskey()}>
+                            {passkeyBusy ? 'Waiting for passkey…' : 'Sign in with a passkey'}
+                        </Button>
+                        {passkeyError && <p role="alert" className="text-sm text-destructive">{passkeyError}</p>}
+                    </div>}
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
                             <Alert variant="destructive">
@@ -141,6 +186,12 @@ export default function LoginPage() {
                                 autoComplete="current-password"
                             />
                         </div>
+                        {requiresAuthenticator && <div className="space-y-2">
+                            <Label htmlFor="authenticator-code">Authenticator code</Label>
+                            <Input id="authenticator-code" autoFocus inputMode="numeric" autoComplete="one-time-code"
+                                pattern="[0-9]{6}" maxLength={6} value={authenticatorCode}
+                                onChange={event=>setAuthenticatorCode(event.target.value)} required />
+                        </div>}
 
                         {/* Honeypot field - invisible to users, auto-filled by bots */}
                         <div style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, width: 0, overflow: 'hidden' }} aria-hidden="true">

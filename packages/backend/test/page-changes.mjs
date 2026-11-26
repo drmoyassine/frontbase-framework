@@ -31,7 +31,7 @@ await test('fresh and v22-upgraded schemas converge without replacing pages', as
     const before=(await db.query('SELECT * FROM compat_pages WHERE tenant_slug=? AND id=?',['alpha',page.id]))[0];
     const publishedBefore = await resolvePublishedPageForTenant(db, 'alpha', '/old/');
     assert.equal(publishedBefore?.pageId, page.id);
-    assert.deepEqual(await migrateUp(db), [23, 24, 25, 26]);
+    assert.deepEqual(await migrateUp(db), MIGRATIONS.filter(m => m.version >= 23).map(m => m.version));
     const pages=new PagesStore(db,'alpha');assert.equal((await pages.get(page.id)).name, 'Old');
     const after=(await db.query('SELECT * FROM compat_pages WHERE tenant_slug=? AND id=?',['alpha',page.id]))[0];
     for(const [key,value]of Object.entries(before))assert.deepEqual(after[key],value,'historical '+key+' preserved');

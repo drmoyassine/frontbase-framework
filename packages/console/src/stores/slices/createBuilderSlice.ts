@@ -6,6 +6,7 @@ import type { StylesData } from '@/lib/styles/types';
 import { BuilderState } from '../builder';
 import { toast } from '@/hooks/use-toast';
 import { applyBlockVersion, cloneBlockTree } from '@frontbase/edge-core/block-versions';
+import { moveLayoutNode } from '@frontbase/edge-core';
 import {
     findComponent,
     findComponentWithParent,
@@ -192,7 +193,7 @@ const createBuilderSliceImplementation: StateCreator<BuilderState, [], [], Build
         });
     },
 
-    moveComponent: (pageId, componentId, component, targetIndex, parentId, sourceParentId) => {
+    moveComponent: (pageId, componentId, component, targetIndex, parentId) => {
         set((state) => {
             const pageIndex = state.pages.findIndex(p => p.id === pageId);
             if (pageIndex === -1) return state;
@@ -206,18 +207,14 @@ const createBuilderSliceImplementation: StateCreator<BuilderState, [], [], Build
                 component = { ...component, children: [{ id: uuidv4(), type: 'Card', props: { className: 'p-6' }, children: [{id:uuidv4(),type:'Heading',props:{text:'{{ record.title }}',level:'3'}}] }] };
             }
 
-            // Refuse cycles/missing destinations before removing anything.
-            if (parentId && (!findComponent(content, parentId) || parentId === componentId || (componentId && findComponent([component], parentId)))) return state;
             if (componentId) {
-                const source = findComponentWithParent(content, componentId);
-                if (!source) return state;
-                component = source.component;
-                // Drop indexes refer to boundaries in the original siblings.
-                if ((source.parent?.id ?? undefined) === parentId && targetIndex > source.index) targetIndex--;
-                content = removeComponentFromTree(content, componentId);
+                const next = moveLayoutNode(content, componentId, parentId, targetIndex, state.editingVersions);
+                if (!next || next === content) return state;
+                content = next as ComponentData[];
+            } else {
+                if (parentId && !findComponent(content, parentId)) return state;
+                content = insertComponentIntoTree(content, parentId, component, targetIndex, state.editingVersions);
             }
-
-            content = insertComponentIntoTree(content, parentId, component, targetIndex, state.editingVersions);
 
             page.layoutData = {
                 ...page.layoutData,

@@ -40,7 +40,7 @@ export interface EngineOptions {
     /** Console API sub-router, mounted at /api/console (Phase 2). */
     console?: Hono;
     /** Request/capture-bound document metadata. Empty favicon explicitly disables host lookup. */
-    document?: Pick<ShellOptions, 'frontendEditing' | 'faviconUrl' | 'language' | 'direction' | 'alternates' | 'canonicalUrl' | 'robots' | 'openGraph' | 'localesAlternate'>;
+    document?: Pick<ShellOptions, 'frontendEditing' | 'uiEventWorkflows' | 'faviconUrl' | 'language' | 'direction' | 'alternates' | 'canonicalUrl' | 'robots' | 'openGraph' | 'localesAlternate'>;
     /** Resolve a published page by URL path. When set, dynamic CMS pages override
      *  the baked manifest (the manifest becomes a last-resort fallback). Injected
      *  by the host so the engine stays DB-blind. Returns null when no such page.
@@ -80,7 +80,7 @@ export function enforceScope(q: RegisteredQuery, principal: Principal): { status
     }
 }
 
-type ResolvedPageOptions = Pick<EngineOptions, 'manifest' | 'environment' | 'document' | 'swBundle' | 'observeComponent' | 'interpolations'>;
+type ResolvedPageOptions = Pick<EngineOptions, 'manifest' | 'environment' | 'document' | 'swBundle' | 'observeComponent' | 'interpolations'> & { lists?: TemplateContext['lists'] };
 
 /** Deterministic template context — timestamps come from the manifest, never Date.now(). */
 function buildContext(page: PageEntry, path: string, records: Record<string, unknown>[], opts: ResolvedPageOptions, user:Record<string,unknown>|null=null): TemplateContext {
@@ -132,6 +132,7 @@ export async function renderResolvedPageDocument(
     const path = url.pathname;
     const { environment } = opts;
     const renderContext = buildContext(page, path, records, opts, user);
+    if (opts.lists) renderContext.lists = opts.lists;
     renderContext.url = Object.fromEntries(url.searchParams);
     const hasVersions=(nodes:typeof page.layout.content):boolean=>nodes.some(node=>!!node.versions?.length||hasVersions(node.children??[]));
     const publicPage = hasVersions(page.layout.content) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;
@@ -143,6 +144,7 @@ export async function renderResolvedPageDocument(
         // decides (product: project settings faviconUrl || default icon).
         faviconUrl: (opts.document?.faviconUrl ?? await engineConfig().resolveFaviconUrl(request)) || undefined,
         frontendEditing: opts.document?.frontendEditing,
+        uiEventWorkflows: opts.document?.uiEventWorkflows,
         language: opts.document?.language,
         direction: opts.document?.direction,
         alternates: opts.document?.alternates,

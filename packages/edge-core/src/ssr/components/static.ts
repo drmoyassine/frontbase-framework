@@ -10,6 +10,8 @@ import {renderGallery} from './gallery.js';
 import { LUCIDE_ICONS } from '../iconMap.js';
 import { escapeHtml } from './lib/utils.js';
 import { resolvePropsStyles } from './lib/attrs.js';
+import { inlineEmphasis } from '../../layout-draft.js';
+import { renderInlineLabel } from './lib/inline-label.js';
 
 /**
  * Resolve a lucide-react icon name (PascalCase, e.g. "Zap", "CheckCircle2") to a
@@ -121,8 +123,40 @@ export function renderStaticComponent(
 // Individual Component Renderers
 // =============================================================================
 
+function renderEmphasis(text: string, value: unknown): string {
+    if (!Array.isArray(value) || !value.length) return escapeHtml(text);
+    const marks = inlineEmphasis(value).flatMap(({ phrase, mark, prefix = '', suffix = '' }) => {
+        const context = prefix + phrase + suffix;
+        const position = text.indexOf(context);
+        const start = position + prefix.length;
+        // Leave ambiguous or changed live text untouched.
+        return position < 0 || text.indexOf(context, position + 1) >= 0 ? [] : [{ start, end: start + phrase.length, mark }];
+    });
+    if (!marks.length) return escapeHtml(text);
+    const points = [...new Set([0, text.length, ...marks.flatMap(mark => [mark.start, mark.end])])].sort((a, b) => a - b);
+    const html = points.slice(0, -1).map((start, index) => {
+        const end = points[index + 1]!;
+        let html = escapeHtml(text.slice(start, end));
+        if (marks.some(mark => mark.mark === 'italic' && mark.start <= start && mark.end >= end)) html = `<em>${html}</em>`;
+        if (marks.some(mark => mark.mark === 'bold' && mark.start <= start && mark.end >= end)) html = `<strong>${html}</strong>`;
+        return html;
+    }).join('');
+    return `<span data-fb-inline-emphasis>${html}</span>`;
+}
+
+function textWithVariables(text: string, props: Record<string, unknown>): string {
+    const composed = renderInlineLabel(props, value => renderEmphasis(value, props.inlineEmphasis));
+    if (composed !== undefined) return composed;
+    const content = renderEmphasis(text, props.inlineEmphasis);
+    const before = typeof props.inlineBefore === 'string' && props.inlineBefore && !props.inlineBefore.includes('{{') ? props.inlineBefore : '';
+    const after = typeof props.inlineAfter === 'string' && props.inlineAfter && !props.inlineAfter.includes('{{') ? props.inlineAfter : '';
+    if (!before && !after) return content;
+    return (before ? `<span data-fb-inline-variable>${escapeHtml(before)} </span>` : '') +
+        `<span data-fb-inline-copy>${content}</span>` + (after ? `<span data-fb-inline-variable> ${escapeHtml(after)}</span>` : '');
+}
+
 function renderText(id: string, props: Record<string, unknown>): string {
-    const content = escapeHtml(String(props.content || props.text || props.value || ''));
+    const content = textWithVariables(String(props.content || props.text || props.value || ''), props);
     const requestedSize = String(props.size || 'base').trim();
     const literalSize = /^(?:0|(?:\d*\.)?\d+(?:px|rem|em|%|vw|vh|vmin|vmax|ch|ex))$/.test(requestedSize);
     const size = literalSize ? 'custom' : /^[a-z0-9-]+$/i.test(requestedSize) ? requestedSize : 'base';
@@ -138,7 +172,7 @@ function renderText(id: string, props: Record<string, unknown>): string {
 }
 
 function renderHeading(id: string, props: Record<string, unknown>): string {
-    const content = escapeHtml(String(props.content || props.text || ''));
+    const content = textWithVariables(String(props.content || props.text || ''), props);
     // Handle both 'h4' string format and numeric 4 format
     const levelProp = String(props.level || '2').replace(/^h/i, '');
     const level = Math.min(Math.max(Number(levelProp) || 2, 1), 6);
@@ -153,7 +187,7 @@ function renderHeading(id: string, props: Record<string, unknown>): string {
 }
 
 function renderParagraph(id: string, props: Record<string, unknown>): string {
-    const content = escapeHtml(String(props.content || props.text || ''));
+    const content = textWithVariables(String(props.content || props.text || ''), props);
     const align = props.align as string || 'inherit';  // Inherit from parent
     const color = props.color as string || 'inherit';
 
@@ -194,7 +228,9 @@ function renderBadge(id: string, props: Record<string, unknown>): string {
     if(props.splitValues===true){
         const raw=props.content??props.text??props.label??'',separator=String(props.valueSeparator??',').slice(0,10)||',';
         let source:unknown=raw;if(typeof raw==='string'&&raw.length<=12000&&raw.trim().startsWith('[')){try{const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed)&&parsed.every(value=>typeof value==='string'))source=parsed;}catch{/* Ordinary delimited text. */}}
-        const values=(Array.isArray(source)?source.map(String):String(source).split(separator)).map(value=>value.trim()).filter(Boolean).slice(0,100);
+        // A translated comma-delimited value may use its language's comma.
+        const delimiter = separator === ',' ? /[,،]/ : separator;
+        const values=(Array.isArray(source)?source.map(String):String(source).split(delimiter)).map(value=>value.trim()).filter(Boolean).slice(0,100);
         return `<span id="${escapeHtml(id)}" class="fb-badge-values" style="display:inline-flex;flex-wrap:wrap;gap:6px;max-width:100%">${values.map((value,index)=>renderBadge(id+'--value-'+index,{...props,splitValues:false,content:value,text:value,label:value})).join('')}</span>`;
     }
     const content = escapeHtml(String(props.content || props.text || props.label || ''));

@@ -4,6 +4,25 @@ Status (2026-10-05): deployed single-node pilot and authenticated Frontbase tran
 
 Garage supplies object storage; [garage-webui](https://github.com/khairul169/garage-webui) supplies its management UI. This remains an optional, admin-connected S3 service, outside Frontbase's six packages and independent site engines. Supabase retains canonical content rows and media references.
 
+## Studygram self-host move
+
+Status (2026-11-19): Garage 2.3.0 and its management UI are deployed in the existing EasyPanel `frontbase/studygram-selfhost` Compose service. Garage has its own persistent metadata and data volumes. Postgres and PostgREST kept their existing containers, definitions, volume and domains. The Garage admin API, RPC and management UI have no public routes on the destination.
+
+- Destination signed S3 endpoint is `https://frontbase-studygram-storage.4ky7uo.easypanel.host` with region `garage`. The `study-in-usa-media` bucket has a dedicated read/write key with no bucket ownership. Its public base is `https://frontbase-studygram-media.4ky7uo.easypanel.host`.
+- Copied 20 objects (10,314,936 bytes). Object keys, SHA-256 and HTTP metadata matched. All 20 objects were publicly readable at their original and destination URLs with matching bytes after the destination Garage container was recreated. The Frontbase S3 adapter passed bucket discovery, upload, read, move, signed and public URL checks. Anonymous access to the signed endpoint returned 403. Final inventory contained only the 20 migrated objects.
+- Custom hostname cutover (2026-11-19): `s3.studygram.me` now serves the new Garage instance. EasyPanel routes the signed S3 API to port 3900 and `/public-images` to port 3902, strips the path prefix and resolves the existing host alias to `study-in-usa-media`. All 20 legacy paths returned exact bytes and MIME types directly from the new origin and through Cloudflare. Signed list, upload, read and delete passed on the custom hostname with the destination key. Anonymous S3 reads returned 403; the verification object was removed.
+- Live Explore and Dominican University detail pages returned 200 in English and Arabic. All 12 unique Garage image URLs extracted from those pages matched the migrated checksums. Existing database URLs work as written. Frontbase's upload provider registration and the old pilot are independent of public image serving.
+- Direct cross-origin presigned PUT preflight returned 403. The console currently uploads through its own API. If direct browser uploads are enabled later, configure and verify a bucket CORS rule for the intended site origins.
+- The protected Compose rollback snapshot and per-object verification manifest are stored locally. This verified the migrated objects and recreation on the destination VPS. Scheduled off-host backups and recovery of an entire Garage instance remain open.
+
+## Connected-account bucket selection
+
+2026-11-19: Frontbase adds **Buckets to show** to S3 Connected Accounts. A blank field keeps provider discovery. Enter comma-separated bucket names to use only those names in the storage bucket list. The selection does not grant S3 permissions. It uses the saved bucket-scoped key, leaves the separate public image URL mapping intact and requires no Garage-specific admin access.
+
+Code `69d3d095` is active on Study-in-USA at 100% traffic on Cloudflare Worker version `a7e5c6f4-72bf-4ec8-b8d8-c9a92e132d6f` (rollback `43845589-c04b-4de1-941a-f41d77661182`). All 17 existing bindings and five public route responses were preserved. The deployed console asset matched the local build. Through Connected Accounts, the existing Garage account was set to `study-in-usa-media`; File Storage then showed exactly one bucket. A 68-byte PNG uploaded through File Storage was read back byte-for-byte through signed S3 and anonymously under the existing public image base. All 20 migrated public URLs retained their checksums and content types. The test image and its matching Frontbase metadata were removed.
+
+Node 22 workspace build and type checks passed. The S3 account/transport, upload, security and 175-operation tenant isolation gates passed. The compatibility gate reported zero violations or unreachable cases across 334 operations. The five existing File Storage UI tests passed.
+
 ## Deployment requirements
 
 - Dedicated Garage service with persistent metadata and object-data volumes, pinned engine and UI versions, and documented recovery credentials kept outside Git.

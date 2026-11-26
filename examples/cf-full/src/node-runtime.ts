@@ -90,7 +90,7 @@ const envServices = parseEnvServices(env);
 const externalFetch = createNodeHttpTransport();
 const engine = await createCmsEngine({
     externalFetch,
-    resend:env.RESEND_API_KEY?{apiKey:env.RESEND_API_KEY,from:env.RESEND_FROM}:undefined,
+    mailEnv: env,
     publicOrigin:env.FRONTBASE_PUBLIC_ORIGIN,
     providerOAuthEnv:env,
     runner: options.wrapRunner?.(stateDb.runner)??stateDb.runner,

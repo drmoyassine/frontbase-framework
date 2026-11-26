@@ -49,6 +49,7 @@ export function serializeDatasourceView(v: {
     default_sort?: {column:string;direction:'asc'|'desc'} | null;
     visible_columns: string[] | null;
     column_order: string[] | null;
+    binding_columns?: string[] | null;
     pinned_columns: string[] | null;
     filters: unknown[] | null;
     field_mappings: Record<string, unknown> | null;
@@ -67,6 +68,7 @@ export function serializeDatasourceView(v: {
         default_sort: v.default_sort ?? null,
         visible_columns: v.visible_columns ?? [],
         column_order: v.column_order ?? [],
+        ...(v.binding_columns!=null ? {binding_columns:v.binding_columns} : {}),
         pinned_columns: v.pinned_columns ?? [],
         filters: v.filters ?? [],
         field_mappings: v.field_mappings ?? {},

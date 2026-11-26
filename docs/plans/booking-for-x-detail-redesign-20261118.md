@@ -98,7 +98,11 @@ The private operator folder contains `booking-detail-live-final-261118.json`, `b
 
 The previous layout hash is `aa0a3c6d36d7adf541d2968303377844128bd964e00a90e7c8b55c96fcbe2de6`. The previous Worker version is `0e8b832b-6bab-4f22-981b-0d75cf9e6ff1`. For a reviewed rollback, restore the layout pointer using the normal expected-pointer check before switching to the older Worker. Keep the translated-record history and source data intact.
 
-### Atomic frontend editor saves
+### 2026-11-21 tuition editing and bilingual serving
+
+The signed-in English editor previously exposed the currency but skipped the formatted amount. The editor now resolves the displayed fee to its source record and opens the raw number. One authenticated test saved a grouped fee to the database, refused a stale second save, and rendered the updated number in English and Arabic on the same publication. The DOM test also exercises opening the amount, cancelling, staging and saving. Source-backed directory numbers and dates are excluded from translation.
+
+Study-in-USA Worker `7273d880-e9b6-4359-ba10-39622837721d` received 100% of traffic with all 17 deployment bindings verified. Chrome on the production English Advertising page opened the tuition as an editable textbox showing 25702. The test left the production record alone. The public English and Arabic pages both returned 25,702 USD with live data and no-store on publication `7cc52e89`. A full-page digest differed after the rollout. Comparing the old Worker preview with production for both routes found the same visible text, elements and attributes after normalizing the preview hostname. The difference was inline script text. Workspace check and build passed on Node 22. The code was pushed on `codex/editor-navigation-followup` in `e1411923`.\n\n### Atomic frontend editor saves
 
 Source edits on one record use a single conditional write. Live translations use the additive `translation_write_batch` RPC, which rolls back revision and source-history writes if any change conflicts. Saves that mix page copy and record fields, source records, or multiple legacy record translations are refused before editing content.
 

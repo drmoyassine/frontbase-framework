@@ -12,6 +12,7 @@ export interface EdgeProviderAccount {
     provider: string; // 'cloudflare', 'vercel', etc.
     name: string;
     provider_credentials?: any;
+    provider_metadata?: { s3_buckets?: string[] } | null;
     is_active: boolean;
     created_at: string;
     updated_at: string;

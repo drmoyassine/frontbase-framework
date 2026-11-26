@@ -1,6 +1,7 @@
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {QueryRegistry} from '@frontbase/compiler';
 import type {PageLayoutData,PageEntry,EngineOptions} from '@frontbase/edge-core';
+import { listCounts } from '@frontbase/edge-core';
 import {directorySources,directoryViewRole,compileDirectoryProjection,restorePublishedDirectoryProjection,projectSharedDirectoryPreview,projectRelativeSiteLinks,projectDirectoryBrowsing,type PublishedDirectoryProjectionPlan} from '@frontbase/edge-core/directory/configuration';
 import {publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import {localeDirection} from '@frontbase/edge-core/localization';
@@ -9,6 +10,30 @@ import {templatePolicyPresentation} from './template-policy-runtime.js';
 import type {LiveLayoutIndex, LoadLiveLayout} from './live-layout-publication.js';
 
 const directoryPlans = new WeakMap<PageLayoutData, ReturnType<typeof compileDirectoryProjection>>();
+const listCountPlans = new WeakMap<PageLayoutData, ReturnType<typeof countPlan>>();
+
+function countPlan(layout: PageLayoutData) {
+    const counts = listCounts(layout.content);
+    const required = new Set<string>();
+    const byVariable = new Map(counts.map(list => ['lists.'+list.alias+'.count', list.id]));
+    const visit = (nodes: PageLayoutData['content']) => { for (const node of nodes) {
+        const props = node.props;
+        if (props?.directoryResultCount === true && typeof props.directoryResultsFor === 'string') required.add(props.directoryResultsFor);
+        const add = (variable: unknown) => {
+            if (typeof variable !== 'string') return;
+            const id = byVariable.get(variable) ?? /^query\.([\w-]+)\.total$/.exec(variable)?.[1];
+            if (id) required.add(id);
+        };
+        if (Array.isArray(props?.inlineTemplate)) for (const part of props.inlineTemplate) add(part?.variable);
+        for (const key of ['text','label','value','content'] as const) {
+            const text = props?.[key];
+            if (typeof text === 'string' && text.includes('lists.')) for (const match of text.matchAll(/\blists\.[a-z][a-z0-9_]{0,63}\.count\b/g)) add(match[0]);
+        }
+        if (node.children) visit(node.children);
+    } };
+    if (counts.length) visit(layout.content);
+    return { counts, required };
+}
 
 function directoryPlan(layout: PageLayoutData,published?:PublishedDirectoryProjectionPlan) {
     let plan = directoryPlans.get(layout);
@@ -24,6 +49,7 @@ export interface LivePageReader{
     close?():void|Promise<void>;
     queries:QueryRegistry;
     liveQuery:PublishedLiveQuery;
+    detailColumns?:import('@frontbase/edge-core').DetailBindingColumns;
     /** Current eligible records only, with ambiguity refusal. No saved route index. */
     resolveRoute(path:string):Promise<LiveRoute|null>;
 }
@@ -33,7 +59,8 @@ export interface LivePageReader{
 export async function resolveLiveLayoutPage(
     publication:LiveLayoutIndex,version:string,owner:string,db:DbRunner,request:Request,
     reader:LivePageReader,locale=publication.configuration.site.locale,user:Record<string,unknown>|null=null,list?:LiveListRequest, loadLayout?:LoadLiveLayout,
-):Promise<{sourcePageId:string;authored:PageLayoutData;displayPlan?:Awaited<ReturnType<LoadLiveLayout>>['displayPlan'];translationIds?:Awaited<ReturnType<LoadLiveLayout>>['translationIds'];page:PageEntry;document:NonNullable<EngineOptions['document']>;record:Record<string,unknown>;context:Record<string,unknown>}|null>{
+    previewDraft?:{pageId:string;layout:PageLayoutData},
+):Promise<{sourcePageId:string;authored:PageLayoutData;displayPlan?:Awaited<ReturnType<LoadLiveLayout>>['displayPlan'];translationIds?:Awaited<ReturnType<LoadLiveLayout>>['translationIds'];page:PageEntry;document:NonNullable<EngineOptions['document']>;record:Record<string,unknown>;context:Record<string,unknown>;lists?:Record<string,{count:number}>}|null>{
     if(!owner||!publication.locales.includes(locale))throw Error('live_page_context_required');
     const url=new URL(request.url),path=url.pathname,c=publication.configuration;
     if(!publicationPathSchema.safeParse(path).success)return null;
@@ -44,6 +71,7 @@ export async function resolveLiveLayoutPage(
     if(!role)return null;
     const template=staticPage??publication.templates.find(page=>page.role===role);
     if(!template)return null;
+    if(previewDraft && (previewDraft.pageId!==template.pageId || !route))return null;
     const allowed=listing==='directory'?['type','q','page','sort','match']:listing?['q','page','sort','match']:[];
     for(const key of url.searchParams.keys())if(!allowed.includes(key)||url.searchParams.getAll(key).length!==1)throw new LivePageRequestError('invalid_page_query');
     const type=url.searchParams.get('type')??c.browsing.defaultCollection;
@@ -59,12 +87,18 @@ export async function resolveLiveLayoutPage(
         const query=reader.queries[id];if(!query)throw Error('live_query_unavailable');
         return query.execute(params,{tenant:owner,request,user});
     };
-    const artifact = loadLayout ? await loadLayout(template) : undefined;
-    const authored = artifact?.layout ?? ('layout' in template ? template.layout as unknown as PageLayoutData : undefined);
+    const artifact = !previewDraft && loadLayout ? await loadLayout(template) : undefined;
+    const authored = previewDraft?.layout ?? artifact?.layout ?? ('layout' in template ? template.layout as unknown as PageLayoutData : undefined);
     if (!authored) throw Error('published_layout_artifact_unavailable');
-    const layout = publication.siteBindingsCompiled ? authored : projectSharedDirectoryPreview(authored, c);
+    const layout = publication.siteBindingsCompiled && !previewDraft ? authored : projectSharedDirectoryPreview(authored, c);
     const plan = directoryPlan(layout,artifact?.directoryPlan);
     const records=new Map<string,Record<string,unknown>[]>(),inactive=new Set<string>();
+    let counts = listCountPlans.get(layout);
+    if (!counts && plan.queries.some(query => query.binding.queryId.endsWith('.list'))) {
+        counts = countPlan(layout);
+        if (Object.isFrozen(layout)) listCountPlans.set(layout, counts);
+    }
+    const totals=new Map<string,number>();
     const needsDirectoryCount = listing && (!layout.root?.standardListComponents || plan.queries.some(query => query.binding.queryId.endsWith('.list')));
     const count = needsDirectoryCount ? read('directory.' + (listing === 'article-index' ? 'article' : type) + '.count', { q: search, match, sort, limit }) : undefined;
     const [countRows] = await Promise.all([count, ...plan.queries.map(async query=>{
@@ -81,9 +115,15 @@ export async function resolveLiveLayoutPage(
             const parent=await read('directory.institution.detail',{id:row!.institutionId});
             records.set(query.id,parent);return;
         }
+        if(mode==='list' && counts?.required.has(query.id)){
+            const countRequest = listing && (listing==='article-index'?'article':type)===collection && count
+                ? count : read('directory.'+collection+'.count',params);
+            const [rows,countResult]=await Promise.all([read(query.binding.queryId,params),countRequest]);
+            totals.set(query.id,Number(countResult[0]?.total));records.set(query.id,rows.slice(0,Number(params.limit)));return;
+        }
         records.set(query.id,(await read(query.binding.queryId,params)).slice(0,mode==='detail'?1:Number(params.limit)));
     })]);
-    let projected = plan.project(records, { locale, inactive, liveDetailRecords: true });
+    let projected = plan.project(records, { totals, locale, inactive, liveDetailRecords: true });
     const sourceQuery:PublishedLiveQuery=async(scopedOwner,binding,query)=>{
         if(scopedOwner!==owner)throw Error('live_source_refused');
         const collection=binding.dataSourceId==='frontbase:publication'
@@ -117,7 +157,11 @@ export async function resolveLiveLayoutPage(
     const presentation=templatePolicyPresentation(projected,row,row?context.collection+':'+row.id:'',locale,context);
     const title=presentation.values.title||String(row?.title??template.title),description=presentation.values.description||String(row?.summary??template.description);
     const canonicalUrl=new URL(locale===c.site.locale?path:'/'+locale+path,c.site.origin).href;
-    return {sourcePageId:template.pageId,authored,displayPlan:artifact?.displayPlan,translationIds:artifact?.translationIds,record:presentation.record,context,
+    const lists = totals.size ? Object.fromEntries(counts!.counts.flatMap(({id,alias}) => {
+        const count = totals.get(id);
+        return Number.isSafeInteger(count) && count! >= 0 ? [[alias, { count: count! }]] : [];
+    })) : undefined;
+    return {sourcePageId:template.pageId,authored,displayPlan:artifact?.displayPlan,translationIds:artifact?.translationIds,record:presentation.record,context,lists,
         page:{title,description,slug:path.slice(1),layout:presentation.layout},
         document:{language:locale,direction:localeDirection(locale),canonicalUrl,robots:url.search||presentation.values.indexing==='noindex'?'noindex, follow':'index, follow',
             openGraph:{title,description,url:canonicalUrl,type:role==='article'?'article':'website',siteName:c.site.name,locale}}};

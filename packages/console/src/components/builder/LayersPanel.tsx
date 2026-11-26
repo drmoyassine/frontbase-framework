@@ -9,6 +9,7 @@ import { useBuilderStore } from '@/stores/builder';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   ChevronDown,
   ChevronRight,
@@ -25,7 +26,7 @@ import {
 } from 'lucide-react';
 import { ComponentData } from '@/stores/builder';
 import { cn } from '@/lib/utils';
-import { findComponentWithParent, findComponent } from '@/lib/tree-utils';
+import { findComponentWithParent } from '@/lib/tree-utils';
 import {resolveBlockTree} from '@frontbase/edge-core/block-versions';
 import {
   DropdownMenu,
@@ -56,6 +57,16 @@ export const LayersPanel: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedComponents, setExpandedComponents] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [moveId, setMoveId] = useState<string | null>(null);
+  const [destination, setDestination] = useState('');
+  const [placement, setPlacement] = useState<'before' | 'after' | 'inside'>('before');
+  const [moveMessage, setMoveMessage] = useState('');
+  const dragScope = React.useRef<{pageId: string | null; versions: Readonly<Record<string, string>>} | null>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const focusLayer = (id: string) => {
+    const grips = panelRef.current?.querySelectorAll<HTMLButtonElement>('button[data-layer-grip]');
+    if (grips) Array.from(grips).find(grip => grip.dataset.layerGrip === id)?.focus();
+  };
   const selections=useBuilderStore(state=>state.editingVersions);
   const move=useBuilderStore(state=>state.moveComponent);
 
@@ -133,36 +144,95 @@ export const LayersPanel: React.FC = () => {
   };
 
   const handleDragStart = (event: DragStartEvent) => {
+    dragScope.current = {pageId: currentPageId, versions: selections};
     setActiveId(String(event.active.id));
   };
 
   const handleDragCancel = () => {
+    dragScope.current = null;
     setActiveId(null);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    setActiveId(null);
-    const {active,over}=event;
-    if (!over || !currentPage || !currentPageId) return;
-    const targetId=String(over.data.current?.componentId ?? over.id);
-    if (String(active.id)===targetId) return;
-    const source=findComponentWithParent(components,String(active.id));
+  const moveLayer = (id: string, targetId: string, placement?: 'before' | 'after' | 'inside') => {
+    if (!currentPage?.layoutData || !currentPageId || id === targetId) return false;
+    const source=findComponentWithParent(components,id);
     const target=findComponentWithParent(components,targetId);
-    if (!source || !target) return;
-    const placement=over.data.current?.placement ?? (CONTAINER_TYPES.has(target.component.type)?'inside':'before');
-    const parentId=placement==='inside'?targetId:target.parent?.id;
-    if (parentId && findComponent([source.component],parentId)) return;
-    const index=placement==='inside'?-1:target.index+(placement==='after'?1:0);
-    move(currentPageId,source.component.id,source.component,index,parentId,source.parent?.id);
+    if (!source || !target) return false;
+    const isContainer = CONTAINER_TYPES.has(target.component.type);
+    const place = placement ?? (isContainer ? 'inside' : 'before');
+    if (place === 'inside' && !isContainer) return false;
+    const parentId=place==='inside'?targetId:target.parent?.id;
+    const index=place==='inside'?-1:target.index+(place==='after'?1:0);
+    move(currentPageId,id,source.component,index,parentId,source.parent?.id);
+    const next = useBuilderStore.getState().pages.find(page => page.id === currentPageId)?.layoutData;
+    if (!next || next === currentPage.layoutData) return false;
     if(parentId)setExpandedComponents(previous=>new Set([...previous,parentId]));
+    const moved = findComponentWithParent(resolveBlockTree(next.content, () => undefined, selections), id);
+    setSelectedComponentId(id);
+    setMoveMessage(`Moved ${source.component.props?._layerName || source.component.type} to position ${(moved?.index ?? 0) + 1} of ${moved?.siblings.length ?? 1}.`);
+    requestAnimationFrame(() => focusLayer(id));
+    return true;
   };
+
+  const handleDragEnd = ({active,over}: DragEndEvent) => {
+    setActiveId(null);
+    const start = dragScope.current;
+    dragScope.current = null;
+    if (start && (start.pageId !== currentPageId || start.versions !== selections)) return;
+    if (!over) return;
+    const targetId=String(over.data.current?.componentId ?? over.id);
+    moveLayer(String(active.id),targetId,over.data.current?.placement);
+  };
+
+  const targets: { id: string; label: string; container: boolean }[] = [];
+  const collectTargets = (nodes: ComponentData[], prefix = '') => {
+    for (const node of nodes) {
+      if (node.id === moveId) continue;
+      const label = prefix + (node.props?._layerName || node.type);
+      targets.push({ id: node.id, label, container: CONTAINER_TYPES.has(node.type) });
+      if (node.children) collectTargets(node.children, label + ' / ');
+    }
+  };
+  if (moveId) collectTargets(components);
 
   const filteredComponents = components.filter(component =>
     component.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div ref={panelRef} className="h-full flex flex-col bg-background">
+      <p className="sr-only" role="status" aria-atomic="true">{moveMessage}</p>
+      <Dialog open={!!moveId} onOpenChange={open => { if (!open) setMoveId(null); }}>
+        <DialogContent onCloseAutoFocus={event => {
+          event.preventDefault();
+          const id = useBuilderStore.getState().selectedComponentId;
+          if (id) focusLayer(id);
+        }}>
+          <DialogHeader><DialogTitle>Move layer</DialogTitle>
+            <DialogDescription>Choose a destination and where to place this layer.</DialogDescription>
+          </DialogHeader>
+          <label className="grid gap-1">Destination
+            <select className="rounded border bg-background p-2" value={destination} onChange={event => {
+              setDestination(event.target.value); setPlacement('before'); setMoveMessage('');
+            }}>
+              <option value="">Select a layer</option>
+              {targets.map(target => <option key={target.id} value={target.id}>{target.label}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1">Placement
+            <select className="rounded border bg-background p-2" value={placement} onChange={event =>
+              setPlacement(event.target.value as typeof placement)}>
+              <option value="before">Before</option><option value="after">After</option>
+              {targets.find(target => target.id === destination)?.container && <option value="inside">Inside</option>}
+            </select>
+          </label>
+          {moveMessage && <p role="status">{moveMessage}</p>}
+          <Button disabled={!destination} onClick={() => {
+            if (moveId && moveLayer(moveId, destination, placement)) setMoveId(null);
+            else setMoveMessage('Choose a different position in the current Block Version.');
+          }}>Move</Button>
+        </DialogContent>
+      </Dialog>
       {/* Search */}
       <div className="p-3 border-b">
         <div className="relative">
@@ -211,6 +281,7 @@ export const LayersPanel: React.FC = () => {
                   getComponentIcon={getComponentIcon}
                   onDelete={(id) => removeComponent(id)}
                   onDuplicate={(id) => duplicateComponent(id)}
+                  onMove={id => {setSelectedComponentId(id);setDestination('');setPlacement('before');setMoveMessage('');setMoveId(id);}}
                   onWrap={(id,type) => {const wrapper=wrapLayout(id,type);if(wrapper)setExpandedComponents(previous=>new Set([...previous,wrapper]));}}
                   updateComponent={updateComponent}
                 />
@@ -218,7 +289,7 @@ export const LayersPanel: React.FC = () => {
             </SortableContext>
 
             {/* Drag Overlay - shows visual preview snapped to mouse */}
-            <DragOverlay>
+            <DragOverlay dropAnimation={null}>
               {activeId ? (
                 <div className="flex items-center gap-2 px-2 py-1.5 rounded bg-accent border-2 border-primary shadow-lg opacity-90">
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -248,6 +319,7 @@ interface SortableLayerItemProps {
   getComponentIcon: (type: string) => string;
   onDelete: (componentId: string) => void;
   onDuplicate: (componentId: string) => void;
+  onMove: (componentId: string) => void;
   onWrap: (componentId:string,type:'Row'|'Column') => void;
   updateComponent: (id: string, propsUpdates: Record<string, any>) => void;
   isDropTarget?: boolean;
@@ -268,6 +340,7 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
   getComponentIcon,
   onDelete,
   onDuplicate,
+  onMove,
   onWrap,
   updateComponent,
   isDropTarget = false,
@@ -300,7 +373,7 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
         ref={setNodeRef}
         style={style}
         className={cn(
-          "relative group flex items-center gap-2 px-2 py-1.5 rounded",
+          "relative group flex items-center gap-2 px-2 py-1.5 rounded motion-reduce:!transition-none",
           "hover:bg-accent",
           isSelected && "bg-accent border-l-2 border-primary",
           isDragging && "ring-2 ring-primary/30 bg-muted"
@@ -313,13 +386,16 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
         {depth > 0 && <div style={{ width: depth * 16 }} />}
 
         {/* Drag Handle */}
-        <div
+        <button
+          type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing"
+          aria-label={`Reorder ${component.props?._layerName || component.type}`}
+          data-layer-grip={component.id}
+          className="grid h-7 w-7 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 shrink-0 place-items-center touch-none select-none rounded cursor-grab active:cursor-grabbing focus-visible:outline"
         >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </div>
+          <GripVertical aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+        </button>
 
         {/* Expand/Collapse */}
         {hasChildren ? (
@@ -327,6 +403,8 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
             variant="ghost"
             size="sm"
             onClick={onToggleExpand}
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${component.props?._layerName || component.type}`}
+            aria-expanded={isExpanded}
             className="h-5 w-5 p-0"
           >
             {isExpanded ? (
@@ -384,7 +462,7 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
               variant="ghost"
               size="sm"
               aria-label={`Actions for ${component.props?._layerName || component.type}`}
-              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0"
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:opacity-100"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -401,6 +479,7 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
               <Copy className="h-4 w-4 mr-2" />
               Duplicate
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onMove(component.id)}>Move to…</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onWrap(component.id,'Row')}>Wrap in Row</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onWrap(component.id,'Column')}>Wrap in Column</DropdownMenuItem>
             <DropdownMenuItem
@@ -437,6 +516,7 @@ const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
                 getComponentIcon={getComponentIcon}
                 onDelete={onDelete}
                 onDuplicate={onDuplicate}
+                onMove={onMove}
                 onWrap={onWrap}
                 updateComponent={updateComponent}
               />

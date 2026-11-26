@@ -53,6 +53,7 @@ export interface AuthResult {
   token?: string;
   error?: string;
   requiresVerification?: boolean;
+  requiresAuthenticator?: boolean;
   redirectUrl?: string;
 }
 
@@ -64,6 +65,7 @@ export interface LoginCredentials {
   password: string;
   website?: string;
   turnstileToken?: string;
+  authenticatorCode?: string;
 }
 
 /**

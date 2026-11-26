@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, Monitor, Moon, Settings, Sun } from 'lucide-react';
+import { ChevronDown, LogOut, Monitor, Moon, Settings, Sun, UserRound } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
@@ -26,6 +26,7 @@ export function AccountMenu({ logout }: { logout: () => Promise<void> }) {
                 <div className="truncate text-xs font-normal text-muted-foreground" title={user?.email}>{user?.email}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => navigate('/my-account')}><UserRound className="mr-2 h-4 w-4" />My account</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate('/settings')}><Settings className="mr-2 h-4 w-4" />Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
             <div className="flex items-center justify-between gap-2 px-2 py-1">

@@ -12,6 +12,7 @@ import {
     Server,
     Shield,
     Layers,
+    ExternalLink,
     Bot
 } from 'lucide-react'
 import { useState } from 'react'
@@ -152,7 +153,13 @@ export function Layout() {
                         <Layers className="w-6 h-6 text-primary" />
                         <span className="font-bold">Frontbase</span>
                     </div>
-                    <div className="ml-auto min-w-0"><AccountMenu logout={logout} /></div>
+                    <div className="ml-auto flex min-w-0 items-center gap-2">
+                        <a href="/" aria-label="Open homepage" title="Open homepage" className="flex min-h-9 shrink-0 items-center gap-2 rounded-md border px-2.5 text-sm font-medium hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                            <span className="hidden sm:inline">View site</span>
+                        </a>
+                        <AccountMenu logout={logout} />
+                    </div>
                 </header>
 
                 {/* Page content */}

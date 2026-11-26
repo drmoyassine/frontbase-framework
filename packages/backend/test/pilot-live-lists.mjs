@@ -21,6 +21,7 @@ import {publicationHash} from '../dist/compat/publication-hash.js';
 import {PageChangeStore} from '../dist/compat/page-change-store.js';
 import {PagesStore} from '../dist/compat/pages-store.js';
 import {protectPublishedLiveSource} from '../dist/compat/published-live-access.js';
+import {SiteConfigurationStore} from '../dist/compat/site-configuration-store.js';
 
 const control=sqliteRunner(':memory:');await migrateUp(control);
 const url='file:'+join(mkdtempSync(join(tmpdir(),'frontbase-pilot-live-')),'catalog.db').replaceAll('\\','/'),data=sqliteRunner(url);
@@ -132,3 +133,33 @@ assert(!(await render()).includes('OWNER PENDING DESIGN'));assert.equal((await p
 const stale=await planKey({drafts:[]});assert.equal((await publish(stale.planHash)).status,409);
 console.log('pilot-live-lists: PASS (ordinary source/version conversion, bounded publication, guarded SQL projection, live SSR/query parity, exact count, source update, paging/search and owner/private-field refusal)');
 console.log('pilot live migration: PASS (admin/size gates, exact server plan, draft CAS, stale-base refusal, published/draft design separation)');
+
+const detailView=await post(`/api/sync/datasources/${ds.id}/views/`,{name:'Institution detail',target_table:'institutions',visible_columns:['title']});
+await data.exec('CREATE TABLE programs(id INTEGER PRIMARY KEY,title TEXT,program_note TEXT)');
+const programView=await post(`/api/sync/datasources/${ds.id}/views/`,{name:'Program detail',target_table:'programs',visible_columns:['title']});
+await new SiteConfigurationStore(control,tenant).save({...configuration,detailViews:{institution:detailView.id,program:programView.id}},0,now);
+const patchColumns=columns=>app.request(`/api/sync/views/${detailView.id}/`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({binding_columns:columns})});
+role='viewer';assert.equal((await patchColumns(['type'])).status,403);role='owner';
+tenant='other';assert.equal((await patchColumns(['type'])).status,404);tenant='fixture';
+for(const fields of [['missing'],['type','type'],['__proto__'],['type; DROP TABLE institutions']])assert.equal((await patchColumns(fields)).status,422);
+assert.equal((await patchView({binding_columns:['title']})).status,422,'an unrelated view cannot select detail columns');
+const detailPage=await pages.create({name:'Institution fields',slug:'institution-fields',layout_data:{root:{siteConfiguration:{version:1,role:'institution'}},
+ content:[{id:'detail',type:'Container',props:{directoryQuery:{queryId:'directory.institution.detail',version:1,params:{path:'/one/'}}},children:[{id:'heading',type:'Heading',props:{text:'Institution'}}]}]}},
+ crypto.randomUUID(),now);
+const registry=()=>app.request('/api/variables/registry/?page_id='+detailPage.id);
+assert.deepEqual((await (await registry()).json()).detailColumns,{institution:[]},'an unconfigured linked view offers no hardcoded fields');
+const columns=await patchColumns(['type']);
+assert.equal(columns.status,200,await columns.clone().text());
+assert.deepEqual((await columns.json()).binding_columns,['type']);
+assert.deepEqual((await (await app.request(`/api/sync/views/${detailView.id}/`)).json()).visible_columns,['title']);
+assert.deepEqual((await (await registry()).json()).detailColumns,{institution:['type']});
+role='viewer';assert.equal((await (await registry()).json()).detailColumns,undefined);role='owner';
+assert.equal((await patchColumns([])).status,200);
+assert.deepEqual((await (await registry()).json()).detailColumns,{institution:[]});
+const programSave=await app.request(`/api/sync/views/${programView.id}/`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({binding_columns:['program_note']})});
+assert.equal(programSave.status,200,await programSave.clone().text());
+const programPage=await pages.create({name:'Program fields',slug:'program-fields',layout_data:{root:{siteConfiguration:{version:1,role:'program'}},
+ content:[{id:'detail',type:'Container',props:{directoryQuery:{queryId:'directory.program.detail',version:1,params:{path:'/one/'}}},children:[{id:'heading',type:'Heading',props:{text:'Program'}}]}]}},crypto.randomUUID(),now);
+assert.deepEqual((await (await app.request('/api/variables/registry/?page_id='+programPage.id)).json()).detailColumns,{program:['program_note']});
+assert.deepEqual((await (await registry()).json()).detailColumns,{institution:[]});
+console.log('Institution field selection: owned linked view only, schema validation, independent visibility, scoped picker and removal PASS');

@@ -25,13 +25,13 @@ describe('shared page configuration', () => {
     it('shows mismatch diagnostics and prevents automatic selection', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ draft: { schemaVersion: 1, revision: 3, configuration: { ...config, site: { ...config.site, name: 'Hungary' } } } }) }));
         const change = vi.fn(); render(<SharedPageConfigurationPanel page={page} onChange={change} />);
-        await screen.findByText('Shared settings revision: 3'); expect(screen.getByRole('alert').textContent).toContain('differ');
+        await screen.findByRole('alert'); expect(screen.getByRole('alert').textContent).toContain('differ');
         expect((screen.getByText('Use shared settings for this page') as HTMLButtonElement).disabled).toBe(true); expect(change).not.toHaveBeenCalled();
     });
     it('links the selected role explicitly and reports unavailable settings', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ draft: { schemaVersion: 1, revision: 1, configuration: config } }) }));
         const change = vi.fn(); render(<SharedPageConfigurationPanel page={page} onChange={change} />);
-        await screen.findByText('Shared settings revision: 1'); fireEvent.change(screen.getByLabelText('Shared page role'), { target: { value: 'program' } });
+        await waitFor(()=>expect((screen.getByText('Use shared settings for this page') as HTMLButtonElement).disabled).toBe(false)); fireEvent.change(screen.getByLabelText('Shared page role'), { target: { value: 'program' } });
         fireEvent.click(screen.getByText('Use shared settings for this page')); expect(change.mock.calls[0][0].root.siteConfiguration.role).toBe('program');
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false })); fireEvent.click(screen.getByText('Reload shared settings'));
         await waitFor(() => expect(screen.getByRole('status').textContent).toContain('unavailable'));

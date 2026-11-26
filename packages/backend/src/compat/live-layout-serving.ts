@@ -1,4 +1,4 @@
-import {displayPlanInterpolations} from '@frontbase/edge-core/localization';
+import {compileDisplaySurfacePlan,displayPlanInterpolations} from '@frontbase/edge-core/localization';
 import type {DbRunner} from '@frontbase/edge-infra';
 import {renderResolvedPageDocument,audienceConditionUser,type PageLayoutData} from '@frontbase/edge-core';
 import type {VerifiedMenuAudience} from '@frontbase/edge-core/menus';
@@ -20,14 +20,23 @@ import {reportReadFailure} from './read-failure.js';
 import {liveLayoutSitemap} from './live-layout-sitemap.js';
 import {livePageSettings} from './live-page-settings.js';
 import {readProjectSettings} from './assets.js';
+import {BOOKING_PALETTE_KEY} from './booking-site-palette.js';
+import type {BookingPalette} from '@frontbase/edge-core/directory/configuration';
 
 export interface LiveLayoutServingOptions{
     host:LiveLayoutHost;liveQuery:PublishedLiveQuery;swBundle?:string;frontendEditing?:boolean;
     /** Supplied only by the authenticated private preview route, never visitor input. */
     prepared?:{pointer:LiveLayoutPointer;layout:LiveLayoutIndex;loadLayout?:LoadLiveLayout};
+    previewPalette?:BookingPalette;
+    /** Private Builder projection. The live route must belong to this page. */
+    previewDraft?:{pageId:string;layout:PageLayoutData};
+    /** Only the authenticated inline layout draft needs unbound sample values. */
+    bindingEditor?:boolean;
     resolveAudience?(owner:string,request:Request):Promise<VerifiedMenuAudience>;
 }
-export interface LiveLayoutSurface{layout:PageLayoutData;pageId:string;locale:string;sourceLocale:string;version:string}
+export interface LiveLayoutSurface{layout:PageLayoutData;pageId:string;locale:string;sourceLocale:string;version:string;lists?:Record<string,{count:number}>;
+    detailColumns?:import('@frontbase/edge-core').DetailBindingColumns;
+    detailRole?:import('@frontbase/edge-core').DetailBindingRole;detailValues?:Record<string,unknown>}
 export async function resolveLiveLayoutSurface(db:DbRunner,owner:string,request:Request,options:LiveLayoutServingOptions):Promise<LiveLayoutSurface|null>{
     let surface:LiveLayoutSurface|undefined;
     const response=await serveLiveLayout(db,owner,request,options,value=>{surface=value;return new Response(null,{status:204});});
@@ -58,7 +67,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const listHeader=request.headers.get('X-Frontbase-List');
         if(listHeader){try{if(listHeader.length>8192)throw Error();list=liveListRequestSchema.parse(JSON.parse(decodeURIComponent(listHeader)));}catch{throw new LivePageRequestError('invalid_list_request');}}
         const [reader,audience]=await Promise.all([
-            liveLayoutReader(host,owner,publication,options.liveQuery),
+            liveLayoutReader(host,owner,publication,options.liveQuery,options.previewDraft?.layout),
             options.resolveAudience?.(owner,request)??Promise.resolve({authenticated:false}),
         ]);
         close=reader.close;
@@ -71,14 +80,16 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
             headers.set('Location',(locale===sourceLocale?'':'/'+locale)+redirect.to+url.search);
             return new Response(null,{status:301,headers});
         }
-        const resolved=await resolveLiveLayoutPage(publication,active.pointer.hash,owner,db,sourceRequest,reader,locale,audienceConditionUser(audience),list,active.loadLayout);
+        const resolved=await resolveLiveLayoutPage(publication,active.pointer.hash,owner,db,sourceRequest,reader,locale,audienceConditionUser(audience),list,active.loadLayout,options.previewDraft);
         if(!resolved)return new Response(request.method==='HEAD'?null:'Not found',{status:404,headers});
         const template = { layout: resolved.authored };
-        const displayPlan = resolved.displayPlan ?? liveDisplayPlan(publication as Parameters<typeof liveDisplayPlan>[0], resolved.sourcePageId);
+        const displayPlan = options.previewDraft ? compileDisplaySurfacePlan(resolved.authored)
+            : resolved.displayPlan ?? liveDisplayPlan(publication as Parameters<typeof liveDisplayPlan>[0], resolved.sourcePageId);
         const menuHash=(resolved.page.layout.root?.appMenus as {hash?:unknown}|undefined)?.hash;
         const settings=await livePageSettings(db,owner,['project','frontend_copy:active:v1',...(locale!==sourceLocale?['translation_storage:v1']:[]),
+            ...(resolved.page.layout.root?.bookingForX? [BOOKING_PALETTE_KEY] : []),
             ...(typeof menuHash==='string'&&/^[a-f0-9]{64}$/.test(menuHash)?['app_menus:publication:v1:'+menuHash]:[])]);
-        let layout=await resolveAppMenuLayout(settings,owner,resolved.page.layout,sourceUrl.pathname,audience,publication.configuration.site.name,resolved.sourcePageId);
+        let layout=await resolveAppMenuLayout(settings,owner,resolved.page.layout,sourceUrl.pathname,audience,publication.configuration.site.name,resolved.sourcePageId,options.previewPalette);
         layout=(await projectFrontendCopy(settings,owner,resolved.sourcePageId,layout,locale,false)).layout;
         let localizedFields:LiveDisplayField[]|undefined;
         if(locale!==sourceLocale){
@@ -89,7 +100,12 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
             layout=await localizeLiveLayout(layout,{scope:storage.scope,pageId:resolved.sourcePageId,sourceLocale,locale,reader:storage.persistence,menuFields,plan:displayPlan,identityPlan:resolved.translationIds,resolvedFields:fields=>{localizedFields=fields;}});
         }
         layout=addHomepageLanguageLinks(layout,sourceLocale,publication.locales.filter(code=>code!==sourceLocale),locale,sourceUrl.pathname+url.search,[publication.configuration.site.origin,url.origin]);
-        if(surface)return surface({layout,pageId:resolved.sourcePageId,locale,sourceLocale,version:active.pointer.hash});
+        if(surface){
+            const detailRole=resolved.context.collection==='institutions'?'institution':resolved.context.collection==='programs'?'program':undefined;
+            return surface({layout,pageId:resolved.sourcePageId,locale,sourceLocale,version:active.pointer.hash,lists:resolved.lists,
+                ...(options.bindingEditor&&{detailColumns:reader.detailColumns,detailRole,
+                    detailValues:detailRole?resolved.record.columns as Record<string,unknown>|undefined:undefined})});
+        }
         if(list){
             const read=contextReader({url:Object.fromEntries(sourceUrl.searchParams),user:audienceConditionUser(audience),page:resolved.context});
             let result:{rows:unknown[];total:number}|undefined;
@@ -115,6 +131,7 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
         const html = await renderResolvedPageDocument(page, request, {
             manifest, environment: 'edge', document, swBundle: options.swBundle,
             interpolations: displayPlanInterpolations(displayPlan),
+            lists: resolved.lists,
         }, audienceConditionUser(audience));
         headers.set('Content-Language', locale);
         headers.set('Content-Type', 'text/html; charset=UTF-8');

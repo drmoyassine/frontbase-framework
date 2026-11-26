@@ -32,6 +32,10 @@ export function galleryMedia(value:unknown):Media[]{
 
 export function renderGallery(id:string,props:Record<string,unknown>):string{
  let items=galleryMedia(props.media);
+ if(props.coverFirst===true){
+  const cover=galleryMedia(props.coverSrc)[0]??galleryMedia(props.fallbackSrc)[0];
+  if(cover)items=[cover,...items.filter(item=>item.src!==cover.src)].slice(0,24);
+ }
  if(!items.length)items=galleryMedia(props.coverSrc);
  if(!items.length)items=galleryMedia(props.fallbackSrc);
  for(const video of galleryMedia(props.videoSrc))if(video.type!=='image'&&!items.some(item=>item.src===video.src)&&items.length<24)items.push(video);

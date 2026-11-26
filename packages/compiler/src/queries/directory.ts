@@ -2,9 +2,11 @@ import { z } from 'zod';
 import { requireDirectorySourceConfiguration, parseEditorialBody, detailTextFields, type DirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { defineQueries, type QueryRegistry, type QueryDef, type QueryContext } from './defineQueries.js';
 import { sitePublicationArtifactSchema, type SitePublicationArtifact } from '@frontbase/edge-core/directory/publication';
+import type { DetailBindingColumns } from '@frontbase/edge-core';
 
 const roles = ['institution', 'program', 'city', 'article', 'page'] as const;
 const detailOnlyFields = new Set<string>(['body', 'gallery', 'website', ...detailTextFields]);
+const programListFields = new Set(['degree', 'duration', 'durationUnit', 'tuition', 'currency', 'intakes']);
 const localPath = z.string().max(400).refine(v => {
     try { const d = decodeURIComponent(v); return v.startsWith('/') && !d.startsWith('//') && !/[\\?#\s\x00-\x20]/.test(d) && !d.split('/').some(p => p === '.' || p === '..'); }
     catch { return false; }
@@ -40,7 +42,8 @@ export function createLiveDirectoryQueries(input:DirectoryConfiguration,owner:st
 }
 
 /** Resolved for the current request by the host from owned Saved Views. */
-type DirectoryViewScope=(role:'institution'|'program'|'article',alias:string)=>{sql:string;params:unknown[]}|undefined;
+type DirectoryViewScope=((role:'institution'|'program'|'article',alias:string)=>{sql:string;params:unknown[]}|undefined)
+    & {detailColumns?:DetailBindingColumns};
 
 // Compiled configuration only: never credentials, query results or request identities.
 type DirectoryRead=(sql:string,params:unknown[])=>Promise<Record<string,unknown>[]>;
@@ -98,7 +101,17 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
                 if(!authoring&&(role==='article'||role==='page'))where.push(`${field('d','status')} = ${bind('published')}`);
                 if (role === 'article' || role === 'page') where.push(`${field('d', mapping.fieldMapping.contentRole)} = ${bind(role)}`, `${field('d', mapping.fieldMapping.sourceOrigin)} = ${bind(c.site.origin)}`);
                 if (role === 'institution') where.push(cityExists('d'));
-                if (role === 'program') where.push(`EXISTS (SELECT 1 FROM ${quote(institution.tableName)} di WHERE ${field('di', institution.fieldMapping.id)} = ${field('d', mapping.fieldMapping.institutionId)} AND ${scoped('di', institution, 'institution')} AND ${cityExists('di')})`);
+                const programList = role === 'program' && mode === 'list';
+                let joins = '';
+                if (role === 'program') {
+                    const parentKey = `${field('di', institution.fieldMapping.id)} = ${field('d', mapping.fieldMapping.institutionId)}`;
+                    if (programList) {
+                        joins = ` JOIN ${quote(institution.tableName)} di ON ${parentKey} JOIN ${quote(city.tableName)} dc ON ${field('dc', city.fieldMapping.id)} = ${field('di', institution.fieldMapping.cityId)}`;
+                        where.push(scoped('di', institution, 'institution'), scoped('dc', city));
+                    } else {
+                        where.push(`EXISTS (SELECT 1 FROM ${quote(institution.tableName)} di WHERE ${parentKey} AND ${scoped('di', institution, 'institution')} AND ${cityExists('di')})`);
+                    }
+                }
                 if (p.institutionId !== undefined) where.push(`${field('d', mapping.fieldMapping.institutionId)} = ${bind(p.institutionId)}`);
                 if (p.q) where.push(`LOWER(CAST(${field('d', mapping.fieldMapping.title)} AS TEXT)) LIKE ${bind((p.match === 'contains' || !p.match ? '%' : '') + p.q.toLowerCase().replace(/[!%_]/g, v => '!' + v) + (p.match === 'equals' ? '' : '%'))} ESCAPE '!'`);
                 if (p.path) where.push(`(${field('d', mapping.fieldMapping.originalPath)} = ${bind(p.path)} OR ${field('d', mapping.fieldMapping.originalPath)} = ${bind(c.site.origin + p.path)})`);
@@ -109,13 +122,31 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
                     if(!Number.isSafeInteger(total)||total<0)throw Error('directory_count_invalid');
                     return [{total}];
                 }
-                const selected = Object.entries(mapping.fieldMapping).filter(([key, value]) => value && (mode==='routes'?['id','originalPath'].includes(key):!['contentRole','sourceOrigin'].includes(key) && (mode === 'detail' || !detailOnlyFields.has(key))));
-                const projection = selected.map(([key, value]) => `${field('d', value!)} AS ${quote(key)}`).join(', ');
-                const rows = await query(`SELECT ${projection} FROM ${quote(mapping.tableName)} d WHERE ${where.join(' AND ')} ORDER BY ${field('d', mapping.fieldMapping.title)} ${p.sort === 'title-desc' ? 'DESC' : 'ASC'}, ${field('d', mapping.fieldMapping.id)} LIMIT ${bind(mode === 'detail' ? 2 : (p.limit ?? c.browsing.pageSize) + 1)} OFFSET ${bind(p.offset ?? 0)}`, values);
+                const selected = new Map(Object.entries(mapping.fieldMapping)
+                    .filter(([key, value]) => value && (mode === 'routes' ? ['id', 'originalPath'].includes(key)
+                        : !['contentRole', 'sourceOrigin'].includes(key) && (mode === 'detail' || !detailOnlyFields.has(key) || programList && programListFields.has(key))))
+                    .map(([key, value]) => [key, field('d', value!)]));
+                if (programList) {
+                    selected.set('institutionName', field('di', institution.fieldMapping.title));
+                    selected.set('location', field('dc', city.fieldMapping.title));
+                    if (institution.fieldMapping.country) selected.set('country', field('di', institution.fieldMapping.country));
+                    if (institution.fieldMapping.logo) selected.set('logo', field('di', institution.fieldMapping.logo));
+                }
+                const bindingColumns=mode==='detail'&&(role==='institution'||role==='program')?viewScope?.detailColumns?.[role]??[]:[];
+                const projection = [
+                    ...[...selected].map(([key, expression]) => `${expression} AS ${quote(key)}`),
+                    ...bindingColumns.map((column,index)=>`${field('d',column)} AS "fb_binding_column_${index}"`),
+                ].join(', ');
+                const rows = await query(`SELECT ${projection} FROM ${quote(mapping.tableName)} d${joins} WHERE ${where.join(' AND ')} ORDER BY ${field('d', mapping.fieldMapping.title)} ${p.sort === 'title-desc' ? 'DESC' : 'ASC'}, ${field('d', mapping.fieldMapping.id)} LIMIT ${bind(mode === 'detail' ? 2 : (p.limit ?? c.browsing.pageSize) + 1)} OFFSET ${bind(p.offset ?? 0)}`, values);
                 if (mode === 'detail' && rows.length > 1) throw new Error('directory_path_ambiguous');
                 // Enforce a narrow bounded projection even if a driver returns extra columns.
-                return rows.slice(0, mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1).map(row => Object.fromEntries(selected.map(([key]) => {
+                const keys = [...selected.keys()];
+                return rows.slice(0, mode === 'detail' ? 1 : (p.limit ?? c.browsing.pageSize) + 1).map(row => {
+                    const record:Record<string,unknown> = Object.fromEntries(keys.map(key => {
                     let v = row[key];
+                    if (key === 'updatedAt' && v instanceof Date) v = Number.isFinite(v.getTime()) ? v.toISOString() : null;
+                    if (key === 'socialProfiles' && v && typeof v === 'object') v = JSON.stringify(v);
+                    if (key === 'intakes' && Array.isArray(v)) v = v.slice(0, 100).filter(value => typeof value === 'string').join(',');
                     if(logos&&typeof v==='string'&&(key==='logo'||key==='cover')){
                         v=v.trim()||null;
                         if(key==='logo'&&typeof v==='string')v=logos.get(v)??v;
@@ -126,7 +157,14 @@ function directoryRegistry(input:DirectoryConfiguration,owner:string,dialect:'po
                         return [key, gallery.length <= 12000 ? gallery : null];
                     }
                     return [key, key === 'originalPath' ? directoryOriginalPath(v, c.site.origin) : typeof v === 'string' ? v.slice(0, key === 'body' ? 60000 : key === 'gallery' ? 12000 : key === 'summary' ? 1000 : 2048) : typeof v === 'number' && Number.isFinite(v) ? v : null];
-                })));
+                    }));
+                    if(bindingColumns.length)record.columns=Object.fromEntries(bindingColumns.map((column,index)=>{
+                        const value=row['fb_binding_column_'+index];
+                        return [column,typeof value==='string'?value.slice(0,2048)
+                            :typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value)?value:null];
+                    }));
+                    return record;
+                });
             } };
     }
     if(compiled){if(compiled.plans.size>=8)compiled.plans.delete(compiled.plans.keys().next().value!);compiled.plans.set(planKey,registry);}

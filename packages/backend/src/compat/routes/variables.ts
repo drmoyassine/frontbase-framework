@@ -16,10 +16,16 @@ import type { ConsoleAuthVars } from '../../mw/auth.js';
 import type { TemplateVariableStore } from '../store.js';
 import { zVariableCreateRequest, zVariableUpdateRequest } from '../zod.gen.js';
 import { REGISTRY as BASE_REGISTRY } from '../template-registry.js';
+import { listCounts, inlineTemplateScopes, detailBindingRoles, type DetailBindingColumns, type PageLayoutData } from '@frontbase/edge-core';
+import {consoleDataAdministrator} from '../published-live-access.js';
 const REGISTRY={...BASE_REGISTRY,variables:[...BASE_REGISTRY.variables,...[
  ['page.siteName','string','Configured public site name'],['page.attached','boolean','Retained route associated with a source record'],['page.settings.notice','string','Effective record notice'],['page.settings.noticeTone','string','Notice presentation'],['page.settings.ctaLabel','string','Effective action label'],['page.settings.ctaHref','string','Effective action destination'],['page.settings.listed','boolean','Directory inclusion'],
  ['user.id','string','Verified app-user ID'],['user.contact_type','string','Verified Contact Type'],['user.permission_level','string','Verified Permission Level'],['user.authenticated','boolean','Verified app-user session'],['app.*','any','App variable'],['record.*','any','Current record field']
 ].filter(([path])=>!BASE_REGISTRY.variables.some(v=>v.path===path)).map(([path,type,description])=>({path,type,description,source:path!.split('.')[0]}))]};
+
+export function isFrontendLiquidVariable(path:string):boolean {
+    return /^(page|system)\.[a-zA-Z_][\w.]{0,100}$/.test(path) && REGISTRY.variables.some(variable=>variable.path===path);
+}
 
 // Web Crypto global (Node 19+ and Cloudflare Workers) — not node:crypto, which
 // is unavailable in the Workers runtime.
@@ -30,6 +36,8 @@ export function registerVariablesRoutes(
     app: Hono<{ Variables: ConsoleAuthVars }>,
     storeFor: (tenant: string) => TemplateVariableStore,
     now: () => string,
+    layoutFor: (tenant: string, pageId: string) => Promise<PageLayoutData | undefined>,
+    detailColumnsFor: (tenant: string) => Promise<DetailBindingColumns>,
 ): void {
     // GET /api/variables/  → product returns a bare array.
     app.get('/api/variables/', async (c) => {
@@ -48,8 +56,19 @@ export function registerVariablesRoutes(
 
     // GET /api/variables/registry/  (registered before the :param route).
     app.get('/api/variables/registry/', async (c) => {
-        await storeFor(c.get('tenant')).list();
-        return c.json(REGISTRY);
+        const tenant = c.get('tenant');
+        await storeFor(tenant).list();
+        const pageId = c.req.query('page_id');
+        const layout = pageId && pageId.length <= 160 ? await layoutFor(tenant, pageId) : undefined;
+        if (!layout) return c.json(REGISTRY);
+        const counts = listCounts(layout.content).map(list => ({
+            path: 'lists.' + list.alias + '.count', type: 'number', source: 'lists', description: list.label,
+        }));
+        const roles = new Set([...inlineTemplateScopes(layout.content).values()].map(scope=>scope.detailRole));
+        const selected=consoleDataAdministrator(c.get('principal')) ? detailBindingRoles.filter(role=>roles.has(role)) : [];
+        const columns=selected.length ? await detailColumnsFor(tenant) : {};
+        const detailColumns=Object.fromEntries(selected.filter(role=>columns[role]!==undefined).map(role=>[role,columns[role]]));
+        return c.json({ ...REGISTRY, variables: [...REGISTRY.variables, ...counts], ...(selected.length ? {detailColumns} : {}) });
     });
 
     // GET /api/variables/{variable_id}  (no trailing slash in the product path)

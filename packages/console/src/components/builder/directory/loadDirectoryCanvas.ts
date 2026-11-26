@@ -35,11 +35,21 @@ export async function loadDirectoryCanvas(layout: PageLayoutLike, saved: SiteCon
             }
             params = role === 'institution' ? { ...baseParams, institutionId: relatedId } : { id: relatedId };
         }
-        const response = await fetch('/api/project/site-configuration/preview/', { method: 'POST', credentials: 'include', signal,
-            headers: { 'content-type': 'application/json' }, body: JSON.stringify({ source:redesignedDetail?'connected':'published',expectedCapture:captureHash,expectedRevision: saved.revision, role:queryRole, mode, params }) });
-        if (!response.ok) throw new Error('Directory preview unavailable; reload shared settings and check the query.');
-        const result = await response.json();
-        if (result.revision !== saved.revision || result.queryId !== binding.queryId || !Array.isArray(result.rows)) throw new Error('Directory preview revision mismatch');
+        async function read(queryMode:string,queryParams:Record<string,unknown>) {
+            const response = await fetch('/api/project/site-configuration/preview/', { method: 'POST', credentials: 'include', signal,
+                headers: { 'content-type': 'application/json' }, body: JSON.stringify({ source:redesignedDetail?'connected':'published',expectedCapture:captureHash,expectedRevision: saved.revision, role:queryRole, mode:queryMode, params:queryParams }) });
+            if (!response.ok) throw new Error('Directory preview unavailable; reload shared settings and check the query.');
+            const result = await response.json();
+            if (result.revision !== saved.revision || result.queryId !== `directory.${queryRole}.${queryMode}` || !Array.isArray(result.rows)) throw new Error('Directory preview revision mismatch');
+            return result;
+        }
+        let result;
+        if (redesignedDetail && queryRole === role && mode === 'detail' && 'path' in params && params.path === '/preview-record/') {
+            const sample = (await read('list',{limit:1})).rows[0];
+            result = typeof sample?.id === 'string' || typeof sample?.id === 'number' ? await read('detail',{id:sample.id}) : {rows:[]};
+        } else {
+            result = await read(mode,params);
+        }
         if(result.captureHash){captureHash=result.captureHash;configuration=result.configuration;}
         const pageRole=(layout.root?.siteConfiguration as {role?:string}|undefined)?.role;
         if(pageRole==='directory' && mode==='list' && ['institution','program'].includes(queryRole) && queryRole!==(previewCollection||configuration.browsing.defaultCollection)){inactive.add(id);continue;}

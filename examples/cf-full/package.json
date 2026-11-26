@@ -11,10 +11,11 @@
         "e2e:cloud": "node build.mjs && playwright test -c e2e/cloud.config.ts",
         "e2e:quality": "node build.mjs && playwright test -c e2e/pilot-quality/quality.config.ts",
         "e2e:report": "playwright show-report e2e/report",
-        "smoke": "node build.mjs && node dist/smoke.mjs",
+        "smoke": "node build.mjs && node dist/smoke.mjs && node test/admin-mfa-setup.mjs && node test/admin-mfa-setup.mjs --mail",
         "smoke:cloud": "node build.mjs && node dist/smoke-cloud.mjs",
         "test:publication-browser-mutation": "node build.mjs && node test/publication-browser-mutation.mjs",
         "test:publication-browser": "node build.mjs && node .publication-e2e/browser.mjs",
+        "test:shared-layout-browser": "node build.mjs && node test/shared-layout-browser.mjs",
         "smoke:host": "node build.mjs && node dist/smoke-host.mjs",
         "start:node": "node dist/node.mjs",
         "test": "node test/console-pin.mjs",
@@ -39,7 +40,14 @@
         "hono": "^4.12.28"
     },
     "devDependencies": {
-        "@playwright/test": "^1.62.0"
+        "@playwright/test": "^1.62.0",
+        "@tiptap/core": "3.31.3",
+        "@tiptap/extension-bold": "3.31.3",
+        "@tiptap/extension-document": "3.31.3",
+        "@tiptap/extension-italic": "3.31.3",
+        "@tiptap/extension-paragraph": "3.31.3",
+        "@tiptap/extension-text": "3.31.3",
+        "@tiptap/pm": "3.31.3"
     },
     "engines": {
         "node": "22.x"
