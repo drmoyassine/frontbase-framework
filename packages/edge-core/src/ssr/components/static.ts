@@ -11,6 +11,7 @@ import { LUCIDE_ICONS } from '../iconMap.js';
 import { escapeHtml } from './lib/utils.js';
 import { resolvePropsStyles } from './lib/attrs.js';
 import { inlineEmphasis } from '../../layout-draft.js';
+import { renderInlineLabel } from './lib/inline-label.js';
 
 /**
  * Resolve a lucide-react icon name (PascalCase, e.g. "Zap", "CheckCircle2") to a
@@ -144,6 +145,8 @@ function renderEmphasis(text: string, value: unknown): string {
 }
 
 function textWithVariables(text: string, props: Record<string, unknown>): string {
+    const composed = renderInlineLabel(props, value => renderEmphasis(value, props.inlineEmphasis));
+    if (composed !== undefined) return composed;
     const content = renderEmphasis(text, props.inlineEmphasis);
     const before = typeof props.inlineBefore === 'string' && props.inlineBefore && !props.inlineBefore.includes('{{') ? props.inlineBefore : '';
     const after = typeof props.inlineAfter === 'string' && props.inlineAfter && !props.inlineAfter.includes('{{') ? props.inlineAfter : '';

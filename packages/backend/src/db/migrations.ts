@@ -313,6 +313,7 @@ export const MIGRATIONS: Migration[] = [
         'CREATE TABLE IF NOT EXISTS user_admin_mfa (tenant_slug TEXT NOT NULL, user_id TEXT NOT NULL, encrypted_secret TEXT NOT NULL, recovery_hashes TEXT NOT NULL, last_step INTEGER NOT NULL, PRIMARY KEY (tenant_slug,user_id), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)',
         "INSERT INTO settings (tenant_slug,key,value,updated_at) SELECT '_root','administrator_mfa_new_install','true','1970-01-01T00:00:00.000Z' WHERE NOT EXISTS (SELECT 1 FROM users) ON CONFLICT(tenant_slug,key) DO NOTHING",
     ],down:[]},
+    {version:28,name:'datasource_view_binding_columns',up:['ALTER TABLE datasource_views ADD COLUMN binding_columns TEXT'],down:[]},
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

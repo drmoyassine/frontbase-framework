@@ -8,6 +8,12 @@
 export { renderPage } from './ssr/PageRenderer.js';
 export type { PageLayoutData, PageComponent } from './ssr/PageRenderer.js';
 export { applyLayoutDraftOperation, layoutDraftTiles, type LayoutDraftOperation } from './layout-draft.js';
+export { inlineTemplateSchema, inlineTemplateScopes, inlineTemplatePatch, readInlineTemplate, listCounts, listCountAlias, inlineVariableAllowed,
+    detailBindingColumn, detailBindingColumnSchema, detailBindingColumnsSchema, maxDetailBindingColumns, detailBindingRoles, validateDetailBindings,
+    type DetailBindingRole, type DetailBindingColumns,
+    type ListCount, type InlineTemplate } from './inline-template.js';
+export { mountInlineComposer, type InlinePickerRequest } from './inline-composer.js';
+export { moveInsertionIndex, moveLayoutNode } from './layout-move.js';
 export type { TemplateContext, PageData, SystemContext } from './ssr/lib/context.js';
 export { buildTemplateContext, parseCookies } from './ssr/lib/context.js';
 export { configureEngine, engineConfig, type EngineConfig, type Principal } from './config.js';

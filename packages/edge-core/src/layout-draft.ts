@@ -1,6 +1,8 @@
 import type { PageComponent, PageLayoutData } from './ssr/types.js';
 import type { StylesData } from './ssr/components/lib/styles.js';
 import { directoryLiquidField, institutionDetailFields, programDetailFields } from './directory/detail-fields.js';
+import { moveLayoutNode } from './layout-move.js';
+import { inlineTemplateSchema, inlineTemplateScopes, inlineTemplatePatch, inlineQueryId, listCountAlias, readInlineTemplate, detailBindingColumn, type DetailBindingColumns, type DetailBindingRole, type InlineTemplate, type ListCount } from './inline-template.js';
 
 export type LayoutViewport = 'desktop' | 'tablet' | 'mobile';
 export type LayoutStyle =
@@ -13,6 +15,7 @@ export type LayoutDraftOperation =
     | { kind: 'resize'; id: string; viewport: LayoutViewport; width: number }
     | { kind: 'match'; id: string; viewport: LayoutViewport; width: number; offset: number }
     | { kind: 'text'; id: string; value: string }
+    | { kind: 'compose'; id: string; parts: InlineTemplate }
     | { kind: 'variable'; id: string; position: 'before' | 'after'; path: string | null }
     | ({ kind: 'style'; id: string; viewport: LayoutViewport } & LayoutStyle)
     | ({ kind: 'emphasis'; id: string; enabled: boolean } & InlineEmphasis);
@@ -36,17 +39,21 @@ export function inlineEmphasis(value: unknown): InlineEmphasis[] {
         .map(({ phrase, mark, prefix, suffix }) => ({ phrase, mark, ...(prefix ? { prefix } : {}), ...(suffix ? { suffix } : {}) }));
 }
 
-export function layoutDraftTiles(layout: PageLayoutData) {
-    const tiles: { id: string; elementId: string; parentId: string | null; label: string; text: boolean;
+export function layoutDraftTiles(layout: PageLayoutData, detailColumns?: DetailBindingColumns) {
+    const scopes = inlineTemplateScopes(layout.content, detailColumns);
+    const tiles: { id: string; elementId: string; parentId: string | null; siblingIndex: number; label: string; text: boolean;
         widths: Partial<Record<LayoutViewport, number>>; formatting: Partial<Record<LayoutViewport, Record<string, unknown>>>;
-        emphasis: InlineEmphasis[]; editableText?: string; variables?: { before: string; after: string }; recordFields?: readonly string[] }[] = [];
+        emphasis: InlineEmphasis[]; editableText?: string; variables?: { before: string; after: string }; recordFields?: readonly string[];
+        composition?: InlineTemplate; inlineQueries?: ListCount[]; detailRole?: DetailBindingRole }[] = [];
     const walk = (nodes: PageComponent[], parentId: string | null, scope?: 'program' | 'institution') => {
-        for (const node of nodes) {
+        for (const [siblingIndex, node] of nodes.entries()) {
             if (node.versions?.length || ['Repeater', 'DataTable', 'DataGrid'].includes(node.type)) continue;
             const text = textTypes.has(node.type);
+            const composition = readInlineTemplate(node);
             const query = (node.props?.directoryQuery as { queryId?: string } | undefined)?.queryId;
             const directoryScope = query === 'directory.program.detail' ? 'program' : query === 'directory.institution.detail' ? 'institution' : scope;
-            if ((text || tileTypes.has(node.type)) && node.stylesData?.stylingMode !== 'css') {
+            const inlineScope = scopes.get(node.id);
+            if ((text || composition || tileTypes.has(node.type)) && node.stylesData?.stylingMode !== 'css') {
                 const percent = (value: unknown) => /^\d+(\.\d+)?%$/.test(String(value)) ? Number(String(value).slice(0, -1)) : undefined;
                 const overrides = node.stylesData?.viewportOverrides ?? node.styles?.viewportOverrides;
                 const heading = node.children?.find(child => child.type === 'Heading')?.props;
@@ -54,14 +61,17 @@ export function layoutDraftTiles(layout: PageLayoutData) {
                     ['horizontalAlign', 'textAlign', 'fontWeight', 'fontStyle', 'marginLeft', 'marginInlineStart', 'boxSizing'].filter(key => styles?.[key] !== undefined)
                         .map(key => [key, styles![key]]));
                 tiles.push({
-                    id: node.id, elementId: String(node.props?.anchor || node.id), parentId, text,
+                    id: node.id, elementId: String(node.props?.anchor || node.id), parentId, siblingIndex, text,
                     label: String(node.props?._layerName || heading?.text || heading?.content || node.props?.anchor || node.type).slice(0, 80),
                     formatting: { desktop: formatting({ ...node.styles, ...node.stylesData?.values }),
                         tablet: formatting(overrides?.tablet), mobile: formatting(overrides?.mobile) },
                     emphasis: text ? inlineEmphasis(node.props?.inlineEmphasis) : [],
+                    ...(composition && { composition, inlineQueries: inlineScope?.queries, detailRole: inlineScope?.detailRole }),
                     ...(text ? { variables: { before: String(node.props?.inlineBefore ?? ''), after: String(node.props?.inlineAfter ?? '') },
-                        ...(directoryScope ? {recordFields:['title','summary','body',...((node.props?.recordBindings as { relatedQuery?: string } | undefined)?.relatedQuery || directoryScope==='institution' ? institutionDetailFields : programDetailFields)]} : {}),
-                        editableText: literalText(node) } : {}),
+                        ...(directoryScope ? {recordFields:inlineScope?.detailRole && detailColumns?.[inlineScope.detailRole] !== undefined
+                            ? inlineScope.fields
+                            : ['title','summary','body',...((node.props?.recordBindings as { relatedQuery?: string } | undefined)?.relatedQuery || directoryScope==='institution' ? institutionDetailFields : programDetailFields)]} : {}),
+                        editableText: node.props?.inlineTemplate === undefined ? literalText(node) : undefined } : { recordFields: scopes.get(node.id)?.fields }),
                     widths: {
                         desktop: percent(node.stylesData?.values?.maxWidth ?? node.styles?.maxWidth),
                         tablet: percent(overrides?.tablet?.maxWidth),
@@ -77,13 +87,16 @@ export function layoutDraftTiles(layout: PageLayoutData) {
 }
 
 /** Change layout and presentation without altering component identities or live bindings. */
-export function applyLayoutDraftOperation<T extends PageLayoutData>(layout: T, operation: LayoutDraftOperation): T | null {
+export function applyLayoutDraftOperation<T extends PageLayoutData>(layout: T, operation: LayoutDraftOperation, detailColumns?: DetailBindingColumns): T | null {
     const tiles = layoutDraftTiles(layout);
     const tile = tiles.find(candidate => candidate.id === operation.id);
     if (!tile) return null;
     if (operation.kind === 'move') {
         const sibling = tiles.find(candidate => candidate.id === operation.siblingId);
         if (!sibling || sibling.parentId !== tile.parentId || sibling.id === tile.id) return null;
+        const content = moveLayoutNode(layout.content, tile.id, tile.parentId ?? undefined,
+            sibling.siblingIndex + (operation.placement === 'after' ? 1 : 0));
+        return content === null ? null : content === layout.content ? layout : { ...layout, content };
     } else if (operation.kind === 'resize') {
         if (tile.text || !Number.isFinite(operation.width) || operation.width < 1 || operation.width > 100) return null;
     } else if (operation.kind === 'match') {
@@ -91,6 +104,16 @@ export function applyLayoutDraftOperation<T extends PageLayoutData>(layout: T, o
             operation.width < 1 || operation.offset < 0 || operation.width + operation.offset > 100.001) return null;
     } else if (operation.kind === 'text') {
         if (tile.editableText === undefined || operation.value.length > 12000 || /\{[{%]/.test(operation.value)) return null;
+    } else if (operation.kind === 'compose') {
+        if (!tile.composition || !inlineTemplateSchema.safeParse(operation.parts).success) return null;
+        for (const part of operation.parts) if ('variable' in part) {
+            const query = inlineQueryId(part.variable);
+            const alias = listCountAlias(part.variable);
+            if (query && !tile.inlineQueries?.some(candidate => candidate.id === query)
+                || alias && !tile.inlineQueries?.some(candidate => candidate.alias === alias)
+                || part.variable.startsWith('record.') && !tile.recordFields?.includes(part.variable.slice(7)) &&
+                    !(tile.detailRole && detailColumns?.[tile.detailRole]?.includes(detailBindingColumn(part.variable) ?? ''))) return null;
+        }
     } else if (operation.kind === 'variable') {
         const field = directoryLiquidField(`{{ ${operation.path} }}`);
         if (!tile.text || operation.path !== null && !/^(page|system)\.[a-zA-Z_][\w.]{0,100}$/.test(operation.path) &&
@@ -104,15 +127,13 @@ export function applyLayoutDraftOperation<T extends PageLayoutData>(layout: T, o
         if (index < 0) return nodes.map(node => node.children ? { ...node, children: change(node.children) } : node);
         const result = nodes.slice();
         const node = result[index]!;
-        if (operation.kind === 'move') {
-            result.splice(index, 1);
-            const target = result.findIndex(sibling => sibling.id === operation.siblingId);
-            result.splice(target + (operation.placement === 'after' ? 1 : 0), 0, node);
-        } else if (operation.kind === 'text') {
+        if (operation.kind === 'text') {
             const props = { ...node.props };
             const key = textKey(props);
             props[key] = operation.value;
             result[index] = { ...node, props };
+        } else if (operation.kind === 'compose') {
+            result[index] = { ...node, props: { ...node.props, ...inlineTemplatePatch(node, operation.parts) } };
         } else if (operation.kind === 'variable') {
             const props = { ...node.props };
             const key = operation.position === 'before' ? 'inlineBefore' : 'inlineAfter';

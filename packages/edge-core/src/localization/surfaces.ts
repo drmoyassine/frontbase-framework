@@ -18,7 +18,7 @@ export const listComponentLabels={previous:'Previous',next:'Next',pagination:'Pa
 export interface DisplayRecord { connectionId:string; collection:string; key:{column:string; value:string|number|boolean}[] }
 /** `versionId` marks a field that belongs to one alternative Block Version; absent means the Default (inherited) unit.
  *  `fieldKey` names the source record column a projected list row renders — identity uses it while application keeps the display path. */
-export interface DisplayField { blockId:string; path:string[]; text:string; label:string; record?:DisplayRecord; versionId?:string; fieldKey?:string; sourceOnly?:true; sourceValue?:string; sourceFormat?:'number' }
+export interface DisplayField { blockId:string; path:string[]; identityPath?:string[]; text:string; label:string; record?:DisplayRecord; versionId?:string; fieldKey?:string; sourceOnly?:true; sourceValue?:string; sourceFormat?:'number' }
 const textTypes = new Set(['Text','Heading','Paragraph','Link','Button','Badge']);
 const plainId=(value:unknown):string|undefined=>typeof value==='string'&&value.trim()&&value.length<=160&&!/[\u0000-\u001f]/.test(value)?value:undefined;
 /** Stable record identity for a projected list row: the binding's source plus the row's `id` key. Rows without both stay positional. */
@@ -56,7 +56,7 @@ function stampedRecord(p:Record<string,unknown>):{record:DisplayRecord;columns:M
         // Composed link labels stamp the composite column `ariaLabel:<textCol>`; it is a record unit
         // keyed to the composed string, admitted only over a real stampable text column.
         if(key==='ariaLabel'&&name.startsWith('ariaLabel:')&&stampableColumns.has(name.slice('ariaLabel:'.length)))columns.set(key,name);
-        else if(stampableColumns.has(name)&&stampableKeys.has(key) || key==='text'&&p.translationLiteral===name&&isSourceDetailField(name)
+        else if(stampableColumns.has(name)&&stampableKeys.has(key) || (stampableColumns.has(name)||isSourceDetailField(name))&&/^inlineValues\.(?:[0-9]|[12][0-9]|3[01])$/.test(key) || key==='text'&&p.translationLiteral===name&&isSourceDetailField(name)
             || name==='title'&&(key==='inlineBefore'||key==='inlineAfter'))columns.set(key,name);}
     if(!columns.size)return undefined;
     return {record:{connectionId,collection,key:[{column:'id',value}]},columns,
@@ -228,7 +228,7 @@ export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfaceP
     // Per-node display surfaces, shared by the Default tree and every alternative's effective shape.
     const extractNode=(node:PageComponent,versionId:string|undefined,collected:DisplayField[]=[]):DisplayField[]=>{
         const p=node.props??{},stamped=stampedRecord(p),program=displayProgram(plan,node,versionId);
-        const emit=(path:string[],value:unknown,label:string,record?:DisplayRecord,fieldKey?:string,sourceOnly=false,sourceValue?:string,sourceFormat?:'number')=>{
+        const emit=(path:string[],value:unknown,label:string,record?:DisplayRecord,fieldKey?:string,sourceOnly=false,sourceValue?:string,sourceFormat?:'number',identityPath?:string[])=>{
             if(sourceOnly&&(!options.includeSourceRecordScalars||!record))return;
             if(typeof value==='string'&&value.length>12000)throw Error('locale_text_limit');
             if(typeof value!=='string'||!value.trim()||/\{\{|@\{/.test(value)||/^(?:https?:|mailto:|tel:|\/)/.test(value))return;
@@ -237,13 +237,25 @@ export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfaceP
             // Authored chrome keeps the looser engine-ref check below.
             if(record&&/[{}<>]|@\{/.test(value))return;
             const field:DisplayField={blockId:node.id,path,text:value,label};
+            if(identityPath)field.identityPath=identityPath;
             if(versionId)field.versionId=versionId;
             if(record)field.record=record;
             if(fieldKey)field.fieldKey=fieldKey;
             if(sourceOnly){field.sourceOnly=true;field.sourceValue=sourceValue??value;if(sourceFormat)field.sourceFormat=sourceFormat;}
             collected.push(field);};
         const nested=(value:any,path:string[],keys:Set<string>)=>{if(Array.isArray(value)){value.forEach((v,i)=>nested(v,[...path,String(i)],keys));return;}if(value&&typeof value==='object'){for(const [k,v]of Object.entries(value)){if(keys.has(k))emit([...path,k],v,k);else if(v&&typeof v==='object')nested(v,[...path,k],keys);}}};
-        if(program.text){
+        if(program.text&&Array.isArray(p.inlineTemplate)){
+            const values=Array.isArray(p.inlineValues)?p.inlineValues:[];
+            for(let index=0;index<p.inlineTemplate.length;index++){
+                const part=p.inlineTemplate[index], key=String(index), column=stamped?.columns.get('inlineValues.'+key);
+                if(stamped&&column){
+                    const scalar=(p.inlineScalars as Record<number,{value?:string;format?:'number'}>|undefined)?.[index];
+                    emit([...base,'inlineValues',key],values[index],`Record ${stamped.record.collection} / ${column}`,stamped.record,column,isSourceDetailField(column),scalar?.value,scalar?.format);
+                }
+                else if(part&&'text' in part)emit([...base,'inlineTemplate',key,'text'],part.text,node.type,undefined,undefined,false,undefined,undefined,
+                    part.translationSlot&&part.translationSlot!==key?[...base,'inlineTemplate',part.translationSlot,'text']:undefined);
+            }
+        }else if(program.text){
             if(options.includeInlineRecordTitles&&stamped)for(const slot of ['inlineBefore','inlineAfter']){
                 if(stamped.columns.get(slot)==='title')emit([...base,slot],p[slot],'Record title',stamped.record,'title');
             }

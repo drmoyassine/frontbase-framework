@@ -11,7 +11,7 @@ function displayResource(field:LiveDisplayField,pageId:string):MessageUnit['reso
         ?{kind:'component' as const,documentId:'app-menus',blockId:field.menu.menuId,versionId:'default',propertyPath:field.menu.path}
         :field.record
         ?{kind:'record' as const,connectionId:field.record.connectionId,collection:field.record.collection,key:field.record.key,propertyPath:[field.fieldKey??field.path.at(-1)??'']}
-        :{kind:'component' as const,documentId:pageId,blockId:field.blockId,versionId:field.versionId??'default',propertyPath:field.path};
+        :{kind:'component' as const,documentId:pageId,blockId:field.blockId,versionId:field.versionId??'default',propertyPath:field.identityPath??field.path};
 }
 export function displayTranslationUnit(field:LiveDisplayField,scope:LocalizationScope,pageId:string,sourceLocale:string):MessageUnit{
     return {version:1,scope,resource:displayResource(field,pageId),sourceLocale,format:'plain',text:field.text,segmenterVersion:1,placeholders:[]};

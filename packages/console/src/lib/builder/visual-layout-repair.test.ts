@@ -60,6 +60,25 @@ it('measures horizontal RTL flow and retains every rendered repeated target',()=
  expect(rects.find(r=>r.id==='r')).toMatchObject({flow:'horizontal',reverse:true});expect(rects.filter(r=>r.id==='t')).toHaveLength(2);
 });
 
+it('reorders a selected Block Version without touching Default or another version',()=>{
+ const card=node('card','Card',[node('default')]);
+ card.versions=[
+  {id:'alternate',name:'Alternate',overrides:{children:[node('a'),node('b')]}},
+  {id:'other',name:'Other',overrides:{children:[node('x')]}},
+ ];
+ seed([card]);useBuilderStore.setState({editingVersions:{card:'alternate'}});
+ const state=useBuilderStore.getState();
+ state.moveComponent('p','a',card.versions[0].overrides.children[0],1,'card');
+ expect(tree()[0]).toBe(card);
+ expect(useBuilderStore.getState().hasUnsavedChanges).toBe(state.hasUnsavedChanges);
+ state.moveComponent('p','a',card.versions[0].overrides.children[0],2,'card');
+ expect(tree()[0].children).toBe(card.children);
+ expect(tree()[0].versions![1]).toBe(card.versions[1]);
+ expect(tree()[0].versions![0].overrides.children!.map(n=>n.id)).toEqual(['b','a']);
+ expect(useBuilderStore.getState().layoutUndo).toHaveLength(1);
+ state.undoLayout();expect(tree()).toEqual([card]);
+});
+
 
 it('property fields follow canonical content or legacy text without a second shadow value',()=>{
  expect(canonicalTextFields([{name:'text',label:'Heading'}],'Heading',{content:'Canonical',text:'Old'})[0].name).toBe('content');

@@ -9,7 +9,7 @@ import { DirectoryQueryPreview } from './DirectoryQueryPreview';
 import { addDirectoryTemplate } from './addDirectoryTemplate';
 import { addDirectoryBrowsing, hasDirectoryBrowsing } from './addDirectoryBrowsing';
 import { TemplateSettingsEditor } from './TemplateSettingsEditor';
-import { upgradeBookingDetail } from '@frontbase/edge-core/directory/starter';
+import { upgradeBookingCourseCards, upgradeBookingDetail } from '@frontbase/edge-core/directory/starter';
 
 export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenChange }: { page: Page; onChange: (layout: NonNullable<Page['layoutData']>) => void; onEditorialOpenChange?: (open:boolean)=>void }) {
     const [editorialOpen,setEditorialOpen]=useState(false);
@@ -34,8 +34,12 @@ export function SharedPageConfigurationPanel({ page, onChange, onEditorialOpenCh
     const landing=page.layoutData?readLandingSettings(page.layoutData):undefined;
     const redesignedDetail = React.useMemo(() => page.layoutData
         ? upgradeBookingDetail(page.layoutData) as Page['layoutData'] : undefined, [page.layoutData]);
-    if(landing)return <div className="space-y-4"><p>Save the page draft, then review and publish its layout. Connected records remain live.</p><TemplateSettingsEditor showPalette={!page.layoutData?.root.bookingForX} scope={page.layoutData?.root.elementSettingsVersion===1?'appearance':'all'} value={landing} onChange={settings=>{if(page.layoutData)onChange({...page.layoutData,root:{...page.layoutData.root,directoryLanding:{version:1,settings}}});}}/></div>;
+    const refreshedCards = React.useMemo(() => page.layoutData
+        ? upgradeBookingCourseCards(page.layoutData) as Page['layoutData'] : undefined, [page.layoutData]);
+    const courseUpgrade = refreshedCards && <Button variant="outline" disabled={editorialOpen} onClick={() => onChange(refreshedCards)}>Use updated course cards</Button>;
+    if(landing)return <div className="space-y-4">{courseUpgrade}<p>Save the page draft, then review and publish its layout. Connected records remain live.</p><TemplateSettingsEditor showPalette={!page.layoutData?.root.bookingForX} scope={page.layoutData?.root.elementSettingsVersion===1?'appearance':'all'} value={landing} onChange={settings=>{if(page.layoutData)onChange({...page.layoutData,root:{...page.layoutData.root,directoryLanding:{version:1,settings}}});}}/></div>;
     return <div className="space-y-3">
+        {courseUpgrade}
 
         {redesignedDetail && <div className="space-y-2">
             <Button variant="outline" disabled={editorialOpen} onClick={() => onChange(redesignedDetail)}>Use updated Booking for X detail layout</Button>

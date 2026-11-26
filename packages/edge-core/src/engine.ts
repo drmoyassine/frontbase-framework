@@ -80,7 +80,7 @@ export function enforceScope(q: RegisteredQuery, principal: Principal): { status
     }
 }
 
-type ResolvedPageOptions = Pick<EngineOptions, 'manifest' | 'environment' | 'document' | 'swBundle' | 'observeComponent' | 'interpolations'>;
+type ResolvedPageOptions = Pick<EngineOptions, 'manifest' | 'environment' | 'document' | 'swBundle' | 'observeComponent' | 'interpolations'> & { lists?: TemplateContext['lists'] };
 
 /** Deterministic template context — timestamps come from the manifest, never Date.now(). */
 function buildContext(page: PageEntry, path: string, records: Record<string, unknown>[], opts: ResolvedPageOptions, user:Record<string,unknown>|null=null): TemplateContext {
@@ -132,6 +132,7 @@ export async function renderResolvedPageDocument(
     const path = url.pathname;
     const { environment } = opts;
     const renderContext = buildContext(page, path, records, opts, user);
+    if (opts.lists) renderContext.lists = opts.lists;
     renderContext.url = Object.fromEntries(url.searchParams);
     const hasVersions=(nodes:typeof page.layout.content):boolean=>nodes.some(node=>!!node.versions?.length||hasVersions(node.children??[]));
     const publicPage = hasVersions(page.layout.content) ? { ...page, layout: { ...page.layout, content: publicBlockTree(page.layout.content, contextReader(renderContext as unknown as Record<string, unknown>)) } } : page;

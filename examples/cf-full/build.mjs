@@ -379,6 +379,9 @@ const tiptapLicense = readFileSync(join(here, 'node_modules/@tiptap/core/LICENSE
 const tiptapThirdPartyNotices = readFileSync(join(here, 'node_modules/@tiptap/pm/THIRD_PARTY_LICENSES.md'), 'utf8').trim();
 await esbuild.build({ ...shared, platform: 'browser', format: 'esm', minify: true,
     banner: { js: `/*! Tiptap\n${tiptapLicense}\n\n${tiptapThirdPartyNotices}\n*/` },
+    jsx: 'automatic', alias: {'@': join(here, '../../packages/console/src')},
+    define: {'process.env.NODE_ENV': JSON.stringify('production'),
+        __FRONTBASE_PICKER_STYLESHEET__: JSON.stringify(readFileSync(STAGED_SHELL, 'utf8').match(/href="(\/frontbase-admin\/assets\/[^"\s]+\.css)"/)?.[1] ?? '')},
     entryPoints: [join(here, 'src', 'frontend-rich-text.ts')],
     outfile: join(here, 'console-dist', 'react', 'frontend-rich-text.js'),
 });

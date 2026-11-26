@@ -176,7 +176,6 @@ export function findNodeLocation(
             const inner = findNodeLocation(node.children, id, node.id);
             if (inner) return inner;
         }
-        for(const version of node.versions??[]){if(version.overrides.children){const inner=findNodeLocation(version.overrides.children as ComponentData[],id,node.id);if(inner)return inner;}}
     }
     return null;
 }

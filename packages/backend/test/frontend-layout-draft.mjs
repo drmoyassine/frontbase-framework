@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { applyLayoutDraftOperation, renderPage } from '@frontbase/edge-core';
+import { homepageDisplayFields, translationUnitId } from '@frontbase/edge-core/localization';
 import { emptyDirectoryConfiguration } from '@frontbase/edge-core/directory/configuration';
 import { sqliteRunner } from '@frontbase/edge-infra';
 import { createCompatApp } from '../dist/compat/app.js';
 import { FRONTEND_EDITOR_SCRIPT } from '../dist/compat/frontend-editor.js';
 import { LiveLayoutPublicationStore } from '../dist/compat/live-layout-publication.js';
+import { displayTranslationUnit } from '../dist/compat/live-translation-identities.js';
 import { renderLiveLayoutPublication } from '../dist/compat/live-layout-serving.js';
 import { PagesStore } from '../dist/compat/pages-store.js';
 import { SyncStore } from '../dist/compat/sync-store.js';
@@ -16,6 +18,15 @@ import { migrateUp } from '../dist/db/migrations.js';
 const db = sqliteRunner(':memory:');
 const now = '2026-11-22T00:00:00Z';
 const owner = 'layout-owner';
+const literalLayout = inlineTemplate => ({root:{},content:[{id:'label',type:'Heading',props:{inlineTemplate}}]});
+const literal = {text:'Explore universities'};
+const bindingPart = {variable:'record.title'};
+const [oldLiteral] = homepageDisplayFields(literalLayout([literal,bindingPart]));
+const [movedLiteral] = homepageDisplayFields(literalLayout([bindingPart,{...literal,translationSlot:'0',emphasis:[{mark:'bold',start:0,text:'Explore'}]}]));
+assert.notDeepEqual(movedLiteral.path,oldLiteral.path);
+const unitScope={tenantId:owner,projectId:owner};
+const unitFor=field=>translationUnitId(unitScope,displayTranslationUnit(field,unitScope,'fixture','en').resource);
+assert.equal(await unitFor(movedLiteral),await unitFor(oldLiteral),'moving a binding preserves the unchanged literal translation identity');
 const secret = 'isolated-shared-draft';
 let role = 'owner';
 let tenant = owner;
@@ -90,6 +101,12 @@ try {
     assert.notEqual((await app.request(draftUrl + '?path=/layout/')).status, 200);
     tenant = owner;
     const move = (id, siblingId) => ({ kind: 'move', id, siblingId, placement: 'before' });
+    const unchanged = await write(draftUrl, { path:path('en'),pageId:page.id,revision:first.revision,
+        operations:[move('about','address')],checkpoint:true });
+    assert.equal(unchanged.status,200);
+    const noOp = await unchanged.json();
+    assert.equal(noOp.revision,first.revision);
+    assert.equal(noOp.restoreVersionId,undefined,'same-position drops create no checkpoint');
     assert.equal((await write(draftUrl, { path: path('en'), pageId: page.id, revision: first.revision, operations: [move('about', 'tiles')] })).status, 422);
     assert.equal((await write(draftUrl, { path: path('en'), pageId: page.id, revision: first.revision, operations: [move('about-text', 'address-text')] })).status, 422);
     assert.equal((await write(draftUrl, { path: path('en'), pageId: page.id, revision: first.revision, operations: [move('address', 'about')] }, { Origin: 'https://elsewhere.invalid' })).status, 403);
@@ -109,7 +126,7 @@ try {
         window.fetch = (url, init = {}) => app.request(new URL(url, window.location.href).href, { ...init, headers: { ...init.headers, Origin: 'http://localhost' } });
         const document = window.document;
         assert.equal(document.documentElement.dir, locale === 'ar' ? 'rtl' : 'ltr');
-        const button = label => [...document.querySelectorAll('[data-frontbase-editor] button')].find(node => node.textContent === label);
+        const button = label => [...document.querySelectorAll(':is([data-frontbase-editor],[data-fb-element-menu]) button')].find(node => node.textContent === label);
         const click = label => { assert.ok(button(label), label); button(label).click(); };
         await window.eval(FRONTEND_EDITOR_SCRIPT);
         const pencil = document.querySelector('[data-pencil]');
@@ -123,10 +140,12 @@ try {
             picker.value = id;
             picker.dispatchEvent(new window.Event('change'));
         };
-        return {dom,document,click,select};
+        const openElement = () => document.querySelector('[data-fb-element-actions]').click();
+        return {dom,document,click,select,openElement};
     }
     const en = await openEditor('en', 'desktop');
     en.select('address');
+    await en.openElement();
     en.click('Move earlier');
     en.click('Narrower');
     en.click('Save layout draft');
@@ -155,6 +174,7 @@ try {
     }
     const ar = await openEditor('ar', 'mobile');
     ar.select('about');
+    await ar.openElement();
     ar.click('تضييق');
     ar.click('حفظ مسودة التخطيط');
     await waitFor(() => ar.document.body.textContent.includes('تم حفظ المسودة'));

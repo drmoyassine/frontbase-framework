@@ -63,6 +63,7 @@ export interface TemplateContext {
     session: Record<string, unknown>;
     record?: Record<string, unknown>;
     records?: Record<string, unknown>[];
+    lists?: Record<string, { count: number }>;
     app: Record<string, unknown>;
 }
 

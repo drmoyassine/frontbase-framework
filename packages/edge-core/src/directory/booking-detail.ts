@@ -2,6 +2,7 @@ import { serializeCondition } from '../conditions.js';
 import type { PageComponent, PageLayoutData } from '../ssr/types.js';
 import { directoryQueryBindingSchema } from './bindings.js';
 import { detailFieldLabels, type DetailTextField } from './detail-fields.js';
+import { createBookingCourseCard } from './booking-course-card.js';
 
 type DetailRole = 'institution' | 'program';
 const previewPath = '/preview-record/';
@@ -118,13 +119,10 @@ function bookingDetail(role: DetailRole, sourcePath = previewPath, prior?: PageC
     if (prior) detail.props = { ...prior.props, ...detail.props };
 
     const related = isInstitution
-        ? node('related', 'Repeater', { _layerName: 'Programs at this institution', directoryQuery: {
+        ? node('related', 'Repeater', { _layerName: 'Programs at this institution', listAlias: 'programs', directoryQuery: {
             version: 1, queryId: 'directory.program.list', params: { limit: 12 },
         }, hideWhenNoRecords: true, layout: 'grid', columns: 3 }, { minWidth: '0' }, [
-            node('program-card', 'Container', {}, panel, [
-                node('program-link', 'Link', { text: 'Program', href: '', recordBindings: { text: 'title', href: 'originalPath' } }, { ...labelStyle, fontWeight: '700' }),
-                node('program-summary', 'Paragraph', { text: '', recordBindings: { text: 'summary' } }, { margin: '0', lineHeight: '1.6', overflowWrap: 'anywhere', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: '3', overflow: 'hidden' }),
-            ]),
+            createBookingCourseCard(prefix + 'program-card'),
         ])
         : query('related', 'institution', []);
     if (!isInstitution) {

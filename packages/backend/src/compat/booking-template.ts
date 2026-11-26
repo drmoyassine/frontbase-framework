@@ -2,7 +2,7 @@ import {createMenuDefinition,publicMenuAudience,menuDocumentSchema} from '@front
 import {publicationHash} from './publication-hash.js';
 import type {PageLayoutData,PageComponent} from '@frontbase/edge-core';
 import {createEducationLanding,createVersionedExploreDraft,defaultTemplateSettings,directoryLayoutQueries,directoryQueryBindingSchema,emptyDirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
-import {addDirectoryTemplate,createBookingDetail} from '@frontbase/edge-core/directory/starter';
+import {addDirectoryTemplate,createBookingCourseCard,createBookingDetail} from '@frontbase/edge-core/directory/starter';
 
 export const bookingTemplate = {id:'booking-for-x',version:1,name:'Booking for X',description:'An editable directory with listing, institution, program and article layouts. Configure it for your education site.',roles:['home','directory','article-index','institution','program','article']} as const;
 export async function templateId(owner:string,role:string){const hash=await digest('booking-for-x:v1:'+owner+':'+role);return `${hash.slice(0,8)}-${hash.slice(8,12)}-5${hash.slice(13,16)}-a${hash.slice(17,20)}-${hash.slice(20,32)}`;}
@@ -38,7 +38,23 @@ export async function bookingPages(owner:string){
   const containsFooter=(n:PageComponent):boolean=>n.props?.href==='/privacy-policy/'||(n.children??[]).some(containsFooter);
   let sequence=0;const walk=(nodes:PageComponent[]):PageComponent[]=>nodes.filter(n=>n.props?.templateStyle!=='header'&&!(n.props?.templateStyle==='soft'&&containsFooter(n))).filter(n=>!['/privacy-policy/','/terms-of-service/','/cookie-policy/'].includes(String(n.props?.href))).map(n=>({...n,id:`bfx-${role}-${++sequence}`,...(n.children?{children:walk(n.children)}:{})}));
   layout={...layout,root:{...layout.root,bookingForX:{version:1,role},appMenus:{schemaVersion:1,hash:menuHash,pageId:await templateId(owner,role)},containerStyles:{backgroundColor:'#f8fafc',color:'#0f172a'}},content:role==='institution'||role==='program'?layout.content:walk(layout.content)};
-  if(role==='directory')layout=createVersionedExploreDraft(layout,emptyDirectoryConfiguration().browsing);
+  if(role==='directory'){
+   layout=createVersionedExploreDraft(layout,emptyDirectoryConfiguration().browsing);
+   for(const node of layout.content)for(const version of node.versions??[]){
+    if(version.id==='programs'&&version.overrides.children?.[0]) {
+     version.overrides.children=[createBookingCourseCard(version.overrides.children[0].id,true)];
+    }
+   }
+  }
+  if(role==='home'){
+   const refreshProgramCards=(nodes:PageComponent[])=>{
+    for(const node of nodes){
+     if(node.props?.templateList==='program'&&node.children?.[0])node.children=[createBookingCourseCard(node.children[0].id)];
+     else if(node.children)refreshProgramCards(node.children);
+    }
+   };
+   refreshProgramCards(layout.content);
+  }
   directoryLayoutQueries(layout);
   pages.push({id:await templateId(owner,role),role,name,slug,layout});
  }

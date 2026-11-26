@@ -7,7 +7,7 @@ import {sqliteRunner} from '@frontbase/edge-infra';
 import {createVersionedExploreDraft,emptyDirectoryConfiguration} from '@frontbase/edge-core/directory/configuration';
 import {homepageDisplayFields} from '@frontbase/edge-core/localization';
 import {createLiveDirectoryQueries,createDirectoryQueries} from '@frontbase/compiler/queries/directory';
-import {createEngine,directProvider} from '@frontbase/edge-core';
+import {createEngine,directProvider,applyLayoutDraftOperation,layoutDraftTiles,validateDetailBindings} from '@frontbase/edge-core';
 import {LiveLayoutPublicationStore,liveLayoutPublicationSchema} from '../dist/compat/live-layout-publication.js';
 import {resolveLiveLayoutPage} from '../dist/compat/live-layout-runtime.js';
 import {renderLiveLayoutPublication,resolveLiveLayoutSurface} from '../dist/compat/live-layout-serving.js';
@@ -118,6 +118,8 @@ const versionedHash=await store.prepare({...plan,configuration:scopedConfigurati
 const versionedRelease=await store.open(versionedHash);
 const viewReads=[];
 const exploreQueries=[];
+let bindingColumns=null;
+let programBindingColumns=null;
 await db.exec('UPDATE settings SET value = ? WHERE tenant_slug = ? AND key = ?',[
  JSON.stringify({revision:1,projectId:'proof-project',configuration:{version:1,datasourceId:'translations',endpoint:'postgrest',namespace:'translations'}}),
  'one','translation_storage:v1',
@@ -126,7 +128,8 @@ const versionedHost={...host,syncFor:owner=>({
  getView:async id=>{
     assert.equal(owner,'one');
     const targets={'usa-institutions':'institutions','usa-programs':'programs'};
-    return {datasource_id:'source',target_table:targets[id],filters:[{field:'id',operator:'neq',value:id==='usa-institutions'?9:-1}]};
+    return {datasource_id:'source',target_table:targets[id],binding_columns:id==='usa-institutions'?bindingColumns:programBindingColumns,
+        filters:[{field:'id',operator:'neq',value:id==='usa-institutions'?9:-1}]};
  },
  getDatasource:async id=>id==='translations'
  ?{id,kind:'supabase',config:{url:'https://translations.example.test',serviceKey:'test-only'}}
@@ -167,6 +170,56 @@ for(const prefix of ['', '/ar']) for(const [path,title] of [['/first/','First ti
  assert.match(await detail.text(),new RegExp(title));
  assert.deepEqual(viewReads,[]);
 }
+await db.exec('ALTER TABLE institutions ADD COLUMN campus_motto TEXT');
+await db.exec('ALTER TABLE institutions ADD COLUMN private_contract TEXT');
+await db.exec('UPDATE institutions SET campus_motto=?,private_contract=? WHERE id=1',['Knowledge & service','never-print-contract']);
+bindingColumns=['campus_motto'];
+await db.exec('ALTER TABLE programs ADD COLUMN campus_motto TEXT');
+await db.exec('UPDATE programs SET campus_motto=? WHERE id=(SELECT MIN(id) FROM programs)',['Program-only sample']);
+programBindingColumns=['campus_motto'];
+const detailColumns={institution:bindingColumns,program:programBindingColumns};
+const customInstitution=structuredClone(templates[1]);
+const customProgram=structuredClone(templates[2]);
+customProgram.layout.content[0].children.push({id:'custom-program-text',type:'Text',props:{text:'Program {{ record.columns.campus_motto }}'}});
+customInstitution.layout.content[0].children.push({id:'custom-text',type:'Text',props:{text:'Campus motto'}});
+assert.deepEqual(layoutDraftTiles(customInstitution.layout,detailColumns).find(tile=>tile.id==='custom-text').recordFields,['columns.campus_motto']);
+assert.deepEqual(layoutDraftTiles(customProgram.layout,detailColumns).find(tile=>tile.id==='custom-program-text').recordFields,['columns.campus_motto']);
+const bindingOperation=variable=>({kind:'compose',id:'custom-text',parts:[{text:'Motto: '},{variable}]});
+assert.equal(applyLayoutDraftOperation(customInstitution.layout,bindingOperation('record.columns.private_contract'),detailColumns),null);
+customInstitution.layout=applyLayoutDraftOperation(customInstitution.layout,bindingOperation('record.columns.campus_motto'),detailColumns);
+assert.ok(customInstitution.layout);
+assert.doesNotThrow(()=>validateDetailBindings(customInstitution.layout,detailColumns));
+assert.throws(()=>validateDetailBindings(customInstitution.layout,{program:programBindingColumns}),/detail_binding_column_refused/);
+assert.throws(()=>validateDetailBindings(customProgram.layout,{institution:bindingColumns}),/detail_binding_column_refused/);
+customInstitution.layout.content[0].children.push({id:'raw-motto',type:'Link',props:{text:'Raw {{ record.columns.campus_motto }}',href:'#custom-text'}});
+// A stored historical draft becoming unavailable must render no value, even
+// when its selected field reappears among other names in the actual table.
+await assert.rejects(()=>store.prepare({...plan,institutionBindingColumns:bindingColumns,configuration:scopedConfiguration,templates:[templates[0],customInstitution,customProgram]},'2026-11-27T00:00:00Z'),/detail_binding_column_refused/);
+const customHash=await store.prepare({...plan,institutionBindingColumns:bindingColumns,programBindingColumns,configuration:scopedConfiguration,templates:[templates[0],customInstitution,customProgram]},'2026-11-27T00:00:00Z');
+const customRelease=await store.open(customHash);
+const customOptions={...versionedOptions,prepared:{pointer:{hash:customHash,generation:2},...customRelease}};
+for(const locale of ['', '/ar']){
+ const rendered=await renderLiveLayoutPublication(db,'one',new Request('https://live.example'+locale+'/first/'),customOptions);
+ assert.equal(rendered.status,200);
+ const markup=await rendered.text();
+ const text=markup.replace(/<[^>]+>/g,'');
+ assert.ok(text.includes('Motto: Knowledge &amp; service'),'structured Liquid label resolves');
+ assert.ok(text.includes('Raw Knowledge &amp; service'),'plain Liquid label resolves');
+ assert.ok(!/never-print-contract|private_contract/.test(markup),'unselected column is absent from the response');
+ assert.ok(!text.includes('record.columns'),'Liquid references do not appear as visible text');
+ assert.ok(!markup.includes('Program-only sample'),'institution page never projects the program value');
+ const program=await renderLiveLayoutPublication(db,'one',new Request('https://live.example'+locale+'/program/'),customOptions);
+ assert.equal(program.status,200);
+ assert.match((await program.text()).replace(/<[^>]+>/g,''),/Program Program-only sample/);
+}
+await db.exec('UPDATE institutions SET campus_motto=? WHERE id=1',['Updated study motto']);
+assert.match(await (await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),customOptions)).text(),/Updated study motto/);
+bindingColumns=[];
+const revoked=await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),customOptions);
+assert.equal(revoked.status,200);
+assert.doesNotMatch(await revoked.text(),/Updated study motto|never-print-contract/);
+bindingColumns=null;
+programBindingColumns=null;
 // Older layouts admitted a raw scalar as locale-specific component copy. Recreate
 // that saved entry without touching the source, then test an actual source edit.
 const scalarCopyId=await publicationHash(['component',templates[2].pageId,'program-raw-price','default',['props','text']]);

@@ -25,7 +25,7 @@ export function copyFieldIdentity(pageId:string,field:DisplayField,layout:PageLa
         if(itemId)return ['menu',field.blockId,itemId,'label'];
         return ['menu',field.blockId,field.path];
     }
-    return ['component',pageId,field.blockId,field.versionId??'default',field.path];
+    return ['component',pageId,field.blockId,field.versionId??'default',field.identityPath??field.path];
 }
 export function copyDisplayLayout(input:PageLayoutData):PageLayoutData{
     const layout=homepageDisplayLayout(input);

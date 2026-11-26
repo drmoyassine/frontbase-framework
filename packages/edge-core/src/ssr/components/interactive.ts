@@ -8,6 +8,7 @@ import {clientVisibilityAttributes} from '../visibility.js';
 
 import { escapeHtml } from './lib/utils.js';
 import { resolvePropsStyles } from './lib/attrs.js';
+import { renderInlineLabel } from './lib/inline-label.js';
 
 /**
  * Helper to build common attributes (id, class, style, data-*)
@@ -86,7 +87,7 @@ export function renderInteractiveComponent(
 // =============================================================================
 
 function renderButton(id: string, props: Record<string, unknown>, propsJson: string): string {
-    const label = escapeHtml(String(props.label || props.text || props.children || 'Button'));
+    const label = renderInlineLabel(props) ?? escapeHtml(String(props.label || props.text || props.children || 'Button'));
     const variant = props.variant as string || 'default';
     const size = props.size as string || 'md';
     const disabled = props.disabled as boolean || false;
@@ -207,7 +208,7 @@ function renderButton(id: string, props: Record<string, unknown>, propsJson: str
 }
 
 function renderLink(id: string, props: Record<string, unknown>, propsJson: string): string {
-    const text = escapeHtml(String(props.text || props.label || props.children || 'Link'));
+    const text = renderInlineLabel(props) ?? escapeHtml(String(props.text || props.label || props.children || 'Link'));
     const click = (props.actionBindings as Array<{trigger:string;actionType:string;config?:{pageUrl?:string;sectionId?:string;openInNewTab?:boolean}}> | undefined)?.find(action=>action.trigger==='onClick');
     const actionUrl = click?.actionType==='openPage'?click.config?.pageUrl:click?.actionType==='scrollToSection'?click.config?.sectionId:undefined;
     const href = escapeHtml(String(actionUrl || props.href || props.to || '#'));

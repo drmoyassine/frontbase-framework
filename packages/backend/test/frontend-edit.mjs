@@ -112,7 +112,8 @@ await test('Edit record targets the detail heading and follows an explicitly sel
  w.dispatchEvent(new w.Event('scroll'));
  const context=d.querySelector('[data-frontbase-edit-context]');
  assert.equal(context.textContent,'English · Record content');
- assert.equal(context.style.top,'178px');assert.equal(context.style.left,'24px');
+ const chip=context.closest('[data-frontbase-edit-chip]');
+ assert.equal(chip.style.top,'178px');assert.equal(chip.style.left,'24px');
  d.querySelector('#institution [data-fb-copy]').click();
  shortcut.click();assert.ok(d.querySelector('#institution [contenteditable]'));
  w.close();

@@ -26,3 +26,22 @@ it('exposes keyboard-accessible Wrap in Row and selects/expands the resulting wr
  expect(wrapper.type).toBe('Row');expect(wrapper.children![0].id).toBe('title');expect(state.selectedComponentId).toBe(wrapper.id);
  expect(screen.getByText('Heading')).toBeTruthy();expect(state.layoutUndo).toHaveLength(1);
 });
+
+it('moves into a container through the action menu and supports one-step undo',async()=>{
+ useBuilderStore.setState({currentPageId:'p',editingVersions:{},layoutUndo:[],layoutRedo:[],pages:[{id:'p',name:'P',slug:'p',createdAt:'',updatedAt:'',isPublic:false,isHomepage:false,layoutData:{root:{},content:[
+  {id:'title',type:'Heading',props:{text:'Bound title',recordBindings:{text:'title'}}},
+  {id:'row',type:'Row',props:{},children:[]},
+ ]}}]});
+ render(<LayersPanel/>);
+ fireEvent.keyDown(screen.getByRole('button',{name:'Actions for Heading'}),{key:'Enter'});
+ fireEvent.click(await screen.findByRole('menuitem',{name:'Move to…'}));
+ fireEvent.change(await screen.findByLabelText('Destination'),{target:{value:'row'}});
+ fireEvent.change(screen.getByLabelText('Placement'),{target:{value:'inside'}});
+ fireEvent.click(screen.getByRole('button',{name:'Move',exact:true}));
+ let state=useBuilderStore.getState();
+ expect(state.pages[0].layoutData!.content[0].children![0].props.recordBindings).toEqual({text:'title'});
+ expect(state.layoutUndo).toHaveLength(1);
+ act(()=>state.undoLayout());
+ state=useBuilderStore.getState();
+ expect(state.pages[0].layoutData!.content.map(node=>node.id)).toEqual(['title','row']);
+});

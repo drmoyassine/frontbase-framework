@@ -1,6 +1,7 @@
 import { directoryQueryBindingSchema, type DirectoryQueryBinding } from './configuration.js';
 import type { PageLayoutData, PageComponent } from '../ssr/types.js';
 export { createBookingDetail, upgradeBookingDetail } from './booking-detail.js';
+export { createBookingCourseCard, upgradeBookingCourseCards } from './booking-course-card.js';
 type ComponentData = PageComponent;
 type Page = {layoutData?:PageLayoutData};
 

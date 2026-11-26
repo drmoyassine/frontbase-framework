@@ -51,6 +51,9 @@ import { DisplayProperties } from './properties/DisplayProperties';
 import { getPropertySchema, type PropertySchema, type PropertyTab } from './registry/propertySchemas';
 import { SchemaDrivenProperties } from './SchemaDrivenProperties';
 import { DirectoryBindingProperties } from './directory/DirectoryBindingProperties';
+import { InlineLabelProperties } from './InlineLabelProperties';
+import { inlineTemplatePatch, inlineTemplateScopes, readInlineTemplate } from '@frontbase/edge-core';
+import { resolveBlockTree } from '@frontbase/edge-core/block-versions';
 import { BlockVersionsPanel } from './BlockVersionsPanel';
 import { applyBlockVersion } from '@frontbase/edge-core/block-versions';
 import {TemplateSettingsEditor} from './directory/TemplateSettingsEditor';
@@ -149,6 +152,8 @@ export const PropertiesPanel = () => {
   const updateComponentProp = (key: string, value: any) => {
     updateComponent(selectedComponentId, { ...textAliasReset(selectedComponent.type,key), [key]: value });
   };
+  const inlineParts = readInlineTemplate(selectedComponent);
+  const inlineScope = inlineParts && inlineTemplateScopes(resolveBlockTree(currentPage?.layoutData?.content ?? [], () => undefined, editingVersions)).get(selectedComponent.id);
 
   const deleteComponent = () => {
     removeComponent(selectedComponentId);
@@ -185,7 +190,7 @@ export const PropertiesPanel = () => {
         }
         return (
           <SchemaDrivenProperties
-            fields={canonicalTextFields(fields,type,props)}
+            fields={canonicalTextFields(fields,type,props).filter(field=>props.inlineTemplate===undefined||!['text','label','value','content'].includes(field.name))}
             props={props}
             updateProp={updateComponentProp}
           />
@@ -205,7 +210,7 @@ export const PropertiesPanel = () => {
       if (!fields || fields.length === 0) return null;
       return (
         <SchemaDrivenProperties
-          fields={canonicalTextFields(fields,type,props)}
+          fields={canonicalTextFields(fields,type,props).filter(field=>props.inlineTemplate===undefined||!['text','label','value','content'].includes(field.name))}
           props={props}
           updateProp={updateComponentProp}
         />
@@ -422,6 +427,7 @@ export const PropertiesPanel = () => {
               />
             </fieldset>
 
+            {inlineParts && <InlineLabelProperties key={selectedComponent.id+':'+(selectedVersion??'default')} parts={inlineParts} pageId={currentPage?.id} scope={inlineScope || undefined} preserveTranslationSlots={Array.isArray(selectedComponent.props?.inlineTemplate)} save={parts=>updateComponent(selectedComponent.id,inlineTemplatePatch(selectedComponent,parts))} />}
             {(selectedComponent.props.directoryBrowsing !== undefined || selectedComponent.props.directoryQuery !== undefined || selectedComponent.props.recordBindings !== undefined || selectedComponent.props.directoryResultsFor !== undefined) && <DirectoryBindingProperties layout={currentPage?.layoutData} node={selectedComponent} update={updateComponentProp} />}
             <fieldset disabled={!!selectedVersion && selectedVersion!=='default' && !Object.hasOwn(defaultComponent?.versions?.find(v=>v.id===selectedVersion)?.overrides.props??{},'binding')}>
               {selectedComponent.props.directoryQuery === undefined && renderPropertyFields('general')}

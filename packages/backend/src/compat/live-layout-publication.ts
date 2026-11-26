@@ -4,6 +4,7 @@ import {stableStringify} from '@frontbase/compiler/manifest';
 import {directoryConfigurationSchema,immutableDirectoryConfiguration,liveViewBindings,projectSharedDirectoryPreview,projectTemplatePresentation,compilePublishedDirectoryProjection,type PublishedDirectoryProjectionPlan} from '@frontbase/edge-core/directory/configuration';
 import {publicationTemplateSchema,publicationPathSchema} from '@frontbase/edge-core/directory/publication';
 import type {PageLayoutData} from '@frontbase/edge-core';
+import {detailBindingColumnsSchema,validateDetailBindings} from '@frontbase/edge-core';
 import {compileDisplaySurfacePlan,type DisplaySurfacePlan} from '@frontbase/edge-core/localization';
 import {publicationHash,publicationBytesHash} from './publication-hash.js';
 import {compileTranslationIds,translationIdentityPlanSchema,type TranslationIdentityPlan} from './live-translation-identities.js';
@@ -17,6 +18,8 @@ export const liveLayoutPublicationSchema=z.object({
     schemaVersion:z.literal(3),runtimeVersion:z.literal('live-layout-v1'),siteBindingsCompiled:z.literal(true).optional(),
     displayPlans:z.record(z.custom<DisplaySurfacePlan>()).optional(),
     configuration:directoryConfigurationSchema,
+    institutionBindingColumns:detailBindingColumnsSchema.optional(),
+    programBindingColumns:detailBindingColumnsSchema.optional(),
     templates:z.array(publicationTemplateSchema).max(7),
     staticPages:z.array(staticPage).max(1000),
     locales:z.array(locale).min(1).max(40),
@@ -51,6 +54,8 @@ const manifestSchema = z.object({
     format: z.literal('live-layout-index-v1'),
     schemaVersion: z.literal(3), runtimeVersion: z.literal('live-layout-v1'), siteBindingsCompiled: z.literal(true),
     configuration: z.unknown().transform(immutableDirectoryConfiguration),
+    institutionBindingColumns:detailBindingColumnsSchema.optional(),
+    programBindingColumns:detailBindingColumnsSchema.optional(),
     templates: z.array(publicationTemplateSchema.omit({layout:true}).extend({artifact:hash})).max(7),
     staticPages: z.array(staticPage.omit({layout:true}).extend({artifact:hash})).max(1000),
     locales: z.array(locale).min(1).max(40),
@@ -184,6 +189,10 @@ export class LiveLayoutPublicationStore{
     }
     async prepare(input:LiveLayoutPublication,now:string){
         const parsed=liveLayoutPublicationSchema.parse(input);
+        for(const page of [...parsed.templates,...parsed.staticPages]){
+            if(JSON.stringify(page.layout).includes('record.columns.'))
+                validateDetailBindings(page.layout as unknown as PageLayoutData,{institution:parsed.institutionBindingColumns,program:parsed.programBindingColumns});
+        }
         const compile=<T extends {layout:unknown}>(page:T):T=>({...page,layout:projectSharedDirectoryPreview(page.layout as PageLayoutData,parsed.configuration)});
         const templates=parsed.templates.map(compile),staticPages=parsed.staticPages.map(compile);
         const displayPlans=Object.fromEntries([...templates,...staticPages].map(page=>[page.pageId,compileDisplaySurfacePlan(page.layout as unknown as PageLayoutData)]));

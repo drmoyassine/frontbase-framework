@@ -12,9 +12,12 @@ import { DataPreviewContent } from './data-preview/DataPreviewContent';
 import { TableSelectionView } from './data-preview/TableSelectionView';
 import { RelationshipsView } from './data-preview/RelationshipsView';
 import { Table, GitBranch } from 'lucide-react';
+import { detailBindingColumnSchema, maxDetailBindingColumns } from '@frontbase/edge-core';
+import { Button } from '@/components/ui/button';
 
 const DataInspector = (props: DataPreviewModalProps) => {
     const container=useRef<HTMLDivElement>(null);
+    const bindingFields=useRef<HTMLDetailsElement>(null);
     const { isOpen, onClose, viewId } = props;
     const {
         state,
@@ -48,6 +51,14 @@ const DataInspector = (props: DataPreviewModalProps) => {
 
     if (!isOpen) return null;
 
+    const editingDetailView = props.savedView?.detail_binding && selectedTable === props.savedView.target_table
+        && (props.sourceSchema ?? 'public') === (props.savedView.source_schema ?? 'public');
+    const bindingOptions = editingDetailView ? schemaData?.columns?.map(column => column.name)
+        .filter(name => detailBindingColumnSchema.safeParse(name).success) ?? [] : [];
+    const canSelectAll = bindingOptions.length > 0 && bindingOptions.length <= maxDetailBindingColumns;
+    const suggestedColumns = canSelectAll ? bindingOptions : undefined;
+    const selectedColumns = state.bindingColumns ?? suggestedColumns ?? [];
+
     return (
         <div role="dialog" aria-modal="true" aria-label="Data Inspector" className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm">
             <div ref={container} className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
@@ -64,7 +75,11 @@ const DataInspector = (props: DataPreviewModalProps) => {
                     isSaving={isSaving}
                     copySuccess={copySuccess}
                     copyToClipboard={actions.copyToClipboard}
-                    handleSaveView={()=>{const invalid=container.current?.querySelector<HTMLInputElement|HTMLTextAreaElement>(':invalid');if(invalid){invalid.reportValidity();invalid.focus();return;}void actions.handleSaveView();}}
+                    handleSaveView={()=>{
+                        const invalid=container.current?.querySelector<HTMLInputElement|HTMLTextAreaElement>(':invalid');
+                        if(invalid){invalid.reportValidity();invalid.focus();return;}
+                        void actions.handleSaveView(bindingFields.current?.open ? suggestedColumns : undefined);
+                    }}
                     setCurrentStep={actions.setCurrentStep}
                     setActiveTab={actions.setActiveTab}
                     onClose={()=>{if(!state.hasViewEdits||window.confirm('Discard unsaved view edits?'))onClose();}}
@@ -74,6 +89,32 @@ const DataInspector = (props: DataPreviewModalProps) => {
                 {saveSuccess&&<p role="status" className="px-4 py-2 text-sm">View saved.</p>}
                 {props.viewTools}
                 {props.schemaSelector}
+                {editingDetailView&&
+                    <details ref={bindingFields} className="border-b px-4 py-2 text-sm">
+                        <summary className="cursor-pointer">Binding fields{state.bindingColumns&&` (${state.bindingColumns.length})`}</summary>
+                        <p className="my-2">Choose the columns editors can insert with @. Saved fields can be used on public detail pages. Removing a saved field takes effect when you save.</p>
+                        {state.bindingColumns === null && canSelectAll && <p className="mb-2">All available fields start checked. Keep this section open and save the view to use them.</p>}
+                        {bindingOptions.length > maxDetailBindingColumns && <p className="mb-2">Select up to {maxDetailBindingColumns} fields for this view.</p>}
+                        <fieldset disabled={isSaving}>
+                            <legend className="sr-only">Detail binding fields</legend>
+                            <div className="mb-2 flex flex-wrap gap-2">
+                                <Button type="button" size="sm" variant="outline" disabled={!canSelectAll || bindingOptions.every(name => selectedColumns.includes(name))}
+                                    onClick={() => actions.setBindingColumns(bindingOptions)}>Select all</Button>
+                                <Button type="button" size="sm" variant="outline" disabled={!selectedColumns.length}
+                                    onClick={() => actions.setBindingColumns([])}>Deselect all</Button>
+                            </div>
+                            <div className="grid max-h-[28dvh] grid-cols-1 overflow-y-auto sm:grid-cols-2 md:grid-cols-3">
+                                {bindingOptions.map(name=>{
+                                    const checked=selectedColumns.includes(name);
+                                    return <label key={name} className="flex min-h-11 cursor-pointer items-center gap-2 break-all">
+                                        <input type="checkbox" checked={checked} disabled={!checked&&selectedColumns.length>=maxDetailBindingColumns}
+                                            onChange={event=>actions.setBindingColumns(event.target.checked?[...selectedColumns,name]:selectedColumns.filter(value=>value!==name))}/>
+                                        {name}
+                                    </label>;
+                                })}
+                            </div>
+                        </fieldset>
+                    </details>}
                 <div className="flex-1 overflow-hidden flex flex-col">
                     {currentStep === 'tables' ? (
                         <>

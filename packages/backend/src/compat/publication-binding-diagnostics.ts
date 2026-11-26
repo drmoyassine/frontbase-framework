@@ -36,6 +36,14 @@ export async function publicationBindingDiagnostics(pages:{pageId:string;layout:
       // Directory cards can use the record title when no alt-text column is mapped.
       if (!mapping.coverAlt) optionalFallbackField='coverAlt';
       fields=new Set(Object.entries(mapping).filter(([alias,column])=>fields.has(column)&&!['body','gallery','sourceOrigin','contentRole'].includes(alias)).map(([alias])=>alias));
+      // The live directory projection supplies these aliases through its scoped parent joins.
+      if(role==='program'){
+       const sources=directorySources(configuration);
+       if(sources.institution.fieldMapping.title)fields.add('institutionName');
+       if(sources.city.fieldMapping.title)fields.add('location');
+       if(sources.institution.fieldMapping.country)fields.add('country');
+       if(sources.institution.fieldMapping.logo)fields.add('logo');
+      }
     }
     const own={id:node.id,type:'Text',props:node.props};
     const used=new Set([...templateRecordFields([own,...node.children??[]],optionalFallbackField),...binding.columnOrder??[],...binding.searchColumns??[],...Object.values(binding.fieldMapping??{}),...(binding.sorting.column?[binding.sorting.column]:[])]);

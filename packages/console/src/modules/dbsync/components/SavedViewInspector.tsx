@@ -4,7 +4,7 @@ import {useQuery} from '@tanstack/react-query';
 import {api} from '../api';
 export {SavedFilterEditor} from './SavedFilterEditor';
 import DataPreviewModal from './DataPreviewModal';
-export type ViewAsset={selection_storage?:'saved-filters'|'legacy-sql';id:string;name:string;datasource_id:string;datasource_name:string;target_table:string;source_schema?:string|null;description?:string;filters:unknown[];visible_columns:string[];column_order:string[];pinned_columns?:string[];field_mappings?:Record<string,string>;linked_views?:Record<string,unknown>;webhooks?:unknown[];updated_at:string;default_sort?:{column:string;direction:'asc'|'desc'};usage:{pageId:string;name:string;version:string;state:string;componentId:string}[]};
+export type ViewAsset={selection_storage?:'saved-filters'|'legacy-sql';id:string;name:string;datasource_id:string;datasource_name:string;target_table:string;source_schema?:string|null;description?:string;filters:unknown[];visible_columns:string[];column_order:string[];binding_columns?:string[];detail_binding?:boolean;pinned_columns?:string[];field_mappings?:Record<string,string>;linked_views?:Record<string,unknown>;webhooks?:unknown[];updated_at:string;default_sort?:{column:string;direction:'asc'|'desc'};usage:{pageId:string;name:string;version:string;state:string;componentId:string}[]};
 
 /** Saved views use the same inspector as datasource browsing and new views. */
 export function SavedViewInspectorLoader({id,datasourceName,onClose}:{id:string;datasourceName:string;onClose:()=>void}){

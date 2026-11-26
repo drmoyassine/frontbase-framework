@@ -154,7 +154,7 @@ const DraggableComponentItem: React.FC<{ component: any }> = ({ component }) => 
 
   const Icon = component.icon;
 
-  const handleDoubleClick = () => {
+  const addComponent = () => {
     if (currentPageId) {
       let newComponent;
 
@@ -184,19 +184,16 @@ const DraggableComponentItem: React.FC<{ component: any }> = ({ component }) => 
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      onDoubleClick={handleDoubleClick}
-      className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-card hover:bg-accent hover:border-primary/50 cursor-move transition-all group"
-      title={`${component.description} (Double-click to add)`}
-    >
-      <Icon className="h-5 w-5 mb-1.5 text-muted-foreground group-hover:text-primary transition-colors" />
-      <span className="text-xs text-center font-medium leading-tight">
-        {component.name}
-      </span>
+    <div ref={setNodeRef} style={style} className="flex items-start rounded-lg border border-border bg-card group">
+      <button type="button" aria-label={`Add ${component.name}`} title={component.description} onClick={addComponent}
+        className="flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center rounded-lg p-2 hover:bg-accent focus-visible:outline">
+        <Icon aria-hidden="true" className="mb-1 h-5 w-5 text-muted-foreground" />
+        <span className="text-xs text-center font-medium leading-tight">{component.name}</span>
+      </button>
+      <button type="button" {...attributes} {...listeners} aria-label={`Drag ${component.name} to canvas`}
+        className="min-h-6 min-w-6 touch-none cursor-grab select-none rounded hover:bg-accent focus-visible:outline">
+        <span aria-hidden="true">⠿</span>
+      </button>
     </div>
   );
 };

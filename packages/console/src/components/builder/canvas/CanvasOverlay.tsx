@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { findNodeLocation } from '@/lib/builder/iframeBridge';
 import { CONTAINER_TYPES, type ComponentRect } from '@/lib/builder/iframeTypes';
 import { applyLayoutDraftOperation, layoutDraftTiles, type LayoutDraftOperation } from '@frontbase/edge-core';
+import { resolveBlockTree } from '@frontbase/edge-core/block-versions';
 
 // Geometry constants for the overlay affordances. Centralized so the corner
 // dots, drop strips, and move handle stay consistent + tweakable in one place.
@@ -50,7 +51,9 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({ page, rects, hover
     const selectedComponentId = useBuilderStore((s) => s.selectedComponentId);
     const isPreviewMode = useBuilderStore((s) => s.isPreviewMode);
 
-    const content = page.layoutData?.content ?? [];
+    const editingVersions = useBuilderStore(s => s.editingVersions);
+    const content = React.useMemo(() => resolveBlockTree(page.layoutData?.content ?? [], () => undefined, editingVersions),
+        [page.layoutData, editingVersions]);
     const hasComponents = content.length > 0 && rects.length > 0;
 
     // Resolve insertion indexes from the authored tree, never repeated DOM order.
@@ -143,7 +146,7 @@ function TileLayoutControls({ rect, page }: { rect: ComponentRect; page: Page })
         const current = state.pages.find(candidate => candidate.id === page.id)?.layoutData;
         if (!current) return;
         const updated = applyLayoutDraftOperation(current, operation);
-        if (updated) state.updatePage(page.id, { layoutData: updated });
+        if (updated && updated !== current) state.updatePage(page.id, { layoutData: updated });
     };
     const move = (direction: -1 | 1) => {
         const sibling = siblings[index + direction];
@@ -259,12 +262,13 @@ const EmptyCanvasDrop: React.FC<{ page: Page }> = ({ page }) => {
  *  drag; the rest of the component stays click-through to the iframe. */
 const MoveHandle: React.FC<{ rect: ComponentRect; page: Page }> = ({ rect, page }) => {
     const isPreviewMode = useBuilderStore((s) => s.isPreviewMode);
+    const versions = useBuilderStore(s => s.editingVersions);
     const loc = React.useMemo(
-        () => findNodeLocation(page.layoutData?.content ?? [], rect.id, undefined),
-        [page.layoutData, rect.id],
+        () => findNodeLocation(resolveBlockTree(page.layoutData?.content ?? [], () => undefined, versions), rect.id),
+        [page.layoutData, rect.id, versions],
     );
 
-    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
         id: `move-${rect.instanceId??rect.id}`,
         data: loc
             ? {
@@ -279,12 +283,14 @@ const MoveHandle: React.FC<{ rect: ComponentRect; page: Page }> = ({ rect, page 
     });
 
     return (
-        <div
-            ref={setNodeRef}
+        <button
+            type="button"
+            ref={node => { setNodeRef(node); setActivatorNodeRef(node); }}
             {...attributes}
             {...listeners}
+            aria-label={`Move ${loc?.component.props?._layerName || rect.type}`}
             className={cn(
-                'absolute z-30 px-1.5 py-0.5 text-[10px] font-semibold rounded-sm bg-primary text-primary-foreground shadow cursor-move select-none',
+                'absolute z-30 min-h-6 min-w-6 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 touch-none px-1.5 py-0.5 text-xs font-semibold rounded-sm bg-primary text-primary-foreground shadow cursor-grab select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
                 isDragging && 'opacity-50',
             )}
             style={{
@@ -295,6 +301,6 @@ const MoveHandle: React.FC<{ rect: ComponentRect; page: Page }> = ({ rect, page 
             onPointerDown={(e) => { e.stopPropagation(); listeners?.onPointerDown?.(e); }}
         >
             ⇅ {rect.type}
-        </div>
+        </button>
     );
 };

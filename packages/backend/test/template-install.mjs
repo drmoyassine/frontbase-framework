@@ -13,7 +13,7 @@ import {resolveAppMenuLayout} from '../dist/compat/menus-runtime.js';
 import {MenusStore} from '../dist/compat/menus-store.js';
 import {projectSharedDirectoryPreview,projectDirectoryRecords,projectTemplatePresentation} from '@frontbase/edge-core/directory/configuration';
 import {pagesWorkspace} from '../dist/compat/pages-workspace.js';
-import {upgradeBookingDetail} from '@frontbase/edge-core/directory/starter';
+import {upgradeBookingCourseCards,upgradeBookingDetail} from '@frontbase/edge-core/directory/starter';
 const db=sqliteRunner(':memory:');await migrateUp(db);const now='2026-11-01T12:00:00Z';
 let tenant='alpha',role='owner',authenticated=true;
 const app=await createCompatApp({makeRunner:async()=>db,resolvePrincipal:async()=>({user:authenticated?{id:'owner',role}:null,tenant}),sessionSecret:'template-installer-test'});
@@ -41,6 +41,31 @@ for(const versionId of ['default','programs']){
  assert.equal(selected.props.controls.search,true);
 }
 assert.ok(Object.hasOwn(repeater.versions[0].overrides.props,'binding'),'Programs owns an independent binding');
+const [course] = applyBlockVersion(repeater,'programs').children;
+assert.equal(course.props._layerName,'Course card');
+assert.equal(course.children.find(node=>node.type==='Link').props.href,'{{ record.originalPath }}');
+const [,identity] = course.children.find(node=>node.props._layerName==='Institution and location').children;
+assert.deepEqual(identity.children.at(-1).children.map(node=>node.props.text),['{{ record.location }}','{{ record.country }}']);
+assert.equal(course.children.at(-1).children.at(-1).props.splitValues,true);
+const programsVersion = applyBlockVersion(repeater,'programs');
+const programsWithRows = {...programsVersion,versions:undefined,props:{...programsVersion.props,initialRows:[
+ {id:'record-one',title:'Media course',originalPath:'/sample-program/',location:'Fixture City',country:'Fixture Country',intakes:['May','August']},
+]}};
+const programsHtml = await renderPage({root:{},content:[programsWithRows]},
+ {user:{},page:{title:'Explore'},app:{},visitor:{},url:{},system:{},cookies:{},local:{},session:{}});
+assert.match(programsHtml,/href="\/sample-program\/"[^>]*>Media course/);
+assert.match(programsHtml,/>Fixture City<.*>Fixture Country</s);
+assert.match(programsHtml,/>May<.*>August</s);
+const olderExplore=structuredClone(explore);
+const olderRepeater=olderExplore.content.find(node=>node.type==='Repeater');
+olderRepeater.versions[0].overrides.children[0].children=['Image','Heading','Paragraph','Link']
+ .map(type=>({id:'old-'+type,type,props:{}}));
+const upgradedExplore=upgradeBookingCourseCards(olderExplore);
+const upgradedRepeater=upgradedExplore.content.find(node=>node.type==='Repeater');
+assert.deepEqual(upgradedRepeater.children,olderRepeater.children);
+assert.deepEqual(upgradedRepeater.versions[0].overrides.props,olderRepeater.versions[0].overrides.props);
+assert.equal(upgradedRepeater.versions[0].overrides.children[0].props._layerName,'Course card');
+assert.equal(upgradeBookingCourseCards(upgradedExplore),undefined);
 const issues=await publicationBindingDiagnostics([{pageId:'explore',layout:explore}],async()=>{throw Error('unbound drafts need no datasource requests');});
 assert.deepEqual(issues.map(issue=>[issue.elementId,issue.versionId,issue.code]),[[repeater.id,'default','binding_invalid'],[repeater.id,'programs','binding_invalid']]);
 const paletteEndpoint='/api/project/booking-palette/';

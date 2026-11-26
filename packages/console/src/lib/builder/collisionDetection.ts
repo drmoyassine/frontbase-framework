@@ -5,7 +5,7 @@ import {closestCenter,pointerWithin,type CollisionDetection} from '@dnd-kit/core
  * smallest actual hit, preserving keyboard/empty-space fallback behavior. */
 export const builderCollisionDetection:CollisionDetection=args=>{
     const hits=pointerWithin(args);
-    if(!hits.length)return closestCenter(args);
+    if(!hits.length)return args.pointerCoordinates ? [] : closestCenter(args);
     return [...hits].sort((left,right)=>{
         const a=args.droppableRects.get(left.id),b=args.droppableRects.get(right.id);
         return (a?a.width*a.height:Infinity)-(b?b.width*b.height:Infinity);

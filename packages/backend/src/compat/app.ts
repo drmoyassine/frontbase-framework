@@ -33,6 +33,8 @@ import { registerStubs } from './stubs.js';
 import { contractRequestValidation } from './request-validation.js';
 import { routedOps, attachImplementedOps, canonicalSlashVariant } from './spec.js';
 import { registerVariablesRoutes } from './routes/variables.js';
+import {detailViewBindingColumns} from './directory-configuration.js';
+import {SiteConfigurationStore} from './site-configuration-store.js';
 import { registerMetaRoutes } from './routes/meta.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerThemesRoutes } from './routes/themes.js';
@@ -484,7 +486,16 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
 
     // Real handlers for implemented ops, registered with the exact product paths
     // on the main app (no sub-app mount — that mismatches trailing slashes).
-    registerVariablesRoutes(app, varStoreFor, now);
+    registerVariablesRoutes(app, varStoreFor, now, async (tenant, pageId) => {
+        const page = await pagesFor(tenant).get(pageId);
+        if (page && !page.deleted_at) {
+            const layout = JSON.parse(page.layout_data);
+            if (Array.isArray(layout?.content)) return layout;
+        }
+    }, async tenant => {
+        const draft=await new SiteConfigurationStore(runner,tenant).get();
+        return draft ? detailViewBindingColumns(runner,tenant,draft.configuration) : {};
+    });
     // Settings routes need userExists check for invite validation (parity with product)
     const userExists = deps.userStoreFor
         ? async (email: string, tenant: string) => {

@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {bodyLimit} from 'hono/body-limit';
-import {applyLayoutDraftOperation,layoutDraftTiles} from '@frontbase/edge-core';
+import {applyLayoutDraftOperation,inlineTemplateSchema,layoutDraftTiles} from '@frontbase/edge-core';
 import type {Hono} from 'hono';
 import type {DbRunner} from '@frontbase/edge-infra';
 import type {ConsoleAuthVars} from '../../mw/auth.js';
@@ -40,6 +40,7 @@ const draftInput=z.union([z.object({
         z.object({kind:z.literal('resize'),id:tileId,viewport,width:z.number().min(1).max(100)}).strict(),
         z.object({kind:z.literal('match'),id:tileId,viewport,width:z.number().min(1).max(100),offset:z.number().min(0).max(99)}).strict(),
         z.object({kind:z.literal('text'),id:tileId,value:z.string().max(12000)}).strict(),
+        z.object({kind:z.literal('compose'),id:tileId,parts:inlineTemplateSchema}).strict(),
         z.object({kind:z.literal('variable'),id:tileId,position:z.enum(['before','after']),path:z.string().max(110).nullable()}).strict(),
         z.object({...styleOperation,property:z.enum(['horizontalAlign','textAlign']),value:z.enum(['left','center','right'])}).strict(),
         z.object({...styleOperation,property:z.literal('fontWeight'),value:z.enum(['400','700'])}).strict(),
@@ -108,7 +109,7 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
     });
     async function draft(owner:string,request:Request,path:string) {
         const url=new URL(path,request.url);
-        const surface=await resolveLiveLayoutSurface(db,owner,new Request(url,{headers:request.headers}),{host:translationHost,liveQuery:publishedLiveQuery(input=>app.fetch(input))}).catch(()=>null);
+        const surface=await resolveLiveLayoutSurface(db,owner,new Request(url,{headers:request.headers}),{host:translationHost,bindingEditor:true,liveQuery:publishedLiveQuery(input=>app.fetch(input))}).catch(()=>null);
         // Compatibility pages can serve their mutable row directly. Layout
         // editing requires the independent live publication and draft stores.
         if(!surface)return null;
@@ -116,7 +117,19 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
         const page=await pages.get(surface.pageId);
         if(!page||page.deleted_at||page.is_published)return null;
         const layout=JSON.parse(page.layout_data) as PageLayoutData;
-        return {pages,page,layout,revision:await publicationHash(page.layout_data),source:surface.locale===surface.sourceLocale};
+        const projected=new Map<string,PageLayoutData['content'][number]>();
+        const visit=(nodes:PageLayoutData['content'],fn:(node:PageLayoutData['content'][number])=>void)=>{for(const node of nodes){fn(node);if(node.children)visit(node.children,fn);}};
+        visit(surface.layout.content,node=>projected.set(node.id,node));
+        const compositionValues:Record<string,string>=Object.fromEntries(Object.entries(surface.lists??{}).map(([alias,{count}])=>['lists.'+alias+'.count',String(count)]));
+        visit(layout.content,node=>{
+            const rendered=projected.get(node.id);
+            if(node.props?.directoryResultCount===true&&typeof node.props.directoryResultsFor==='string'&&typeof rendered?.props?.text==='string'&&/^\d+$/.test(rendered.props.text))
+                compositionValues['query.'+node.props.directoryResultsFor+'.total']=rendered.props.text;
+        });
+        const detailValues=Object.fromEntries(Object.entries(surface.detailValues??{}).filter(([,value])=>value!=null)
+            .map(([column,value])=>['record.columns.'+column,String(value)]));
+        return {pages,page,layout,revision:await publicationHash(page.layout_data),source:surface.locale===surface.sourceLocale,
+            compositionValues,detailRole:surface.detailRole,detailValues,detailColumns:surface.detailColumns};
     }
     app.post('/api/frontend-edit/canvas-preview/',bodyLimit({maxSize:512*1024}),async c=>{
         const input=canvasInput.safeParse(await c.req.json().catch(()=>null));
@@ -135,7 +148,7 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
         if(!path.success)return c.json({detail:'Invalid page path'},400);
         const result=await draft(c.get('tenant'),c.req.raw,path.data);
         if(!result)return c.json({detail:'No separate layout draft is available for this page'},409);
-        return c.json({pageId:result.page.id,revision:result.revision,source:result.source,tiles:layoutDraftTiles(result.layout)});
+        return c.json({pageId:result.page.id,revision:result.revision,source:result.source,tiles:layoutDraftTiles(result.layout,result.detailColumns),compositionValues:result.compositionValues,detailRole:result.detailRole,detailValues:result.detailValues});
     });
     app.put('/api/frontend-edit/layout-draft/',bodyLimit({maxSize:24000}),async c=>{
         const input=draftInput.safeParse(await c.req.json().catch(()=>null));
@@ -153,17 +166,19 @@ export function registerFrontendEditRoutes(app:Hono<{Variables:ConsoleAuthVars}>
         }else{
             for(const operation of input.data.operations){
                 if(operation.kind==='text'&&!result.source||operation.kind==='variable'&&operation.path!==null&&
-                    !operation.path.startsWith('record.')&&!isFrontendLiquidVariable(operation.path))
+                    !operation.path.startsWith('record.')&&!isFrontendLiquidVariable(operation.path)||operation.kind==='compose'&&
+                    operation.parts.some(part=>'variable' in part&&!/^(record|query|lists)\./.test(part.variable)&&!isFrontendLiquidVariable(part.variable)))
                     return c.json({detail:'The text or variable is unavailable in this layout'},422);
-                const changed=applyLayoutDraftOperation(layout,operation);
+                const changed=applyLayoutDraftOperation(layout,operation,result.detailColumns);
                 if(!changed)return c.json({detail:'This change is unavailable for the selected element'},422);
                 layout=changed;
             }
+            if(layout===result.layout)return c.json({pageId,revision,source:result.source,tiles:layoutDraftTiles(layout,result.detailColumns),compositionValues:result.compositionValues,detailRole:result.detailRole,detailValues:result.detailValues});
             if(input.data.checkpoint)restoreVersionId=(await result.pages.snapshot(pageId,result.page.layout_data,result.page.content_hash,'Before frontend layout edit',now())).id;
         }
         const saved=await result.pages.setLayout(pageId,exactLayout??layout,now(),result.page.layout_data);
         if(!saved)return c.json({detail:'The layout draft changed. Reload before saving.'},409);
-        return c.json({pageId,revision:await publicationHash(saved.layout_data),source:result.source,tiles:layoutDraftTiles(layout),restoreVersionId});
+        return c.json({pageId,revision:await publicationHash(saved.layout_data),source:result.source,tiles:layoutDraftTiles(layout,result.detailColumns),compositionValues:result.compositionValues,detailRole:result.detailRole,detailValues:result.detailValues,restoreVersionId});
     });
     app.get('/api/frontend-edit/inventory/',async c=>{
         try{const path=pathSchema.parse(c.req.query('path')),raw=c.req.query('selection');if(raw&&raw.length>16000)throw Error();const selection=raw?selectionSchema.parse(JSON.parse(raw)):undefined,s=await frontendCopySurface(app,db,c.get('tenant'),c.req.raw,path,selection,translationHost);

@@ -1,10 +1,19 @@
 import { Editor, Extension, type JSONContent } from '@tiptap/core';
+export { mountInlineComposer } from '@frontbase/edge-core';
+import { inlineVariableAllowed, type InlinePickerRequest, type ListCount } from '@frontbase/edge-core';
+import { mountInlineVariablePicker } from '../../../packages/console/src/components/builder/mountInlineVariablePicker';
 import Bold from '@tiptap/extension-bold';
 import Document from '@tiptap/extension-document';
 import Italic from '@tiptap/extension-italic';
 import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import { Plugin } from '@tiptap/pm/state';
+
+declare const __FRONTBASE_PICKER_STYLESHEET__: string;
+export function openVariablePicker(request: InlinePickerRequest, pageId: string, fields: string[], lists?: ListCount[]) {
+    return mountInlineVariablePicker(request, {pageId, recordColumns:fields, stylesheet:__FRONTBASE_PICKER_STYLESHEET__,
+        acceptVariable:path=>inlineVariableAllowed(path, fields, lists)});
+}
 
 interface Options {
     text: string;

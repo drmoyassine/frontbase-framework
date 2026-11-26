@@ -1,6 +1,6 @@
 import React,{useState} from 'react';
 import {afterEach,expect,it,vi} from 'vitest';
-import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {MemoryRouter} from 'react-router-dom';
 const mocks=vi.hoisted(()=>({get:vi.fn(),post:vi.fn(),patch:vi.fn(),create:vi.fn(),rows:vi.fn(),tables:vi.fn(),schema:vi.fn(),session:vi.fn(),saveSession:vi.fn(),clearSession:vi.fn()}));
@@ -40,6 +40,46 @@ it('typed nested filters remain editable',async()=>{
  fireEvent.click(screen.getByText('Selected IDs · Match any · 1 rules'));
  fireEvent.change(await screen.findByRole('textbox',{name:'Filter value as JSON'}),{target:{value:'[2,3]'}});
  expect(screen.getByRole('status').textContent).toContain('[2,3]');
+});
+it('saves selected institution binding columns separately from displayed columns',async()=>{
+ mocks.patch.mockResolvedValue({data:{...asset,detail_binding:true,binding_columns:['id'],updated_at:'revision-b'}});
+ wrapper(<SavedViewInspector view={{...asset,detail_binding:true}} onClose={()=>{}}/>);
+ fireEvent.click(await screen.findByText('Binding fields'));
+ const fields=within(screen.getByRole('group',{name:'Detail binding fields'}));
+ const title=await fields.findByRole('checkbox',{name:'title'});
+ const id=fields.getByRole('checkbox',{name:'id'});
+ expect(title).toHaveProperty('checked',true);
+ expect(id).toHaveProperty('checked',true);
+ fireEvent.click(fields.getByRole('button',{name:'Deselect all'}));
+ expect(title).toHaveProperty('checked',false);
+ expect(id).toHaveProperty('checked',false);
+ fireEvent.click(fields.getByRole('button',{name:'Select all'}));
+ expect(title).toHaveProperty('checked',true);
+ expect(id).toHaveProperty('checked',true);
+ fireEvent.click(title);
+ expect(mocks.patch).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Save View'}));
+ fireEvent.click(screen.getByRole('button',{name:'Confirm Save'}));
+ await waitFor(()=>expect(mocks.patch).toHaveBeenCalled());
+ expect(mocks.patch.mock.calls[0][1]).toMatchObject({
+  binding_columns:['id'],visible_columns:['title'],filters:asset.filters,expected_updated_at:'revision-a'
+ });
+});
+it.each([['reviewed defaults',['id','title']],['closed fields',undefined],['saved empty selection',[]]] as const)('preserves the binding save boundary for %s',async(mode,expected)=>{
+ const view={...asset,detail_binding:true,...(mode==='saved empty selection'?{binding_columns:[]}:{} )};
+ mocks.patch.mockResolvedValue({data:{...view,binding_columns:expected,updated_at:'revision-b'}});
+ wrapper(<SavedViewInspector view={view} onClose={()=>{}}/>);
+ if(mode!=='closed fields'){
+  fireEvent.click(await screen.findByText(/^Binding fields/));
+  const group=within(screen.getByRole('group',{name:'Detail binding fields'}));
+  expect(await group.findByRole('checkbox',{name:'title'})).toHaveProperty('checked',mode==='reviewed defaults');
+ }
+ fireEvent.click(screen.getByRole('button',{name:'Save View'}));
+ fireEvent.click(screen.getByRole('button',{name:'Confirm Save'}));
+ await waitFor(()=>expect(mocks.patch).toHaveBeenCalledOnce());
+ const payload=mocks.patch.mock.calls[0][1];
+ if(expected===undefined)expect(payload).not.toHaveProperty('binding_columns');
+ else expect(payload.binding_columns).toEqual(expected);
 });
 it('the shared Save View preserves nested filters, metadata and the loaded revision on stale-save errors',async()=>{
  mocks.patch.mockRejectedValue({response:{data:{detail:'View changed. Reload before saving.'}}});
