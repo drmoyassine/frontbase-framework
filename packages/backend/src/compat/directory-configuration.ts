@@ -1,6 +1,6 @@
 import {readTemplatePolicy} from '@frontbase/edge-core/template-policy';
 import type { DbRunner } from '@frontbase/edge-infra';
-import { directoryConfigurationSchema, directoryConfigurationReadiness, sitePageReferenceSchema, projectSharedDirectoryPreview, directoryLayoutQueries, landingRootSchema,standardPublicationQueries } from '@frontbase/edge-core/directory/configuration';
+import { directoryConfigurationSchema, directoryConfigurationReadiness, directorySource, sitePageReferenceSchema, projectSharedDirectoryPreview, directoryLayoutQueries, landingRootSchema,standardPublicationQueries } from '@frontbase/edge-core/directory/configuration';
 import { SiteConfigurationStore } from './site-configuration-store.js';
 import { validateBlockVersions } from '@frontbase/edge-core/block-versions';
 import {detailBindingColumnsSchema,detailBindingRoles,validateDetailBindings,type DetailBindingColumns,type PageLayoutData} from '@frontbase/edge-core';
@@ -14,7 +14,8 @@ export async function detailViewBindingColumns(db:DbRunner,owner:string,configur
     const rows=await db.query('SELECT id,target_table,binding_columns FROM datasource_views WHERE tenant_slug=? AND datasource_id=? AND id IN ('+
         selected.map(()=>'?').join(',')+')',[owner,configuration.datasourceId,...selected.map(role=>configuration.detailViews![role]!)]);
     return Object.fromEntries(selected.map(role=>{
-        const raw=rows.find(row=>row.id===configuration.detailViews?.[role]&&row.target_table===configuration.collections[role].table)?.binding_columns;
+        const table=directorySource(configuration,role).tableName;
+        const raw=rows.find(row=>row.id===configuration.detailViews?.[role]&&row.target_table===table)?.binding_columns;
         return [role,raw==null?[]:detailBindingColumnsSchema.parse(JSON.parse(String(raw)))];
     }));
 }
