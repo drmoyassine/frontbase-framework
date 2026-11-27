@@ -1,3 +1,5 @@
+2026-11-27 OPEN. Build Cloudflare OAuth and short-lived Vercel installation renewal from current main and qualify renewal across upgrade and rollback. See [provider renewal task #20](https://github.com/drmoyassine/frontbase-framework/issues/20).
+
 2026-11-18 PAGES STATUS / TOOLBAR COMPLETE — Owner-approved items 1–4 are deployed and browser-verified with existing data/settings preserved. Existing publication/history fields remain required; no schema migration. Edit/View/More and row navigation remain unimplemented pending approval of the six-entry matrix. [Delivery and approval boundary](../plans/pages-publication-toolbar-20261118.md).
 
 2026-11-08 NEXT RELEASE MILESTONE — freeze one immutable Developer Preview candidate and attach the final package, host, security, recovery and adopter receipts to it. Admin-first setup and saved progress on CF/Vercel are closed. [Ordered remaining gates](../plans/frontbase-public-release-finalization-20261024.md#current-release-decision--2026-11-08).
