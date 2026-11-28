@@ -51,10 +51,12 @@ import CONSOLE_INDEX from './console-shell.js';
 
 const SETUP_SPA_HTML = '<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Frontbase Setup</title></head><body><div id="root"></div><script src="/frontbase-setup/spa.js"></script></body></html>';
 
+import { inquiryTickets, purgeExpiredInquiries } from '@frontbase/backend';
+
 /** Both host paths share the same owner-scoped adapters, audience checks and renderer. */
 function liveServingOptions(runner:DbRunner,cipher:SecretCipher,externalFetch:typeof fetch,phase2For:(owner:string)=>Phase2Store){
     return {
-        swBundle:SW_BUNDLE,frontendEditing:true,
+        swBundle:SW_BUNDLE,frontendEditing:true,inquiry:inquiryTickets(cipher),
         host:{syncFor:(owner:string)=>new SyncStore(runner,owner,cipher),
             accountConfigFor:datasourceAccountConfigFor(phase2For,()=>new Date().toISOString()),externalFetch},
         resolveAudience:configuredMenuAudienceResolver(runner,cipher,externalFetch,Date.now,true),
@@ -973,6 +975,11 @@ async function initializedLiveOptions(runner:DbRunner,secret:string){
 }
 
 const worker = {
+    async scheduled(_event:unknown, env:CmsEnv, ctx:ExecutionContext):Promise<void> {
+        const stage=(env as CmsEnv & {FRONTBASE_BOOTSTRAP?:string}).FRONTBASE_BOOTSTRAP;
+        if (stage === 'native' || stage === '1') return;
+        ctx.waitUntil(purgeExpiredInquiries(stateFor(env).runner));
+    },
     async fetch(req: Request, env: CmsEnv, ctx: ExecutionContext): Promise<Response> {
         try {
             // Internal asset proofs are never public URLs, including when this mode is off.

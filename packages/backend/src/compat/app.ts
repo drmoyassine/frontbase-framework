@@ -11,6 +11,13 @@ import {registerFrontendEditRoutes} from './routes/frontend-edit.js';
 import {frontendEditorAllowed} from './frontend-copy.js';
 import {FRONTEND_EDITOR_SCRIPT} from './frontend-editor.js';
 import {registerAppUserRoutes} from './routes/app-users.js';
+import { registerInquiryRoute, registerInquiryInbox } from './routes/inquiries.js';
+import { resolveDatasourceConfig } from './credential-resolver.js';
+import { supabasePostgrestHeaders } from '@frontbase/edge-infra/supabase-http';
+import type { TransactionalSender } from './email/messages.js';
+import { configuredMenuAudienceResolver } from './menu-audience-host.js';
+import { renderLiveLayoutPublication } from './live-layout-serving.js';
+import { publishedLiveQuery } from './published-live-query.js';
 /**
  * CF-22 P1 / D2 — the product-compatible console surface.
  *
@@ -121,6 +128,7 @@ export interface CreateCompatAppDeps {
      * identical for existing and unknown email addresses. */
     passwordResetDelivery?: (email: string, token: string) => Promise<void>;
     accountMail?: AccountMail;
+    inquiryMail?: TransactionalSender;
     /** Fixed HTTPS origin for self-hosted administrator passkeys. */
     adminPasskeyOrigin?: string;
     adminMfa?: AdminMfa;
@@ -341,6 +349,36 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     };
     app.route('/api/provider-resources',createProviderOAuthResources({origin:deps.providerOAuth.origin,authorize:configuration.authorize,fetch:externalFetch as typeof fetch,grant:bindingGrant,supabaseGrant:actor=>bindingGrant(actor,'supabase')}));}
     registerAppUserRoutes(app,runner,secretCipher,externalFetch,now,deps.requestTenant??(deps.cloudMode?async()=>undefined:undefined));
+    if (deps.sessionSecret) registerInquiryRoute(app, runner, secretCipher, now,
+        deps.requestTenant ?? (async () => deps.cloudMode ? undefined : '_root'), phase2For, externalFetch,
+        (owner,request,inquiry) => renderLiveLayoutPublication(runner,owner,request,{
+            host:{syncFor:syncStoreFor,accountConfigFor,externalFetch}, liveQuery:publishedLiveQuery(input=>app.fetch(input)), inquiry,
+            resolveAudience:configuredMenuAudienceResolver(runner,secretCipher,externalFetch,()=>Date.parse(now()),true),
+        }), {
+            async record(owner, id, event) {
+                const source=await syncStoreFor(owner).getDatasource(id);
+                if(source?.kind!=='supabase')throw Error('inquiry_crm_source_unavailable');
+                const merged=await mergeAccountConfig(accountConfigFor,externalFetch,owner,source.kind,source.config);
+                const config=resolveDatasourceConfig(source.kind,merged);
+                const origin=String(config.url??'').replace(/\/+$/,'');
+                const serviceKey=config.serviceKey;
+                if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(origin) || typeof serviceKey!=='string' || !serviceKey)
+                    throw Error('inquiry_crm_credentials_unavailable');
+                const response=await guardedExternalFetch(externalFetch,origin+'/rest/v1/rpc/frontbase_record_inquiry',{
+                    method:'POST',headers:{...supabasePostgrestHeaders({url:origin,serviceKey}),'content-type':'application/json'},
+                    body:JSON.stringify({inquiry:event}),
+                });
+                if(!response.ok)throw Error('inquiry_crm_refused');
+                const receipt=await response.json() as {submission_id?:string;created?:boolean};
+                if(receipt?.submission_id!==event.submissionId || typeof receipt.created!=='boolean')throw Error('inquiry_crm_unconfirmed');
+                return receipt.created;
+            },
+            confirm:deps.inquiryMail && (async(email,id,locale)=>{
+                const subject=locale.split('-')[0]==='ar'?'تم استلام استفسارك':'We received your inquiry';
+                const body=subject+' · '+id;
+                await deps.inquiryMail!({to:email,subject:body,text:body,html:'<p>'+body+'</p>'});
+            }),
+        });
     // 2. Client hydration data plane (product parity — public route, no systemKeyAuth)
     registerDataExecuteRoute(
         app, runner, syncStoreFor, kvFor, externalFetch, now,
@@ -474,6 +512,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Validate protected requests only after authentication, preserving default-
     // deny semantics (anonymous callers receive 401, not schema-oracle 422s).
     app.use('*', contractRequestValidation());
+    registerInquiryInbox(app,runner,secretCipher,now);
     registerFrontendEditRoutes(app,runner,now,{pagesFor,syncFor:syncStoreFor,accountsFor:phase2For,externalFetch,accountConfigFor});
 
     // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).

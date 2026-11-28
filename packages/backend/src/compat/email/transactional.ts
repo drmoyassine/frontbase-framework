@@ -65,6 +65,7 @@ export function createTransactionalMail(
     const sender = selectSender(env, fetchImpl);
     if (!sender) return {};
     return {
+        inquiryMail: sender.send,
         passwordResetDelivery: createPasswordResetDelivery(sender.send, reset),
         ...(sender.accountMail ? { accountMail: createAccountMail(sender.send) } : {}),
     };

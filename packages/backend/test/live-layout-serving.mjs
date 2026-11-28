@@ -100,6 +100,7 @@ assert.ok(artifact.translationIds.entries.some(([key])=>key.includes('browse-hea
 assert.doesNotMatch(JSON.stringify(artifact.translationIds),/Browse institutions|First title|Program one/,'no materialized text in published identity plan');
 const host={syncFor:()=>({getDatasource:async()=>({id:'source',kind:'sqlite',config:{url:databaseUrl}})}),accountConfigFor:async()=>null,externalFetch:async()=>{throw Error('unexpected network');}};
 const options={host,liveQuery:async()=>{throw Error('unexpected view');}};
+await (await import('./published-inquiry.fixture.mjs')).verifyPublishedInquiry({db,plan,options});
 let response=await renderLiveLayoutPublication(db,'one',new Request('https://live.example/first/'),options);
 assert.equal(response.status,200);assert.equal(response.headers.get('X-Frontbase-Data'),'live');
 const preparedHtml=await response.text();assert.match(preparedHtml,/First title/);

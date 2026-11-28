@@ -11,7 +11,7 @@ import { FieldConfigurator } from './FieldConfigurator';
 import type { ColumnSchema, TableSchema } from '@/types/schema';
 import { DataSourceSelector } from '@/components/data-binding/DataSourceSelector';
 import { TableSelector } from '@/components/data-binding/TableSelector';
-import { createPublicFormDraft } from '@frontbase/edge-core';
+import { createInquiryForm, createPublicFormDraft } from '@frontbase/edge-core';
 import { PublicFormDraftProperties } from './PublicFormDraftProperties';
 import { Button } from '@/components/ui/button';
 
@@ -64,14 +64,17 @@ export const FormPropertiesPanel: React.FC<FormPropertiesPanelProps> = ({
 
     if (type === 'Form' && props.publicFormDraft !== undefined) {
         return activeTab === 'general'
-            ? <div className="space-y-4"><PublicFormDraftProperties value={props.publicFormDraft} onChange={value => updateComponentProp('publicFormDraft', value)} /><Button variant="outline" onClick={() => updateComponentProp('publicFormDraft', undefined)}>Return to database form</Button></div>
-            : <p className="text-sm text-muted-foreground">Public form draft. Submission actions remain disabled.</p>;
+            ? <div className="space-y-4"><PublicFormDraftProperties key={componentId} formId={componentId} value={props.publicFormDraft} onChange={value => updateComponentProp('publicFormDraft', value)} /><Button variant="outline" onClick={() => updateComponentProp('publicFormDraft', undefined)}>Return to database form</Button></div>
+            : <p className="text-sm text-muted-foreground">Configure public form fields and submission in General.</p>;
     }
 
     if (activeTab === 'general') {
         return (
             <div className="max-h-[calc(100vh-250px)] overflow-y-auto px-1 pb-4 space-y-6">
-                {type === 'Form' && <Button variant="outline" onClick={() => updateComponentProp('publicFormDraft', createPublicFormDraft())}>Use public form draft</Button>}
+                {type === 'Form' && <div className="flex flex-wrap gap-2">
+                    <Button onClick={() => updateComponentProp('publicFormDraft', createInquiryForm())}>Use inquiry form</Button>
+                    <Button variant="outline" onClick={() => updateComponentProp('publicFormDraft', createPublicFormDraft())}>Use public form draft</Button>
+                </div>}
                 {type==='InfoList'?<div className="space-y-4"><LiveSourceSelector binding={props.binding??{componentId,dataSourceId:props.dataSourceId??'',tableName:props.tableName??'',columnOrder:props.fieldOrder??[],columnOverrides:{},pagination:{enabled:false,page:0,pageSize:1},sorting:{enabled:false},filtering:{searchEnabled:false,filters:{}}}} onChange={binding=>useBuilderStore.getState().updateComponent(componentId,{binding,dataSourceId:binding.dataSourceId,tableName:binding.tableName,fieldOrder:binding.columnOrder??[],fieldOverrides:{}})}/>{props.binding&&<RecordFieldPicker binding={props.binding} onChange={binding=>useBuilderStore.getState().updateComponent(componentId,{binding,fieldOrder:binding.columnOrder??[]})}/>}</div>:<>
                 {/* Data Source Configuration */}
                 <div className="space-y-4">

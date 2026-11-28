@@ -6,7 +6,7 @@ import type {Phase2Store} from '../db/phase2-store.js';
 import {runAndRecordAt} from '../routes/phase2.js';
 import {guardedExternalFetch,type CompatFetch} from './external-http.js';
 
-const supported=new Set(['trigger','manual_trigger','transform','json_transform','http_request','agent','http_response']);
+const supported=new Set(['trigger','manual_trigger','transform','json_transform','http_request','agent','http_response','inquiry_crm','inquiry_confirmation']);
 const transformations=new Set(['setFields','extractField','renameFields','keepFields','removeFields']);
 export class WorkflowCapabilityError extends Error{}
 export function authoringGraph(row:Record<string,unknown>,nodeId?:string){
@@ -38,14 +38,19 @@ export async function workflowVersion(store:Phase2Store,id:string,versionId:stri
 }
 export async function runAuthoringWorkflow(store:Phase2Store,tenant:string,row:Record<string,unknown>,parameters:Record<string,unknown>,now:()=>string,nodeId:string|undefined,externalFetch:CompatFetch){
     const graph=authoringGraph(row,nodeId),id=crypto.randomUUID(),provider=inMemoryWorkflowProvider(),controller=new AbortController();
-    const executors=defaultExecutorRegistry({fetchImpl:async(input,init)=>{try{return await guardedExternalFetch(externalFetch,input,{...init,signal:init?.signal?AbortSignal.any([init.signal,controller.signal]):controller.signal});}catch{throw Error('workflow_http_failed');}}});
-    const trigger=executors.resolve('trigger')!;executors.register({types:['trigger','manual_trigger'],async execute(node,inputs,context){const result=await trigger.execute(node,inputs,context);return {...result,payload:result};}});
+    const executors = authoringExecutors(externalFetch, controller);
+
     await store.createExecution(id,String(row.id),nodeId?'authoring_node':'authoring_test',now(),parameters);
     const wf={name:String(row.name),nodes:JSON.stringify(graph.nodes),edges:JSON.stringify(graph.edges)};
     const timer=setTimeout(()=>controller.abort(),20000);
     try{await runAndRecordAt(store,id,String(row.id),tenant,wf,parameters,now,{executors,settings:{log_level:'none',execution_timeout_ms:21000},provider:{...provider,async updateExecution(executionId,patch){await provider.updateExecution(executionId,patch);await store.upsertSetting(detailKey(id),JSON.stringify({nodeExecutions:JSON.parse(patch.nodeExecutions)}),now());}}});}
     finally{clearTimeout(timer);controller.abort();}
     return {execution_id:id,status:String((await store.getExecution(id))?.status??'error'),message:'Execution recorded'};
+}
+export function authoringExecutors(externalFetch:CompatFetch,controller:AbortController) {
+    const executors=defaultExecutorRegistry({fetchImpl:async(input,init)=>{try{return await guardedExternalFetch(externalFetch,input,{...init,signal:init?.signal?AbortSignal.any([init.signal,controller.signal]):controller.signal});}catch{throw Error('workflow_http_failed');}}});
+    const trigger=executors.resolve('trigger')!;executors.register({types:['trigger','manual_trigger'],async execute(node,inputs,context){const result=await trigger.execute(node,inputs,context);return {...result,payload:result};}});
+    return executors;
 }
 export async function authoringExecution(store:Phase2Store,row:Record<string,unknown>){
     const parse=(value:unknown,fallback:unknown)=>{try{return JSON.parse(String(value));}catch{return fallback;}};

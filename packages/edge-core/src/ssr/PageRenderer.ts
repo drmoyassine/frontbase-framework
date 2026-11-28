@@ -28,6 +28,9 @@ import { templateMenuLabels } from '../localization/surfaces.js';
 import { renderStaticComponent } from './components/static.js';
 import { renderInteractiveComponent } from './components/interactive.js';
 import { renderDataComponent } from './components/data.js';
+import { publicFormDraftSchema, type PublicFormDraft } from '../forms/public-form.js';
+import { renderPublicFormDraft } from './components/publicForm.js';
+export type InquiryTicketIssuer = (id: string, form: PublicFormDraft) => Promise<string | undefined>;
 import { buildResponsiveCSS, buildVisibilityCSS, isFrozenPlainData } from './styleHelpers.js';
 import type { TemplateContext } from './lib/context.js';
 import { engineConfig } from '../config.js';
@@ -53,8 +56,10 @@ import { renderLandingComponent } from './landingDispatcher.js';
  * NOW ASYNC due to LiquidJS template resolution.
  */
 export type ComponentRenderObserver=(component:PageComponent,html:string,context:TemplateContext)=>void;
-type RenderBudget={remaining:number;observe?:ComponentRenderObserver;interpolations?:ReadonlyMap<string,CompiledInterpolation>;recordScopes?:WeakMap<object,Record<string,any>>;navigate?: ReturnType<typeof propHrefResolver>};
+type RenderBudget={remaining:number;issueInquiry?:InquiryTicketIssuer;observe?:ComponentRenderObserver;interpolations?:ReadonlyMap<string,CompiledInterpolation>;recordScopes?:WeakMap<object,Record<string,any>>;navigate?: ReturnType<typeof propHrefResolver>};
 type RenderResult = string | Promise<string>;
+const inactiveInquiryVersion = Symbol('inactive inquiry version');
+type InquiryRenderContext = TemplateContext & {[inactiveInquiryVersion]?:boolean};
 const emptyStyles=Object.freeze({});
 const mergedStyles=new WeakMap<object,WeakMap<object,Record<string,unknown>>>();
 
@@ -117,7 +122,9 @@ function renderComponentImpl(component: PageComponent, context: TemplateContext,
         const selected = await renderComponent(presentation(active), context, budget);
         const templates = await Promise.all([...alternatives.map(version => ({ id: version.id, when: version.when })), { id: 'default', when: undefined }].map(async version => {
             const when = version.when === undefined ? '' : typeof version.when === 'string' ? version.when : '@conditions:v1:' + JSON.stringify(version.when);
-            return `<template data-block-version="${escapeHtml(version.id)}"${when ? ` data-block-when="${escapeHtml(when)}"` : ''}>${version.id === active ? selected : await renderComponent(presentation(version.id), context, budget)}</template>`;
+            // Inactive browser-switchable variants must not receive a submission ticket.
+            const inactiveContext = budget.issueInquiry ? {...context,[inactiveInquiryVersion]:true} : context;
+            return `<template data-block-version="${escapeHtml(version.id)}"${when ? ` data-block-when="${escapeHtml(when)}"` : ''}>${version.id === active ? selected : await renderComponent(presentation(version.id), inactiveContext, budget)}</template>`;
         }));
         const record=publicConditionContext(component,context as unknown as Record<string,unknown>).record;
         return `<div data-block-versions="${escapeHtml(component.id)}" data-block-active="${escapeHtml(active)}"${record?` data-block-record="${escapeHtml(JSON.stringify(record))}"`:''} style="display:contents"><div data-block-content style="display:contents">${selected}</div>${templates.join('')}</div>`;
@@ -208,6 +215,14 @@ function renderComponentImpl(component: PageComponent, context: TemplateContext,
                         return combinedCSS + renderInteractiveComponent(type, id, resolvedProps, childrenHtml);
 
                     case 'data':
+                        if (type === 'Form' && budget.issueInquiry && props?.publicFormDraft && !isClientSideCondition && !(context as InquiryRenderContext)[inactiveInquiryVersion]) {
+                            // Only literal published configuration can grant submission authority.
+                            const parsed = publicFormDraftSchema.safeParse(props.publicFormDraft);
+                            if (parsed.success && parsed.data.submission) {
+                                const form = parsed.data;
+                                return budget.issueInquiry(id, form).then(ticket => combinedCSS + renderPublicFormDraft(id, form, ticket));
+                            }
+                        }
                         if (type === 'Repeater'||type==='Card'&&props?.binding) resolvedProps.template = children ?? [];
                         // Merge binding into props so renderDataComponent can access it
                         if (binding) {
@@ -272,7 +287,8 @@ export async function renderPage(
     layoutData: PageLayoutData,
     context: TemplateContext,
     observe?:ComponentRenderObserver,
-    interpolations?:ReadonlyMap<string,CompiledInterpolation>
+    interpolations?:ReadonlyMap<string,CompiledInterpolation>,
+    issueInquiry?:InquiryTicketIssuer
 ): Promise<string> {
     if (!layoutData || !layoutData.content) {
         return '<div class="fb-empty">No content</div>';
@@ -291,7 +307,7 @@ export async function renderPage(
     const { rootStyle, rootClass } = resolveRootStyles(rootProps);
 
     // Render all top-level components (async) - wrapped for proper block layout
-    const budget:RenderBudget = { remaining: 20000, observe,interpolations,recordScopes:new WeakMap(), navigate: propHrefResolver(context.app) };
+    const budget:RenderBudget = { remaining: 20000, issueInquiry,observe,interpolations,recordScopes:new WeakMap(), navigate: propHrefResolver(context.app) };
     const contentHtml = await joinRendered(layoutData.content.map(component => renderComponent(component, context, budget)));
 
     // Community Edition Badge Injection

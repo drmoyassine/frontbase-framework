@@ -314,6 +314,13 @@ export const MIGRATIONS: Migration[] = [
         "INSERT INTO settings (tenant_slug,key,value,updated_at) SELECT '_root','administrator_mfa_new_install','true','1970-01-01T00:00:00.000Z' WHERE NOT EXISTS (SELECT 1 FROM users) ON CONFLICT(tenant_slug,key) DO NOTHING",
     ],down:[]},
     {version:28,name:'datasource_view_binding_columns',up:['ALTER TABLE datasource_views ADD COLUMN binding_columns TEXT'],down:[]},
+    {version:29,name:'public_inquiries',up:[
+        `CREATE TABLE IF NOT EXISTS public_inquiries (
+            tenant_slug TEXT NOT NULL, id TEXT NOT NULL, form_id TEXT NOT NULL, payload_hash TEXT NOT NULL,
+            encrypted_payload TEXT NOT NULL, workflow_status TEXT NOT NULL, created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL, PRIMARY KEY (tenant_slug,id))`,
+        'CREATE INDEX IF NOT EXISTS inquiry_expiry ON public_inquiries(expires_at)',
+    ],down:['DROP TABLE public_inquiries']},
 ];
 
 const MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`;

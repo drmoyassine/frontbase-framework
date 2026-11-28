@@ -355,6 +355,7 @@ export {createProviderOAuthResources,type ProviderOAuthResourcesDeps} from './pr
 export { createPrivateLocalePublicationOverlay } from './compat/translation-homepage.js';
 export {LiveLayoutPublicationStore,liveLayoutPublicationSchema} from './compat/live-layout-publication.js';
 export {renderLiveLayoutPublication} from './compat/live-layout-serving.js';
+export { inquiryTickets, purgeExpiredInquiries } from './compat/inquiries.js';
 export {datasourceAccountConfigFor} from './compat/providers/merge-account.js';
 
 export {createAdminMfa,isLocalAdmin} from './compat/routes/admin-mfa.js';

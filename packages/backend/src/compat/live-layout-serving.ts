@@ -23,11 +23,13 @@ import {readProjectSettings} from './assets.js';
 import {BOOKING_PALETTE_KEY} from './booking-site-palette.js';
 import type {BookingPalette} from '@frontbase/edge-core/directory/configuration';
 
+const identity = (value:unknown) => typeof value === 'string' || typeof value === 'number' ? String(value) : null;
 export interface LiveLayoutServingOptions{
     host:LiveLayoutHost;liveQuery:PublishedLiveQuery;swBundle?:string;frontendEditing?:boolean;
     /** Supplied only by the authenticated private preview route, never visitor input. */
     prepared?:{pointer:LiveLayoutPointer;layout:LiveLayoutIndex;loadLayout?:LoadLiveLayout};
     previewPalette?:BookingPalette;
+    inquiry?: import('./inquiries.js').PublishedInquiryIssuer;
     /** Private Builder projection. The live route must belong to this page. */
     previewDraft?:{pageId:string;layout:PageLayoutData};
     /** Only the authenticated inline layout draft needs unbound sample values. */
@@ -132,6 +134,11 @@ async function serveLiveLayout(db:DbRunner,owner:string,request:Request,options:
             manifest, environment: 'edge', document, swBundle: options.swBundle,
             interpolations: displayPlanInterpolations(displayPlan),
             lists: resolved.lists,
+            issueInquiry: options.inquiry && !options.prepared && !options.previewDraft
+                ? (formId, form) => options.inquiry!({owner, path:url.pathname, search:url.search, pageId:resolved.sourcePageId,
+                    revision:active.pointer.hash, locale, formId, collection:identity(resolved.context.collection),
+                    recordId:identity(resolved.context.recordId), parentId:identity(resolved.context.parentId)}, form)
+                : undefined,
         }, audienceConditionUser(audience));
         headers.set('Content-Language', locale);
         headers.set('Content-Type', 'text/html; charset=UTF-8');

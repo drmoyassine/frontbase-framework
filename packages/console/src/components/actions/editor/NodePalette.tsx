@@ -98,6 +98,14 @@ const nodeTypes: NodeTypeConfig[] = [
 
     // Integrations
     {
+        type:'inquiry_crm', label:'Record CRM inquiry', description:'Link the contact and record the follow-up',
+        icon:<Database className="w-4 h-4" />, category:'integrations',
+    },
+    {
+        type:'inquiry_confirmation', label:'Confirm inquiry by email', description:'Send the submitter a receipt',
+        icon:<Mail className="w-4 h-4" />, category:'actions',
+    },
+    {
         type: 'data_request',
         label: 'Data Request',
         description: 'Query or modify data',

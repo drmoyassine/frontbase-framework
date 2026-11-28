@@ -58,6 +58,19 @@ export const nodeSchemas: Record<string, NodeSchema> = {
     condition: conditionSchema,
     // Integrations
     data_request: dataRequestSchema,
+    inquiry_crm: {
+        type:'inquiry_crm', label:'Record CRM inquiry', category:'integrations',
+        description:'Record a published form submission using the connected CRM transaction.',
+        inputs:[{name:'inquiry',type:'json',label:'Submitted inquiry'},
+            {...dataRequestSchema.inputs[0]!,label:'Supabase CRM datasource'}],
+        outputs:[{name:'receipt',type:'string',description:'Committed inquiry receipt'}],
+    },
+    inquiry_confirmation: {
+        type:'inquiry_confirmation', label:'Confirm inquiry by email', category:'actions',
+        description:'Send a confirmation to the submitter after the CRM transaction succeeds.',
+        inputs:[{name:'receipt',type:'string',label:'CRM receipt'}],
+        outputs:[{name:'accepted',type:'boolean',description:'Mail provider accepted the message'}],
+    },
     // Interface
     toast: toastSchema,
     redirect: redirectSchema,

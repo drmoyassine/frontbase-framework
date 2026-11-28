@@ -5,6 +5,7 @@
 import type { WorkflowNode } from './types.js';
 
 const REQUIRED_FIELDS: Record<string, string[]> = {
+    inquiry_crm: ['dataSource'],
     http_request: ['method', 'url'],
     agent: ['baseUrl', 'agentSlug', 'contactId', 'message'],
     data_request: ['dataSource', 'table'],
