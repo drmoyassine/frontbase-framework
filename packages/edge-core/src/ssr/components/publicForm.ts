@@ -10,7 +10,7 @@ export function renderPublicFormDraft(id: string, value: unknown, ticket?: strin
     const fields = form.fields.map((field, index) => {
         const inputId = `${id}-field-${index}`;
         const attrs = `id="${escapeHtml(inputId)}" name="${escapeHtml(field.name)}"${field.required ? ' required' : ''}${live ? '' : ' disabled'}`;
-        const label = field.label + (field.required ? ' <span aria-hidden="true">*</span>' : '');
+        const label = escapeHtml(field.label) + (field.required ? ' <span aria-hidden="true">*</span>' : '');
         const cls = 'w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-foreground';
         if (field.type === 'consent') return `<label class="flex items-start gap-2" for="${escapeHtml(inputId)}"><input type="checkbox" ${attrs}> <span>${label}</span></label>`;
         const input = field.choices
