@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { validateBlockVersions, applyBlockVersion, type VersionedBlock } from '@frontbase/edge-core/block-versions';
-import { TranslationLifecycle, localeSchema, translationJobIntentSchema, translationUnitId, messageSourceFingerprint,
+import { publicFormDisplayCopy, TranslationLifecycle, localeSchema, translationJobIntentSchema, translationUnitId, messageSourceFingerprint,
     translationContextFingerprint, type MessageUnit, type TranslationContext, type StoredRevision } from '@frontbase/edge-core/localization';
 import { currentTranslationHostPin, translationHostPinSchema, prepareTranslationAllowance, configuredTranslationAllowanceRunner,
     closeTranslationAllowance, translationAllowanceLifecycle, translationAllowanceReference } from './translation-allowance.js';
@@ -35,6 +35,16 @@ export const TRANSLATION_PAGE_FIELDS: Record<string, readonly string[]> = {
     Button: ['content', 'text', 'value', 'label'], Badge: ['content', 'text', 'value', 'label'],
     Image: ['alt'], Input: ['placeholder'], Textarea: ['placeholder'], Select: ['placeholder'] };
 const boundTypes = new Set(['Repeater', 'DataTable', 'DataGrid', 'Grid']);
+function pageCopy(node: VersionedBlock): Record<string, unknown> {
+    if (node.type === 'Form') return publicFormDisplayCopy(node.props?.publicFormDraft);
+    const field = TRANSLATION_PAGE_FIELDS[node.type]?.find(key => !!node.props?.[key]);
+    return field ? { [field]: node.props![field] } : {};
+}
+function selectedCopy(node: VersionedBlock, field: string): string {
+    const copy = pageCopy(node);
+    if (node.binding || node.props?.binding || node.props?.dataBinding || !Object.hasOwn(copy, field)) throw Error();
+    return translationPlainText(copy[field]);
+}
 /** Generation-path terminology: batch contexts carry the applied glossary while manual single-field
  *  flows extract without it, so operator saves are never gated on terminology state. A glossary
  *  change therefore invalidates outstanding batch intents through the contextFingerprint chain. */
@@ -56,8 +66,7 @@ export async function translationBatchFields(host: TranslationBatchHost, db: DbR
     const nodes = JSON.parse(page.layout_data).content as VersionedBlock[]; validateBlockVersions(nodes);
     const candidates: z.infer<typeof batchPageSelectionSchema>[] = [];
     const visit = (list: VersionedBlock[]) => { for (const node of list) {
-        const field = TRANSLATION_PAGE_FIELDS[node.type]?.find(field => !!node.props?.[field]);
-        if (field) candidates.push(batchPageSelectionSchema.parse({ pageId, blockId: node.id, field }));
+        for (const field of Object.keys(pageCopy(node))) candidates.push({ pageId, blockId: node.id, field });
         if (node.children) visit(node.children);
     } }; visit(nodes);
     const items = [], loaded = { page, nodes, pageHash: await digest({ layout: page.layout_data, name: page.name }) };
@@ -117,9 +126,8 @@ export async function extractTranslationPageInput(host: Pick<TranslationBatchHos
     };
     visit(nodes, false);
     if (!found || blocked) throw Error();
-    const node = found as VersionedBlock, props = node.props ?? {}, fields = TRANSLATION_PAGE_FIELDS[node.type];
-    if (!fields || fields.find(field => !!props[field]) !== selection.field || props.binding || props.dataBinding) throw Error();
-    const text = translationPlainText(props[selection.field]);
+    const node = found as VersionedBlock;
+    const text = selectedCopy(node, selection.field);
     const unit: MessageUnit = { version: 1, scope: pin.storage.scope, resource: { kind: 'component', documentId: page.id, blockId: node.id,
         versionId: 'default', propertyPath: ['props', selection.field] }, sourceLocale: pin.generation.sourceLocale,
         format: 'plain', text, segmenterVersion: 1, placeholders: [] };
@@ -133,19 +141,17 @@ export function translationPageCandidates(pageId: string, nodes: VersionedBlock[
     validateBlockVersions(nodes);
     const out: z.infer<typeof translationPageSelectionSchema>[] = [];
     const boundOf = (node: VersionedBlock, inherited: boolean) => inherited || !!node.binding || !!node.props?.binding || !!node.props?.dataBinding || boundTypes.has(node.type);
-    const firstField = (node: VersionedBlock) => TRANSLATION_PAGE_FIELDS[node.type]?.find(name => !!node.props?.[name]);
     const visit = (list: VersionedBlock[], inherited: boolean, owner?: string) => { for (const node of list) {
         const bound = boundOf(node, inherited);
         if (!bound) {
-            const name = firstField(node);
-            // Override children are version-owned: their selections carry the owning version.
-            if (name) out.push(translationPageSelectionSchema.parse(owner ? { pageId, blockId: node.id, field: name, versionId: owner }
-                : { pageId, blockId: node.id, field: name }));
+            const defaults = pageCopy(node);
+            for (const field of Object.keys(defaults)) out.push({pageId, blockId:node.id, field, ...(owner && {versionId:owner})});
             for (const version of node.versions ?? []) {
                 const effective = applyBlockVersion(node, version.id);
-                const alt = boundOf(effective, inherited) ? undefined : firstField(effective);
-                if (alt && node.props?.[alt] !== effective.props?.[alt])
-                    out.push(translationPageSelectionSchema.parse({ pageId, blockId: node.id, field: alt, versionId: version.id }));
+                if (boundOf(effective, inherited)) continue;
+                for (const [field,text] of Object.entries(pageCopy(effective))) {
+                    if (defaults[field] !== text) out.push({pageId, blockId:node.id, field, versionId:version.id});
+                }
             }
         }
         if (out.length > 100) throw Error('translation_preview_limit');
@@ -186,13 +192,11 @@ export async function extractTranslationPageVersionInput(host: Pick<TranslationB
     let node = found as VersionedBlock;
     if (ownerVersion === undefined) {
         if (!node.versions?.some(item => item.id === selection.versionId)) throw Error();
-        const baseText = node.props?.[selection.field];
+        const baseText = pageCopy(node)[selection.field];
         node = applyBlockVersion(node, selection.versionId!);
-        if ((node.props ?? {})[selection.field] === baseText) throw Error();
+        if (pageCopy(node)[selection.field] === baseText) throw Error();
     } else if (ownerVersion !== selection.versionId) throw Error();
-    const props = node.props ?? {}, fields = TRANSLATION_PAGE_FIELDS[node.type];
-    if (!fields || fields.find(field => !!props[field]) !== selection.field || props.binding || props.dataBinding) throw Error();
-    const text = translationPlainText(props[selection.field]);
+    const text = selectedCopy(node, selection.field);
     const unit: MessageUnit = { version: 1, scope: pin.storage.scope, resource: { kind: 'component', documentId: page.id,
         blockId: found.id, versionId: selection.versionId, propertyPath: ['props', selection.field] }, sourceLocale: pin.generation.sourceLocale,
         format: 'plain', text, segmenterVersion: 1, placeholders: [] };

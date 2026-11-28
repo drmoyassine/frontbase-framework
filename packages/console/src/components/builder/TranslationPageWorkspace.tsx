@@ -33,23 +33,29 @@ export function versionLabel(nodes: ComponentData[], blockId: string, versionId:
  *  inside that alternative's own overrides. */
 export function translatedPreviewPage(page: Page, preview: Preview, translate = true): Page {
     const fresh = preview.fields.filter(field => translate && field.state === 'draft' && field.translation !== null);
-    const byDefault = new Map(fresh.filter(field => !field.selection.versionId).map(field => [field.selection.blockId, field]));
-    const byVersion = new Map(fresh.filter(field => field.selection.versionId).map(field => [field.selection.blockId + '\u0000' + field.selection.versionId, field]));
+    const translated = new Map<string, Record<string,string>>();
+    const blockKey = (id: string, version = 'default') => id + '\u0000' + version;
+    for (const {selection, translation} of fresh) {
+        const key = blockKey(selection.blockId, selection.versionId);
+        const props = translated.get(key) ?? {};
+        props[selection.field] = translation!;
+        translated.set(key, props);
+    }
     const projectAlternative = (nodes: ComponentData[], versionId: string): ComponentData[] => nodes.map(child => {
-        const field = byVersion.get(child.id + '\u0000' + versionId);
-        return { ...child, props: field ? { ...child.props, [field.selection.field]: field.translation } : child.props,
+        const fields = translated.get(blockKey(child.id,versionId));
+        return { ...child, props: fields ? { ...child.props, ...fields } : child.props,
             ...(child.children ? { children: projectAlternative(child.children, versionId) } : {}) };
     });
     const visit = (nodes: ComponentData[]): ComponentData[] => nodes.map(node => {
-        const field = byDefault.get(node.id);
-        let next: ComponentData = field ? { ...node, props: { ...node.props, [field.selection.field]: field.translation } } : node;
+        const fields = translated.get(blockKey(node.id));
+        let next: ComponentData = fields ? { ...node, props: { ...node.props, ...fields } } : node;
         if (next.versions?.length) {
             let versions = next.versions;
             for (const version of versions) {
-                const owned = byVersion.get(next.id + '\u0000' + version.id);
+                const owned = translated.get(blockKey(next.id,version.id));
                 const children = version.overrides.children ? projectAlternative(version.overrides.children, version.id) : undefined;
                 if (owned || children) versions = versions.map(item => item.id === version.id ? { ...item, overrides: {
-                    ...item.overrides, ...(owned ? { props: { ...item.overrides.props, [owned.selection.field]: owned.translation } } : {}),
+                    ...item.overrides, ...(owned ? { props: { ...item.overrides.props, ...owned } } : {}),
                     ...(children ? { children } : {}) } } : item);
             }
             next = { ...next, versions };

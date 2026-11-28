@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import type { DbRunner } from '@frontbase/edge-infra';
 import { translationPagePreviewSchema, translationPageSaveSchema } from '@frontbase/edge-core/localization/batches';
-import { TranslationLifecycle, localeSchema, translationUnitId, messageSourceFingerprint, translationContextFingerprint } from '@frontbase/edge-core/localization';
+import { TranslationLifecycle, localeSchema, translationUnitId, messageSourceFingerprint, translationContextFingerprint, type TranslationSnapshot } from '@frontbase/edge-core/localization';
 import { configuredTranslationStorage, configuredTranslationStorageIdentity } from './translation-storage.js';
 import { TranslationGenerationStore } from './translation-generation.js';
 import { extractTranslationPageInput, extractTranslationPageVersionInput, translationPageCandidates, type TranslationBatchHost } from './translation-batches.js';
@@ -27,11 +27,15 @@ async function pageSession(host: TranslationBatchHost, db: DbRunner, tenant: str
     return { ...store, page, nodes, pageHash, pin, configHash, generation, locale };
 }
 type Session = Awaited<ReturnType<typeof pageSession>>;
-async function field(host: TranslationBatchHost, tenant: string, session: Session, selection: z.infer<typeof translationPageSaveSchema>['selection']) {
+type Selection = z.infer<typeof translationPageSaveSchema>['selection'];
+async function fieldIdentity(host: TranslationBatchHost, tenant: string, session: Session, selection: Selection) {
     const input = selection.versionId ? await extractTranslationPageVersionInput(host, tenant, selection, session.pin, session)
         : await extractTranslationPageInput(host, tenant, selection, session.pin, session);
     const unitId = await translationUnitId(session.scope, input.unit.resource);
-    const snapshot = await session.persistence.read(session.scope, unitId, session.locale);
+    return {input, unitId, selection};
+}
+async function field(session: Session, identity: Awaited<ReturnType<typeof fieldIdentity>>, snapshot: TranslationSnapshot) {
+    const {input, unitId, selection} = identity;
     const fingerprint = await messageSourceFingerprint(input.unit), contextFingerprint = await translationContextFingerprint(input.context);
     const current = snapshot.source?.fingerprint === fingerprint && snapshot.source.contextFingerprint === contextFingerprint;
     const head = snapshot.head;
@@ -44,13 +48,14 @@ async function field(host: TranslationBatchHost, tenant: string, session: Sessio
 export async function translationPagePreview(host: TranslationBatchHost, db: DbRunner, tenant: string, pageId: string, locale: string) {
     const session = await pageSession(host, db, tenant, pageId, locale);
     const selections = translationPageCandidates(pageId, session.nodes);
-    const fields = [];
+    const identities = [];
     for (const selection of selections) {
         // Eligibility failures are separate from transport failures: a failed store read must fail the preview.
-        try { if (selection.versionId) await extractTranslationPageVersionInput(host, tenant, selection, session.pin, session);
-            else await extractTranslationPageInput(host, tenant, selection, session.pin, session); } catch { continue; }
-        fields.push((await field(host, tenant, session, selection)).value);
+        try { identities.push(await fieldIdentity(host,tenant,session,selection)); } catch { continue; }
     }
+    const snapshots = identities.length ? await session.persistence.readMany(session.scope,identities.map(item=>item.unitId),locale) : [];
+    if (snapshots.length !== identities.length) throw Error('translation_preview_incomplete');
+    const fields = await Promise.all(identities.map(async (item,index)=>(await field(session,item,snapshots[index]!)).value));
     const latest = await pageSession(host, db, tenant, pageId, locale);
     if (latest.pageHash !== session.pageHash || latest.configHash !== session.configHash) throw Error();
     return translationPagePreviewSchema.parse({ pageId, pageHash: session.pageHash, locale: session.locale,
@@ -60,7 +65,9 @@ export async function saveTranslationPageField(host: TranslationBatchHost, db: D
     const request = translationPageSaveSchema.parse(raw);
     translationPlainText(request.text);
     const session = await pageSession(host, db, tenant, request.selection.pageId, request.locale);
-    const selected = await field(host, tenant, session, request.selection);
+    const identity = await fieldIdentity(host, tenant, session, request.selection);
+    const selected = await field(session,identity,await session.persistence.read(session.scope,identity.unitId,session.locale));
+    if (request.selection.field.startsWith('form') && request.text.length > (request.selection.field === 'formSubmitLabel' || request.selection.field.startsWith('formChoice_') ? 80 : 160)) throw Error();
     if (selected.value.token !== request.token) throw Error();
     const lifecycle = new TranslationLifecycle(session.persistence);
     const source = await lifecycle.syncSource(session.scope, selected.input.unit, selected.snapshot.source?.sourceVersion ?? null, selected.input.context);

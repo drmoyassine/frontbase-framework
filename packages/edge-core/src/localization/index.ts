@@ -2,6 +2,7 @@
 export * from '@frontbase/translation';
 
 export * from './surfaces.js';
+export { publicFormDisplayCopy } from '../forms/public-form.js';
 
 export {localizePublicHref,localizeNavigationProps} from './navigation.js';
 

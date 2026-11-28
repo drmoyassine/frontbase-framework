@@ -1,20 +1,20 @@
-import { publicFormDraftSchema } from '../../forms/public-form.js';
+import { publicFormDraftSchema, localizedPublicForm, formDisplayText } from '../../forms/public-form.js';
 import { escapeHtml } from './lib/utils.js';
 
 /** The shared preview stays inert unless the published host supplies its sealed ticket. */
-export function renderPublicFormDraft(id: string, value: unknown, ticket?: string): string {
+export function renderPublicFormDraft(id: string, value: unknown, ticket?: string, copy: Record<string,unknown> = {}): string {
     const result = publicFormDraftSchema.safeParse(value);
     if (!result.success) return '<div role="status">Application form configuration needs review.</div>';
-    const form = result.data;
+    const form = localizedPublicForm(result.data,copy);
     const live = Boolean(form.submission && ticket);
     const fields = form.fields.map((field, index) => {
         const inputId = `${id}-field-${index}`;
         const attrs = `id="${escapeHtml(inputId)}" name="${escapeHtml(field.name)}"${field.required ? ' required' : ''}${live ? '' : ' disabled'}`;
-        const label = escapeHtml(field.label) + (field.required ? ' <span aria-hidden="true">*</span>' : '');
+        const label = field.label + (field.required ? ' <span aria-hidden="true">*</span>' : '');
         const cls = 'w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-foreground';
         if (field.type === 'consent') return `<label class="flex items-start gap-2" for="${escapeHtml(inputId)}"><input type="checkbox" ${attrs}> <span>${label}</span></label>`;
         const input = field.choices
-            ? `<select ${attrs} class="${cls}"><option value=""></option>${field.choices.map(choice => `<option>${escapeHtml(choice)}</option>`).join('')}</select>`
+            ? `<select ${attrs} class="${cls}"><option value=""></option>${field.choices.map((choice,i) => `<option value="${escapeHtml(choice)}">${escapeHtml(formDisplayText(copy,'formChoice_' + field.name + '_' + i,choice))}</option>`).join('')}</select>`
             : field.type === 'textarea'
             ? `<textarea ${attrs} rows="4" maxlength="2000" class="${cls}"></textarea>`
             : `<input ${attrs} type="${field.type}" maxlength="254" class="${cls}">`;

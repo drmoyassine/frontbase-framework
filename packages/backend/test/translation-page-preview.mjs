@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { allowanceFixture, now } from './translation-allowance-fixture.mjs';
 import { createCompatApp } from '../dist/compat/app.js';
 import { PagesStore } from '../dist/compat/pages-store.js';
+import { createInquiryForm } from '@frontbase/edge-core';
 const root = '/api/project/translation-batches/page-preview/';
 const f = await allowanceFixture(), pages = new PagesStore(f.db, 'alpha');
 const nodes = [{ id:'title', type:'Heading', props:{content:'Explore institutions'} }, { id:'bound', type:'Repeater', children:[{id:'child',type:'Text',props:{content:'Do not translate record template'}}] }];
@@ -24,6 +25,14 @@ async function req(path,body){return app.request(root+path,{method:body?'POST':'
 async function preview(){const r=await req('home/?locale=ar');assert.equal(r.status,200,await r.clone().text());assert.equal(r.headers.get('cache-control'),'no-store');const v=await r.json();assert.doesNotMatch(JSON.stringify(v),/PRIVATE_|serviceKey|data\.example/);return v;}
 const save=(field,text)=>req('field/',{selection:field.selection,locale:'ar',token:field.token,text});
 try {
+ const form=createInquiryForm();
+ await pages.create({name:'Inquiry',slug:'inquiry',layout_data:{content:[{id:'form',type:'Form',props:{publicFormDraft:form}}],root:{}}},'inquiry',now);
+ const inquiryPreview=await req('inquiry/?locale=ar');
+ assert.equal(inquiryPreview.status,200);
+ const {fields:slots}=await inquiryPreview.json();assert.equal(slots.length,11);
+ const consent=slots.find(item=>item.selection.field==='formLabel_consent');
+ assert.equal((await save(consent,'أوافق على التواصل معي بخصوص هذا الاستفسار.')).status,200);
+ assert.equal((await save({...consent,selection:{...consent.selection,field:'submission'}},'other')).status,409);
  const original=(await pages.get('home')).layout_data;
  let p=await preview();assert.equal(p.fields.length,1);assert.equal(p.fields[0].state,'missing');
  const stale=p.fields[0], r=await save(stale,'استكشاف المؤسسات');assert.equal(r.status,200,await r.clone().text());p=await r.json();

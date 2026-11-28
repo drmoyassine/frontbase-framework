@@ -27,6 +27,31 @@ export const publicFormDraftSchema = z.object({
 });
 export type PublicFormDraft = z.infer<typeof publicFormDraftSchema>;
 
+/** Display slots share the field's workflow name so reordering fields preserves translations. */
+export function publicFormDisplayCopy(value: unknown): Record<string, string> {
+    const parsed = publicFormDraftSchema.safeParse(value);
+    if (!parsed.success) return {};
+    const form = parsed.data;
+    const copy: Record<string, string> = { formTitle: form.title, formSubmitLabel: form.submitLabel };
+    for (const field of form.fields) {
+        copy['formLabel_' + field.name] = field.label;
+        field.choices?.forEach((choice, index) => { copy['formChoice_' + field.name + '_' + index] = choice; });
+    }
+    return copy;
+}
+
+export function formDisplayText(props: Record<string, unknown>, key: string, fallback: string): string {
+    const text = props[key];
+    const limit = key === 'formSubmitLabel' || key.startsWith('formChoice_') ? 80 : 160;
+    return typeof text === 'string' && text.trim() && text.length <= limit ? text : fallback;
+}
+
+export function localizedPublicForm(form: PublicFormDraft, props: Record<string, unknown>): PublicFormDraft {
+    return { ...form, title: formDisplayText(props, 'formTitle', form.title),
+        submitLabel: formDisplayText(props, 'formSubmitLabel', form.submitLabel),
+        fields: form.fields.map(field => ({ ...field, label: formDisplayText(props, 'formLabel_' + field.name, field.label) })) };
+}
+
 export function createInquiryForm(): PublicFormDraft {
     return {
         version: 1, title: 'Submit an inquiry', submitLabel: 'Submit inquiry', submission: { kind: 'inquiry' },

@@ -192,7 +192,7 @@ function renderDataTable(id: string, props: Record<string, unknown>, propsJson: 
 }
 
 function renderForm(id: string, props: Record<string, unknown>, childrenHtml: string, propsJson: string): string {
-    if (props.publicFormDraft !== undefined) return renderPublicFormDraft(id, props.publicFormDraft);
+    if (props.publicFormDraft !== undefined) return renderPublicFormDraft(id, props.publicFormDraft, undefined, props);
     const binding = props.binding as Record<string, unknown> || {};
     const title = escapeHtml(String(props.title || 'Form'));
     const tableName = (props._tableName as string) || (binding.tableName as string) || props.tableName as string || props.table as string || '';

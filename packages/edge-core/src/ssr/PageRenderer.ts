@@ -28,7 +28,7 @@ import { templateMenuLabels } from '../localization/surfaces.js';
 import { renderStaticComponent } from './components/static.js';
 import { renderInteractiveComponent } from './components/interactive.js';
 import { renderDataComponent } from './components/data.js';
-import { publicFormDraftSchema, type PublicFormDraft } from '../forms/public-form.js';
+import { localizedPublicForm, publicFormDraftSchema, type PublicFormDraft } from '../forms/public-form.js';
 import { renderPublicFormDraft } from './components/publicForm.js';
 export type InquiryTicketIssuer = (id: string, form: PublicFormDraft) => Promise<string | undefined>;
 import { buildResponsiveCSS, buildVisibilityCSS, isFrozenPlainData } from './styleHelpers.js';
@@ -220,7 +220,7 @@ function renderComponentImpl(component: PageComponent, context: TemplateContext,
                             const parsed = publicFormDraftSchema.safeParse(props.publicFormDraft);
                             if (parsed.success && parsed.data.submission) {
                                 const form = parsed.data;
-                                return budget.issueInquiry(id, form).then(ticket => combinedCSS + renderPublicFormDraft(id, form, ticket));
+                                return budget.issueInquiry(id, localizedPublicForm(form,props)).then(ticket => combinedCSS + renderPublicFormDraft(id, form, ticket, props));
                             }
                         }
                         if (type === 'Repeater'||type==='Card'&&props?.binding) resolvedProps.template = children ?? [];

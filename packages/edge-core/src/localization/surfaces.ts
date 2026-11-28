@@ -3,6 +3,7 @@ import { applyBlockVersion } from '../block-versions.js';
 import {templateRecordFields} from '../directory/live-list.js';
 import {resolvePath,compileInterpolation,type CompiledInterpolation} from '../liquid-core/sync.js';
 import { detailTextFields, isSourceDetailField } from '../directory/detail-fields.js';
+import { publicFormDisplayCopy } from '../forms/public-form.js';
 
 export const homepageSearchLabels = { region:'Find study options', collection:'Explore', collectionAria:'Search collection', programs:'Programs', institutions:'Institutions', question:'What would you like to study?', placeholder:'Search by program or institution title', searchAria:'Search titles', submit:'Search' };
 export const homepageHeroLabels = { region:'Study options', eyebrow:'Explore your next chapter', controls:'Hero slideshow controls', previous:'Previous image', next:'Next image', pause:'Pause slideshow', resume:'Resume slideshow', slideStatus:'{index} / {count}' };
@@ -104,6 +105,15 @@ export function homepageDisplayLayout(input:PageLayoutData):PageLayoutData {
             const projected=versions.map(version=>{
                 const before=version.overrides.children as PageComponent[]|undefined;
                 const after=before?walk(before):before;
+                if(node.type==='Form' && version.overrides.props?.publicFormDraft){
+                    const baseCopy=publicFormDisplayCopy(p.publicFormDraft);
+                    const overrides={...version.overrides.props};
+                    for(const [key,text] of Object.entries(publicFormDisplayCopy(overrides.publicFormDraft))){
+                        if(baseCopy[key]!==text && !Object.hasOwn(overrides,key)) overrides[key]=text;
+                    }
+                    altered=true;
+                    return {...version,overrides:{...version.overrides,props:overrides,...(after&&{children:after})}};
+                }
                 if(after===before)return version;
                 altered=true;return {...version,overrides:{...version.overrides,children:after}};
             });
@@ -244,6 +254,9 @@ export function homepageDisplayFields(layout:PageLayoutData,plan:DisplaySurfaceP
             if(sourceOnly){field.sourceOnly=true;field.sourceValue=sourceValue??value;if(sourceFormat)field.sourceFormat=sourceFormat;}
             collected.push(field);};
         const nested=(value:any,path:string[],keys:Set<string>)=>{if(Array.isArray(value)){value.forEach((v,i)=>nested(v,[...path,String(i)],keys));return;}if(value&&typeof value==='object'){for(const [k,v]of Object.entries(value)){if(keys.has(k))emit([...path,k],v,k);else if(v&&typeof v==='object')nested(v,[...path,k],keys);}}};
+        if(node.type==='Form' && p.publicFormDraft){
+            for(const [key,source] of Object.entries(publicFormDisplayCopy(p.publicFormDraft))) emit([...base,key],p[key]??source,key);
+        }
         if(program.text&&Array.isArray(p.inlineTemplate)){
             const values=Array.isArray(p.inlineValues)?p.inlineValues:[];
             for(let index=0;index<p.inlineTemplate.length;index++){

@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { createPublicFormDraft, publicFormDraftSchema } from '../dist/index.js';
+import { createPublicFormDraft, createInquiryForm, publicFormDraftSchema, readInquiryFields } from '../dist/index.js';
+import { homepageDisplayFields, applyHomepageDisplayFields } from '../dist/localization/surfaces.js';
+import { localizedPublicForm } from '../dist/forms/public-form.js';
+import { renderPublicFormDraft } from '../dist/ssr/components/publicForm.js';
 import { renderDataComponent } from '../dist/ssr/components/data.js';
 const form = createPublicFormDraft();
 const render = value => renderDataComponent('Form', 'application', { publicFormDraft: value }, '');
@@ -22,4 +25,18 @@ const invalid=render({ ...form, fields:[{ ...form.fields[0], name:'x" onfocus="e
 assert.equal(invalid, '<div role="status">Application form configuration needs review.</div>');
 const legacy=renderDataComponent('Form', 'legacy', { title:'Database editor' }, '');
 assert(legacy.includes('data-react-component="Form"') && !legacy.includes('public-form-draft'));
+const inquiry=createInquiryForm();
+const layout={root:{},content:[{id:'inquiry',type:'Form',props:{publicFormDraft:inquiry}}]};
+const copy=homepageDisplayFields(layout);
+assert.equal(copy.length,11);
+const values=new Map(copy.map(f=>[JSON.stringify([f.blockId,'default',f.path]),'ترجمة '+f.text]));
+const translated=applyHomepageDisplayFields(layout,values).content[0].props;
+const localized=localizedPublicForm(inquiry,translated);
+assert.equal(localized.fields.at(-1).label,'ترجمة '+inquiry.fields.at(-1).label);
+assert.deepEqual(localized.fields[4].choices,['Email','WhatsApp']);
+assert.equal(inquiry.title,'Submit an inquiry');
+const ar=renderPublicFormDraft('inquiry',inquiry,'fixture-ticket',translated);
+assert(ar.includes('<option value="WhatsApp">ترجمة WhatsApp</option>'));
+assert(ar.includes('>ترجمة Submit inquiry</button>'));
+assert.equal(readInquiryFields(localized,new URLSearchParams({first_name:'a',last_name:'b',email:'a@example.com',contact_method:'WhatsApp',message:'c',consent:'on'})).contact_method,'WhatsApp');
 console.log('Public form draft: schema, escaping, inert authoring and legacy isolation PASS');
