@@ -8,6 +8,7 @@
  * The `{success, data, error}` envelope unwrap + error-throw behavior is kept.
  */
 import { Page } from '@/types/builder';
+import { isAxiosError } from 'axios';
 import {
   pagesGetPages, pagesCreatePageEndpoint, pagesUpdatePageEndpoint,
   pagesUpdatePageLayout, pagesDeletePage, pagesRestorePage,
@@ -37,10 +38,20 @@ export const createPage = async (pageData: Omit<Page, 'id' | 'createdAt' | 'upda
 };
 
 export const updatePage = async (pageId: string, pageData: Partial<Page>, expectedHash?: string): Promise<Page> => {
-  const { data, response } = await pagesUpdatePageEndpoint({ path: { page_id: pageId }, body: pageData as never, headers: expectedHash ? { 'If-Match': '"' + expectedHash + '"' } : undefined });
-  if (response.status === 409 && expectedHash) throw new Error('The layout draft changed. Reload before saving.');
-  if (!response.ok) throw new Error('Could not save the page');
-  return unwrap<Page>(data, 'updatePage');
+  try {
+    const { data } = await pagesUpdatePageEndpoint({
+      path: { page_id: pageId },
+      body: pageData as never,
+      headers: expectedHash ? { 'If-Match': '"' + expectedHash + '"' } : undefined,
+      throwOnError: true,
+    });
+    return unwrap<Page>(data, 'updatePage');
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 409) {
+      throw new Error(error.response.data?.detail || 'The layout draft changed. Reload before saving.');
+    }
+    throw error;
+  }
 };
 
 export const updatePageLayout = async (pageId: string, layoutData: any): Promise<Page> => {
