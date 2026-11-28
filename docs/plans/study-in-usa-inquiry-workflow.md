@@ -25,8 +25,10 @@ Workspace type checks, builds, the live-layout inquiry fixture, the single-layou
 
 ## Inquiry placements, 2026-11-28
 
-The six template layouts use the same footer menu revision (`15b2753e3666…`). The standalone inquiry page is the destination. The Menus preview action still requires a whole-site version. On this live-layout installation, Builder's **Page Settings → Use latest saved menu version** and single-layout publication applied the shared change.
+The six template layouts and the standalone inquiry page use the same footer menu revision (`15b2753e3666…`). The Menus preview action still requires a whole-site version. On this live-layout installation, Builder's **Page Settings** shared-menu control and single-layout publication applied the shared change.
 
 Anonymous requests checked the homepage, Explore, Blog, Washington State University, Advertising, a Rutgers Camden article and the standalone inquiry page in English and Arabic. All 14 returned HTTP 200 with `Cache-Control: no-store`. Footer links retained the visitor's language. Each detail page and the standalone page contained one submission form with a ticket. This placement check used reads only. The earlier CRM receipt remains the sole production test submission.
 
 The form labels still use English on Arabic pages. Arabic field copy, mail delivery to arbitrary applicants and inbox placement remain follow-ups.
+
+Builder previously reported a save error after the server had already committed the page. The console now handles the generated client's Axios response and surfaces the server's conflict reason when a save is rejected. Three regression checks passed. Workspace type checks passed and all packages built, including a successful retry of the Cloudflare packaging step after a local file lock. Worker `c8931013-5072-4629-9a04-de0c7262f51f` serves commit `8c92c1a0` with all 17 bindings. The signed-in console confirmed **Page saved** when adding site navigation to the standalone inquiry page. The reviewed page was published and all 14 public checks passed again.
