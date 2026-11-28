@@ -58,8 +58,8 @@ begin
         jsonb_build_object('origin','frontbase_inquiry','submission_id',receipt,'source',source,
             'submitted',fields-'message','field_definitions',inquiry->'fieldDefinitions'))
     returning id into note_id;
-    insert into public.activities(name,type,status,description,related_contact_id,origin)
-    values('Follow up on Study-in-USA inquiry','Lead Inquiry','Open','Inquiry '||receipt::text,person.id,'frontbase_inquiry')
+    insert into public.activities(name,type,description,related_contact_id,origin)
+    values('Follow up on Study-in-USA inquiry','Lead Inquiry','Inquiry '||receipt::text,person.id,'frontbase_inquiry')
     returning id into task_id;
     insert into frontbase_inquiry_private.receipts(submission_id,contact_id,communication_id,activity_id)
     values(receipt,person.id,note_id,task_id);

@@ -11,7 +11,7 @@ import {registerFrontendEditRoutes} from './routes/frontend-edit.js';
 import {frontendEditorAllowed} from './frontend-copy.js';
 import {FRONTEND_EDITOR_SCRIPT} from './frontend-editor.js';
 import {registerAppUserRoutes} from './routes/app-users.js';
-import { registerInquiryRoute, registerInquiryInbox } from './routes/inquiries.js';
+import { registerInquiryRoute, registerInquiryInbox, deliverInquiry, type InquiryActions } from './routes/inquiries.js';
 import { resolveDatasourceConfig } from './credential-resolver.js';
 import { supabasePostgrestHeaders } from '@frontbase/edge-infra/supabase-http';
 import type { TransactionalSender } from './email/messages.js';
@@ -349,12 +349,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     };
     app.route('/api/provider-resources',createProviderOAuthResources({origin:deps.providerOAuth.origin,authorize:configuration.authorize,fetch:externalFetch as typeof fetch,grant:bindingGrant,supabaseGrant:actor=>bindingGrant(actor,'supabase')}));}
     registerAppUserRoutes(app,runner,secretCipher,externalFetch,now,deps.requestTenant??(deps.cloudMode?async()=>undefined:undefined));
-    if (deps.sessionSecret) registerInquiryRoute(app, runner, secretCipher, now,
-        deps.requestTenant ?? (async () => deps.cloudMode ? undefined : '_root'), phase2For, externalFetch,
-        (owner,request,inquiry) => renderLiveLayoutPublication(runner,owner,request,{
-            host:{syncFor:syncStoreFor,accountConfigFor,externalFetch}, liveQuery:publishedLiveQuery(input=>app.fetch(input)), inquiry,
-            resolveAudience:configuredMenuAudienceResolver(runner,secretCipher,externalFetch,()=>Date.parse(now()),true),
-        }), {
+    const inquiryActions:InquiryActions = {
             async record(owner, id, event) {
                 const source=await syncStoreFor(owner).getDatasource(id);
                 if(source?.kind!=='supabase')throw Error('inquiry_crm_source_unavailable');
@@ -378,7 +373,13 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
                 const body=subject+' · '+id;
                 await deps.inquiryMail!({to:email,subject:body,text:body,html:'<p>'+body+'</p>'});
             }),
-        });
+        };
+    if (deps.sessionSecret) registerInquiryRoute(app, runner, secretCipher, now,
+        deps.requestTenant ?? (async () => deps.cloudMode ? undefined : '_root'), phase2For, externalFetch,
+        (owner,request,inquiry) => renderLiveLayoutPublication(runner,owner,request,{
+            host:{syncFor:syncStoreFor,accountConfigFor,externalFetch}, liveQuery:publishedLiveQuery(input=>app.fetch(input)), inquiry,
+            resolveAudience:configuredMenuAudienceResolver(runner,secretCipher,externalFetch,()=>Date.parse(now()),true),
+        }), inquiryActions);
     // 2. Client hydration data plane (product parity — public route, no systemKeyAuth)
     registerDataExecuteRoute(
         app, runner, syncStoreFor, kvFor, externalFetch, now,
@@ -512,7 +513,7 @@ export async function createCompatApp(deps: CreateCompatAppDeps): Promise<Hono<{
     // Validate protected requests only after authentication, preserving default-
     // deny semantics (anonymous callers receive 401, not schema-oracle 422s).
     app.use('*', contractRequestValidation());
-    registerInquiryInbox(app,runner,secretCipher,now);
+    registerInquiryInbox(app,runner,secretCipher,now, (owner,event)=>deliverInquiry(phase2For(owner),event,externalFetch,inquiryActions,true));
     registerFrontendEditRoutes(app,runner,now,{pagesFor,syncFor:syncStoreFor,accountsFor:phase2For,externalFetch,accountConfigFor});
 
     // AUTHENTICATED auth ops (me + security) — behind the guard (RULE 2).

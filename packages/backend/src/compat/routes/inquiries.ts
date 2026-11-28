@@ -24,7 +24,7 @@ export interface InquiryActions {
     record(owner:string, datasourceId:string, event:InquiryEvent):Promise<boolean>;
     confirm?(email:string, submissionId:string, locale:string):Promise<void>;
 }
-export async function deliverInquiry(store: Phase2Store, event: InquiryEvent, externalFetch: CompatFetch, actions?:InquiryActions) {
+export async function deliverInquiry(store: Phase2Store, event: InquiryEvent, externalFetch: CompatFetch, actions?:InquiryActions, reconcile=false) {
     const selected = event.workflow!;
     const [workflow, version] = await Promise.all([store.getWorkflow(selected.id), workflowVersion(store, selected.id, selected.versionId)]);
     if (!workflow?.is_active || !workflow.is_published || !version) return 'needs_review';
@@ -40,6 +40,9 @@ export async function deliverInquiry(store: Phase2Store, event: InquiryEvent, ex
     if (edges.some(edge=>httpNodes.has(edge.target) && edge.targetInput !== 'body')) return 'needs_review';
     const crm = nodes.filter(node=>node.type === 'inquiry_crm');
     const mail = nodes.filter(node=>node.type === 'inquiry_confirmation');
+    // Only the transaction-backed preset is safe to reconcile. The existing
+    // receipt prevents a second email even if the previous send was uncertain.
+    if (reconcile && (nodes.length!==3 || edges.length!==2 || crm.length!==1 || mail.length!==1)) return 'needs_review';
     // The canvas also serializes unnamed single handles as output -> input.
     for(const edge of edges) {
         if(edge.sourceOutput!=='output' || edge.targetInput!=='input')continue;
@@ -162,7 +165,24 @@ export function registerInquiryRoute(app:App, db:DbRunner, cipher:SecretCipher, 
         return c.text(matched.submission.receiptMessage ?? 'Thank you. Your inquiry has been received.',200);
     });
 }
-export function registerInquiryInbox(app:App,db:DbRunner,cipher:SecretCipher,now:()=>string) {
+export function registerInquiryInbox(app:App,db:DbRunner,cipher:SecretCipher,now:()=>string,
+    reconcile?:(owner:string,event:InquiryEvent)=>Promise<string>) {
+    const admin=requireRole('owner','admin','tenant_admin','master_admin','master_admin_root');
+    if(reconcile)app.post('/api/inquiries/:id/reconcile',admin,async c=>{
+        c.header('Cache-Control','no-store');
+        if(!sameAppOrigin(c.req.raw))return c.json({error:'origin_required'},403);
+        const owner=c.get('tenant'),id=c.req.param('id'),at=now();
+        const [row]=await db.query("SELECT encrypted_payload FROM public_inquiries WHERE tenant_slug=? AND id=? AND workflow_status='needs_review' AND expires_at>?",[owner,id,at]);
+        if(!row)return c.json({error:'inquiry_unavailable'},404);
+        const event=JSON.parse(await cipher.decrypt(String(row.encrypted_payload))) as InquiryEvent;
+        if(event.source.owner!==owner||event.submissionId!==id||!event.workflow)return c.json({error:'inquiry_unavailable'},409);
+        const claimed=await db.exec("UPDATE public_inquiries SET workflow_status='processing' WHERE tenant_slug=? AND id=? AND workflow_status='needs_review' AND expires_at>?",[owner,id,at]);
+        if(claimed!==1)return c.json({error:'inquiry_changed'},409);
+        const status=await reconcile(owner,event).catch(()=>'needs_review');
+        await db.exec('UPDATE public_inquiries SET workflow_status=? WHERE tenant_slug=? AND id=?',[status,owner,id]);
+        if(status==='completed')await db.exec("UPDATE workflow_executions SET status='completed',error=null,ended_at=? WHERE tenant_slug=? AND id=? AND trigger='inquiry.submitted'",[now(),owner,id]);
+        return c.json({status});
+    });
     app.get('/api/inquiries',requireRole('owner','admin','tenant_admin','master_admin','master_admin_root'),async c=>{
         c.header('Cache-Control','no-store');
         const owner=c.get('tenant'), at=now();

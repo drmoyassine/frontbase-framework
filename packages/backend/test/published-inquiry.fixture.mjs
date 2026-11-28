@@ -121,10 +121,17 @@ export async function verifyPublishedInquiry({plan,options}) {
     assert.equal((await statuses()).filter(row=>row.workflow_status==='recorded').length,1);
     assert.equal(deliveries.length,3);
     assert.equal((await app.request('/api/inquiries')).status,401);
+    const failed=(await db.query("SELECT id FROM public_inquiries WHERE workflow_status='needs_review'"))[0].id;
+    const reconcile=(sender=origin)=>app.request(origin+'/api/inquiries/'+failed+'/reconcile',{method:'POST',headers:{origin:sender}});
+    assert.equal((await reconcile()).status,401);
     authenticated=true;
+    assert.equal((await reconcile('https://other.example')).status,403);
+    assert.deepEqual(await (await reconcile()).json(),{status:'needs_review'});
+    assert.equal(deliveries.length,3,'reconciliation cannot replay an arbitrary HTTP workflow');
     assert.equal((await (await app.request('/api/inquiries?form=ask-us')).json()).inquiries.length,4);
     assert.equal((await (await app.request('/api/inquiries?form=other')).json()).inquiries.length,0);
     tenant='another'; assert.deepEqual((await (await app.request('/api/inquiries')).json()).inquiries,[]);
+    assert.equal((await reconcile()).status,404);
     await purgeExpiredInquiries(db,new Date(Date.now()+31*86400000).toISOString());
     assert.equal((await statuses()).length,0);
     const intake={id:'record',type:'inquiry_crm',inputs:[{name:'dataSource',value:'owned-source'}]};
@@ -136,9 +143,9 @@ export async function verifyPublishedInquiry({plan,options}) {
     const actions={record:async(t,ds,event)=>{
         assert.equal(t,owner);assert.equal(ds,'owned-source');calls.push('crm');return fresh;
     },confirm:async(email,id)=>{assert.equal(email,fields.email);assert.ok(id);calls.push('mail');}};
-    async function run(edges) {
+    async function run(edges,reconcile=false) {
         const pinned=await snapshotWorkflow(store,{...row,nodes:JSON.stringify([nodes[0],intake,mail]),edges:JSON.stringify(edges)},now(),'CRM','fixture');
-        return deliverInquiry(store,{...deliveries[0],workflow:{id:workflowId,versionId:pinned.id}},()=>{throw Error('unexpected HTTP');},actions);
+        return deliverInquiry(store,{...deliveries[0],workflow:{id:workflowId,versionId:pinned.id}},()=>{throw Error('unexpected HTTP');},actions,reconcile);
     }
     assert.equal(await run(chain),'completed');assert.deepEqual(calls,['crm','mail']);
     fresh=false;
@@ -146,6 +153,8 @@ export async function verifyPublishedInquiry({plan,options}) {
     assert.equal(await run([{...chain[0],targetInput:'dataSource'},chain[1]]),'needs_review');
     assert.equal(await run([chain[0],{...chain[1],source:'submitted'}]),'needs_review');
     assert.deepEqual(calls,['crm','mail','crm']);
+    assert.equal(await run(chain,true),'needs_review');
+    assert.deepEqual(calls,['crm','mail','crm','crm'],'a committed CRM receipt never sends a second confirmation');
     db.close();
     console.log('Published inquiry: render, validation, tenant isolation, concurrent retry, encrypted receipt, workflow success/failure and stale publication PASS');
 }
