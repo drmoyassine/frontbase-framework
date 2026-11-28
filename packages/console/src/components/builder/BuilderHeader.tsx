@@ -227,6 +227,15 @@ export const BuilderHeader: React.FC<{
         );
 
         if (eligible.length === 1) {
+          if (eligible[0].is_system && !isCloud()) {
+            const publication = await fetch('/api/project/live-layout/', {cache: 'no-store'});
+            if (!publication.ok) throw new Error('Could not check the active site publication.');
+            if ((await publication.json()).pointer) {
+              if (hasUnsavedChanges) toast.info('Save this page before reviewing publication.');
+              else setLayoutPublish(true);
+              return;
+            }
+          }
           // Single target (the common community case = system edge) → direct
           // publish + auto-preview in a new tab, no dialog.
           await handlePublishTarget(eligible[0].id, eligible[0]);

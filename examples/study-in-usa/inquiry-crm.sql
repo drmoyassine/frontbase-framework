@@ -47,8 +47,8 @@ begin
         values('Lead',address,fields->>'first_name',fields->>'last_name',nullif(fields->>'phone',''),nullif(fields->>'contact_method',''),'Inquiry','study-in-usa.com',studygram)
         returning * into person;
     end;
-    if not (person.org_id is not distinct from studygram or person.owner_org_id is not distinct from studygram
-        or (person.contact_type='Lead' and person.owner_org_id is null and person.org_id is null and person.lead_subsource='study-in-usa.com')) then
+    if (person.org_id is not distinct from studygram or person.owner_org_id is not distinct from studygram
+        or (person.contact_type='Lead' and person.owner_org_id is null and person.org_id is null and person.lead_subsource='study-in-usa.com')) is not true then
         raise exception 'contact requires reconciliation';
     end if;
     -- Unverified public input never rewrites a CRM profile. Record the submitted
